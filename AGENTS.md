@@ -1,0 +1,3 @@
+# Development agent rules
+
+Refer to https://github.com/nurgeldiserikbay/services for product vision, domain invariants and API contracts. Do not silently redefine ownership, profile uniqueness, review attribution or affiliation rules. Prefer isolated feature branches and PRs; coordinate API changes across repos. Ensure lint, types, tests and security checks pass before proposing merge. Never commit secrets or real customer information. Do not claim app/device testing unless executed.
