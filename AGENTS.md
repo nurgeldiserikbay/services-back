@@ -36,3 +36,6 @@ See https://github.com/nurgeldiserikbay/services/blob/main/docs/adr/0002-global-
 
 ## Overall system diagrams
 Before implementing a feature, inspect the visual overview diagrams and their editable Mermaid sources: https://github.com/nurgeldiserikbay/services/tree/main/docs/diagrams . Business overview, seller-controlled inquiry flow, and technical architecture clarify ownership, permissions, responsibilities, and shared API boundaries. The authoritative domain rules remain the corresponding Markdown specification chapters.
+
+## Owner-approved booking simplification (2026-11-01)
+IMPORTANT PRODUCT OVERRIDE: https://github.com/nurgeldiserikbay/services/blob/main/docs/adr/0003-simple-booking-company-view.md. Simple status model pending/accepted/declined/cancelled/completed, no Quote or price negotiation. Resolve seller from service-offer and verified source_context; independent profile request belongs to professional, embedded company card to company. CompanyProfessionalView is two-sided field permission intersection over a single ProfessionalProfile. Support voluntary calendars, personal/company AvailabilityAllocation and private busy-block conflict checks. SavedItem scoped to customer, accurate aggregated registered-client metrics. Prior draft status enums or price snapshots are superseded.
