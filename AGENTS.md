@@ -33,3 +33,6 @@ Use feature branches / PRs in parallel work unless the owner explicitly requests
 
 ## Global local-first discovery
 See https://github.com/nurgeldiserikbay/services/blob/main/docs/adr/0002-global-local-discovery.md and GEO-01..10 in chapter 13. Domain geography is global from day one (country/area/city stable IDs, service delivery modes/coverage, offer currencies/timezones); search is local-first by chosen/approximate region and anonymous public APIs. IP hints are inaccurate, never override manual choice. No automatic precise geolocation, no public leakage of private address or guest IP. Global schema does not imply all regulated services can operate in every jurisdiction.
+
+## Overall system diagrams
+Before implementing a feature, inspect the visual overview diagrams and their editable Mermaid sources: https://github.com/nurgeldiserikbay/services/tree/main/docs/diagrams . Business overview, seller-controlled inquiry flow, and technical architecture clarify ownership, permissions, responsibilities, and shared API boundaries. The authoritative domain rules remain the corresponding Markdown specification chapters.
