@@ -30,3 +30,6 @@ The canonical human + AI specifications are in https://github.com/nurgeldiserikb
 
 ## Collaboration & quality
 Use feature branches / PRs in parallel work unless the owner explicitly requests main. Check existing code and shared components before creating duplicates. Small cohesive changes, proper tests, lint, types, CI. Sync API/domain changes with services docs first. Never commit secrets or customer PII. Never claim a feature works on Android/iOS or staging unless actually tested. Do not merge a PR without owner instruction.
+
+## Global local-first discovery
+See https://github.com/nurgeldiserikbay/services/blob/main/docs/adr/0002-global-local-discovery.md and GEO-01..10 in chapter 13. Domain geography is global from day one (country/area/city stable IDs, service delivery modes/coverage, offer currencies/timezones); search is local-first by chosen/approximate region and anonymous public APIs. IP hints are inaccurate, never override manual choice. No automatic precise geolocation, no public leakage of private address or guest IP. Global schema does not imply all regulated services can operate in every jurisdiction.
