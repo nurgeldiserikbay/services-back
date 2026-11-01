@@ -39,3 +39,10 @@ Before implementing a feature, inspect the visual overview diagrams and their ed
 
 ## Owner-approved booking simplification (2026-11-01)
 IMPORTANT PRODUCT OVERRIDE: https://github.com/nurgeldiserikbay/services/blob/main/docs/adr/0003-simple-booking-company-view.md. Simple status model pending/accepted/declined/cancelled/completed, no Quote or price negotiation. Resolve seller from service-offer and verified source_context; independent profile request belongs to professional, embedded company card to company. CompanyProfessionalView is two-sided field permission intersection over a single ProfessionalProfile. Support voluntary calendars, personal/company AvailabilityAllocation and private busy-block conflict checks. SavedItem scoped to customer, accurate aggregated registered-client metrics. Prior draft status enums or price snapshots are superseded.
+
+## Product baseline v0.6 — read before feature work
+1. Canonical product blueprint: https://github.com/nurgeldiserikbay/services/blob/main/docs/ru/01-product.md
+2. ACCEPTED vs OPEN decisions: https://github.com/nurgeldiserikbay/services/blob/main/docs/ru/12-roadmap-decisions.md (OPEN-01..14, TECH-01..08)
+3. Implementation gates: https://github.com/nurgeldiserikbay/services/blob/main/docs/ru/22-delivery-roadmap.md
+4. Owner-approved simple requests/company views: https://github.com/nurgeldiserikbay/services/blob/main/docs/adr/0003-simple-booking-company-view.md
+Never implement proposed/open details as certain requirements. Do not claim implementation-ready before contract/UX/security gates. 
