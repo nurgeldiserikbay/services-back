@@ -49,3 +49,14 @@ Never implement proposed/open details as certain requirements. Do not claim impl
 
 ## Owner-approved cancellation and reliability baseline v0.7 (2026-11-01)
 Read https://github.com/nurgeldiserikbay/services/blob/main/docs/adr/0004-cancellation-reliability-and-defaults.md and chapter 12. Seller controls per-offer free cancellation deadline; on accepted booking with confirmed time server snapshots terms, cannot change retroactively. Cancel pending or early as client -> no penalty. Authenticated customer's late cancellation decreases separate customer reliability. Independent seller/company cancel accepted -> provider reliability of actual seller, never automatically of assigned employee. Reliability independent of quality-review stars and explainable/appealable; no automated bans or monetary fines. **On every cancellation including pending** create one confirmation to initiator and one notification to counterparty via atomic outbox, then asynchronous delivery/retries; guest via verified channel. Country-specific privacy/legal gates and API/Prisma/UX remain outstanding. Diagram: docs/diagrams/cancellation-reliability.mmd in canonical docs.
+
+## Contract-first baseline v0.8 (2026-11-01)
+Before implementing MVP APIs or UI, read:
+- https://github.com/nurgeldiserikbay/services/blob/main/contracts/prisma/README.md
+- https://github.com/nurgeldiserikbay/services/blob/main/contracts/prisma/schema.prisma
+- https://github.com/nurgeldiserikbay/services/blob/main/contracts/prisma/constraints.sql
+- https://github.com/nurgeldiserikbay/services/blob/main/contracts/prisma/test-cases.md
+- https://github.com/nurgeldiserikbay/services/blob/main/contracts/api-mvp-matrix.md
+- https://github.com/nurgeldiserikbay/services/blob/main/contracts/openapi.yaml
+- https://github.com/nurgeldiserikbay/services/blob/main/docs/ux/mvp-screen-contracts.md
+Prisma reference and SQL constraints are NOT applied migrations; OpenAPI is a design draft with documented gaps, despite passing syntax/bundle CI. Do not invent endpoints or DTO fields absent from a reviewed contract; don't claim UX approved before visual prototypes. Implement seller-scoped ACL and always queue both cancellation notifications; reliability is independent from quality reviews.
