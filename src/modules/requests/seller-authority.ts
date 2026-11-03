@@ -24,12 +24,11 @@ export async function resolveSellerDecisionAuthority(
   if(!UUID.test(authenticatedUserId)||!UUID.test(requestId))
     return {authorized:false};
 
-  // SELECT FOR SHARE prevents a concurrent change to the request seller
-  // identity while the caller decides on the same transaction.
+  // Acquire an exclusive request lock BEFORE the subsequent state transition.\n  // Starting with FOR SHARE and upgrading later can deadlock when two sellers\n  // race to accept/decline the same request.
   const request=await db.query<SellerRow>(`
     SELECT seller_professional_id::text AS professional_id,
            seller_organization_id::text AS organization_id
-    FROM service_requests WHERE id=$1::uuid FOR SHARE
+    FROM service_requests WHERE id=$1::uuid FOR UPDATE
   `,[requestId]);
   const row=request.rows[0];
   if(!row || Boolean(row.professional_id)===Boolean(row.organization_id))
