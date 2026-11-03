@@ -4,15 +4,22 @@ Source of truth: `nurgeldiserikbay/services` G0 contracts, branch `contracts/g0-
 
 The baseline is a **platform-wide schema**, not a geography-only schema. The `services` repository owns contract changes.
 
+## Committed initial migration and integration checks
+
+The checked-in migration `prisma/migrations/20261103_initial_platform/migration.sql` contains **42 platform tables** plus the reviewed G0 SQL guards. It is generated with Prisma 6.19.0 and pinned in the repository. CI regenerates the SQL and rejects any drift against the committed migration, then applies it to an empty PostgreSQL 16 database using `prisma migrate deploy`.
+
+The migration must **never** be regenerated or edited after production deployment; future schema changes require new incremental migrations, not editing the initial migration. This work was tested against an empty CI database only: production upgrade, backfill, locks, rollback strategy and real data residency still need explicit deployment review.
+
 ## Local / CI database (empty PostgreSQL 16)
 
-1. Configure `DATABASE_URL` to an *isolated, disposable* PostgreSQL 16 database. Do not use real customer data.
+1. Configure `DATABASE_URL` to an isolated, disposable PostgreSQL 16 database. Never use real customer data for smoke tests.
 2. Install dependencies: `npm install`.
-3. Validate schema: `npm run db:validate`.
-4. Initialize ephemeral development DB: `npm run db:dev:bootstrap`. The command runs Prisma `db push`, then applies the cross-table/exclusion invariants from `constraints.sql`; it is **only for empty disposable development/CI databases**.
-5. Run SQL checks: `npm run db:smoke`, and the starter geo seed: `npm run db:seed:geo`.
+3. Validate the schema: `npm run db:validate`.
+4. Deploy committed migration: `npm run db:migrate`. **Do not** run the generator on an already deployed production migration.
+5. Seed the curated geo starter: `npm run db:seed:geo` (safe to run again).
+6. Run constraints and integration tests: `npm run db:smoke && npm test`.
 
-Never run `db push` on production or existing customer datasets. Production deployment needs a committed and reviewed baseline migration generated from the pinned Prisma schema, custom invariants included in the *same migration*, a recovery/backup strategy, shadow database rehearsal, and `prisma migrate deploy` from CI/CD. The ephemeral bootstrap does not prove production migration safety.
+For production, add backup/recovery rehearsal, migration rehearsal on representative redacted data, role separation and approved change window before enabling any country.
 
 ## Geographic starter seed
 
@@ -22,7 +29,7 @@ Full worldwide taxonomy and multilingual names need a separately reviewed source
 
 ## Follow-ups before merge/release
 
-- Commit a real Prisma baseline migration and test `migrate deploy` (rather than ephemeral `db push`).
+- Review baseline migration and custom SQL guards for production rollouts, test incremental migration strategy and migration lock contention.
 - Verify compatibility between `services` G0 PR #4 and geography OpenAPI PR #5 after both merge.
 - Replace geography sample seed with reviewed import pipeline and coverage diagnostics.
 - Run true multi-connection concurrency tests and authorization checks.
