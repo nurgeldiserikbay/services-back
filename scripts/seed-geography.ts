@@ -59,7 +59,7 @@ export async function seedStarterGeography(connectionString: string):Promise<voi
     await client.end().catch(()=>{});
   }
 }
-if(process.argv[1] && import.meta.url===new URL('file://'+process.argv[1]).href){
+if(process.argv[1] && /[/\\\\]seed-geography\\.(?:ts|js)$/.test(process.argv[1])){
   seedStarterGeography(process.env.DATABASE_URL??'')
     .then(()=>console.info('Starter geography seed completed'))
     .catch(()=>{console.error('Starter geography seed failed');process.exitCode=1;});
