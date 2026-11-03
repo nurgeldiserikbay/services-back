@@ -17,6 +17,6 @@ test('public profile projection exposes only explicitly selected fields',async()
   }} as unknown as DatabasePool;
   const result=await new PublicProfileRepository(db).professional('electrician');
   assert.equal('secret_token' in result,false);
-  assert.equal('secret_token' in result.offers[0],true); // SQL projection ensures real pg rows never contain extra fields.
+  assert.equal('secret_token' in result.offers[0],false);
   assert.ok(recorded.every(sql=>!sql.includes('guest_contacts')&&!sql.includes('users')));
 });
