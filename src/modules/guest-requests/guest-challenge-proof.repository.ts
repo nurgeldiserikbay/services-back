@@ -26,13 +26,20 @@ export const VERIFY_CREATE_REQUEST_CHALLENGE_SQL = `
       AND c.expires_at > now()
     RETURNING ch.guest_contact_id, ch.code_hash = $2::text AS matched
   ),
+  verified_contact AS (
+    UPDATE guest_contacts contact
+    SET verified_at=now()
+    FROM attempt a
+    WHERE a.matched AND contact.id=a.guest_contact_id
+    RETURNING contact.id
+  ),
   issued AS (
     INSERT INTO guest_capabilities (
       id, guest_contact_id, scope, token_hash, expires_at
     )
-    SELECT $3::uuid, a.guest_contact_id, 'CREATE_REQUEST',
+    SELECT $3::uuid, vc.id, 'CREATE_REQUEST',
            $4::text, now() + ($6::integer * interval '1 second')
-    FROM attempt a WHERE a.matched
+    FROM verified_contact vc
     RETURNING id
   )
   SELECT EXISTS (SELECT 1 FROM issued) AS verified
