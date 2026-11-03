@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException, OnModuleDestroy, ServiceUnavailableException } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { DatabasePool } from '../../platform/database/database.pool.js';
 import { publishedContactMethods, type PublishedServiceOffer } from './public-offer.contract.js';
 
 type OfferRecord = {
@@ -20,26 +20,8 @@ type OfferRecord = {
  * Raw contacts JSON is examined server-side only to choose approved method names.
  */
 @Injectable()
-export class PublicOfferRepository implements OnModuleDestroy {
-  private pool?: Pool;
-
-  private connection(): Pool {
-    if (this.pool) return this.pool;
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) throw new ServiceUnavailableException('Public offers database unavailable');
-    this.pool = new Pool({
-      connectionString,
-      max: 5,
-      connectionTimeoutMillis: 3500,
-      idleTimeoutMillis: 12000,
-      statement_timeout: 4000,
-      application_name: 'services-public-offers',
-    });
-    this.pool.on('error', () => {
-      // Do not log connection strings, query parameters or sensitive driver details.
-    });
-    return this.pool;
-  }
+export class PublicOfferRepository {
+  constructor(private readonly db: DatabasePool) {}
 
   async getPublished(id: string): Promise<PublishedServiceOffer> {
     const sql = `
@@ -59,7 +41,7 @@ export class PublicOfferRepository implements OnModuleDestroy {
     `;
     let row: OfferRecord | undefined;
     try {
-      const result = await this.connection().query<OfferRecord>(sql, [id]);
+      const result = await this.db.query<OfferRecord>(sql, [id]);
       row = result.rows[0];
     } catch (error) {
       if (error instanceof ServiceUnavailableException) throw error;
@@ -87,7 +69,4 @@ export class PublicOfferRepository implements OnModuleDestroy {
     };
   }
 
-  async onModuleDestroy(): Promise<void> {
-    await this.pool?.end();
-  }
 }
