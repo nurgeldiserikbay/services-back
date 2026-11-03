@@ -1,6 +1,7 @@
-import { Injectable, OnModuleDestroy, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleDestroy, ServiceUnavailableException } from '@nestjs/common';
 import { Pool } from 'pg';
 import type { SearchFilters, SearchItem, SearchResult } from './search-contract.js';
+import type { PublicProfessional, PublicOrganization } from './public-profile-contract.js';
 
 /**
  * Read only from canonically published offers and their visible seller.
@@ -47,17 +48,17 @@ export class CatalogRepository implements OnModuleDestroy {
                ($4::text = 'country' AND c.country_id = $7::uuid))
       ),
       candidates AS (
-        SELECT 'offer'::text AS kind, offer_id AS id, offer_title AS title
+        SELECT 'offer'::text AS kind, offer_id AS id, offer_title AS title, NULL::text AS slug
         FROM published_offers
         UNION
         SELECT 'professional'::text AS kind, professional_id AS id,
-               COALESCE(NULLIF(professional_title, ''), professional_slug) AS title
+               COALESCE(NULLIF(professional_title, ''), professional_slug) AS title, professional_slug AS slug
         FROM published_offers WHERE professional_id IS NOT NULL
         UNION
-        SELECT 'organization'::text AS kind, organization_id AS id, organization_title AS title
+        SELECT 'organization'::text AS kind, organization_id AS id, organization_title AS title, NULL::text AS slug
         FROM published_offers WHERE organization_id IS NOT NULL
       )
-      SELECT kind, id::text, title, false AS is_sponsored
+      SELECT kind, id::text, title, slug, false AS is_sponsored
       FROM candidates
       WHERE ($2::text = 'all' OR kind = $2::text)
         AND ($1::text = '' OR position(lower($1::text) in lower(title)) > 0)
@@ -76,6 +77,39 @@ export class CatalogRepository implements OnModuleDestroy {
       throw new ServiceUnavailableException('Public catalog temporarily unavailable');
     }
   }
+  async publicProfessional(slug: string): Promise<PublicProfessional> {
+    try {
+      const result = await this.connect().query<PublicProfessional>(`
+        SELECT id::text, profession_id::text,
+               'published'::text AS lifecycle_status, slug, title
+        FROM professional_profiles
+        WHERE slug = $1::text AND status = 'PUBLISHED'
+        LIMIT 1
+      `, [slug]);
+      if (!result.rows[0]) throw new NotFoundException();
+      return result.rows[0];
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ServiceUnavailableException) throw error;
+      throw new ServiceUnavailableException('Public profile temporarily unavailable');
+    }
+  }
+
+  async publicOrganization(id: string): Promise<PublicOrganization> {
+    try {
+      const result = await this.connect().query<PublicOrganization>(`
+        SELECT id::text, slug, name, lower(status::text) AS status
+        FROM organizations
+        WHERE id = $1::uuid AND status = 'ACTIVE'
+        LIMIT 1
+      `, [id]);
+      if (!result.rows[0]) throw new NotFoundException();
+      return result.rows[0];
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ServiceUnavailableException) throw error;
+      throw new ServiceUnavailableException('Public organization temporarily unavailable');
+    }
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.pool?.end();
   }
