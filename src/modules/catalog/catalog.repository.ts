@@ -1,7 +1,6 @@
-import { Injectable, NotFoundException, OnModuleDestroy, ServiceUnavailableException } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Injectable } from '@nestjs/common';
+import { DatabasePool } from '../../platform/database/database.pool.js';
 import type { SearchFilters, SearchItem, SearchResult } from './search-contract.js';
-import type { PublicProfessional, PublicOrganization } from './public-profile-contract.js';
 
 /**
  * Read only from canonically published offers and their visible seller.
@@ -9,21 +8,8 @@ import type { PublicProfessional, PublicOrganization } from './public-profile-co
  * SQL parameters are always bound; requests and contact tables are never queried.
  */
 @Injectable()
-export class CatalogRepository implements OnModuleDestroy {
-  private pool?: Pool;
-  private connect(): Pool {
-    if (this.pool) return this.pool;
-    if (!process.env.DATABASE_URL) throw new ServiceUnavailableException('Public catalog is not connected');
-    this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      max: 8,
-      connectionTimeoutMillis: 3500,
-      idleTimeoutMillis: 12000,
-      statement_timeout: 4000,
-      application_name: 'services-public-search',
-    });
-    return this.pool;
-  }
+export class CatalogRepository {
+  constructor(private readonly db: DatabasePool) {}
   async search(filter: SearchFilters): Promise<SearchResult> {
     // Profiles and organizations appear only if an active published offer exists.
     // Prevents listing draft-only, suspended or otherwise non-public sellers.
@@ -66,51 +52,14 @@ export class CatalogRepository implements OnModuleDestroy {
       LIMIT 50
     `;
     try {
-      const res = await this.connect().query<SearchItem>(query, [
+      const res = await this.db.query<SearchItem>(query, [
         filter.q, filter.kind, filter.deliveryMode, filter.scope,
         filter.cityId, filter.areaId, filter.countryId,
       ]);
       return {items: res.rows, next_cursor:null};
     } catch (error) {
-      if (error instanceof ServiceUnavailableException) throw error;
-      // Do not expose database driver errors or query values to public callers.
-      throw new ServiceUnavailableException('Public catalog temporarily unavailable');
+      // The shared DB service already sanitizes errors; preserve the generic 503.
+      throw error;
     }
-  }
-  async publicProfessional(slug: string): Promise<PublicProfessional> {
-    try {
-      const result = await this.connect().query<PublicProfessional>(`
-        SELECT id::text, profession_id::text,
-               'published'::text AS lifecycle_status, slug, title
-        FROM professional_profiles
-        WHERE slug = $1::text AND status = 'PUBLISHED'
-        LIMIT 1
-      `, [slug]);
-      if (!result.rows[0]) throw new NotFoundException();
-      return result.rows[0];
-    } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ServiceUnavailableException) throw error;
-      throw new ServiceUnavailableException('Public profile temporarily unavailable');
-    }
-  }
-
-  async publicOrganization(id: string): Promise<PublicOrganization> {
-    try {
-      const result = await this.connect().query<PublicOrganization>(`
-        SELECT id::text, slug, name, lower(status::text) AS status
-        FROM organizations
-        WHERE id = $1::uuid AND status = 'ACTIVE'
-        LIMIT 1
-      `, [id]);
-      if (!result.rows[0]) throw new NotFoundException();
-      return result.rows[0];
-    } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ServiceUnavailableException) throw error;
-      throw new ServiceUnavailableException('Public organization temporarily unavailable');
-    }
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.pool?.end();
   }
 }

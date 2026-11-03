@@ -1,0 +1,873 @@
+// Services / canonical design reference, NOT a deployed migration.
+// Owner decisions: ADR-0002, ADR-0003, ADR-0004.
+// Prisma cannot express all conditional/XOR/exclusion constraints: see constraints.sql.
+// Prisma CLI validation and migration review are required in services-back before deployment.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuthChannel {
+  EMAIL
+  SMS
+}
+enum AccountAuthPurpose {
+  SIGN_IN
+  SIGN_UP
+}
+enum GuestCapabilityScope {
+  CREATE_REQUEST
+  READ_CANCEL
+  MANAGE_SCHEDULE
+}
+enum GuestChallengePurpose {
+  CREATE_REQUEST
+  RECOVER_REQUEST
+  MANAGE_SCHEDULE
+}
+enum ConsentKind {
+  TERMS
+  PRIVACY
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+enum ProfileStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  ARCHIVED
+}
+enum OrganizationStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+enum MemberRole {
+  OWNER
+  ADMIN
+  OPERATOR
+  AUDITOR
+}
+enum AffiliationStatus {
+  INVITED
+  ACTIVE
+  DECLINED
+  ENDED
+}
+enum AssignmentStatus {
+  PROPOSED
+  ACCEPTED
+  REVOKED
+}
+enum OfferStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  ARCHIVED
+}
+enum WorkContext {
+  PERSONAL
+  ORGANIZATION
+}
+enum AvailabilityVisibility {
+  HIDDEN
+  BUSY_ONLY
+  FREE_SLOTS
+}
+enum RequestSourceContext {
+  PERSONAL
+  ORGANIZATION
+}
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED_BY_CUSTOMER
+  CANCELLED_BY_PROVIDER
+  CANCELLED_MUTUAL
+  COMPLETED
+  EXPIRED
+}
+enum CancellationActor {
+  CUSTOMER
+  SELLER
+  SYSTEM
+}
+enum ReliabilitySubject {
+  CUSTOMER
+  PROFESSIONAL
+  ORGANIZATION
+}
+enum ReliabilityEventStatus {
+  PROPOSED
+  EFFECTIVE
+  SUPPRESSED
+  APPEALED
+  REVERSED
+}
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+enum ExperienceStatus {
+  UNVERIFIED
+  CONFIRMED
+  DISPUTED
+}
+enum ReviewStatus {
+  SUBMITTED
+  PUBLISHED
+  UNDER_REVIEW
+  HIDDEN
+  REMOVED
+}
+enum SavedTargetKind {
+  PROFESSIONAL
+  ORGANIZATION
+  LOCATION
+  OFFER
+}
+
+model User {
+  id           String       @id @default(uuid()) @db.Uuid
+  email        String?      @unique @db.VarChar(320)
+  phone        String?      @unique @db.VarChar(40)
+  passwordHash String?      @map("password_hash")
+  status       UserStatus   @default(ACTIVE)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  person       Person?
+  sessions     Session[]
+  consents     AccountConsent[]
+  memberships  OrganizationMember[]
+  @@map("users")
+}
+
+model Session {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  familyId   String    @map("family_id") @db.Uuid
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(3)
+  rotatedAt  DateTime? @map("rotated_at") @db.Timestamptz(3)
+  deviceLabel String?  @map("device_label") @db.VarChar(120)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@index([userId, expiresAt])
+  @@index([familyId, revokedAt])
+  @@map("sessions")
+}
+
+model AccountAuthChallenge {
+  id              String             @id @default(uuid()) @db.Uuid
+  channel         AuthChannel
+  purpose         AccountAuthPurpose
+  contactDigest   String             @map("contact_digest") @db.VarChar(128)
+  contactCipher   String             @map("contact_cipher")
+  codeHash        String             @map("code_hash")
+  attempts        Int                @default(0)
+  expiresAt       DateTime           @map("expires_at") @db.Timestamptz(3)
+  consumedAt      DateTime?          @map("consumed_at") @db.Timestamptz(3)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  @@index([contactDigest, createdAt])
+  @@index([expiresAt])
+  @@map("account_auth_challenges")
+}
+
+model AccountConsent {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  kind          ConsentKind
+  version       String      @db.VarChar(40)
+  acceptedAt    DateTime    @default(now()) @map("accepted_at") @db.Timestamptz(3)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@unique([userId,kind,version])
+  @@map("account_consents")
+}
+
+model Person {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @unique @map("user_id") @db.Uuid
+  displayName           String?                @map("display_name") @db.VarChar(160)
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  professionalProfiles  ProfessionalProfile[]
+  ownedOrganizations    Organization[]         @relation("OrganizationOwner")
+  requests              ServiceRequest[]       @relation("CustomerRequests")
+  savedItems            SavedItem[]
+  authoredReviews       Review[]
+  experiences           ServiceExperience[]
+  customerReliability   ReliabilityEvent[]     @relation("CustomerReliability")
+  notifications         NotificationIntent[]
+  @@map("persons")
+}
+
+model Country {
+  id       String    @id @default(uuid()) @db.Uuid
+  iso2     String    @unique @db.Char(2)
+  name     String    @db.VarChar(140)
+  areas    GeoArea[]
+  cities   City[]
+  @@map("countries")
+}
+
+model GeoArea {
+  id        String    @id @default(uuid()) @db.Uuid
+  countryId String    @map("country_id") @db.Uuid
+  code      String?   @db.VarChar(32)
+  name      String    @db.VarChar(140)
+  country   Country   @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cities    City[]
+  @@unique([countryId, code])
+  @@map("geo_areas")
+}
+
+model City {
+  id        String         @id @default(uuid()) @db.Uuid
+  countryId String         @map("country_id") @db.Uuid
+  areaId    String?        @map("area_id") @db.Uuid
+  name      String         @db.VarChar(140)
+  timezone  String         @db.VarChar(64)
+  country   Country        @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  area      GeoArea?       @relation(fields: [areaId], references: [id], onDelete: Restrict)
+  locations Location[]
+  offers    ServiceOffer[]
+  @@index([countryId, areaId, name])
+  @@map("cities")
+}
+
+model Profession {
+  id       String                 @id @default(uuid()) @db.Uuid
+  code     String                 @unique @db.VarChar(96)
+  name     String                 @db.VarChar(160)
+  profiles ProfessionalProfile[]
+  services ProfessionService[]
+  @@map("professions")
+}
+
+model ServiceDefinition {
+  id          String              @id @default(uuid()) @db.Uuid
+  code        String              @unique @db.VarChar(96)
+  name        String              @db.VarChar(160)
+  professions ProfessionService[]
+  offers      ServiceOffer[]
+  @@map("service_definitions")
+}
+
+model ProfessionService {
+  professionId String            @map("profession_id") @db.Uuid
+  serviceId    String            @map("service_id") @db.Uuid
+  profession   Profession        @relation(fields: [professionId], references: [id], onDelete: Restrict)
+  service      ServiceDefinition @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  @@id([professionId, serviceId])
+  @@map("profession_services")
+}
+
+model ProfessionalProfile {
+  id            String                    @id @default(uuid()) @db.Uuid
+  personId      String                    @map("person_id") @db.Uuid
+  professionId  String                    @map("profession_id") @db.Uuid
+  slug          String                    @unique @db.VarChar(160)
+  status        ProfileStatus             @default(DRAFT)
+  title         String?                   @db.VarChar(180)
+  person        Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
+  profession    Profession                @relation(fields: [professionId], references: [id], onDelete: Restrict)
+  affiliations  Affiliation[]
+  ownOffers     ServiceOffer[]            @relation("PersonalSeller")
+  assignments   ServiceAssignment[]
+  companyViews  CompanyProfessionalView[]
+  allocations   AvailabilityAllocation[]
+  busyBlocks    BusyBlock[]
+  reliability   ReliabilityEvent[]        @relation("ProfessionalReliability")
+  reviewTargets Review[]                  @relation("ProfessionalReview")
+  sellerRequests ServiceRequest[]         @relation("ProfessionalRequestSeller")
+  performedRequests ServiceRequest[]      @relation("ProfessionalRequestPerformer")
+  @@unique([personId, professionId]) // includes PAUSED and ARCHIVED
+  @@index([status, professionId])
+  @@map("professional_profiles")
+}
+
+model Organization {
+  id             String                    @id @default(uuid()) @db.Uuid
+  ownerPersonId  String                    @map("owner_person_id") @db.Uuid
+  slug           String                    @unique @db.VarChar(160)
+  name           String                    @db.VarChar(200)
+  status         OrganizationStatus        @default(DRAFT)
+  owner          Person                    @relation("OrganizationOwner", fields: [ownerPersonId], references: [id], onDelete: Restrict)
+  members        OrganizationMember[]
+  locations      Location[]
+  affiliations   Affiliation[]
+  views          CompanyProfessionalView[]
+  offers         ServiceOffer[]            @relation("CorporateSeller")
+  allocations    AvailabilityAllocation[]
+  reliability    ReliabilityEvent[]        @relation("OrganizationReliability")
+  reviewTargets  Review[]                  @relation("OrganizationReview")
+  notifications  NotificationIntent[]
+  sellerRequests ServiceRequest[]         @relation("OrganizationRequestSeller")
+  scopedBusyBlocks BusyBlock[]
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  userId         String     @map("user_id") @db.Uuid
+  role           MemberRole
+  scope          Json?
+  revokedAt      DateTime?  @map("revoked_at") @db.Timestamptz(3)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user           User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@index([organizationId, userId, revokedAt])
+  @@map("organization_members")
+}
+
+model Location {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  cityId         String            @map("city_id") @db.Uuid
+  name           String            @db.VarChar(180)
+  publicAddress  String?           @map("public_address") @db.VarChar(500)
+  timezone       String            @db.VarChar(64)
+  active         Boolean           @default(true)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  city           City              @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  offers         ServiceOffer[]
+  reviewTargets  Review[]          @relation("LocationReview")
+  @@index([cityId, active])
+  @@map("locations")
+}
+
+model Affiliation {
+  id                   String                  @id @default(uuid()) @db.Uuid
+  organizationId       String                  @map("organization_id") @db.Uuid
+  professionalId       String                  @map("professional_id") @db.Uuid
+  status               AffiliationStatus       @default(INVITED)
+  specialistApprovedAt DateTime?               @map("specialist_approved_at") @db.Timestamptz(3)
+  companyApprovedAt    DateTime?               @map("company_approved_at") @db.Timestamptz(3)
+  endedAt              DateTime?               @map("ended_at") @db.Timestamptz(3)
+  organization         Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  professional         ProfessionalProfile     @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  views                CompanyProfessionalView[]
+  @@index([organizationId, status])
+  @@index([professionalId, status])
+  // Partial unique ACTIVE relation is added via SQL migration
+  @@map("affiliations")
+}
+
+model CompanyProfessionalView {
+  id                    String              @id @default(uuid()) @db.Uuid
+  affiliationId         String              @unique @map("affiliation_id") @db.Uuid
+  professionalId        String              @map("professional_id") @db.Uuid
+  organizationId        String              @map("organization_id") @db.Uuid
+  masterAllowedFields   Json                @map("master_allowed_fields")
+  companySelectedFields Json                @map("company_selected_fields")
+  companyContent        Json?               @map("company_content")
+  revision              Int                 @default(1)
+  publishedAt           DateTime?           @map("published_at") @db.Timestamptz(3)
+  affiliation           Affiliation         @relation(fields: [affiliationId], references: [id], onDelete: Restrict)
+  professional          ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  publishedProjection PublishedCompanyProfessionalView?
+  @@index([organizationId, publishedAt])
+  @@map("company_professional_views")
+}
+
+model ServiceOffer {
+  id              String              @id @default(uuid()) @db.Uuid
+  definitionId    String              @map("definition_id") @db.Uuid
+  professionalId  String?             @map("professional_id") @db.Uuid
+  organizationId  String?             @map("organization_id") @db.Uuid
+  locationId      String?             @map("location_id") @db.Uuid
+  cityId          String?             @map("city_id") @db.Uuid
+  title           String              @db.VarChar(200)
+  status          OfferStatus         @default(DRAFT)
+  deliveryMode    String              @map("delivery_mode") @db.VarChar(24)
+  contacts        Json
+  availability    AvailabilityVisibility @default(HIDDEN)
+  priceLabel      String?             @map("price_label") @db.VarChar(160)
+  currency        String?             @db.Char(3)
+  revision        Int                 @default(1)
+  definition      ServiceDefinition   @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  professional    ProfessionalProfile? @relation("PersonalSeller", fields: [professionalId], references: [id], onDelete: Restrict)
+  organization    Organization?       @relation("CorporateSeller", fields: [organizationId], references: [id], onDelete: Restrict)
+  location        Location?           @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  city            City?               @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  assignments     ServiceAssignment[]
+  requests        ServiceRequest[]
+  policy          CancellationPolicy?
+  @@index([cityId, status, definitionId])
+  @@index([professionalId, status])
+  @@index([organizationId, status])
+  // CHECK exactly one of professionalId / organizationId (constraints.sql)
+  @@map("service_offers")
+}
+
+model ServiceAssignment {
+  id             String             @id @default(uuid()) @db.Uuid
+  offerId        String             @map("offer_id") @db.Uuid
+  professionalId String             @map("professional_id") @db.Uuid
+  status         AssignmentStatus   @default(PROPOSED)
+  approvedAt     DateTime?          @map("approved_at") @db.Timestamptz(3)
+  offer          ServiceOffer       @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  @@unique([offerId, professionalId])
+  @@map("service_assignments")
+}
+
+model GuestContact {
+  id              String          @id @default(uuid()) @db.Uuid
+  channel         String          @db.VarChar(12)
+  encryptedValue  String          @map("encrypted_value")
+  digest          String          @map("digest") @db.VarChar(128)
+  verifiedAt      DateTime?       @map("verified_at") @db.Timestamptz(3)
+  expiresAt       DateTime        @map("expires_at") @db.Timestamptz(3)
+  challenges      GuestChallenge[]
+  recoverySessions GuestRecoverySession[]
+  capabilities    GuestCapability[]
+  requests        ServiceRequest[]
+  notifications   NotificationIntent[]
+  @@index([digest, expiresAt])
+  @@map("guest_contacts")
+}
+
+model GuestChallenge {
+  id             String       @id @default(uuid()) @db.Uuid
+  guestContactId String       @map("guest_contact_id") @db.Uuid
+  codeHash       String       @map("code_hash")
+  purpose        GuestChallengePurpose @default(CREATE_REQUEST)
+  consumedAt     DateTime?    @map("consumed_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  attempts       Int          @default(0)
+  expiresAt      DateTime     @map("expires_at") @db.Timestamptz(3)
+  guestContact   GuestContact @relation(fields: [guestContactId], references: [id], onDelete: Restrict)
+  @@index([guestContactId, expiresAt])
+  @@map("guest_challenges")
+}
+
+model GuestCapability {
+  id              String                @id @default(uuid()) @db.Uuid
+  guestContactId  String                @map("guest_contact_id") @db.Uuid
+  requestId       String?               @map("request_id") @db.Uuid
+  scope           GuestCapabilityScope
+  tokenHash       String                @unique @map("token_hash") @db.VarChar(128)
+  expiresAt       DateTime              @map("expires_at") @db.Timestamptz(3)
+  consumedAt      DateTime?             @map("consumed_at") @db.Timestamptz(3)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  guestContact    GuestContact          @relation(fields: [guestContactId], references: [id], onDelete: Restrict)
+  request         ServiceRequest?       @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  @@index([guestContactId, expiresAt])
+  @@index([requestId, scope])
+  @@map("guest_capabilities")
+}
+
+model CancellationPolicy {
+  offerId               String       @id @map("offer_id") @db.Uuid
+  freeCancelBeforeMin   Int          @default(120) @map("free_cancel_before_min")
+  revision              Int          @default(1)
+  offer                 ServiceOffer @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  @@map("cancellation_policies")
+}
+
+model ServiceRequest {
+  id                  String                @id @default(uuid()) @db.Uuid
+  offerId             String                @map("offer_id") @db.Uuid
+  customerPersonId    String?               @map("customer_person_id") @db.Uuid
+  guestContactId      String?               @map("guest_contact_id") @db.Uuid
+  sourceContext       RequestSourceContext  @map("source_context")
+  sellerProfessionalId String?              @map("seller_professional_id") @db.Uuid
+  sellerOrganizationId String?              @map("seller_organization_id") @db.Uuid
+  performerProfessionalId String?           @map("performer_professional_id") @db.Uuid
+  status              RequestStatus         @default(PENDING)
+  scheduledStartAt    DateTime?             @map("scheduled_start_at") @db.Timestamptz(3)
+  scheduledEndAt      DateTime?             @map("scheduled_end_at") @db.Timestamptz(3)
+  timezone            String?               @db.VarChar(64)
+  note                String?               @db.VarChar(1000)
+  version             Int                   @default(1)
+  acceptedAt          DateTime?             @map("accepted_at") @db.Timestamptz(3)
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  offer               ServiceOffer          @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  customer            Person?               @relation("CustomerRequests", fields: [customerPersonId], references: [id], onDelete: Restrict)
+  guestContact        GuestContact?         @relation(fields: [guestContactId], references: [id], onDelete: Restrict)
+  sellerProfessional ProfessionalProfile?  @relation("ProfessionalRequestSeller", fields: [sellerProfessionalId], references: [id], onDelete: Restrict)
+  sellerOrganization Organization?          @relation("OrganizationRequestSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
+  performerProfessional ProfessionalProfile? @relation("ProfessionalRequestPerformer", fields: [performerProfessionalId], references: [id], onDelete: Restrict)
+  cancellationSnapshot CancellationSnapshot?
+  cancellationSnapshotHistory CancellationSnapshotRevision[]
+  customerPenaltySuspended Boolean @default(false) @map("customer_penalty_suspended")
+  scheduleReconciliationRequired Boolean @default(false) @map("schedule_reconciliation_required")
+  cancellationEvent   CancellationEvent?
+  guestCapabilities GuestCapability[]
+  scheduleProposals   ScheduleProposal[]
+  noShowClaims       NoShowClaim[]
+  events              ServiceRequestEvent[]
+  busyBlocks          BusyBlock[]
+  reliabilityEvents   ReliabilityEvent[]
+  experience          ServiceExperience?
+  @@index([customerPersonId, createdAt])
+  @@index([sellerOrganizationId, status, createdAt])
+  @@index([sellerProfessionalId, status, createdAt])
+  @@index([offerId, scheduledStartAt])
+  // Customer XOR guest and seller XOR are checked by SQL; seller context is immutable.
+  @@map("service_requests")
+}
+
+model ServiceRequestEvent {
+  id        String         @id @default(uuid()) @db.Uuid
+  requestId String         @map("request_id") @db.Uuid
+  kind      String         @db.VarChar(64)
+  actorId   String?        @map("actor_id") @db.Uuid
+  detail    Json?
+  at        DateTime       @default(now()) @db.Timestamptz(3)
+  request   ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  @@index([requestId, at])
+  @@map("service_request_events")
+}
+
+model CancellationSnapshot {
+  requestId             String         @id @map("request_id") @db.Uuid
+  policyRevision        Int            @map("policy_revision")
+  scheduledStartAt      DateTime       @map("scheduled_start_at") @db.Timestamptz(3)
+  freeCancelBeforeMin   Int            @map("free_cancel_before_min")
+  freeCancelUntil       DateTime       @map("free_cancel_until") @db.Timestamptz(3)
+  acceptedAt            DateTime       @map("accepted_at") @db.Timestamptz(3)
+  timezone              String         @db.VarChar(64)
+  request               ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  @@map("cancellation_snapshots")
+}
+
+model CancellationEvent {
+  id                 String             @id @default(uuid()) @db.Uuid
+  requestId          String             @unique @map("request_id") @db.Uuid
+  actor              CancellationActor
+  reasonCode         String?            @map("reason_code") @db.VarChar(64)
+  isLate             Boolean            @default(false) @map("is_late")
+  at                 DateTime           @default(now()) @db.Timestamptz(3)
+  request            ServiceRequest     @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  notifications      NotificationIntent[]
+  @@map("cancellation_events")
+}
+
+model AvailabilityAllocation {
+  id             String              @id @default(uuid()) @db.Uuid
+  professionalId String              @map("professional_id") @db.Uuid
+  organizationId String?             @map("organization_id") @db.Uuid
+  context        WorkContext
+  timezone       String              @db.VarChar(64)
+  recurringHours Json                @map("recurring_hours")
+  exceptions     Json?
+  masterApproved Boolean             @default(false) @map("master_approved")
+  companyApproved Boolean            @default(false) @map("company_approved")
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  organization   Organization?       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  @@index([professionalId, context])
+  @@map("availability_allocations")
+}
+
+model BusyBlock {
+  id             String               @id @default(uuid()) @db.Uuid
+  professionalId String               @map("professional_id") @db.Uuid
+  requestId      String?              @map("request_id") @db.Uuid
+  organizationId String?              @map("organization_id") @db.Uuid
+  startAt        DateTime             @map("start_at") @db.Timestamptz(3)
+  endAt          DateTime             @map("end_at") @db.Timestamptz(3)
+  context        WorkContext
+  privateReason  String?              @map("private_reason") @db.VarChar(64)
+  professional   ProfessionalProfile  @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  request        ServiceRequest?      @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  organization   Organization?        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  @@index([professionalId, startAt, endAt])
+  @@map("busy_blocks")
+}
+
+model DomainOutboxEvent {
+  id             String               @id @default(uuid()) @db.Uuid
+  topic          String               @db.VarChar(96)
+  subjectKind    String               @map("subject_kind") @db.VarChar(50)
+  subjectId      String               @map("subject_id") @db.Uuid
+  safePayload    Json?                @map("safe_payload")
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  processedAt    DateTime?            @map("processed_at") @db.Timestamptz(3)
+  notifications  NotificationIntent[]
+  @@index([processedAt, createdAt])
+  @@map("domain_outbox_events")
+}
+
+model NotificationIntent {
+  id                String            @id @default(uuid()) @db.Uuid
+  cancellationId    String?           @map("cancellation_id") @db.Uuid
+  domainEventId     String            @map("domain_event_id") @db.Uuid
+  recipientPersonId String?           @map("recipient_person_id") @db.Uuid
+  recipientOrgId    String?           @map("recipient_org_id") @db.Uuid
+  guestContactId    String?           @map("guest_contact_id") @db.Uuid
+  audience          String            @db.VarChar(16) // cancellation: INITIATOR/COUNTERPARTY; other events: SELLER/CLIENT
+  channel           String            @db.VarChar(12)
+  state             NotificationStatus @default(PENDING)
+  attempts          Int               @default(0)
+  nextAttemptAt     DateTime?         @map("next_attempt_at") @db.Timestamptz(3)
+  dedupeKey         String            @unique @map("dedupe_key") @db.VarChar(180)
+  cancellation      CancellationEvent? @relation(fields: [cancellationId], references: [id], onDelete: Restrict)
+  domainEvent       DomainOutboxEvent   @relation(fields: [domainEventId], references: [id], onDelete: Restrict)
+  recipientOrg      Organization?     @relation(fields: [recipientOrgId], references: [id], onDelete: Restrict)
+  recipientPerson   Person?           @relation(fields: [recipientPersonId], references: [id], onDelete: Restrict)
+  guestContact      GuestContact?     @relation(fields: [guestContactId], references: [id], onDelete: Restrict)
+  deliveries        NotificationDelivery[]
+  @@index([state, nextAttemptAt])
+  @@index([domainEventId, audience])
+  @@map("notification_intents")
+}
+
+model NotificationDelivery {
+  id             String             @id @default(uuid()) @db.Uuid
+  intentId       String             @map("intent_id") @db.Uuid
+  channel        String             @db.VarChar(20)
+  providerRef    String?            @map("provider_ref") @db.VarChar(160)
+  state          NotificationStatus @default(PENDING)
+  attemptCount   Int                @default(0) @map("attempt_count")
+  nextAttemptAt  DateTime?          @map("next_attempt_at") @db.Timestamptz(3)
+  deliveredAt    DateTime?          @map("delivered_at") @db.Timestamptz(3)
+  intent         NotificationIntent @relation(fields: [intentId], references: [id], onDelete: Restrict)
+  @@unique([intentId, channel])
+  @@index([state, nextAttemptAt])
+  @@map("notification_deliveries")
+}
+
+model ReliabilityEvent {
+  id               String                 @id @default(uuid()) @db.Uuid
+  requestId        String                 @map("request_id") @db.Uuid
+  subject          ReliabilitySubject
+  customerPersonId String?                @map("customer_person_id") @db.Uuid
+  professionalId   String?                @map("professional_id") @db.Uuid
+  organizationId   String?                @map("organization_id") @db.Uuid
+  reason           String                 @db.VarChar(64)
+  weight           Decimal                @db.Decimal(5,2)
+  status           ReliabilityEventStatus @default(PROPOSED)
+  formulaVersion   String                 @map("formula_version") @db.VarChar(32)
+  dedupeKey        String                 @unique @map("dedupe_key") @db.VarChar(180)
+  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  request          ServiceRequest         @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  customerPerson   Person?                @relation("CustomerReliability", fields: [customerPersonId], references: [id], onDelete: Restrict)
+  professional     ProfessionalProfile?   @relation("ProfessionalReliability", fields: [professionalId], references: [id], onDelete: Restrict)
+  organization     Organization?          @relation("OrganizationReliability", fields: [organizationId], references: [id], onDelete: Restrict)
+  @@index([customerPersonId, createdAt])
+  @@index([professionalId, createdAt])
+  @@index([organizationId, createdAt])
+  // SQL CHECK subject matches exactly one target.
+  @@map("reliability_events")
+}
+
+model ServiceExperience {
+  id            String           @id @default(uuid()) @db.Uuid
+  requestId     String           @unique @map("request_id") @db.Uuid
+  customerId    String           @map("customer_id") @db.Uuid
+  status        ExperienceStatus @default(UNVERIFIED)
+  confirmedAt   DateTime?        @map("confirmed_at") @db.Timestamptz(3)
+  request       ServiceRequest   @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  customer      Person           @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  reviews       Review[]
+  @@map("service_experiences")
+}
+
+model Review {
+  id               String            @id @default(uuid()) @db.Uuid
+  experienceId     String            @map("experience_id") @db.Uuid
+  authorPersonId   String?           @map("author_person_id") @db.Uuid
+  professionalId   String?           @map("professional_id") @db.Uuid
+  organizationId   String?           @map("organization_id") @db.Uuid
+  locationId       String?           @map("location_id") @db.Uuid
+  rating           Int
+  comment          String?           @db.VarChar(3000)
+  verifiedExperienceSnapshot Boolean @default(false) @map("verified_experience_snapshot")
+  anonymizedAt     DateTime?         @map("anonymized_at") @db.Timestamptz(3)
+  status           ReviewStatus      @default(SUBMITTED)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  experience       ServiceExperience @relation(fields: [experienceId], references: [id], onDelete: Restrict)
+  author           Person?           @relation(fields: [authorPersonId], references: [id], onDelete: SetNull)
+  professional     ProfessionalProfile? @relation("ProfessionalReview", fields: [professionalId], references: [id], onDelete: Restrict)
+  organization     Organization?     @relation("OrganizationReview", fields: [organizationId], references: [id], onDelete: Restrict)
+  location         Location?         @relation("LocationReview", fields: [locationId], references: [id], onDelete: Restrict)
+  @@unique([experienceId, professionalId])
+  @@unique([experienceId, organizationId])
+  @@unique([experienceId, locationId])
+  @@index([status, createdAt])
+  // SQL CHECK exactly one review target and rating BETWEEN 1 AND 5.
+  @@map("reviews")
+}
+
+model SavedItem {
+  id         String          @id @default(uuid()) @db.Uuid
+  personId   String          @map("person_id") @db.Uuid
+  targetKind SavedTargetKind @map("target_kind")
+  targetId   String          @map("target_id") @db.Uuid
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  person     Person          @relation(fields: [personId], references: [id], onDelete: Restrict)
+  @@unique([personId, targetKind, targetId])
+  // Polymorphic target lookup enforced by application and background reconciliation.
+  @@map("saved_items")
+}
+
+/**
+ * Durable HTTP mutation replay ledger (reference design, not deployed).
+ * actorScope is a keyed, pseudonymous principal identifier, never a raw token.
+ * The backend must normalize request route and body hash consistently.
+ * Concurrent creators must lock the unique actorScope + method + route + key.
+ */
+model IdempotencyRecord {
+  id             String    @id @default(uuid()) @db.Uuid
+  actorScope     String    @map("actor_scope") @db.VarChar(128)
+  method         String    @db.VarChar(12)
+  route          String    @db.VarChar(180)
+  key            String    @db.VarChar(128)
+  requestHash    String    @map("request_hash") @db.VarChar(128)
+  state          String    @default("PROCESSING") @db.VarChar(24)
+  responseStatus Int?      @map("response_status")
+  responseBody   Json?     @map("response_body")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  @@unique([actorScope, method, route, key])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+}
+
+enum ScheduleProposalStatus {
+  PROPOSED
+  CONFIRMED
+  DECLINED
+  SUPERSEDED
+  CLOSED
+}
+enum ScheduleProposalActor {
+  CUSTOMER
+  SELLER
+}
+enum NoShowClaimStatus {
+  FILED
+  AWAITING_CUSTOMER
+  DISPUTED
+  UNCONTESTED
+  UNDER_REVIEW
+  CONFIRMED
+  REJECTED
+  EXPIRED
+}
+enum PublicationState {
+  READY
+  STALE
+  REVOKED
+}
+
+/**
+ * ADR-0006 PROPOSED. Each revision is immutable as to proposed time/initiator.
+ * One active proposal per request enforced by partial unique SQL index.
+ * Agreement is confirmed by the OPPOSITE actor; guest confirmation is verified
+ * against request-scoped capability at API, not stored in this table.
+ */
+model ScheduleProposal {
+  id              String                 @id @default(uuid()) @db.Uuid
+  requestId       String                 @map("request_id") @db.Uuid
+  revision        Int
+  status          ScheduleProposalStatus @default(PROPOSED)
+  initiator       ScheduleProposalActor
+  proposedStartAt DateTime               @map("proposed_start_at") @db.Timestamptz(3)
+  proposedEndAt   DateTime               @map("proposed_end_at") @db.Timestamptz(3)
+  timezone        String                 @db.VarChar(64)
+  localStartAt    String?                @map("local_start_at") @db.VarChar(32) // ISO wall-clock snapshot; resolve DST fold explicitly
+  utcOffsetSeconds Int?                 @map("utc_offset_seconds")
+  tzdbVersion     String?                @map("tzdb_version") @db.VarChar(64)
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  resolvedAt      DateTime?              @map("resolved_at") @db.Timestamptz(3)
+  resolvedBy      ScheduleProposalActor? @map("resolved_by")
+  request         ServiceRequest         @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  @@unique([requestId, revision])
+  @@index([requestId, status, createdAt])
+  @@map("schedule_proposals")
+}
+
+/**
+ * Immutable historical snapshots for verified schedule agreements.
+ * The existing CancellationSnapshot remains a current projection only.
+ * Never overwrite or delete history; only append on a newly confirmed revision.
+ */
+model CancellationSnapshotRevision {
+  id                  String         @id @default(uuid()) @db.Uuid
+  requestId           String         @map("request_id") @db.Uuid
+  scheduleRevision    Int            @map("schedule_revision")
+  policyRevision      Int            @map("policy_revision")
+  scheduledStartAt    DateTime       @map("scheduled_start_at") @db.Timestamptz(3)
+  freeCancelBeforeMin Int            @map("free_cancel_before_min")
+  freeCancelUntil     DateTime       @map("free_cancel_until") @db.Timestamptz(3)
+  agreedAt            DateTime       @map("agreed_at") @db.Timestamptz(3)
+  timezone            String         @db.VarChar(64)
+  localStartAt        String?        @map("local_start_at") @db.VarChar(32)
+  utcOffsetSeconds    Int?           @map("utc_offset_seconds")
+  tzdbVersion         String?        @map("tzdb_version") @db.VarChar(64)
+  request             ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  @@unique([requestId, scheduleRevision])
+  @@index([requestId, agreedAt])
+  @@map("cancellation_snapshot_revisions")
+}
+
+
+/** Published JSON may be served only when the revision guard is READY and
+ * equals the current CompanyProfessionalView revision; fail closed otherwise.
+ * An outbox worker recomputes payload, never makes authorization decisions.
+ */
+model PublishedCompanyProfessionalView {
+  viewId          String                  @id @map("view_id") @db.Uuid
+  sourceRevision  Int                     @map("source_revision")
+  state           PublicationState        @default(STALE)
+  publicPayload   Json?                   @map("public_payload")
+  generatedAt     DateTime?               @map("generated_at") @db.Timestamptz(3)
+  view            CompanyProfessionalView @relation(fields: [viewId], references: [id], onDelete: Restrict)
+  @@index([state, sourceRevision])
+  @@map("published_company_professional_views")
+}
+
+/** Reported no-show is not a RequestStatus or a reliability penalty.
+ * A claim can be confirmed only after independent authorized adjudication.
+ * Actual penalty is separately deduped in ReliabilityEvent.
+ */
+model NoShowClaim {
+  id                 String            @id @default(uuid()) @db.Uuid
+  requestId          String            @map("request_id") @db.Uuid
+  scheduleRevision   Int               @map("schedule_revision")
+  status             NoShowClaimStatus @default(FILED)
+  sellerReportedAt   DateTime          @map("seller_reported_at") @db.Timestamptz(3)
+  customerRespondedAt DateTime?        @map("customer_responded_at") @db.Timestamptz(3)
+  reviewedAt         DateTime?         @map("reviewed_at") @db.Timestamptz(3)
+  reviewedByUserId   String?           @map("reviewed_by_user_id") @db.Uuid
+  decisionReasonCode String?           @map("decision_reason_code") @db.VarChar(64)
+  evidenceReference  String?           @map("evidence_reference") @db.VarChar(256)
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  request            ServiceRequest    @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  @@unique([requestId, scheduleRevision])
+  @@index([status, createdAt])
+  @@map("no_show_claims")
+}
+
+
+/** A verified original-contact challenge issues a session that permits only
+ * selecting a request owned by this contact. It is not an account session.
+ * On selecting a request, rotate to a single-request READ_CANCEL capability.
+ */
+model GuestRecoverySession {
+  id             String       @id @default(uuid()) @db.Uuid
+  guestContactId String       @map("guest_contact_id") @db.Uuid
+  tokenHash      String       @unique @map("token_hash") @db.VarChar(128)
+  expiresAt      DateTime     @map("expires_at") @db.Timestamptz(3)
+  revokedAt      DateTime?    @map("revoked_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  guestContact   GuestContact @relation(fields: [guestContactId], references: [id], onDelete: Restrict)
+  @@index([guestContactId, expiresAt])
+  @@map("guest_recovery_sessions")
+}

@@ -1,20 +1,20 @@
 import { Controller, Get, Header, Param } from '@nestjs/common';
-import { CatalogRepository } from './catalog.repository.js';
-import { requirePublicSlug, requirePublicUuid, type PublicOrganization, type PublicProfessional } from './public-profile-contract.js';
+import { requirePublicSlug, requirePublicUuid } from './public-profile-contract.js';
+import { PublicProfileRepository } from './public-profile.repository.js';
 
 @Controller()
 export class PublicProfileController {
-  constructor(private readonly catalog: CatalogRepository) {}
+  constructor(private readonly profiles: PublicProfileRepository) {}
 
   @Get('professionals/:slug')
   @Header('Cache-Control','public, max-age=30')
-  professional(@Param('slug') slug: string): Promise<PublicProfessional> {
-    return this.catalog.publicProfessional(requirePublicSlug(slug));
+  professional(@Param('slug') slug: string) {
+    return this.profiles.professional(requirePublicSlug(slug));
   }
 
   @Get('organizations/:id')
   @Header('Cache-Control','public, max-age=30')
-  organization(@Param('id') id: string): Promise<PublicOrganization> {
-    return this.catalog.publicOrganization(requirePublicUuid(id));
+  organization(@Param('id') id: string) {
+    return this.profiles.organization(requirePublicUuid(id));
   }
 }
