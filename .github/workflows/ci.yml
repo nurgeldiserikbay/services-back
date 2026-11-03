@@ -29,15 +29,11 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Validate pinned Prisma model
         run: npm run db:validate
-      - name: Generate candidate baseline SQL (temporary for review)
-        run: npm run db:baseline:generate
-      - name: Export generated schema SQL for initial reviewed commit
+      - name: Recompute migration and reject schema/SQL drift
         run: |
-          echo 'BEGIN_BASELINE_SQL_B64'
-          base64 -w0 prisma/migrations/20261103_initial_platform/migration.sql
-          echo
-          echo 'END_BASELINE_SQL_B64'
-      - name: Apply generated migration using Prisma Migrate deploy
+          npm run db:baseline:generate
+          git diff --exit-code -- prisma/migrations/20261103_initial_platform/migration.sql prisma/migrations/migration_lock.toml
+      - name: Apply committed baseline using Prisma Migrate deploy
         run: npm run db:migrate
       - name: Seed safe, limited geographic starter set twice
         run: |
