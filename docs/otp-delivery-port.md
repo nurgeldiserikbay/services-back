@@ -1,0 +1,5 @@
+# Verified guest OTP delivery adapter — internal only
+
+This module adds an explicit SMS/email OTP provider port, strict delivery-message validation, sanitized receipts and a fail-closed disabled provider. No provider credentials, SDK, network transport, fake message, debug code or public challenge endpoint is added. The adapter takes a **previously committed, internally verified** issuance record, not input directly from an anonymous HTTP caller. In tests only, a fake adapter makes no real sends.
+
+The issuing orchestration must atomically enforce contact digest, IP/network and global spend rate limits and insert the challenge; then enqueue/dispatch via a reviewed KZ-resident delivery provider with retry/idempotency, failure reconciliation, suppression lists and per-region legal approval. Never log raw recipient, code, provider response or bearer secrets. The public challenge route must remain disabled until these gates and anti-enumeration tests pass. Production transport adapter injection must be explicit, not a default permissive fallback.
