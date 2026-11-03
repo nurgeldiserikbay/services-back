@@ -49,6 +49,7 @@ export class DatabasePool implements OnModuleDestroy {
     }
 
     let begun = false;
+    let released = false;
     try {
       await client.query('BEGIN');
       begun = true;
@@ -65,12 +66,13 @@ export class DatabasePool implements OnModuleDestroy {
         } catch {
           // Release with an error to discard an uncertain connection.
           client.release(new Error('Transaction rollback failed'));
+          released = true;
           throw new ServiceUnavailableException('Database operation unavailable');
         }
       }
       throw error;
     } finally {
-      if (!client.released) client.release();
+      if (!released) client.release();
     }
   }
 
