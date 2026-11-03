@@ -20,7 +20,7 @@ test('real PostgreSQL geographic catalog exposes stable IDs and TZ info', {
     assert.ok(astana,'starter Astana must be searchable');
     assert.equal(astana.country_id,kazakhstan.id);
     assert.equal(astana.timezone,'Asia/Almaty');
-    assert.match(astana.id,/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f-]{23}$/i);
+    assert.match(astana.id,/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
     const otherCountry=await geo.cities({countryId:'00000000-0000-4000-8000-000000000001',areaId:null,q:'Ast'});
     assert.deepEqual(otherCountry.items,[]);
   } finally {
