@@ -5,12 +5,45 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: services_test
+          POSTGRES_USER: services
+          POSTGRES_PASSWORD: services
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U services -d services_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgresql://services:services@127.0.0.1:5432/services_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
+      - name: Validate pinned Prisma model
+        run: npm run db:validate
+      - name: Recompute migration and reject schema/SQL drift
+        run: |
+          npm run db:baseline:generate
+          git diff --exit-code -- prisma/migrations/20261103_initial_platform/migration.sql prisma/migrations/migration_lock.toml
+      - name: Apply committed baseline using Prisma Migrate deploy
+        run: npm run db:migrate
+      - name: Seed safe, limited geographic starter set twice
+        run: |
+          npm run db:seed:geo
+          npm run db:seed:geo
+      - name: Validate geographic seed and PostgreSQL constraint smoke
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF (SELECT count(*) FROM countries WHERE iso2='KZ') <> 1 OR (SELECT count(*) FROM cities WHERE name IN ('Astana','Almaty','Shymkent')) <> 3 THEN RAISE EXCEPTION 'Geography seed is not idempotent'; END IF; END \$\$;"
+          npm run db:smoke
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
