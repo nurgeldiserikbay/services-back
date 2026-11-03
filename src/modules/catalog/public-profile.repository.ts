@@ -52,7 +52,7 @@ export class PublicProfileRepository {
     return {
       id:profile.id,profession_id:profile.profession_id,
       lifecycle_status:'published',slug:profile.slug,title:profile.title,
-      offers:offers.rows,
+      offers:offers.rows.map(o=>({id:o.id,title:o.title,delivery_mode:o.delivery_mode,price_label:o.price_label})),
     };
   }
 
@@ -70,6 +70,6 @@ export class PublicProfileRepository {
       WHERE organization_id=$1::uuid AND status='PUBLISHED'
       ORDER BY title,id LIMIT 50
     `,[id]);
-    return {...organization,status:'active',offers:offers.rows};
+    return {id:organization.id,slug:organization.slug,name:organization.name,status:'active',offers:offers.rows.map(o=>({id:o.id,title:o.title,delivery_mode:o.delivery_mode,price_label:o.price_label}))};
   }
 }
