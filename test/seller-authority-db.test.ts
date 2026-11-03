@@ -63,3 +63,41 @@ test('operator with unspecified scope and nonmembers cannot decide',async()=>{
       {authorized:false});
   }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
+
+test('professional owner is authorized but unrelated and suspended users are denied',async()=>{
+  const db=new Client({connectionString:process.env.DATABASE_URL});
+  await db.connect();await db.query('BEGIN');
+  try{
+    const ownerUser=randomUUID(),ownerPerson=randomUUID();
+    const otherUser=randomUUID(),professionId=randomUUID(),profileId=randomUUID();
+    const definitionId=randomUUID(),offerId=randomUUID(),contactId=randomUUID(),requestId=randomUUID();
+    await db.query('INSERT INTO users(id) VALUES($1),($2)',[ownerUser,otherUser]);
+    await db.query('INSERT INTO persons(id,user_id) VALUES($1,$2)',[ownerPerson,ownerUser]);
+    await db.query('INSERT INTO professions(id,code,name) VALUES($1,$2,$3)',
+      [professionId,'auth-prof-'+randomUUID(),'Professional fixture']);
+    await db.query(`INSERT INTO professional_profiles(id,person_id,profession_id,slug,status)
+      VALUES($1,$2,$3,$4,'PUBLISHED')`,
+      [profileId,ownerPerson,professionId,'auth-prof-'+randomUUID()]);
+    await db.query('INSERT INTO service_definitions(id,code,name) VALUES($1,$2,$3)',
+      [definitionId,'auth-service-'+randomUUID(),'Service']);
+    await db.query(`INSERT INTO service_offers(
+      id,definition_id,professional_id,title,status,delivery_mode,contacts)
+      VALUES($1,$2,$3,'Offer','PUBLISHED','online','{}'::jsonb)`,
+      [offerId,definitionId,profileId]);
+    await db.query(`INSERT INTO guest_contacts(
+      id,channel,encrypted_value,digest,expires_at)
+      VALUES($1,'email','encrypted',$2,now()+interval '1 day')`,
+      [contactId,'prof-auth-'+randomUUID()]);
+    await db.query(`INSERT INTO service_requests(
+      id,offer_id,guest_contact_id,source_context,seller_professional_id,status)
+      VALUES($1,$2,$3,'PERSONAL',$4,'PENDING')`,
+      [requestId,offerId,contactId,profileId]);
+    assert.deepEqual(await resolveSellerDecisionAuthority(db,otherUser,requestId),
+      {authorized:false});
+    assert.deepEqual(await resolveSellerDecisionAuthority(db,ownerUser,requestId),
+      {authorized:true,seller:{kind:'professional',sellerId:profileId}});
+    await db.query("UPDATE users SET status='SUSPENDED' WHERE id=$1",[ownerUser]);
+    assert.deepEqual(await resolveSellerDecisionAuthority(db,ownerUser,requestId),
+      {authorized:false});
+  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
