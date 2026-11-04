@@ -90,8 +90,8 @@ test('PostgreSQL read rejects different request, mismatched contact, consumed an
     const expired=issueGuestCapability('READ_CANCEL',secret);
     await client.query(`
       INSERT INTO guest_capabilities
-        (id,guest_contact_id,request_id,scope,token_hash,expires_at)
-      VALUES($1,$2,$3,'READ_CANCEL',$4,now()-interval '1 second')`,
+        (id,guest_contact_id,request_id,scope,token_hash,expires_at,created_at)
+      VALUES($1,$2,$3,'READ_CANCEL',$4,now()-interval '1 second',now()-interval '2 hours')`,
       [uuid(),contact,request,expired.tokenHash]);
     const consumed=issueGuestCapability('READ_CANCEL',secret);
     await client.query(`
