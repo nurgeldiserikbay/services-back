@@ -8,10 +8,11 @@ import {GuestRequestService} from './guest-request.service.js';
 import {GuestVerifiedRequestFlow} from './guest-verified-request.flow.js';
 import {GuestRequestStatusService} from './guest-request-status.service.js';
 import {GuestRequestStatusHttpController} from './guest-request-status-http.controller.js';
+import {GuestCreateHttpController} from './guest-create-http.controller.js';
 
-/** Intentionally no public HTTP controller until BFF and abuse controls are ready. */
+/** Guest HTTP routes are disabled by default; explicit deployment gates required. */
 @Module({
-  controllers:[GuestRequestStatusHttpController],
+  controllers:[GuestRequestStatusHttpController,GuestCreateHttpController],
   providers:[
     GuestChallengeProofRepository,GuestChallengeVerificationService,
     GuestChallengeIssuanceService,GuestOtpDispatchService,
