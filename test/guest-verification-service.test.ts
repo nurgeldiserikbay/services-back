@@ -31,7 +31,7 @@ test('verified CREATE_REQUEST proof delegates with configured secret',async()=>{
 });
 
 test('malformed proof rejects before database access',async()=>{
-  const repository={async verifyCreateRequest(){throw new Error('should_not_query');}}
+  const repository=({async verifyCreateRequest(){throw new Error('should_not_query');}})
     as unknown as GuestChallengeProofRepository;
   const service=new GuestChallengeVerificationService(repository);
   for(const [challenge,code] of [[id,'12345'],['invalid','123456'],[id,123456],[null,'123456']]){
@@ -41,7 +41,7 @@ test('malformed proof rejects before database access',async()=>{
 
 test('missing secret and failed proof are rejected',async()=>{
   const old=process.env.GUEST_REQUEST_HMAC_KEY;
-  const repository={async verifyCreateRequest(){return null;}}
+  const repository=({async verifyCreateRequest(){return null;}})
     as unknown as GuestChallengeProofRepository;
   const service=new GuestChallengeVerificationService(repository);
   try{
