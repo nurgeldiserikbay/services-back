@@ -7,9 +7,11 @@ import {OtpDeliveryService} from './otp-delivery.service.js';
 import {GuestRequestService} from './guest-request.service.js';
 import {GuestVerifiedRequestFlow} from './guest-verified-request.flow.js';
 import {GuestRequestStatusService} from './guest-request-status.service.js';
+import {GuestRequestStatusHttpController} from './guest-request-status-http.controller.js';
 
 /** Intentionally no public HTTP controller until BFF and abuse controls are ready. */
 @Module({
+  controllers:[GuestRequestStatusHttpController],
   providers:[
     GuestChallengeProofRepository,GuestChallengeVerificationService,
     GuestChallengeIssuanceService,GuestOtpDispatchService,
