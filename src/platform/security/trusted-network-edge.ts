@@ -48,7 +48,7 @@ export function canonicalTrustedNetworkBucket(
     if(words.slice(0,5).every(w=>Number.parseInt(w,16)===0)&&
        Number.parseInt(words[5],16)===65535)
       throw new Error('mapped_ipv4_requires_normalization');
-    return 'v6:+words.slice(0,4).map(w=>w.toLowerCase().padStart(4,'0')).join(':')+'::/64';
+    return 'v6:'+words.slice(0,4).map(w=>w.toLowerCase().padStart(4,'0')).join(':')+'::/64';
   }
   throw new Error('invalid_trusted_network_address');
 }
