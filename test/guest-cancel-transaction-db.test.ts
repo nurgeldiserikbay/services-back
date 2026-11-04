@@ -151,3 +151,27 @@ test('a notification persistence failure rolls back ALL cancellation writes',asy
     assert.equal(outbox.rows[0].n,'0');
   });
 });
+
+test('scheduled accepted request is blocked until calendar allocation cleanup is atomic',async()=>{
+  await withFixture(async(db,f)=>{
+    await db.query(`
+      UPDATE service_requests SET status='ACCEPTED',version=2,
+        accepted_at=now()-interval '1 hour',
+        scheduled_start_at=now()+interval '2 hours',
+        scheduled_end_at=now()+interval '3 hours',
+        timezone='Asia/Almaty'
+      WHERE id=$1
+    `,[f.request]);
+    await assert.rejects(cancelVerifiedGuestRequest(db,f.request,f.valid,2,secret),
+      (e:unknown)=>e instanceof GuestCancellationRejected&&e.reason==='conflict');
+    const result=await db.query<{status:string;version:number}>(`
+      SELECT status::text,version FROM service_requests WHERE id=$1
+    `,[f.request]);
+    assert.deepEqual(result.rows[0],{status:'ACCEPTED',version:2});
+    const count=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM notification_intents
+      WHERE dedupe_key LIKE $1
+    `,['cancel:%:'+f.request]);
+    assert.equal(count.rows[0].n,'0');
+  });
+});
