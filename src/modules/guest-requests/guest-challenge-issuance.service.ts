@@ -2,6 +2,7 @@ import {Injectable,ServiceUnavailableException} from '@nestjs/common';
 import {randomUUID,timingSafeEqual} from 'node:crypto';
 import {DatabasePool} from '../../platform/database/database.pool.js';
 import {checkContactSendQuota,type ContactSendQuotaResult} from './guest-contact-quota.js';
+import {checkGlobalSendQuota,type GlobalSendQuotaResult} from './guest-global-quota.js';
 import {
   GUEST_OTP_POLICY,contactDigest,encryptGuestContact,makeOtpChallenge,
   normalizeGuestContact,requireSecret,type ContactChannel,
@@ -16,14 +17,14 @@ export type GuestOtpIssuance = Readonly<{
 }>;
 
 export class GuestOtpSendLimited extends Error {
-  constructor(readonly reason:Exclude<ContactSendQuotaResult['reason'],'ok'>,
+  constructor(readonly reason:Exclude<ContactSendQuotaResult['reason']|'global_minute'|'global_hourly'|'global_daily','ok'>,
               readonly retryAfterSeconds:number){
     super('Guest OTP temporarily unavailable');
   }
 }
 
 /**
- * Atomic internal issuance only. Do not expose as HTTP: network/global
+ * Atomic internal issuance only. Do not expose as HTTP: network
  * budgets, verified provider delivery and BFF/CSRF must gate public use.
  * Contact encryption and keyed digest are separate from OTP code hashes.
  */
@@ -49,7 +50,10 @@ export class GuestChallengeIssuanceService {
     const {code,codeHash}=makeOtpChallenge(challengeId,pepper);
 
     await this.db.transaction(async client=>{
-      // The advisory lock is held until commit, serializing quota AND insert.
+      // All instances acquire global then recipient lock in one transaction.
+      // Failed provider delivery does not refund either send budget.
+      const global=await checkGlobalSendQuota(client);
+      if(!global.allowed)throw new GuestOtpSendLimited(global.reason as Exclude<GlobalSendQuotaResult['reason'],'ok'>,global.retryAfterSeconds);
       const quota=await checkContactSendQuota(client,digest);
       if(!quota.allowed)throw new GuestOtpSendLimited(quota.reason as Exclude<ContactSendQuotaResult['reason'],'ok'>,quota.retryAfterSeconds);
 
