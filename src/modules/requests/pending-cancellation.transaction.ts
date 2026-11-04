@@ -7,7 +7,6 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 /** A server-side authorization decision, NEVER reconstructed from HTTP JSON. */
 export type AuthorizedCancellationPrincipal=
   | Readonly<{side:'customer';kind:'person';personId:string}>
-  | Readonly<{side:'customer';kind:'guest';guestContactId:string}>
   | Readonly<{side:'provider';kind:'professional';sellerId:string}>
   | Readonly<{side:'provider';kind:'organization';sellerId:string}>;
 
@@ -29,7 +28,7 @@ type Row={
   customer_penalty_suspended:boolean;
   schedule_reconciliation_required:boolean;
 };
-type Recipient={personId?:string;organizationId?:string;guestContactId?:string;channel:'IN_APP'|'SMS'|'EMAIL'};
+type Recipient={personId?:string;organizationId?:string;channel:'IN_APP'};
 
 /**
  * Purely transactional write unit. The caller must authenticate and authorize
@@ -50,8 +49,7 @@ export async function cancelAuthorizedPendingRequest(
      expectedVersion<1||!principal||
      (principal.side!=='customer'&&principal.side!=='provider'))
     throw new PendingCancellationRejected('not_found');
-  const identity=principal.kind==='person'?principal.personId:
-    principal.kind==='guest'?principal.guestContactId:principal.sellerId;
+  const identity=principal.kind==='person'?principal.personId:principal.sellerId;
   if(!UUID.test(identity))throw new PendingCancellationRejected('not_found');
 
   // Lock before checking state and authority to serialize concurrent actions.
@@ -66,9 +64,8 @@ export async function cancelAuthorizedPendingRequest(
   if(!row)throw new PendingCancellationRejected('not_found');
 
   const authorized=principal.side==='customer'
-    ? (principal.kind==='person'
-        ? row.customer_person_id===identity&&row.guest_contact_id===null
-        : principal.kind==='guest'&&row.guest_contact_id===identity&&row.customer_person_id===null)
+    ? (principal.kind==='person'&&
+        row.customer_person_id===identity&&row.guest_contact_id===null)
     : (principal.kind==='professional'
         ? row.seller_professional_id===identity&&row.seller_organization_id===null
         : principal.kind==='organization'&&row.seller_organization_id===identity&&row.seller_professional_id===null);
@@ -92,22 +89,12 @@ export async function cancelAuthorizedPendingRequest(
   if(result.isLate||result.reliability)
     throw new PendingCancellationRejected('conflict');
 
-  // Validate BOTH recipients before any mutation. Failure must abort the
-  // transaction, never silently discard a customer or seller notification.
-  let customer:Recipient;
-  if(row.customer_person_id){
-    customer={personId:row.customer_person_id,channel:'IN_APP'};
-  }else if(row.guest_contact_id){
-    const guest=await client.query<{channel:string}>(`
-      SELECT channel FROM guest_contacts
-      WHERE id=$1::uuid AND verified_at IS NOT NULL AND expires_at>now()
-    `,[row.guest_contact_id]);
-    const channel=guest.rows[0]?.channel?.toLowerCase();
-    if(channel!=='email'&&channel!=='sms')
-      throw new PendingCancellationRejected('undeliverable');
-    customer={guestContactId:row.guest_contact_id,
-      channel:channel.toUpperCase() as 'SMS'|'EMAIL'};
-  }else throw new PendingCancellationRejected('undeliverable');
+  // Guest cancellation is independently implemented with strict READ_CANCEL
+  // capability verification in PR #38; do not duplicate its trust boundary.
+  // This primitive is only for registered customers and approved sellers.
+  if(!row.customer_person_id||row.guest_contact_id)
+    throw new PendingCancellationRejected('undeliverable');
+  const customer:Recipient={personId:row.customer_person_id,channel:'IN_APP'};
 
   let seller:Recipient;
   if(row.seller_professional_id){
@@ -153,12 +140,12 @@ export async function cancelAuthorizedPendingRequest(
     await client.query(`
       INSERT INTO notification_intents
         (id,cancellation_id,domain_event_id,recipient_person_id,
-         recipient_org_id,guest_contact_id,audience,channel,dedupe_key)
-      VALUES($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7,$8,$9)
+         recipient_org_id,audience,channel,dedupe_key)
+      VALUES($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6,$7,$8)
     `,[
       randomUUID(),cancellationId,domainEventId,
       recipient.personId??null,recipient.organizationId??null,
-      recipient.guestContactId??null,audience,recipient.channel,
+      audience,recipient.channel,
       'cancel:'+requestId+':'+audience.toLowerCase(),
     ]);
   }
