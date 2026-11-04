@@ -6,6 +6,7 @@ import { DatabaseModule } from '../platform/database/database.module.js';
 import { PublicOfferModule } from './offers/public-offer.module.js';
 import { SellerDecisionHttpModule } from './requests/seller-decision-http.module.js';
 import { SellerInboxModule } from './requests/seller-inbox.module.js';
+import { GuestVerificationModule } from './guest-requests/guest-verification.module.js';
 
-@Module({ imports: [DatabaseModule, CatalogModule, GeographyModule, PublicOfferModule, SellerInboxModule, SellerDecisionHttpModule], controllers: [HealthController] })
+@Module({ imports: [DatabaseModule, CatalogModule, GeographyModule, PublicOfferModule, SellerInboxModule, SellerDecisionHttpModule, GuestVerificationModule], controllers: [HealthController] })
 export class AppModule {}
