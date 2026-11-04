@@ -109,7 +109,8 @@ export function evaluateCancellationReliability(
       proposal:null,late:false,reason,deadline,
     });
   if(input.state==='PENDING')return none('pending');
-  if(input.customerPenaltySuspended)return none('suspended');
+  if(input.actor==='customer'&&input.customerPenaltySuspended)
+    return none('suspended');
   const s=input.schedule;
   const now=input.now.getTime();
 
