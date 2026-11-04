@@ -1,9 +1,10 @@
 import {
-  Body,Controller,Header,HttpCode,NotFoundException,Param,Post,
+  Body,Controller,Header,Headers,HttpCode,NotFoundException,Param,Post,
   ServiceUnavailableException,UnauthorizedException,
 } from '@nestjs/common';
 import {GuestOtpDispatchService} from './guest-otp-dispatch.service.js';
 import {GuestChallengeVerificationService} from './guest-challenge-verification.service.js';
+import {verifyTrustedNetworkAssertion} from './guest-network-assertion.js';
 
 type VerifyBody={code:string};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -31,7 +32,8 @@ export class GuestOtpHttpController{
   @Header('Cache-Control','private, no-store, max-age=0')
   @Header('Pragma','no-cache')
   @Header('X-Robots-Tag','noindex, nofollow')
-  async requestCode(@Body() body:unknown):
+  async requestCode(@Body() body:unknown,
+    @Headers('x-services-trusted-network') networkAssertion?:unknown):
     Promise<{challenge_id:string}>{
     requireOtpHttpEnabled();
     if(!body||typeof body!=='object'||Array.isArray(body)){
@@ -44,10 +46,15 @@ export class GuestOtpHttpController{
        (input.locale!=='kk'&&input.locale!=='ru')){
       throw new ServiceUnavailableException('OTP temporarily unavailable');
     }
+    const networkDigest=verifyTrustedNetworkAssertion(
+      networkAssertion,process.env.GUEST_TRUSTED_NETWORK_ASSERTION_KEY,
+    );
+    if(!networkDigest)
+      throw new ServiceUnavailableException('OTP temporarily unavailable');
     // Do not return a code or verified contact; only a challenge ID. The
     // delivery service remains disabled until KZ-resident provider review.
     const dispatched=await this.dispatch.dispatchCreateRequest(
-      input.channel,input.contact,input.locale,
+      input.channel,input.contact,input.locale,networkDigest,
     );
     return {challenge_id:dispatched.challengeId};
   }
