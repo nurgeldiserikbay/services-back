@@ -1,13 +1,22 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {randomBytes,randomUUID} from 'node:crypto';
+import {randomBytes,randomUUID,createHmac} from 'node:crypto';
 import {NotFoundException,UnauthorizedException,ServiceUnavailableException}
   from '@nestjs/common';
 import {GuestOtpHttpController} from '../src/modules/guest-requests/guest-otp-http.controller.js';
 import type {GuestOtpDispatchService} from '../src/modules/guest-requests/guest-otp-dispatch.service.js';
 import type {GuestChallengeVerificationService} from '../src/modules/guest-requests/guest-challenge-verification.service.js';
 
+const networkKey=randomBytes(32);
+process.env.GUEST_TRUSTED_NETWORK_ASSERTION_KEY=networkKey.toString('base64');
+function signedNetwork(){
+  const timestamp=String(Date.now()),digest='a'.repeat(64);
+  const signature=createHmac('sha256',networkKey)
+    .update('guest-network-assertion:v1\\0'.replace('\\0','\0'))
+    .update(timestamp).update('\0').update(digest).digest('hex');
+  return `v1.${timestamp}.${digest}.${signature}`;
+}
 const challengeId=randomUUID();
 const capability=randomBytes(32).toString('base64url');
 async function flag<T>(setting:string|undefined,fn:()=>Promise<T>):Promise<T>{
@@ -49,7 +58,7 @@ test('enabled OTP issue returns only the challenge ID, never contact or OTP',asy
   const http=new GuestOtpHttpController(sending,{} as GuestChallengeVerificationService);
   const result=await flag('enabled',()=>http.requestCode({
     channel:'email',contact:'guest@example.kz',locale:'ru',
-  }));
+  },signedNetwork()));
   assert.deepEqual(result,{challenge_id:challengeId});
   assert.equal(calls,1);
   for(const body of [
@@ -92,7 +101,7 @@ test('OTP service errors are not converted into successful verification',async()
     verifyCreateRequest:async()=>{throw new UnauthorizedException('Invalid or expired verification code');},
   } as unknown as GuestChallengeVerificationService);
   await flag('enabled',async()=>{
-    await assert.rejects(http.requestCode({channel:'sms',contact:'+77001234567',locale:'kk'}),ServiceUnavailableException);
+    await assert.rejects(http.requestCode({channel:'sms',contact:'+77001234567',locale:'kk'},signedNetwork()),ServiceUnavailableException);
     await assert.rejects(http.verifyCode(challengeId,{code:'012345'}),UnauthorizedException);
   });
 });
