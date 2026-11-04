@@ -28,8 +28,7 @@ test('dispatch returns only safe metadata and passes the code to delivery',async
 
 test('provider failure revokes committed challenge and never refunds send quota',async()=>{
   const issuer={issueCreateRequest:async()=>fixture} as GuestChallengeIssuanceService;
-  const delivery={deliverCommittedChallenge:async()=>{throw new Error('sensitive provider failure');}}
-    as unknown as OtpDeliveryService;
+  const delivery={deliverCommittedChallenge:async()=>{throw new Error('sensitive provider failure');}} as unknown as OtpDeliveryService;
   const updates:unknown[][]=[];
   const database={query:async(sql:string,args:unknown[])=>{
     assert.match(sql,/UPDATE guest_challenges SET consumed_at=now/);
@@ -44,12 +43,9 @@ test('provider failure revokes committed challenge and never refunds send quota'
 
 test('revoke failure stays fail closed and malformed locale does not issue',async()=>{
   let calls=0;
-  const issuer={issueCreateRequest:async()=>{calls++;return fixture;}}
-    as GuestChallengeIssuanceService;
-  const delivery={deliverCommittedChallenge:async()=>({accepted:false,providerRef:null})}
-    as OtpDeliveryService;
-  const database={query:async()=>{throw new Error('sensitive DB error');}}
-    as unknown as DatabasePool;
+  const issuer={issueCreateRequest:async()=>{calls++;return fixture;}} as GuestChallengeIssuanceService;
+  const delivery={deliverCommittedChallenge:async()=>({accepted:false,providerRef:null})} as OtpDeliveryService;
+  const database={query:async()=>{throw new Error('sensitive DB error');}} as unknown as DatabasePool;
   const service=new GuestOtpDispatchService(issuer,delivery,database);
   await assert.rejects(service.dispatchCreateRequest('email',fixture.contact,'ru'),
     ServiceUnavailableException);
