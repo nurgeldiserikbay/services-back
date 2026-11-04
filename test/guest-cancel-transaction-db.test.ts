@@ -97,7 +97,7 @@ test('wrong, foreign-contact or expired proof cannot cancel or query other guest
         (e:unknown)=>e instanceof GuestCancellationRejected&&
           e.reason==='unavailable');
     }
-    await db.query('UPDATE guest_capabilities SET expires_at=now()-interval \'1 second\' WHERE request_id=$1',[f.request]);
+    await db.query('UPDATE guest_capabilities SET created_at=now()-interval \'2 hours\', expires_at=now()-interval \'1 hour\' WHERE request_id=$1',[f.request]);
     await assert.rejects(cancelVerifiedGuestRequest(db,f.request,f.valid,1,secret),
       GuestCancellationRejected);
     const row=await db.query<{status:string}>(
