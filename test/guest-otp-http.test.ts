@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {randomBytes,randomUUID} from 'node:crypto';
+import {createHmac,randomBytes,randomUUID} from 'node:crypto';
 import {NotFoundException,UnauthorizedException,ServiceUnavailableException}
   from '@nestjs/common';
 import {GuestOtpHttpController} from '../src/modules/guest-requests/guest-otp-http.controller.js';
@@ -10,8 +10,19 @@ import type {GuestChallengeVerificationService} from '../src/modules/guest-reque
 
 const challengeId=randomUUID();
 const capability=randomBytes(32).toString('base64url');
+const networkSecret=randomBytes(32);
+const networkDigest=randomBytes(32).toString('hex');
+function signedNetwork(){
+  const time=String(Date.now());
+  const mac=createHmac('sha256',networkSecret)
+    .update('services-otp-network:v1\n')
+    .update(networkDigest).update('\n').update(time).digest('hex');
+  return 'v1.'+networkDigest+'.'+time+'.'+mac;
+}
 async function flag<T>(setting:string|undefined,fn:()=>Promise<T>):Promise<T>{
   const saved=process.env.SERVICES_ENABLE_GUEST_OTP_HTTP;
+  const previousKey=process.env.GUEST_NETWORK_ATTESTATION_KEY;
+  process.env.GUEST_NETWORK_ATTESTATION_KEY=networkSecret.toString('base64');
   try{
     if(setting===undefined)delete process.env.SERVICES_ENABLE_GUEST_OTP_HTTP;
     else process.env.SERVICES_ENABLE_GUEST_OTP_HTTP=setting;
@@ -19,6 +30,8 @@ async function flag<T>(setting:string|undefined,fn:()=>Promise<T>):Promise<T>{
   }finally{
     if(saved===undefined)delete process.env.SERVICES_ENABLE_GUEST_OTP_HTTP;
     else process.env.SERVICES_ENABLE_GUEST_OTP_HTTP=saved;
+    if(previousKey===undefined)delete process.env.GUEST_NETWORK_ATTESTATION_KEY;
+    else process.env.GUEST_NETWORK_ATTESTATION_KEY=previousKey;
   }
 }
 
@@ -49,8 +62,12 @@ test('enabled OTP issue returns only the challenge ID, never contact or OTP',asy
   const http=new GuestOtpHttpController(sending,{} as GuestChallengeVerificationService);
   const result=await flag('enabled',()=>http.requestCode({
     channel:'email',contact:'guest@example.kz',locale:'ru',
-  }));
+  },signedNetwork()));
   assert.deepEqual(result,{challenge_id:challengeId});
+  assert.equal(calls,1);
+  await flag('enabled',()=>assert.rejects(http.requestCode({
+    channel:'email',contact:'guest@example.kz',locale:'ru',
+  }),ServiceUnavailableException));
   assert.equal(calls,1);
   for(const body of [
     null,{},[],{channel:'sms',contact:'x',locale:'en'},
@@ -92,7 +109,7 @@ test('OTP service errors are not converted into successful verification',async()
     verifyCreateRequest:async()=>{throw new UnauthorizedException('Invalid or expired verification code');},
   } as unknown as GuestChallengeVerificationService);
   await flag('enabled',async()=>{
-    await assert.rejects(http.requestCode({channel:'sms',contact:'+77001234567',locale:'kk'}),ServiceUnavailableException);
+    await assert.rejects(http.requestCode({channel:'sms',contact:'+77001234567',locale:'kk'},signedNetwork()),ServiceUnavailableException);
     await assert.rejects(http.verifyCode(challengeId,{code:'012345'}),UnauthorizedException);
   });
 });
