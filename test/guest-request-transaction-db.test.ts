@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {Client} from 'pg';
-import {createGuestRequestInTransaction,GuestRequestRejected} from '../src/modules/guest-requests/guest-request.transaction.js';
+import {createGuestRequestInTransaction,GuestRequestRejected,GUEST_REQUEST_ACCESS_TTL_SECONDS} from '../src/modules/guest-requests/guest-request.transaction.js';
 import {issueGuestCapability} from '../src/modules/guest-requests/guest-request.security.js';
 import {VERIFY_CREATE_REQUEST_CHALLENGE_SQL} from '../src/modules/guest-requests/guest-challenge-proof.repository.js';
 
@@ -52,6 +52,19 @@ test('create guest request atomically, replay same key without duplicate events 
     const first=await createGuestRequestInTransaction(client,body,f.proof,'request_2026_11_03_001',pepper,encryptionKey);
     assert.equal(first.state,'pending');
     assert.match(first.requestCapability,/^[A-Za-z0-9_-]{43}$/);
+    assert.equal(GUEST_REQUEST_ACCESS_TTL_SECONDS,86400);
+    // READ_CANCEL capability is valid for 24h, not 30 days.
+    const proofExpiry=await client.query<{expires_at:Date;created_at:Date}>(
+      `SELECT expires_at,created_at FROM guest_capabilities
+       WHERE request_id=$1::uuid AND scope='READ_CANCEL'`,[first.id]);
+    assert.equal(proofExpiry.rowCount,1);
+    const durationMs=proofExpiry.rows[0].expires_at.getTime()-
+      proofExpiry.rows[0].created_at.getTime();
+    assert.ok(durationMs>23*60*60*1000 && durationMs<=24*60*60*1000,
+      'READ_CANCEL capability must expire within one day');
+    assert.ok(Math.abs(new Date(first.expiresAt).getTime()-
+      proofExpiry.rows[0].expires_at.getTime())<1500);
+
     const repeat=await createGuestRequestInTransaction(client,body,f.proof,'request_2026_11_03_001',pepper,encryptionKey);
     assert.deepEqual(repeat,first);
 
