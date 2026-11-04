@@ -2,8 +2,7 @@
 
 This PR implements `cancelAuthorizedPendingRequest` as a database
 **transaction participant**, not a public HTTP endpoint. The caller
-must first authenticate and resource-authorize the person, guest
-READ_CANCEL capability, or seller membership. The provided principal
+must first authenticate and resource-authorize the registered person or seller membership. The provided principal
 type is an INTERNAL trusted assertion, not a request-body DTO.
 The caller MUST execute it inside one `DatabasePool.transaction()`
 and roll back on any exception. There is no route, controller,
@@ -16,16 +15,15 @@ dependency injection registration, or public release switch.
 - Only **PENDING** requests qualify; ACCEPTED and terminal requests fail
   closed until confirmed scheduling, reliability weight/formula and
   cancel terms have been implemented.
-- Customer identity must equal the request's registered person or
-  attached guest contact; provider identity must match the original
+- Customer identity must equal the request's registered person;
+  guest requests are rejected by this primitive and handled by the
+  separate PR #38 READ_CANCEL flow. Provider identity must match the original
   professional or organization seller. Authorization is rechecked
   under the row lock, even after the caller's prior ACL check.
 - Uses the classifier from PR #36; pending cancellation is not late,
   does not produce a customer or provider reliability event, and
   requires both notification audiences.
-- Validates both recipients before mutations. Registered persons
-  use IN_APP; an attached guest needs a still-verified, unexpired
-  email/SMS channel; the seller is notified via original organization
+- Validates both recipients before mutations. Registered persons use IN_APP; the seller is notified via original organization
   or professional person's IN_APP identity.
 - Updates request state/version and inserts exactly one cancellation
   event, a service request event, one PII-free domain outbox event,
@@ -46,3 +44,10 @@ be public until the accepted-time cancellation path, scheduling
 snapshot semantics, rights, notification provider and full PostgreSQL
 + E2E tests are reviewed. Avoid declaring this production-ready
 solely because CI passes.
+
+## Parallel work boundary
+
+PR #38 implements guest READ_CANCEL authentication and guest cancellation. This
+PR does not perform guest cancellations, does not replace PR #38, and must not
+be exposed through any public route. Maintain separate transactions until
+both authorization paths are reviewed and tested.
