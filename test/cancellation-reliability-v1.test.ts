@@ -118,3 +118,17 @@ test('invalid seller identities, dates and seller policy are rejected',()=>{
     invalid as Partial<ReliabilityContext>,
   )),ReliabilityPolicyUnavailable);
 });
+
+test('customer-only penalty suspension never excuses a provider cancellation',()=>{
+  const provider=evaluateCancellationReliability(context({
+    actor:'provider',customerPenaltySuspended:true,
+  }));
+  assert.equal(provider.reason,'eligible_provider');
+  assert.equal(provider.proposal?.subject,'PROFESSIONAL');
+  assert.equal(provider.proposal?.weight,'1.00');
+  const customerDecision=evaluateCancellationReliability(context({
+    actor:'customer',customerPenaltySuspended:true,
+  }));
+  assert.equal(customerDecision.proposal,null);
+  assert.equal(customerDecision.reason,'suspended');
+});
