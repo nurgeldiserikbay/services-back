@@ -24,10 +24,8 @@ async function flag<T>(setting:string|undefined,fn:()=>Promise<T>):Promise<T>{
 
 test('OTP HTTP is disabled by default and never calls underlying services',async()=>{
   let sends=0,verifications=0;
-  const sending={dispatchCreateRequest:async()=>{sends++;return {challengeId,expiresInSeconds:600};}}
-  as unknown as GuestOtpDispatchService;
-  const verifying={verifyCreateRequest:async()=>{verifications++;return {guestCapability:capability,expiresInSeconds:900};}}
-  as unknown as GuestChallengeVerificationService;
+  const sending={dispatchCreateRequest:async()=>{sends++;return {challengeId,expiresInSeconds:600};}} as unknown as GuestOtpDispatchService;
+  const verifying={verifyCreateRequest:async()=>{verifications++;return {guestCapability:capability,expiresInSeconds:900};}} as unknown as GuestChallengeVerificationService;
   const http=new GuestOtpHttpController(sending,verifying);
   for(const value of [undefined,'true','1','ENABLED','disabled']){
     await flag(value,async()=>{
