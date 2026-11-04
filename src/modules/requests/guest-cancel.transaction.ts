@@ -17,6 +17,7 @@ type LockedRequest={
   guest_contact_id:string|null;customer_person_id:string|null;
   seller_professional_id:string|null;seller_organization_id:string|null;
   customer_penalty_suspended:boolean;schedule_reconciliation_required:boolean;
+  scheduled_start_at:Date|null;scheduled_end_at:Date|null;
 };
 type SnapshotRow={
   scheduled_start_at:Date;free_cancel_until:Date;
@@ -60,7 +61,8 @@ export async function cancelVerifiedGuestRequest(
     SELECT id::text,status::text,version,
       guest_contact_id::text,customer_person_id::text,
       seller_professional_id::text,seller_organization_id::text,
-      customer_penalty_suspended,schedule_reconciliation_required
+      customer_penalty_suspended,schedule_reconciliation_required,
+      scheduled_start_at,scheduled_end_at
     FROM service_requests WHERE id=$1::uuid FOR UPDATE
   `,[requestId.toLowerCase()]);
   const request=selected.rows[0];
@@ -78,6 +80,10 @@ export async function cancelVerifiedGuestRequest(
   `,[requestId.toLowerCase(),request.guest_contact_id,proofHash]);
   if(!active.rows[0])throw new GuestCancellationRejected('unavailable');
   if(request.version!==expectedVersion)
+    throw new GuestCancellationRejected('conflict');
+  // Calendar allocation release is not implemented here. Refuse requests
+  // already carrying a confirmed time instead of leaving stale busy blocks.
+  if(request.scheduled_start_at!==null||request.scheduled_end_at!==null)
     throw new GuestCancellationRejected('conflict');
 
   const guest=await db.query<GuestContact>(`
