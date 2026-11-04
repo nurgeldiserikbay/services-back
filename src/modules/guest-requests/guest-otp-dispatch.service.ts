@@ -18,11 +18,12 @@ export class GuestOtpDispatchService {
 
   async dispatchCreateRequest(
     channel:'email'|'sms', contact:unknown, locale:'kk'|'ru',
+    networkDigest?:string,
   ):Promise<{challengeId:string;expiresInSeconds:number}> {
     if(locale!=='kk' && locale!=='ru')
       throw new ServiceUnavailableException('OTP temporarily unavailable');
 
-    const challenge=await this.issuance.issueCreateRequest(channel,contact);
+    const challenge=await this.issuance.issueCreateRequest(channel,contact,networkDigest);
     try {
       const receipt=await this.delivery.deliverCommittedChallenge({
         channel:challenge.channel,contact:challenge.contact,
