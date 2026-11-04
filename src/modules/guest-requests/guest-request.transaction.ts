@@ -20,6 +20,9 @@ export class GuestRequestRejected extends Error {
   }
 }
 
+/** ADR-0005: request-scoped READ_CANCEL proof is short-lived (24h). */
+export const GUEST_REQUEST_ACCESS_TTL_SECONDS=24*60*60;
+
 export type CreatedGuestRequest = {
   id: string;
   state: 'pending';
@@ -166,7 +169,7 @@ export async function createGuestRequestInTransaction(
     'request-created:seller:'+id]);
 
   const proofToken=issueGuestCapability('READ_CANCEL',pepper);
-  const expiresAt=new Date(now.getTime()+30*24*60*60*1000);
+  const expiresAt=new Date(now.getTime()+GUEST_REQUEST_ACCESS_TTL_SECONDS*1000);
   await client.query(`
     INSERT INTO guest_capabilities
       (id,guest_contact_id,request_id,scope,token_hash,expires_at)
