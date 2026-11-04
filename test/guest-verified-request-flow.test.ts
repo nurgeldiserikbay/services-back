@@ -35,8 +35,7 @@ test('failed OTP verification never creates a service request',async()=>{
   const verifier={verifyCreateRequest:async()=>{
     throw new UnauthorizedException('Invalid or expired verification code');
   }} as unknown as GuestChallengeVerificationService;
-  const requests={createFromVerifiedContact:async()=>{creationCalls++;return created;}}
-    as unknown as GuestRequestService;
+  const requests={createFromVerifiedContact:async()=>{creationCalls++;return created;}} as unknown as GuestRequestService;
   const flow=new GuestVerifiedRequestFlow(verifier,requests);
   await assert.rejects(flow.verifyAndCreate('bad','123456',body,key),UnauthorizedException);
   assert.equal(creationCalls,0);
@@ -47,8 +46,7 @@ test('a request creation failure is propagated, never claimed successful',async(
   const verifier={verifyCreateRequest:async()=>{verificationCalls++;
     return {guestCapability:proof,expiresInSeconds:900};
   }} as unknown as GuestChallengeVerificationService;
-  const requests={createFromVerifiedContact:async()=>{throw new Error('atomic transaction failed');}}
-    as unknown as GuestRequestService;
+  const requests={createFromVerifiedContact:async()=>{throw new Error('atomic transaction failed');}} as unknown as GuestRequestService;
   const flow=new GuestVerifiedRequestFlow(verifier,requests);
   await assert.rejects(flow.verifyAndCreate('challenge-id','012345',body,key),
     /atomic transaction failed/);
