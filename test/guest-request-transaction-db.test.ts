@@ -60,8 +60,10 @@ test('create guest request atomically, replay same key without duplicate events 
     assert.equal(proofExpiry.rowCount,1);
     const durationMs=proofExpiry.rows[0].expires_at.getTime()-
       proofExpiry.rows[0].created_at.getTime();
-    assert.ok(durationMs>23*60*60*1000 && durationMs<=24*60*60*1000,
-      'READ_CANCEL capability must expire within one day');
+    // PostgreSQL created_at uses transaction start; JS expiry is calculated
+    // slightly later within that transaction. Allow clock offset up to 5 s.
+    assert.ok(Math.abs(durationMs-24*60*60*1000)<5000,
+      'READ_CANCEL capability must expire around 24 hours after issuance');
     assert.ok(Math.abs(new Date(first.expiresAt).getTime()-
       proofExpiry.rows[0].expires_at.getTime())<1500);
 
