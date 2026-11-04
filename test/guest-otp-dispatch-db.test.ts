@@ -6,6 +6,7 @@ import {DatabasePool} from '../src/platform/database/database.pool.js';
 import {GuestChallengeIssuanceService} from '../src/modules/guest-requests/guest-challenge-issuance.service.js';
 import {GuestOtpDispatchService} from '../src/modules/guest-requests/guest-otp-dispatch.service.js';
 import {OtpDeliveryService} from '../src/modules/guest-requests/otp-delivery.service.js';
+import {contactDigest} from '../src/modules/guest-requests/guest-request.security.js';
 
 test('failed provider revokes committed guest OTP without refunding quota (PostgreSQL)',async()=>{
   if(!process.env.DATABASE_URL)throw new Error('DATABASE_URL required');
@@ -23,21 +24,13 @@ test('failed provider revokes committed guest OTP without refunding quota (Postg
       new GuestChallengeIssuanceService(pool),new OtpDeliveryService(),pool);
     await assert.rejects(service.dispatchCreateRequest('email',contact,'kk'),
       /OTP temporarily unavailable/);
-    const {rows}=await db.query<{id:string;consumed_at:Date|null;guest_contact_id:string}>(
-      `SELECT ch.id,ch.consumed_at,ch.guest_contact_id
-       FROM guest_challenges ch JOIN guest_contacts c ON c.id=ch.guest_contact_id
-       WHERE c.channel='email' AND c.digest=$1`,
-      ['no-match']);
-    assert.equal(rows.length,0);
-    // Query by decrypted-contact suffix cannot use PII; use a
-    // unique fixture's encrypted_value from the issued contact.
+    // Lookup uses the same keyed digest as the issuance transaction.
     const result=await db.query<{id:string;consumed_at:Date|null;guest_contact_id:string}>(
       `SELECT ch.id,ch.consumed_at,ch.guest_contact_id
        FROM guest_challenges ch JOIN guest_contacts c ON c.id=ch.guest_contact_id
        WHERE c.digest=$1`,
       [
-        (await import('../src/modules/guest-requests/guest-request.security.js'))
-          .contactDigest('email',contact,Buffer.from(process.env.GUEST_REQUEST_HMAC_KEY!,'base64')),
+        contactDigest('email',contact,Buffer.from(process.env.GUEST_REQUEST_HMAC_KEY!,'base64')),
       ]);
     assert.equal(result.rowCount,1);
     contactId=result.rows[0].guest_contact_id;
