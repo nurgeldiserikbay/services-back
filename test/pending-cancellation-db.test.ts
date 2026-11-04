@@ -84,21 +84,21 @@ test('registered customer cancels pending: exactly two intents and one outbox ev
     assert.equal((await ledger(db,f.requestId)).notices,'2');
   });
 });
-test('provider cancels guest pending: initiator organization and verified guest email',async()=>{
+test('provider cancels registered customer pending with two IN_APP audiences',async()=>{
   await inRollback(async db=>{
-    const f=await fixtures(db,{guest:true});
+    const f=await fixtures(db);
     const result=await cancelAuthorizedPendingRequest(db,f.requestId,
       {side:'provider',kind:'organization',sellerId:f.organizationId},1);
     assert.equal(result.state,'cancelled_by_provider');
     const notices=await db.query<{audience:string;channel:string;
-      guest_contact_id:string|null;recipient_org_id:string|null}>(`
-      SELECT audience,channel,guest_contact_id::text,
+      recipient_person_id:string|null;recipient_org_id:string|null}>(`
+      SELECT audience,channel,recipient_person_id::text,
              recipient_org_id::text FROM notification_intents
       WHERE cancellation_id=$1 ORDER BY audience`,[result.cancellationId]);
     assert.deepEqual(notices.rows.map(x=>[x.audience,x.channel]),[
-      ['COUNTERPARTY','EMAIL'],['INITIATOR','IN_APP'],
+      ['COUNTERPARTY','IN_APP'],['INITIATOR','IN_APP'],
     ]);
-    assert.equal(notices.rows[0].guest_contact_id,f.guestId);
+    assert.equal(notices.rows[0].recipient_person_id,f.personId);
     assert.equal(notices.rows[1].recipient_org_id,f.organizationId);
     assert.equal((await ledger(db,f.requestId)).reliability,'0');
   });
@@ -127,13 +127,11 @@ test('unauthorized actor, stale version and accepted requests cannot mutate',asy
     assert.equal((await ledger(db,f.requestId)).events,'0');
   });
 });
-test('expired guest contact aborts before write; caller transaction can roll back',async()=>{
+test('guest cancellation cannot bypass separate READ_CANCEL capability validation',async()=>{
   await inRollback(async db=>{
     const f=await fixtures(db,{guest:true});
-    await db.query(`UPDATE guest_contacts SET expires_at=now()-interval '1 minute'
-      WHERE id=$1`,[f.guestId]);
     await assert.rejects(cancelAuthorizedPendingRequest(db,f.requestId,
-      {side:'customer',kind:'guest',guestContactId:f.guestId},1),
+      {side:'provider',kind:'organization',sellerId:f.organizationId},1),
       (e:unknown)=>e instanceof PendingCancellationRejected&&e.reason==='undeliverable');
     const values=await ledger(db,f.requestId);
     assert.equal(values.status,'PENDING');
