@@ -1,9 +1,11 @@
 import {
-  Body,Controller,Header,HttpCode,NotFoundException,Param,Post,
+  Body,Controller,Header,Headers,HttpCode,NotFoundException,Param,Post,
   ServiceUnavailableException,UnauthorizedException,
 } from '@nestjs/common';
 import {GuestOtpDispatchService} from './guest-otp-dispatch.service.js';
 import {GuestChallengeVerificationService} from './guest-challenge-verification.service.js';
+import {verifyTrustedNetworkProof} from './guest-network-quota.js';
+import {requireSecret} from './guest-request.security.js';
 
 type VerifyBody={code:string};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -31,7 +33,10 @@ export class GuestOtpHttpController{
   @Header('Cache-Control','private, no-store, max-age=0')
   @Header('Pragma','no-cache')
   @Header('X-Robots-Tag','noindex, nofollow')
-  async requestCode(@Body() body:unknown):
+  async requestCode(
+    @Body() body:unknown,
+    @Headers('x-services-network-proof') networkProof?:unknown,
+  ):
     Promise<{challenge_id:string}>{
     requireOtpHttpEnabled();
     if(!body||typeof body!=='object'||Array.isArray(body)){
@@ -46,8 +51,15 @@ export class GuestOtpHttpController{
     }
     // Do not return a code or verified contact; only a challenge ID. The
     // delivery service remains disabled until KZ-resident provider review.
+    let networkDigest:string|null=null;
+    try{
+      const secret=requireSecret(process.env.GUEST_NETWORK_ATTESTATION_KEY);
+      networkDigest=verifyTrustedNetworkProof(networkProof,secret);
+    }catch{/* No approved ingress proof or key: fail closed. */}
+    if(!networkDigest)
+      throw new ServiceUnavailableException('OTP temporarily unavailable');
     const dispatched=await this.dispatch.dispatchCreateRequest(
-      input.channel,input.contact,input.locale,
+      input.channel,input.contact,input.locale,networkDigest,
     );
     return {challenge_id:dispatched.challengeId};
   }
