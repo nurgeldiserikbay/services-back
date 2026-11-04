@@ -16,7 +16,8 @@
     "db:baseline:generate": "node scripts/generate-baseline.mjs",
     "db:migrate": "prisma migrate deploy --schema prisma/schema.prisma",
     "db:smoke": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f prisma/smoke.sql",
-    "db:seed:geo": "tsx scripts/seed-geography.ts"
+    "db:seed:geo": "tsx scripts/seed-geography.ts",
+    "db:prune:guest-network": "tsx scripts/prune-guest-otp-network.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.2.0",
