@@ -58,7 +58,7 @@ export class GuestChallengeIssuanceService {
       if(!global.allowed)throw new GuestOtpSendLimited(global.reason as Exclude<GlobalSendQuotaResult['reason'],'ok'>,global.retryAfterSeconds);
       if(networkDigest!==undefined){
         const network=await checkNetworkSendQuota(client,networkDigest);
-        if(!network.allowed)throw new GuestOtpSendLimited(network.reason,network.retryAfterSeconds);
+        if(!network.allowed)throw new GuestOtpSendLimited(network.reason as Exclude<NetworkQuotaResult['reason'],'ok'>,network.retryAfterSeconds);
       }
       const quota=await checkContactSendQuota(client,digest);
       if(!quota.allowed)throw new GuestOtpSendLimited(quota.reason as Exclude<ContactSendQuotaResult['reason'],'ok'>,quota.retryAfterSeconds);
