@@ -26,7 +26,7 @@ const context=(overrides:Partial<ReliabilityContext>={}):ReliabilityContext=>({
 
 test('CAN-T13: late confirmation gives 15-minute grace capped by start',()=>{
   const deadline=computeEffectiveCancellationDeadline({
-    startAt:start,acceptedAt:accepted,confirmedAt,
+    startAt:start,acceptedAt:accepted,confirmedAt:confirmed,
     freeCancelBeforeMin:120,
   });
   assert.equal(deadline?.toISOString(),at('11:45:00').toISOString());
