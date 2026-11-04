@@ -4,15 +4,18 @@ import {GuestChallengeVerificationService} from './guest-challenge-verification.
 import {GuestChallengeIssuanceService} from './guest-challenge-issuance.service.js';
 import {GuestOtpDispatchService} from './guest-otp-dispatch.service.js';
 import {OtpDeliveryService} from './otp-delivery.service.js';
+import {GuestRequestService} from './guest-request.service.js';
+import {GuestVerifiedRequestFlow} from './guest-verified-request.flow.js';
 
 /** Intentionally no public HTTP controller until BFF and abuse controls are ready. */
 @Module({
   providers:[
     GuestChallengeProofRepository,GuestChallengeVerificationService,
     GuestChallengeIssuanceService,GuestOtpDispatchService,
+    GuestRequestService,GuestVerifiedRequestFlow,
     // No provider is configured until a reviewed KZ-resident adapter is wired.
     {provide:OtpDeliveryService,useFactory:()=>new OtpDeliveryService()},
   ],
-  exports:[GuestChallengeVerificationService,GuestChallengeIssuanceService,GuestOtpDispatchService],
+  exports:[GuestChallengeVerificationService,GuestChallengeIssuanceService,GuestOtpDispatchService,GuestRequestService,GuestVerifiedRequestFlow],
 })
 export class GuestVerificationModule {}
