@@ -17,8 +17,7 @@ test('guest status HTTP is disabled by default with zero data lookup',async()=>{
   const original=process.env.SERVICES_ENABLE_GUEST_STATUS_HTTP;
   delete process.env.SERVICES_ENABLE_GUEST_STATUS_HTTP;
   let called=0;
-  const service=({getOwnStatus:async()=>{called++;return status;}}
-    as unknown as GuestRequestStatusService);
+  const service = {getOwnStatus: async () => { called++; return status; }} as unknown as GuestRequestStatusService;
   try{
     const controller=new GuestRequestStatusHttpController(service);
     await assert.rejects(controller.getOwnStatus(id,token),NotFoundException);
