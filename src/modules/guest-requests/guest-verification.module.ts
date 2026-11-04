@@ -13,6 +13,6 @@ import {OtpDeliveryService} from './otp-delivery.service.js';
     // No provider is configured until a reviewed KZ-resident adapter is wired.
     {provide:OtpDeliveryService,useFactory:()=>new OtpDeliveryService()},
   ],
-  exports:[GuestChallengeVerificationService,GuestOtpDispatchService],
+  exports:[GuestChallengeVerificationService,GuestChallengeIssuanceService,GuestOtpDispatchService],
 })
 export class GuestVerificationModule {}
