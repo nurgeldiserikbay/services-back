@@ -14,7 +14,7 @@ Inside that transaction the operation:
 2. Checks the expected version, valid guest delivery contact, and the
    original seller destination (organization or professional), never an
    assigned employee. If any recipient is missing, abort the transaction.
-3. Loads any immutable accepted-time cancellation snapshot and uses
+3. Refuses requests with a confirmed scheduled start/end until atomic busy-block release is implemented. Loads any immutable accepted-time cancellation snapshot and uses
    database time with the existing pure cancellation policy. Guest
    customer cancellations never create an account reliability event.
 4. Makes one version-checked state change, writes a cancellation event,
