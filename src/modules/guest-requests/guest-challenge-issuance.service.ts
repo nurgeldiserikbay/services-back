@@ -3,6 +3,7 @@ import {randomUUID,timingSafeEqual} from 'node:crypto';
 import {DatabasePool} from '../../platform/database/database.pool.js';
 import {checkContactSendQuota,type ContactSendQuotaResult} from './guest-contact-quota.js';
 import {checkGlobalSendQuota,type GlobalSendQuotaResult} from './guest-global-quota.js';
+import {checkNetworkSendQuota,type NetworkSendQuotaResult} from './guest-network-quota.js';
 import {
   GUEST_OTP_POLICY,contactDigest,encryptGuestContact,makeOtpChallenge,
   normalizeGuestContact,requireSecret,type ContactChannel,
@@ -17,7 +18,7 @@ export type GuestOtpIssuance = Readonly<{
 }>;
 
 export class GuestOtpSendLimited extends Error {
-  constructor(readonly reason:Exclude<ContactSendQuotaResult['reason']|'global_minute'|'global_hourly'|'global_daily','ok'>,
+  constructor(readonly reason:Exclude<ContactSendQuotaResult['reason']|'global_minute'|'global_hourly'|'global_daily'|'network_minute'|'network_hour'|'network_day','ok'>,
               readonly retryAfterSeconds:number){
     super('Guest OTP temporarily unavailable');
   }
@@ -32,7 +33,7 @@ export class GuestOtpSendLimited extends Error {
 export class GuestChallengeIssuanceService {
   constructor(private readonly db:DatabasePool){}
 
-  async issueCreateRequest(channel:ContactChannel,contact:unknown):Promise<GuestOtpIssuance>{
+  async issueCreateRequest(channel:ContactChannel,contact:unknown,networkDigest?:string):Promise<GuestOtpIssuance>{
     let normalized:string;
     try {normalized=normalizeGuestContact(channel,contact);}
     catch {throw new ServiceUnavailableException('Guest OTP temporarily unavailable');}
@@ -54,6 +55,10 @@ export class GuestChallengeIssuanceService {
       // Failed provider delivery does not refund either send budget.
       const global=await checkGlobalSendQuota(client);
       if(!global.allowed)throw new GuestOtpSendLimited(global.reason as Exclude<GlobalSendQuotaResult['reason'],'ok'>,global.retryAfterSeconds);
+      if(networkDigest!==undefined){
+        const network=await checkNetworkSendQuota(client,networkDigest);
+        if(!network.allowed)throw new GuestOtpSendLimited(network.reason as Exclude<NetworkSendQuotaResult['reason'],'ok'>,network.retryAfterSeconds);
+      }
       const quota=await checkContactSendQuota(client,digest);
       if(!quota.allowed)throw new GuestOtpSendLimited(quota.reason as Exclude<ContactSendQuotaResult['reason'],'ok'>,quota.retryAfterSeconds);
 
@@ -66,6 +71,12 @@ export class GuestChallengeIssuanceService {
           (id,guest_contact_id,code_hash,purpose,expires_at)
         VALUES($1,$2,$3,'CREATE_REQUEST',now()+($4::integer*interval '1 second'))`,
         [challengeId,contactId,codeHash,GUEST_OTP_POLICY.ttlSeconds]);
+      if(networkDigest!==undefined){
+        await client.query(`
+          INSERT INTO guest_otp_network_events(id,network_digest,challenge_id)
+          VALUES($1::uuid,$2,$3::uuid)
+        `,[randomUUID(),networkDigest,challengeId]);
+      }
     });
 
     return {challengeId,code,channel,contact:normalized,
