@@ -4,7 +4,7 @@ import {assertAuthorizedProviderCancellation,
   type VerifiedSellerCancellationActor,
 } from './provider-cancellation-authorization.js';
 
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const valid=(v:unknown):v is string=>typeof v==='string'&&UUID.test(v);
 
 type MemberRow={organization_id:string;role:string;scope:unknown};
