@@ -12,7 +12,7 @@ export class CancellationCommandRejected extends Error {
     super('cancellation_command_rejected');
   }
 }
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const KEY=/^[A-Za-z0-9_-]{16,128}$/;
 export type CancellationCommand=Readonly<{
   requestId:string;
