@@ -10,6 +10,6 @@ Three stages extending the **stacked** global OTP budget branch PR #53:
 
 This is **not an exposed account login or OTP sending service**. Do not enable externally until account OTP provider, edge attestation, network/device budgets, global quotas, uniform anti-enumeration responses, rate-limited login/registration, explicit signup consent, registered identity lookup and account session issuance are implemented and verified. Network /24 and /64 bucketing requires operator review because NAT and mobile carrier gateways may share identity; network caps should not indiscriminately block legitimate users. No IP, raw contact, OTP, or bearer must appear in DB logs or HTTP responses. Schedule retention pruning of this ledger older than a reviewed window (rolling 24 hours plus operational margin) before production. Avoid logging raw provider messages. Always use `DatabasePool.transaction`; advisory locks taken in autocommit mode do not protect check/insert races.
 
-## PR order
+## Delivery status
 
-PR #53 (global budget) must merge into main before rebasing this stacked PR. This PR targets `feat/account-otp-global-budget-20261106` until then, not main. Do not merge it into a temporary feature branch and mistake that for main release.
+Originally developed as stacked PRs #54 and #55. Those PRs were merged into feature branches, not main. This main-targeting PR consolidates both sets of changes, their migration, PostgreSQL tests and cleanup. Check CI and merge this PR into main; do not assume feature-branch merges represent production delivery.
