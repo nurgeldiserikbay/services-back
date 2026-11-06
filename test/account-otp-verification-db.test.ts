@@ -81,3 +81,21 @@ test('expired and missing challenges fail without mutation',async()=>{
   assert.equal(attempts.rows[0].attempts,0);
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
+
+test('wrong channel does not consume OTP and one prior bad guess is persisted',async()=>{
+ const db=await openDb(),pepper=randomBytes(32);
+ try{
+  const {id,code}=await insertChallenge(db,pepper);
+  assert.equal(await consumeAccountOtpChallenge(db,id,'SIGN_IN','SMS',code,pepper),null);
+  assert.equal(await consumeAccountOtpChallenge(db,id,'SIGN_IN','EMAIL','999999',pepper),null);
+  const before=await db.query<{attempts:number;consumed_at:Date|null}>(
+   'SELECT attempts,consumed_at FROM account_auth_challenges WHERE id=$1',[id]);
+  assert.equal(before.rows[0].attempts,1);
+  assert.equal(before.rows[0].consumed_at,null);
+  assert.ok(await consumeAccountOtpChallenge(db,id,'SIGN_IN','EMAIL',code,pepper));
+  const after=await db.query<{attempts:number;consumed_at:Date|null}>(
+   'SELECT attempts,consumed_at FROM account_auth_challenges WHERE id=$1',[id]);
+  assert.equal(after.rows[0].attempts,2);
+  assert.ok(after.rows[0].consumed_at);
+ }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
