@@ -25,7 +25,7 @@ test('unverified identities and malformed versions fail before database access',
     ['bad',person,1],[id,'bad',1],[id,person,0],[id,person,1.2],
   ] as const){
     await assert.rejects(cancelPendingByVerifiedSellerOwner(
-      db as never,...input),ProviderCancellationForbidden);
+      db as never,input[0],input[1],input[2]),ProviderCancellationForbidden);
   }
   assert.equal(statements.length,0);
 });
