@@ -79,3 +79,25 @@ test('wrong request version fails before identity lookup',async()=>{
     db as never,id,person,1),ProviderCancellationForbidden);
   assert.equal(statements.length,1);
 });
+
+test('canonical UUID reaches locked request lookup before owner authorization',async()=>{
+  const {db,statements}=fake(()=>({rows:[]}));
+  await assert.rejects(cancelPendingByVerifiedSellerOwner(
+    db as never,id,person,1),ProviderCancellationForbidden);
+  assert.equal(statements.length,1);
+  assert.match(statements[0],/FROM service_requests/);
+  assert.match(statements[0],/FOR UPDATE/);
+});
+
+test('invalid variant and malformed UUID are rejected without SQL',async()=>{
+  const {db,statements}=fake(()=>({rows:[]}));
+  for(const bad of [
+    '11111111-1111-4111-7111-111111111111',
+    '11111111-1111-4111-811111111111',
+    '11111111-1111-4111-8111-11111111111Z',
+  ]){
+    await assert.rejects(cancelPendingByVerifiedSellerOwner(
+      db as never,bad,person,1),ProviderCancellationForbidden);
+  }
+  assert.equal(statements.length,0);
+});
