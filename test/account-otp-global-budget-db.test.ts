@@ -65,9 +65,10 @@ test('global daily cap counts older consumed, expired OTP challenges',async()=>{
        created_at,expires_at)
     SELECT ('00000000-0000-4000-8000-'||
       lpad(to_hex(n),12,'0'))::uuid,
+      CASE WHEN n%2=0 THEN 'EMAIL'::"AuthChannel"
+        ELSE 'SMS'::"AuthChannel" END,
       CASE WHEN n%2=0 THEN 'SIGN_IN'::"AccountAuthPurpose"
-        ELSE 'SIGN_UP'::"AccountAuthPurpose" END::"AccountAuthPurpose",
-      'SIGN_IN'::"AccountAuthPurpose",
+        ELSE 'SIGN_UP'::"AccountAuthPurpose" END,
       lpad(to_hex(n),64,'0'),
       'test-cipher',repeat('a',64),
       now()-interval '2 hours',now()-interval '115 minutes'
