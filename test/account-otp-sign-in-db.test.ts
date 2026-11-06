@@ -90,7 +90,8 @@ test('signup OTP, wrong channel, invalid code and contact tampering cannot issue
     challengeId:signIn.challengeId,channel:'SMS',code:signIn.code,
   },secret),null);
   assert.equal(await signInWithVerifiedAccountOtp(db,{
-    challengeId:signIn.challengeId,channel:'EMAIL',code:'000000',
+    challengeId:signIn.challengeId,channel:'EMAIL',
+    code:signIn.code==='000000'?'111111':'000000',
   },secret),null);
   await db.query('UPDATE account_auth_challenges SET contact_digest=$2 WHERE id=$1',
    [signIn.challengeId,'0'.repeat(64)]);
