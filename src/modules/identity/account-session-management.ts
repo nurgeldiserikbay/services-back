@@ -29,9 +29,9 @@ export async function listMyAccountSessions(
     SELECT id::text,device_label,last_used_at,expires_at
     FROM sessions
     WHERE user_id=$1::uuid AND revoked_at IS NULL AND expires_at>now()
-    ORDER BY expires_at DESC,id DESC
-    LIMIT $2::integer
-  `,[actor.userId,ACCOUNT_SESSION_LIST_LIMIT]);
+    ORDER BY (id=$2::uuid) DESC,expires_at DESC,id DESC
+    LIMIT $3::integer
+  `,[actor.userId,actor.sessionId,ACCOUNT_SESSION_LIST_LIMIT]);
   return result.rows.map(row=>({
     id:row.id,
     deviceLabel:row.device_label,
