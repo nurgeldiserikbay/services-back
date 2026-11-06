@@ -1,6 +1,7 @@
 import {createCipheriv,createHmac,randomBytes,randomUUID,timingSafeEqual} from 'node:crypto';
 import type {PoolClient} from 'pg';
 import {normalizeGuestContact,requireSecret} from '../guest-requests/guest-request.security.js';
+import {checkAccountOtpGlobalBudget} from './account-otp-global-budget.js';
 import {ACCOUNT_OTP_TTL_SECONDS,generateAccountOtp,
   type AccountOtpChannel,type AccountOtpPurpose} from './account-otp-proof.js';
 
@@ -37,6 +38,10 @@ export async function issueAccountOtpChallenge(
   const digest=createHmac('sha256',contactPepper)
     .update('services-account-contact:v1\0').update(input.channel)
     .update('\0').update(destination).digest('hex');
+  // Global -> contact lock order prevents cross-process race and deadlock.
+  // Denied issuance throws: no budget is recorded and no challenge inserted.
+  const global=await checkAccountOtpGlobalBudget(db);
+  if(!global.allowed)throw new AccountOtpIssuanceUnavailable();
   // Lock contact-specific issuance on a transaction connection so concurrent
   // callers cannot bypass cooldown. Do not use this as a replacement for
   // public IP/device/global quotas.
