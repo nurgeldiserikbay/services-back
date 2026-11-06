@@ -2,9 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-const root=new URL('../',import.meta.url);
 function read(path:string):string{
- return readFileSync(new URL(path,root),'utf8');
+ return readFileSync(path,'utf8');
 }
 
 test('account OTP network migration and retention both ship in same branch',()=>{
