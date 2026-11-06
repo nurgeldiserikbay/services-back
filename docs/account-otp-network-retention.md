@@ -8,7 +8,7 @@
 
 ## Security and deployment
 
-This PR is **stacked on PR #54** (which is stacked on PR #53). Merge PR #53 to main first, then retarget/rebase PR #54 and this PR to main in the correct order. Passing CI on a stacked branch does not mean the code is already on main. Neither the account OTP endpoints nor an approved SMS/e-mail provider are added here.
+PR #53 is already merged into main. PRs #54 and #55 were merged only into feature branches; this consolidated PR targets main and includes both changes. Neither the account OTP endpoints nor an approved SMS/e-mail provider are added here.
 
 The maintenance task must not be exposed as an HTTP route or invoked from API startup. Use an approved database credential with narrow maintenance permissions. Schedule retention with monitoring and operator approval. This ledger stores only signed-ingress-derived keyed network digests, not raw IPs, contacts, OTPs or account tokens. Network/device quotas, anti-enumeration, provider security and real registered-account sign-in/session issuance are still production release gates.
 
