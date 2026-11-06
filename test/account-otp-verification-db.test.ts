@@ -68,7 +68,11 @@ test('expired and missing challenges fail without mutation',async()=>{
  const db=await openDb(),pepper=randomBytes(32);
  try{
   const {id,code}=await insertChallenge(db,pepper);
-  await db.query("UPDATE account_auth_challenges SET expires_at=now()-interval '1 second' WHERE id=$1",[id]);
+  // Keep the DB invariant expires_at > created_at while simulating an expired challenge.
+  await db.query(`UPDATE account_auth_challenges
+    SET created_at=now()-interval '10 minutes',
+        expires_at=now()-interval '5 minutes'
+    WHERE id=$1`,[id]);
   assert.equal(await consumeAccountOtpChallenge(db,id,'SIGN_IN','EMAIL',code,pepper),null);
   assert.equal(await consumeAccountOtpChallenge(db,randomUUID(),'SIGN_IN','EMAIL',code,pepper),null);
   assert.equal(await consumeAccountOtpChallenge(db,'invalid','SIGN_IN','EMAIL',code,pepper),null);
