@@ -7,6 +7,7 @@ import { PublicOfferModule } from './offers/public-offer.module.js';
 import { SellerDecisionHttpModule } from './requests/seller-decision-http.module.js';
 import { SellerInboxModule } from './requests/seller-inbox.module.js';
 import { GuestVerificationModule } from './guest-requests/guest-verification.module.js';
+import { AccountBearerSessionModule } from './identity/account-bearer-session.module.js';
 
-@Module({ imports: [DatabaseModule, CatalogModule, GeographyModule, PublicOfferModule, SellerInboxModule, SellerDecisionHttpModule, GuestVerificationModule], controllers: [HealthController] })
+@Module({ imports: [DatabaseModule, CatalogModule, GeographyModule, PublicOfferModule, SellerInboxModule, SellerDecisionHttpModule, GuestVerificationModule, AccountBearerSessionModule], controllers: [HealthController] })
 export class AppModule {}
