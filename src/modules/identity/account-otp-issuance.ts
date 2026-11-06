@@ -2,6 +2,8 @@ import {createCipheriv,createHmac,randomBytes,randomUUID,timingSafeEqual} from '
 import type {PoolClient} from 'pg';
 import {normalizeGuestContact,requireSecret} from '../guest-requests/guest-request.security.js';
 import {checkAccountOtpGlobalBudget} from './account-otp-global-budget.js';
+import {checkAccountOtpNetworkBudget,recordAccountOtpNetworkIssuance}
+  from './account-otp-network-budget.js';
 import {ACCOUNT_OTP_TTL_SECONDS,generateAccountOtp,
   type AccountOtpChannel,type AccountOtpPurpose} from './account-otp-proof.js';
 
@@ -20,7 +22,9 @@ export type PrivateAccountOtpDispatch=Readonly<{
  */
 export async function issueAccountOtpChallenge(
   db:Pick<PoolClient,'query'>,
-  input:{channel:AccountOtpChannel;purpose:AccountOtpPurpose;contact:unknown},
+  input:{channel:AccountOtpChannel;purpose:AccountOtpPurpose;contact:unknown;
+    /** Already verified against a trusted-edge proof, never raw client input. */
+    networkDigest?:string},
   secrets:{otpPepper:Buffer;contactPepper:Buffer;contactKey:Buffer},
 ):Promise<PrivateAccountOtpDispatch>{
   if(!['EMAIL','SMS'].includes(input.channel)||
@@ -42,6 +46,12 @@ export async function issueAccountOtpChallenge(
   // Denied issuance throws: no budget is recorded and no challenge inserted.
   const global=await checkAccountOtpGlobalBudget(db);
   if(!global.allowed)throw new AccountOtpIssuanceUnavailable();
+  // A caller's optional network digest is only valid after trusted ingress
+  // attestation. Public routes MUST require it, not silently fall back.
+  if(input.networkDigest!==undefined){
+    const network=await checkAccountOtpNetworkBudget(db,input.networkDigest);
+    if(!network.allowed)throw new AccountOtpIssuanceUnavailable();
+  }
   // Lock contact-specific issuance on a transaction connection so concurrent
   // callers cannot bypass cooldown. Do not use this as a replacement for
   // public IP/device/global quotas.
@@ -75,6 +85,8 @@ export async function issueAccountOtpChallenge(
       now()+($7::integer*interval '1 second'))
   `,[challengeId,input.channel,input.purpose,digest,contactCipher,codeHash,
     ACCOUNT_OTP_TTL_SECONDS]);
+  if(input.networkDigest!==undefined)
+    await recordAccountOtpNetworkIssuance(db,input.networkDigest);
   // PRIVATE return value: must never be serialized in an API or logged.
   return {challengeId,channel:input.channel,purpose:input.purpose,
     destination,code,expiresInSeconds:ACCOUNT_OTP_TTL_SECONDS};
