@@ -33,7 +33,8 @@ export async function readSellerInbox(
     FROM service_requests req
     JOIN service_offers offer ON offer.id=req.offer_id
     WHERE
-      ($2::text IS NULL OR LOWER(req.status::text)=$2::text)
+      (req.seller_professional_id IS NULL) <> (req.seller_organization_id IS NULL)
+      AND ($2::text IS NULL OR LOWER(req.status::text)=$2::text)
       AND ($3::timestamptz IS NULL OR
            (req.created_at,req.id)<($3::timestamptz,$4::uuid))
       AND (
