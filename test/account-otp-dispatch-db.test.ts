@@ -91,10 +91,11 @@ test('accepted account dispatch persists only encrypted challenge and digest bud
      assert.equal(sent,1);
      assert.deepEqual(Object.keys(result).sort(),['challengeId','expiresInSeconds']);
      assert.equal(result.expiresInSeconds,300);
-     const row=await client.query<{consumed_at:Date|null;contact_cipher:string;code_hash:string}>(
-       'SELECT consumed_at,contact_cipher,code_hash FROM account_auth_challenges WHERE id=$1',
+     const row=await client.query<{consumed_at:Date|null;delivery_confirmed_at:Date|null;contact_cipher:string;code_hash:string}>(
+       'SELECT consumed_at,delivery_confirmed_at,contact_cipher,code_hash FROM account_auth_challenges WHERE id=$1',
        [result.challengeId]);
      assert.equal(row.rows[0].consumed_at,null);
+     assert.ok(row.rows[0].delivery_confirmed_at);
      assert.equal(row.rows[0].contact_cipher.includes('account-dispatch@example.com'),false);
      assert.equal(row.rows[0].code_hash.length,64);
      const count=await client.query<{total:string}>(`
@@ -120,10 +121,11 @@ test('failed or rejected delivery revokes proof but retains send budget',async()
      await assert.rejects(service.dispatch(request(signed(key,network))),
        ServiceUnavailableException);
      assert.ok(deliveredId);
-     const row=await client.query<{consumed_at:Date|null}>(`
-       SELECT consumed_at FROM account_auth_challenges WHERE id=$1
+     const row=await client.query<{consumed_at:Date|null;delivery_confirmed_at:Date|null}>(`
+       SELECT consumed_at,delivery_confirmed_at FROM account_auth_challenges WHERE id=$1
      `,[deliveredId]);
      assert.ok(row.rows[0].consumed_at);
+     assert.equal(row.rows[0].delivery_confirmed_at,null);
      const count=await client.query<{total:string}>(`
        SELECT count(*)::text AS total FROM account_otp_network_issuances
        WHERE network_digest=$1`,[network]);
@@ -139,12 +141,13 @@ test('default-disabled provider fails closed and revokes committed challenge',as
      const service=new AccountOtpDispatchService(db as never);
      await assert.rejects(service.dispatch(request(signed(key,digest()))),
        ServiceUnavailableException);
-     const record=await client.query<{consumed_at:Date|null}>(`
-       SELECT consumed_at FROM account_auth_challenges
+     const record=await client.query<{consumed_at:Date|null;delivery_confirmed_at:Date|null}>(`
+       SELECT consumed_at,delivery_confirmed_at FROM account_auth_challenges
        WHERE contact_cipher LIKE 'v1.%'
        ORDER BY created_at DESC LIMIT 1
      `);
      assert.ok(record.rows[0]?.consumed_at);
+     assert.equal(record.rows[0]?.delivery_confirmed_at,null);
    }finally{await client.query('ROLLBACK').catch(()=>{});await client.end();}
  });
 });
