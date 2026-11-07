@@ -16,7 +16,8 @@ test('administration decisions fail closed without a verified active session',()
  for(const candidate of [null,{}, {...valid,mfaVerified:false},
   {...valid,disabled:true},{...valid,sessionExpiresAt:'2026-11-08T00:00:00Z'},
   {...valid,role:'seller'},{...valid,email:'unexpected'}, {...valid,userId:'bad'},
-  {...valid,sessionExpiresAt:'not-a-date'}]){
+  {...valid,sessionExpiresAt:'not-a-date'},
+  {...valid,sessionExpiresAt:'2026-11-31T02:00:00Z'}]){
   assert.equal(canPlatformAdmin(candidate,'audit:read',now),false);
  }
 });
