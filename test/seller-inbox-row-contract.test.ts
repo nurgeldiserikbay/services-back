@@ -40,3 +40,8 @@ test('seller inbox rejects invalid authenticated user ID before SQL',async()=>{
  } as Parameters<typeof readSellerInbox>[0],'not-an-id',filter),/invalid_identity/);
  assert.equal(called,false);
 });
+
+test('seller inbox rejects duplicate request IDs from database',async()=>{
+ await assert.rejects(readSellerInbox(client([row,{...row,title:'duplicate'}]),account,filter),
+   /invalid_seller_inbox_row/);
+});
