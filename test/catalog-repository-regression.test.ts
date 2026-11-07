@@ -20,7 +20,7 @@ test('catalog search binds user text and location instead of interpolating SQL',
   assert.ok(!calls[0]!.sql.includes(malicious));
   assert.equal(calls[0]!.values[0], malicious);
   assert.match(calls[0]!.sql, /o\.status = 'PUBLISHED'/);
-  assert.match(calls[0]!.sql, /LIMIT 50/);
+  assert.match(calls[0]!.sql, /LIMIT 51 OFFSET \$8::integer/);
 });
 
 test('catalog search propagates database unavailability, never fabricates results', async () => {
@@ -31,4 +31,13 @@ test('catalog search propagates database unavailability, never fabricates result
     new CatalogRepository(db).search(normalizeSearchFilters({})),
     /database unavailable/,
   );
+});
+
+
+test('catalog search returns next cursor only when more than 50 results exist', async () => {
+  const rows = Array.from({length: 51}, (_, i) => ({kind:'offer', id:String(i), title:String(i), is_sponsored:false}));
+  const db = {query: async () => ({rows})} as unknown as DatabasePool;
+  const result = await new CatalogRepository(db).search(normalizeSearchFilters({cursor:'50'}));
+  assert.equal(result.items.length, 50);
+  assert.equal(result.next_cursor, '100');
 });
