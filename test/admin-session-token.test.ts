@@ -30,3 +30,16 @@ test('admin token hashing rejects missing, invalid or weak secrets',()=>{
  }
  assert.equal(adminSessionHashMatches(token,'INVALID',pepper),false);
 });
+
+test('admin bearer rejects noncanonical base64url aliases',()=>{
+ const pepper=randomBytes(32);
+ const {token,tokenHash}=issueAdminSessionToken(pepper);
+ // Base64url encodes 32 bytes with two padding bits in its last digit.
+ // Other last characters may decode to identical bytes in permissive decoders.
+ for(const suffix of 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'){\n  if('AQgw'.includes(suffix))continue;
+  const alias=token.slice(0,-1)+suffix;
+  assert.throws(()=>hashAdminSessionToken(alias,pepper));
+  assert.equal(adminSessionHashMatches(alias,tokenHash,pepper),false);
+ }
+ assert.equal(adminSessionHashMatches(token,tokenHash,pepper),true);
+});
