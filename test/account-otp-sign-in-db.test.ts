@@ -23,6 +23,8 @@ test('verified email OTP grants an active account one opaque session and cannot 
   const challenge=await issueAccountOtpChallenge(db,{
     channel:'EMAIL',purpose:'SIGN_IN',contact:'account-test@example.com',
   },secret);
+  await db.query('UPDATE account_auth_challenges SET delivery_confirmed_at=now() WHERE id=$1',
+    [challenge.challengeId]);
   const login=await signInWithVerifiedAccountOtp(db,{
     challengeId:challenge.challengeId,channel:'EMAIL',code:challenge.code,
   },secret);
@@ -51,6 +53,8 @@ test('unknown and suspended accounts never receive session even with valid OTP',
   const unregistered=await issueAccountOtpChallenge(db,{
     channel:'EMAIL',purpose:'SIGN_IN',contact:'no-account@example.com',
   },secret);
+  await db.query('UPDATE account_auth_challenges SET delivery_confirmed_at=now() WHERE id=$1',
+    [unregistered.challengeId]);
   assert.equal(await signInWithVerifiedAccountOtp(db,{
     challengeId:unregistered.challengeId,channel:'EMAIL',code:unregistered.code,
   },secret),null);
@@ -64,6 +68,8 @@ test('unknown and suspended accounts never receive session even with valid OTP',
   const suspended=await issueAccountOtpChallenge(db,{
     channel:'SMS',purpose:'SIGN_IN',contact:'+77010000001',
   },secret);
+  await db.query('UPDATE account_auth_challenges SET delivery_confirmed_at=now() WHERE id=$1',
+    [suspended.challengeId]);
   assert.equal(await signInWithVerifiedAccountOtp(db,{
     challengeId:suspended.challengeId,channel:'SMS',code:suspended.code,
   },secret),null);
@@ -86,6 +92,8 @@ test('signup OTP, wrong channel, invalid code and contact tampering cannot issue
   const signIn=await issueAccountOtpChallenge(db,{
     channel:'EMAIL',purpose:'SIGN_IN',contact:'another@example.com',
   },secret);
+  await db.query('UPDATE account_auth_challenges SET delivery_confirmed_at=now() WHERE id=$1',
+    [signIn.challengeId]);
   assert.equal(await signInWithVerifiedAccountOtp(db,{
     challengeId:signIn.challengeId,channel:'SMS',code:signIn.code,
   },secret),null);

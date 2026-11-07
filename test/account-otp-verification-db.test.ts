@@ -30,9 +30,9 @@ async function insertChallenge(db:Client,pepper:Buffer,purpose:'SIGN_IN'|'SIGN_U
  const id=randomUUID(),code='012345',contactDigest=randomBytes(32).toString('hex');
  await db.query(`
    INSERT INTO account_auth_challenges
-     (id,channel,purpose,contact_digest,contact_cipher,code_hash,expires_at)
+     (id,channel,purpose,contact_digest,contact_cipher,code_hash,expires_at,delivery_confirmed_at)
    VALUES($1,'EMAIL'::"AuthChannel",$2::"AccountAuthPurpose",$3,'test-cipher',$4,
-     now()+interval '5 minutes')
+     now()+interval '5 minutes',now())
  `,[id,purpose,contactDigest,hashAccountOtp(id,purpose,code,pepper)]);
  return {id,code,contactDigest};
 }
