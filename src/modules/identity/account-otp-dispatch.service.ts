@@ -74,6 +74,16 @@ export class AccountOtpDispatchService {
       const result=await this.provider.deliver({...issued,locale:input.locale});
       const receipt=sanitizeAccountOtpReceipt(result);
       if(!receipt.accepted)throw new AccountOtpDeliveryUnavailable();
+      // A committed challenge is NOT redeemable until this acknowledgement
+      // is durably recorded. A process crash before this point leaves it inert.
+      const confirmed=await this.db.query<{id:string}>(`
+        UPDATE account_auth_challenges
+           SET delivery_confirmed_at=now()
+         WHERE id=$1::uuid AND delivery_confirmed_at IS NULL
+           AND consumed_at IS NULL AND expires_at>now()
+         RETURNING id::text
+      `,[issued.challengeId]);
+      if(confirmed.rows.length!==1)throw new AccountOtpDeliveryUnavailable();
     }catch{
       // Do not refund the issuance budget. Deny uncertain/late delivery proof.
       // A database outage may delay revocation; 5-minute TTL and attempt
