@@ -148,6 +148,7 @@ model User {
   createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   person       Person?
   sessions     Session[]
+  platformAdminStaff PlatformAdminStaff?
   consents     AccountConsent[]
   memberships  OrganizationMember[]
   @@map("users")
@@ -871,4 +872,43 @@ model GuestRecoverySession {
   guestContact   GuestContact @relation(fields: [guestContactId], references: [id], onDelete: Restrict)
   @@index([guestContactId, expiresAt])
   @@map("guest_recovery_sessions")
+}
+
+/**
+ * Dedicated platform administrator identity, distinct from organization
+ * membership. Provisioning is out-of-band until audited MFA enrollment exists.
+ */
+model PlatformAdminStaff {
+  id        String @id @default(uuid()) @db.Uuid
+  userId    String @unique @map("user_id") @db.Uuid
+  role      String @db.VarChar(16)
+  disabledAt DateTime? @map("disabled_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  sessions  PlatformAdminSession[]
+  grants    PlatformAdminGrant[]
+  @@map("platform_admin_staff")
+}
+
+model PlatformAdminSession {
+  id           String @id @default(uuid()) @db.Uuid
+  staffId      String @map("staff_id") @db.Uuid
+  tokenHash    String @unique @map("token_hash") @db.Char(64)
+  mfaVerifiedAt DateTime @map("mfa_verified_at") @db.Timestamptz(3)
+  expiresAt    DateTime @map("expires_at") @db.Timestamptz(3)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  staff        PlatformAdminStaff @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  @@index([staffId, expiresAt])
+  @@map("platform_admin_sessions")
+}
+
+model PlatformAdminGrant {
+  id        String @id @default(uuid()) @db.Uuid
+  staffId   String @map("staff_id") @db.Uuid
+  scope     String @db.VarChar(80)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  staff     PlatformAdminStaff @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  @@unique([staffId, scope])
+  @@map("platform_admin_grants")
 }
