@@ -10,6 +10,7 @@ import { GuestVerificationModule } from './guest-requests/guest-verification.mod
 import { AccountBearerSessionModule } from './identity/account-bearer-session.module.js';
 import { PersonInboxModule } from './notifications/person-inbox.module.js';
 import { AccountLoginPrivateModule } from './identity/account-login-private.module.js';
+import {PlatformAdminModerationModule} from './admin/admin-moderation.module.js';
 
-@Module({ imports: [DatabaseModule, CatalogModule, GeographyModule, PublicOfferModule, SellerInboxModule, SellerDecisionHttpModule, GuestVerificationModule, AccountBearerSessionModule, PersonInboxModule, AccountLoginPrivateModule], controllers: [HealthController] })
+@Module({ imports: [DatabaseModule, CatalogModule, GeographyModule, PublicOfferModule, SellerInboxModule, SellerDecisionHttpModule, GuestVerificationModule, AccountBearerSessionModule, PersonInboxModule, AccountLoginPrivateModule, PlatformAdminModerationModule], controllers: [HealthController] })
 export class AppModule {}
