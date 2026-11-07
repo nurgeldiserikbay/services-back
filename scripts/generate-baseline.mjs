@@ -2,14 +2,15 @@ import {spawnSync} from 'node:child_process';
 import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 
-/** Deterministic initial migration from reviewed schema + project-specific constraints.
+/** Deterministic INITIAL migration from the pinned historical schema + invariants.
+ * Future database evolution belongs in timestamped migrations, not baseline rewrites.
  * Run once and COMMIT the resulting SQL after code review. CI must deploy the
  * committed SQL; never generate migrations at application startup.
  */
 const target = join('prisma','migrations','20261103_initial_platform');
 const command = [
   'node_modules/prisma/build/index.js','migrate','diff',
-  '--from-empty','--to-schema-datamodel','prisma/schema.prisma','--script'
+  '--from-empty','--to-schema-datamodel','prisma/baseline.schema.prisma','--script'
 ];
 const result=spawnSync(process.execPath,command,{encoding:'utf8',maxBuffer:8*1024*1024});
 if(result.status!==0 || !result.stdout.includes('CREATE TABLE')){
