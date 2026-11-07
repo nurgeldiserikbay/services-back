@@ -2,7 +2,7 @@ import type {PoolClient} from 'pg';
 import {
   encodeInboxCursor,
   type SellerInboxFilter,type SellerInboxItem,type SellerInboxPage,
-  type SellerRequestState,
+  SELLER_REQUEST_STATES,
 } from './seller-inbox.contract.js';
 
 type InboxRow={
@@ -64,17 +64,22 @@ export async function readSellerInbox(
     filter.before?.id??null,filter.limit+1]);
   const hasMore=result.rows.length>filter.limit;
   const rows=result.rows.slice(0,filter.limit);
-  const items:SellerInboxItem[]=rows.map(row=>({
+  const allowedStates:readonly string[]=SELLER_REQUEST_STATES;
+  const items:SellerInboxItem[]=rows.map(row=>{
+    const state=row.status.toLowerCase();
+    if(!allowedStates.includes(state)||!Number.isSafeInteger(row.version)||row.version<1)
+      throw new Error('invalid_seller_inbox_row');
+    return {
     id:row.id,
     service_offer_id:row.service_offer_id,
     title:row.title,
-    state:row.status.toLowerCase() as SellerRequestState,
+    state:state as SellerInboxItem['state'],
     version:row.version,
     seller_kind:row.seller_kind,
     seller_id:row.seller_id,
     created_at:row.created_at.toISOString(),
     scheduled_start_at:row.scheduled_start_at?.toISOString()??null,
-  }));
+  };});
   const tail=rows[rows.length-1];
   return {items,next_cursor:hasMore&&tail?
     encodeInboxCursor(tail.created_at.toISOString(),tail.id):null};
