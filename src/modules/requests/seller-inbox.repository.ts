@@ -87,6 +87,8 @@ export async function readSellerInbox(
     created_at:row.created_at.toISOString(),
     scheduled_start_at:row.scheduled_start_at?.toISOString()??null,
   };});
+  if(new Set(items.map(item=>item.id)).size!==items.length)
+    throw new Error('invalid_seller_inbox_row');
   const tail=rows[rows.length-1];
   return {items,next_cursor:hasMore&&tail?
     encodeInboxCursor(tail.created_at.toISOString(),tail.id):null};
