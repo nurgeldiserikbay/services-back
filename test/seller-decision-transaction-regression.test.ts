@@ -46,3 +46,25 @@ test('successful acceptance writes event and notification intent',async()=>{
   assert.ok(statements.some(sql=>sql.includes('INSERT INTO notification_intents')));
   assert.ok(!statements.some(sql=>sql.includes('INSERT INTO calendar')));
 });
+
+test('already accepted request cannot be replayed without matching ledger key',async()=>{
+  const statements:string[]=[];
+  const client={query:async(sql:string)=>{
+    statements.push(sql);
+    return {rows:[{...pending,status:'ACCEPTED',version:2}]};
+  }} as unknown as Pick<PoolClient,'query'>;
+  await assert.rejects(decideSellerRequest(client,requestId,owner,'accept',1),
+    (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='conflict');
+  assert.equal(statements.length,1);
+});
+
+test('already declined request cannot be replayed without matching ledger key',async()=>{
+  const statements:string[]=[];
+  const client={query:async(sql:string)=>{
+    statements.push(sql);
+    return {rows:[{...pending,status:'DECLINED',version:2}]};
+  }} as unknown as Pick<PoolClient,'query'>;
+  await assert.rejects(decideSellerRequest(client,requestId,owner,'decline',1),
+    (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='conflict');
+  assert.equal(statements.length,1);
+});
