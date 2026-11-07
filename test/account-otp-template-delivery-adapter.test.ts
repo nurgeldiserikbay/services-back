@@ -82,3 +82,25 @@ test('adapter refuses unsafe keys and malformed challenge before any vendor call
  }
  assert.equal(hits,0);
 });
+
+test('provider adapter refuses noncanonical, cross-channel and malformed recipients',async()=>{
+ let calls=0;
+ const adapter=new AccountOtpTemplateDeliveryAdapter(async()=>{
+  calls++;return {accepted:true,providerRef:null};
+ },randomBytes(32));
+ for(const bad of [
+  {...msg,destination:' account@example.test '},
+  {...msg,destination:'account@EXAMPLE.TEST'},
+  {...msg,destination:'not-an-email'},
+  {...msg,destination:'account@example..test'},
+  {...msg,destination:'account@example.test\r\nBcc:other@example.test'},
+  {...msg,channel:'SMS',destination:'87001234567'},
+  {...msg,channel:'SMS',destination:'+77001234567 '},
+  {...msg,channel:'SMS',destination:'account@example.test'},
+ ]){
+  await assert.rejects(adapter.deliver(bad as never),AccountOtpDeliveryUnavailable);
+ }
+ assert.equal(calls,0);
+ await adapter.deliver({...msg,channel:'SMS',destination:'+77001234567'});
+ assert.equal(calls,1);
+});
