@@ -8,7 +8,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 type ChallengeRow={
   id:string;channel:AccountOtpChannel;purpose:AccountOtpPurpose;
   contact_digest:string;code_hash:string;attempts:number;
-  expires_at:Date;consumed_at:Date|null;
+  expires_at:Date;consumed_at:Date|null;delivery_confirmed_at:Date|null;
 };
 export type VerifiedAccountContact=Readonly<{
   challengeId:string;channel:AccountOtpChannel;
@@ -36,13 +36,14 @@ export async function consumeAccountOtpChallenge(
     throw new Error('account_otp_secret_unavailable');
   const response=await db.query<ChallengeRow>(`
     SELECT id::text,channel::text,purpose::text,contact_digest,
-      code_hash,attempts,expires_at,consumed_at
+      code_hash,attempts,expires_at,consumed_at,delivery_confirmed_at
     FROM account_auth_challenges
     WHERE id=$1::uuid FOR UPDATE
   `,[challengeId.toLowerCase()]);
   const row=response.rows[0];
   if(!row||row.channel!==channel||row.purpose!==purpose||
-     row.consumed_at!==null||!Number.isSafeInteger(row.attempts)||
+     row.consumed_at!==null||!(row.delivery_confirmed_at instanceof Date)||
+     !Number.isSafeInteger(row.attempts)||
      row.attempts<0||row.attempts>=ACCOUNT_OTP_MAX_ATTEMPTS||
      !(row.expires_at instanceof Date)||row.expires_at.getTime()<=Date.now())return null;
 
@@ -54,7 +55,7 @@ export async function consumeAccountOtpChallenge(
     SET attempts=attempts+1,
       consumed_at=CASE WHEN $2::boolean THEN now() ELSE consumed_at END
     WHERE id=$1::uuid AND consumed_at IS NULL
-      AND expires_at>now() AND attempts<$3::integer
+      AND delivery_confirmed_at IS NOT NULL AND expires_at>now() AND attempts<$3::integer
     RETURNING id::text
   `,[row.id,verified,ACCOUNT_OTP_MAX_ATTEMPTS]);
   if(!verified||updated.rows.length!==1)return null;
