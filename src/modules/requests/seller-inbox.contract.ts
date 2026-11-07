@@ -63,7 +63,8 @@ export function parseSellerInboxFilter(input:{limit?:unknown;state?:unknown;curs
       const tuple:unknown=JSON.parse(text);
       if(!Array.isArray(tuple)||tuple.length!==2||typeof tuple[0]!=='string'||
          typeof tuple[1]!=='string'||!UTC_ISO.test(tuple[0])||
-         Number.isNaN(Date.parse(tuple[0]))||!UUID.test(tuple[1]))
+         !Number.isFinite(Date.parse(tuple[0]))||
+         new Date(tuple[0]).toISOString()!==tuple[0]||!UUID.test(tuple[1]))
         throw new Error('Invalid cursor tuple');
       before={createdAt:tuple[0],id:tuple[1]};
     }catch{
