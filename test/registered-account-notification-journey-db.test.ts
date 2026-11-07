@@ -75,7 +75,7 @@ test('confirmed OTP -> seller accepts registered request -> customer IN_APP inbo
   assert.deepEqual(replay,{...accepted,replayed:true});
   const notices=await db.query<{n:string;channel:string;recipient_person_id:string}>(`
    SELECT count(*)::text n,max(channel) channel,
-    max(recipient_person_id)::text recipient_person_id
+    max(recipient_person_id::text) recipient_person_id
    FROM notification_intents WHERE dedupe_key=$1`,
   ['request-accept:client:'+requestId]);
   assert.equal(notices.rows[0].n,'1');
