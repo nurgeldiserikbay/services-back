@@ -912,3 +912,14 @@ model PlatformAdminGrant {
   @@unique([staffId, scope])
   @@map("platform_admin_grants")
 }
+
+/** Internal moderation read projection; do not store case evidence or PII. */
+model PlatformModerationCase {
+ id String @id @default(uuid()) @db.Uuid
+ resourceScope String @map("resource_scope") @db.VarChar(80)
+ subjectKind String @map("subject_kind") @db.VarChar(24)
+ state String @db.VarChar(16)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ @@index([resourceScope, createdAt])
+ @@map("platform_moderation_cases")
+}
