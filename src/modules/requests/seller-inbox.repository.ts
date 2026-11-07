@@ -68,7 +68,10 @@ export async function readSellerInbox(
   const allowedStates:readonly string[]=SELLER_REQUEST_STATES;
   const items:SellerInboxItem[]=rows.map(row=>{
     const state=typeof row.status==='string'?row.status.toLowerCase():'';
-    if(!allowedStates.includes(state)||!Number.isSafeInteger(row.version)||row.version<1||
+    if(!UUID.test(row.id)||!UUID.test(row.service_offer_id)||!UUID.test(row.seller_id)||
+       typeof row.title!=='string'||row.title.length>500||
+       (row.seller_kind!=='professional'&&row.seller_kind!=='organization')||
+       !allowedStates.includes(state)||!Number.isSafeInteger(row.version)||row.version<1||
        !(row.created_at instanceof Date)||!Number.isFinite(row.created_at.getTime())||
        (row.scheduled_start_at!==null&&
         (!(row.scheduled_start_at instanceof Date)||!Number.isFinite(row.scheduled_start_at.getTime()))))
