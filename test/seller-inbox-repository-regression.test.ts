@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import type {PoolClient} from 'pg';
 import {readSellerInbox} from '../src/modules/requests/seller-inbox.repository.js';
-import {parseSellerInboxFilter} from '../src/modules/requests/seller-inbox.contract.js';
+import {encodeInboxCursor,parseSellerInboxFilter} from '../src/modules/requests/seller-inbox.contract.js';
 
 const userId='11111111-1111-4111-8111-111111111111';
 const requestId='22222222-2222-4222-8222-222222222222';
@@ -47,4 +47,16 @@ test('seller inbox rejects invalid authenticated user id before SQL',async()=>{
   const client={query:async()=>{called=true;return {rows:[]}}} as unknown as Pick<PoolClient,'query'>;
   await assert.rejects(readSellerInbox(client,'not-a-uuid',parseSellerInboxFilter({})));
   assert.equal(called,false);
+});
+
+test('seller inbox rejects impossible dates and malformed cursor tuples',()=>{
+  for(const cursor of [
+    encodeInboxCursor('2026-02-30T10:00:00.000Z',requestId),
+    encodeInboxCursor('2026-13-01T10:00:00.000Z',requestId),
+    encodeInboxCursor('2026-11-07T10:00:00Z',requestId),
+    encodeInboxCursor('2026-11-07T10:00:00.000Z','invalid'),
+    'not-base64+',
+  ]){
+    assert.throws(()=>parseSellerInboxFilter({cursor}));
+  }
 });
