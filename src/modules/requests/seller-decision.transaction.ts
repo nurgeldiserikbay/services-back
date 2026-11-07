@@ -68,6 +68,7 @@ export async function decideSellerRequest(
     const contact=await client.query<GuestContactRow>(`
       SELECT channel FROM guest_contacts
       WHERE id=$1::uuid AND verified_at IS NOT NULL AND expires_at>now()
+      FOR SHARE
     `,[request.guest_contact_id]);
     const channel=contact.rows[0]?.channel;
     if(channel!=='email'&&channel!=='sms')
