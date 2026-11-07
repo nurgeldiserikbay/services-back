@@ -1,4 +1,5 @@
 import {createHmac,timingSafeEqual} from 'node:crypto';
+import {normalizeGuestContact} from '../guest-requests/guest-request.security.js';
 import {
   AccountOtpDeliveryUnavailable,sanitizeAccountOtpReceipt,
   type AccountOtpDeliveryPort,type AccountOtpDispatchMessage,
@@ -40,6 +41,12 @@ export class AccountOtpTemplateDeliveryAdapter implements AccountOtpDeliveryPort
     try{
       if(!message||typeof message.challengeId!=='string'||
          !UUID.test(message.challengeId))
+        throw new AccountOtpDeliveryUnavailable();
+      // Do not allow a future provider or caller to send to an unnormalized
+      // or syntactically invalid email/phone number, even with a valid code.
+      const normalized=normalizeGuestContact(
+        message.channel==='EMAIL'?'email':'sms',message.destination);
+      if(normalized!==message.destination)
         throw new AccountOtpDeliveryUnavailable();
       const rendered=renderAccountOtpMessage(message);
       const idempotencyKey=createHmac('sha256',this.deliveryKey)
