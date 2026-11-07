@@ -45,7 +45,11 @@ export class AccountOtpTemplateDeliveryAdapter implements AccountOtpDeliveryPort
       const idempotencyKey=createHmac('sha256',this.deliveryKey)
         .update('services-account-otp-provider:v1\0')
         .update(message.challengeId.toLowerCase()).digest('base64url');
-      const receipt=sanitizeAccountOtpReceipt(await this.send(rendered,idempotencyKey));
+      const raw:unknown=await this.send(rendered,idempotencyKey);
+      if(!raw||typeof raw!=='object'||Array.isArray(raw)||
+         Object.keys(raw).sort().join(',')!=='accepted,providerRef')
+        throw new AccountOtpDeliveryUnavailable();
+      const receipt=sanitizeAccountOtpReceipt(raw);
       if(!receipt.accepted)throw new AccountOtpDeliveryUnavailable();
       return receipt;
     }catch{
