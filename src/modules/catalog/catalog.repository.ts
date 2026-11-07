@@ -57,7 +57,7 @@ export class CatalogRepository {
         filter.cityId, filter.areaId, filter.countryId, Number(filter.cursor ?? '0'),
       ]);
       const offset = Number(filter.cursor ?? '0');
-      const hasMore = res.rows.length > 50;
+      const hasMore = res.rows.length > 50 && offset + 50 <= 10000;
       return {items: res.rows.slice(0, 50), next_cursor: hasMore ? String(offset + 50) : null};
     } catch (error) {
       // The shared DB service already sanitizes errors; preserve the generic 503.
