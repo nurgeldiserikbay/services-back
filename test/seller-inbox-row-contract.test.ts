@@ -13,7 +13,7 @@ const row={
 };
 const filter={limit:20,state:null,before:null};
 function client(rows:unknown[]){
- return {query:async()=>({rows})} as Parameters<typeof readSellerInbox>[0];
+ return {query:async()=>({rows})} as unknown as Parameters<typeof readSellerInbox>[0];
 }
 test('seller inbox returns only a narrow public-safe DTO',async()=>{
  const page=await readSellerInbox(client([row]),account,filter);
@@ -37,7 +37,7 @@ test('seller inbox rejects invalid authenticated user ID before SQL',async()=>{
  let called=false;
  await assert.rejects(readSellerInbox({
   query:async()=>{called=true;return {rows:[]};},
- } as Parameters<typeof readSellerInbox>[0],'not-an-id',filter),/invalid_identity/);
+ } as unknown as Parameters<typeof readSellerInbox>[0],'not-an-id',filter),/invalid_identity/);
  assert.equal(called,false);
 });
 

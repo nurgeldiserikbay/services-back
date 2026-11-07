@@ -45,8 +45,10 @@ test('accept succeeds once, creates customer notice, rejects conflicting decline
     (e:unknown)=>e instanceof SellerDecisionRejected&&e.reason==='forbidden');
   const accepted=await decideSellerRequest(db,f.requestId,seller,'accept',1);
   assert.deepEqual(accepted,{id:f.requestId,state:'accepted',version:2,replayed:false});
-  const replay=await decideSellerRequest(db,f.requestId,seller,'accept',1);
-  assert.equal(replay.replayed,true);
+  // A repeated raw transition with an already-applied version must fail.
+  // Authorized replay belongs to the actor-scoped idempotency ledger.
+  await assert.rejects(decideSellerRequest(db,f.requestId,seller,'accept',1),
+    (e:unknown)=>e instanceof SellerDecisionRejected&&e.reason==='conflict');
   await assert.rejects(decideSellerRequest(db,f.requestId,seller,'decline',1),
     (e:unknown)=>e instanceof SellerDecisionRejected&&e.reason==='conflict');
   const notices=await db.query<{n:string;channel:string}>(

@@ -31,8 +31,7 @@ test('seller inbox returns cursor only when a following row exists',async()=>{
   const row={id:requestId,service_offer_id:offerId,title:'Service',
     status:'PENDING',version:1,seller_kind:'professional',seller_id:sellerId,
     created_at:createdAt,scheduled_start_at:null};
-  const client={query:async()=>({rows:[row,{...row,id:'55555555-5555-4555-8555-555555555555'}]})}
-    as unknown as Pick<PoolClient,'query'>;
+  const client={query:async()=>({rows:[row,{...row,id:'55555555-5555-4555-8555-555555555555'}]})} as unknown as Pick<PoolClient,'query'>;
   const result=await readSellerInbox(client,userId,parseSellerInboxFilter({limit:'1'}));
   assert.equal(result.items.length,1);
   assert.equal(result.items[0].state,'pending');

@@ -151,3 +151,49 @@ test('default-disabled provider fails closed and revokes committed challenge',as
    }finally{await client.query('ROLLBACK').catch(()=>{});await client.end();}
  });
 });
+
+test('timed-out OTP provider leaves committed challenge consumed and delivery unconfirmed',async()=>{
+ await withSecrets(async key=>{
+   const {client,db}=await dbReady();
+   let resolveLate!: (value:{accepted:boolean;providerRef:string|null})=>void;
+   const late=new Promise<{accepted:boolean;providerRef:string|null}>(resolve=>{
+     resolveLate=resolve;
+   });
+   let issuedId:string|undefined;
+   try{
+     const network=digest();
+     const service=new AccountOtpDispatchService(db as never,{
+       deliver:async message=>{
+         issuedId=message.challengeId;
+         return late;
+       },
+     },15);
+     await assert.rejects(service.dispatch(request(signed(key,network))),
+       ServiceUnavailableException);
+     assert.ok(issuedId);
+     const row=await client.query<{
+       consumed_at:Date|null;delivery_confirmed_at:Date|null;
+     }>('SELECT consumed_at,delivery_confirmed_at FROM account_auth_challenges WHERE id=$1',
+       [issuedId]);
+     assert.ok(row.rows[0].consumed_at);
+     assert.equal(row.rows[0].delivery_confirmed_at,null);
+     const count=await client.query<{total:string}>(`
+       SELECT count(*)::text AS total FROM account_otp_network_issuances
+        WHERE network_digest=$1`,[network]);
+     assert.equal(count.rows[0].total,'1');
+     // Provider success after timeout does not flip the acceptance gate.
+     resolveLate({accepted:true,providerRef:'late_provider_1234'});
+     await late;
+     const after=await client.query<{
+       consumed_at:Date|null;delivery_confirmed_at:Date|null;
+     }>('SELECT consumed_at,delivery_confirmed_at FROM account_auth_challenges WHERE id=$1',
+       [issuedId]);
+     assert.ok(after.rows[0].consumed_at);
+     assert.equal(after.rows[0].delivery_confirmed_at,null);
+   }finally{
+     resolveLate?.({accepted:false,providerRef:null});
+     await client.query('ROLLBACK').catch(()=>{});
+     await client.end();
+   }
+ });
+});

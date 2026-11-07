@@ -12,6 +12,8 @@ import {
 import {
   verifyAccountOtpNetworkProof,
 } from './account-otp-network-budget.js';
+import {deliverAccountOtpWithinDeadline}
+  from './account-otp-delivery-deadline.js';
 import type {AccountOtpChannel,AccountOtpPurpose} from './account-otp-proof.js';
 
 const UNAVAILABLE='Account verification temporarily unavailable';
@@ -41,6 +43,7 @@ export class AccountOtpDispatchService {
   constructor(
     private readonly db:Pick<DatabasePool,'transaction'|'query'>,
     private readonly provider:AccountOtpDeliveryPort=new DisabledAccountOtpDelivery(),
+    private readonly deliveryDeadlineMs=8000,
   ) {}
 
   async dispatch(input:AccountOtpDispatchInput):Promise<AccountOtpDispatchResult>{
@@ -71,7 +74,8 @@ export class AccountOtpDispatchService {
     }
 
     try{
-      const result=await this.provider.deliver({...issued,locale:input.locale});
+      const result=await deliverAccountOtpWithinDeadline(
+        this.provider,{...issued,locale:input.locale},this.deliveryDeadlineMs);
       const receipt=sanitizeAccountOtpReceipt(result);
       if(!receipt.accepted)throw new AccountOtpDeliveryUnavailable();
       // A committed challenge is NOT redeemable until this acknowledgement

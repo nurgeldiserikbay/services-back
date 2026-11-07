@@ -41,7 +41,7 @@ test('guest request rejects absent consent and invalid offer identity',()=>{
 });
 
 test('guest request rejects oversized and control-character notes',()=>{
-  for(const note of ['a'.repeat(1001),'hello\\u0000world']){
+  for(const note of ['a'.repeat(1001),'hello\u0000world']){
     assert.throws(()=>validateGuestRequestBody({
       service_offer_id:offerId,note,consent_to_contact:true,
     }),BadRequestException);
