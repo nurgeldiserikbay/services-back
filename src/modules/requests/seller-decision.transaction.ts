@@ -18,7 +18,6 @@ export type DecisionResult={
 export class SellerDecisionRejected extends Error {
   constructor(readonly reason:'not_found'|'forbidden'|'conflict') {super(reason);}
 }
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 // Reuse a strict UUID pattern for all public-like IDs.
 const UUID_STRICT=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -56,10 +55,8 @@ export async function decideSellerRequest(
     : request.seller_organization_id===seller.sellerId && request.seller_professional_id===null);
   if(!owns)throw new SellerDecisionRejected('forbidden');
   const state=decision==='accept'?'ACCEPTED':'DECLINED';
-  if(request.status===state){
-    if(request.version!==expectedVersion+1)throw new SellerDecisionRejected('conflict');
-    return {id:requestId,state:decision==='accept'?'accepted':'declined',version:request.version,replayed:true};
-  }
+  // Replays are authorized only by the actor-scoped idempotency ledger.
+  // A fresh key must not turn an already-decided request into a success.
   if(request.status!=='PENDING'||request.version!==expectedVersion)
     throw new SellerDecisionRejected('conflict');
 
