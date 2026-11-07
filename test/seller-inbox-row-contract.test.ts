@@ -45,3 +45,24 @@ test('seller inbox rejects duplicate request IDs from database',async()=>{
  await assert.rejects(readSellerInbox(client([row,{...row,title:'duplicate'}]),account,filter),
    /invalid_seller_inbox_row/);
 });
+
+test('seller inbox requests one extra row and emits a cursor only when more exist',async()=>{
+ let sql='';let args:unknown[]=[];
+ const client={
+  query:async(statement:string,values:unknown[])=>{
+   sql=statement;args=values;
+   return {rows:[row,{...row,id:'55555555-5555-4555-8555-555555555555'}]};
+  },
+ } as unknown as Parameters<typeof readSellerInbox>[0];
+ const page=await readSellerInbox(client,account,{limit:1,state:'pending',before:null});
+ assert.equal(page.items.length,1);
+ assert.equal(typeof page.next_cursor,'string');
+ assert.equal(args[4],2);
+ assert.equal(args[1],'pending');
+ assert.match(sql,/ORDER BY req\.created_at DESC,req\.id DESC/);
+});
+test('seller inbox rejects a malformed scheduled timestamp',async()=>{
+ await assert.rejects(readSellerInbox(client([{
+  ...row,scheduled_start_at:new Date(NaN),
+ }]),account,filter),/invalid_seller_inbox_row/);
+});
