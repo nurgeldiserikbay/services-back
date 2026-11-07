@@ -12,6 +12,7 @@ export interface SearchFilters {
   areaId: string | null;
   countryId: string | null;
   deliveryMode: DeliveryMode;
+  cursor: string | null;
 }
 export interface SearchItem {
   kind: 'offer' | 'professional' | 'organization';
@@ -19,7 +20,7 @@ export interface SearchItem {
   title: string;
   is_sponsored: boolean;
 }
-export interface SearchResult { items: SearchItem[]; next_cursor: null }
+export interface SearchResult { items: SearchItem[]; next_cursor: string | null }
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const scopes: SearchScope[] = ['city','area','country','global'];
@@ -48,10 +49,20 @@ export function normalizeSearchFilters(input: Record<string, unknown>): SearchFi
   const cityId = idValue(input.city_id, 'city_id');
   const areaId = idValue(input.area_id, 'area_id');
   const countryId = idValue(input.country_id, 'country_id');
+  const cursor = stringValue(input.cursor, 'cursor') ?? null;
+  if (cursor !== null && (!/^[0-9]{1,5}$/.test(cursor) || Number(cursor) > 10000)) {
+    throw new BadRequestException('Invalid cursor');
+  }
+  if ((scope === 'city' && (areaId || countryId)) ||
+      (scope === 'area' && (cityId || countryId)) ||
+      (scope === 'country' && (cityId || areaId)) ||
+      (scope === 'global' && (cityId || areaId || countryId))) {
+    throw new BadRequestException('Unexpected location for selected scope');
+  }
   // A scoped search without a specific region cannot be silently expanded worldwide.
   if ((scope === 'city' && !cityId) || (scope === 'area' && !areaId) ||
       (scope === 'country' && !countryId)) {
     throw new BadRequestException('Selected search scope requires matching location ID');
   }
-  return {q,kind:kind as CatalogKind,scope:scope as SearchScope,deliveryMode:deliveryMode as DeliveryMode,cityId,areaId,countryId};
+  return {q,kind:kind as CatalogKind,scope:scope as SearchScope,deliveryMode:deliveryMode as DeliveryMode,cityId,areaId,countryId,cursor};
 }
