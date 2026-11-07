@@ -5,6 +5,8 @@ import {Client} from 'pg';
 import {ServiceUnavailableException} from '@nestjs/common';
 import {AccountOtpDispatchService}
   from '../src/modules/identity/account-otp-dispatch.service.js';
+import {AccountOtpTemplateDeliveryAdapter}
+  from '../src/modules/identity/account-otp-template-delivery.adapter.js';
 
 const keys=[
   'ACCOUNT_NETWORK_ATTESTATION_KEY',
@@ -195,5 +197,66 @@ test('timed-out OTP provider leaves committed challenge consumed and delivery un
      await client.query('ROLLBACK').catch(()=>{});
      await client.end();
    }
+ });
+});
+
+test('template adapter acceptance confirms only provider-accepted account OTP proof',async()=>{
+ await withSecrets(async key=>{
+   const {client,db}=await dbReady();
+   try{
+     let calls=0;
+     let deliveredCode='';
+     const provider=new AccountOtpTemplateDeliveryAdapter(async(message,nonce)=>{
+       calls++;
+       assert.equal(message.destination,'account-dispatch@example.com');
+       assert.equal(message.channel,'EMAIL');
+       assert.match(message.text,/5 минут/);
+       assert.match(nonce,/^[A-Za-z0-9_-]{43}$/);
+       const matches=message.text.match(/\d{6}/g)??[];
+       assert.equal(matches.length,1);
+       deliveredCode=matches[0];
+       return {accepted:true,providerRef:'accepted_12345678'};
+     },randomBytes(32));
+     const service=new AccountOtpDispatchService(db as never,provider,100);
+     const result=await service.dispatch(request(signed(key,digest())));
+     assert.equal(calls,1);
+     assert.deepEqual(Object.keys(result).sort(),['challengeId','expiresInSeconds']);
+     assert.equal(result.expiresInSeconds,300);
+     assert.equal(JSON.stringify(result).includes(deliveredCode),false);
+     assert.equal(JSON.stringify(result).includes('account-dispatch@example.com'),false);
+     const row=await client.query<{
+       consumed_at:Date|null;delivery_confirmed_at:Date|null;
+     }>('SELECT consumed_at,delivery_confirmed_at FROM account_auth_challenges WHERE id=$1',
+       [result.challengeId]);
+     assert.equal(row.rows[0].consumed_at,null);
+     assert.ok(row.rows[0].delivery_confirmed_at);
+   }finally{await client.query('ROLLBACK').catch(()=>{});await client.end();}
+ });
+});
+
+test('template adapter malformed provider receipt consumes challenge and retains quota',async()=>{
+ await withSecrets(async key=>{
+   const {client,db}=await dbReady();
+   try{
+     let attempts=0;
+     const provider=new AccountOtpTemplateDeliveryAdapter(async()=>{
+       attempts++;
+       return {accepted:true,providerRef:'receipt_12345678',untrusted:'secret'};
+     },randomBytes(32));
+     const network=digest();
+     const service=new AccountOtpDispatchService(db as never,provider,100);
+     await assert.rejects(service.dispatch(request(signed(key,network))),
+       ServiceUnavailableException);
+     assert.equal(attempts,1);
+     const row=await client.query<{
+       consumed_at:Date|null;delivery_confirmed_at:Date|null;
+     }>('SELECT consumed_at,delivery_confirmed_at FROM account_auth_challenges ORDER BY created_at DESC LIMIT 1');
+     assert.ok(row.rows[0].consumed_at);
+     assert.equal(row.rows[0].delivery_confirmed_at,null);
+     const quota=await client.query<{count:string}>(`
+       SELECT count(*)::text AS count FROM account_otp_network_issuances
+       WHERE network_digest=$1`,[network]);
+     assert.equal(quota.rows[0].count,'1');
+   }finally{await client.query('ROLLBACK').catch(()=>{});await client.end();}
  });
 });
