@@ -69,6 +69,9 @@ test('seller inbox fails closed on unknown database status or invalid version',a
     {...row,status:'UNRECOGNIZED'},
     {...row,version:0},
     {...row,version:1.5},
+    {...row,status:null},
+    {...row,created_at:new Date('invalid')},
+    {...row,scheduled_start_at:new Date('invalid')},
   ]){
     const client={query:async()=>({rows:[bad]})} as unknown as Pick<PoolClient,'query'>;
     await assert.rejects(readSellerInbox(client,userId,parseSellerInboxFilter({})),
