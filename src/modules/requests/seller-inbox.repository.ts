@@ -66,8 +66,11 @@ export async function readSellerInbox(
   const rows=result.rows.slice(0,filter.limit);
   const allowedStates:readonly string[]=SELLER_REQUEST_STATES;
   const items:SellerInboxItem[]=rows.map(row=>{
-    const state=row.status.toLowerCase();
-    if(!allowedStates.includes(state)||!Number.isSafeInteger(row.version)||row.version<1)
+    const state=typeof row.status==='string'?row.status.toLowerCase():'';
+    if(!allowedStates.includes(state)||!Number.isSafeInteger(row.version)||row.version<1||
+       !(row.created_at instanceof Date)||!Number.isFinite(row.created_at.getTime())||
+       (row.scheduled_start_at!==null&&
+        (!(row.scheduled_start_at instanceof Date)||!Number.isFinite(row.scheduled_start_at.getTime()))))
       throw new Error('invalid_seller_inbox_row');
     return {
     id:row.id,
