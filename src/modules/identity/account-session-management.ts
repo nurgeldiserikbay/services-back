@@ -1,5 +1,6 @@
 import type {PoolClient} from 'pg';
 import {resolveActiveUserSession} from './session-proof.js';
+import {resolveAndTouchActiveUserSession} from './account-session-activity.js';
 
 type SessionDb=Pick<PoolClient,'query'>;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -21,7 +22,7 @@ export type AccountSessionSummary=Readonly<{
 export async function listMyAccountSessions(
   db:SessionDb,opaqueToken:unknown,pepper:Buffer,
 ):Promise<AccountSessionSummary[]|null>{
-  const actor=await resolveActiveUserSession(db,opaqueToken,pepper);
+  const actor=await resolveAndTouchActiveUserSession(db,opaqueToken,pepper);
   if(!actor)return null;
   const result=await db.query<{
     id:string;device_label:string|null;last_used_at:Date|null;expires_at:Date;
