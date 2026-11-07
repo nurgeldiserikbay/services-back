@@ -43,6 +43,7 @@ export async function readSellerInbox(
           JOIN users usr ON usr.id=owner_person.user_id
           WHERE prof.id=req.seller_professional_id
             AND usr.id=$1::uuid AND usr.status='ACTIVE'
+            AND prof.status='PUBLISHED'
         ))
         OR
         (req.seller_organization_id IS NOT NULL AND EXISTS (
