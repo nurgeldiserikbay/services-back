@@ -41,3 +41,12 @@ test('catalog search returns next cursor only when more than 50 results exist', 
   assert.equal(result.items.length, 50);
   assert.equal(result.next_cursor, '100');
 });
+
+
+test('catalog never emits cursor outside supported range', async () => {
+  const rows = Array.from({length: 51}, (_, i) => ({kind:'offer', id:String(i), title:String(i), is_sponsored:false}));
+  const db = {query: async () => ({rows})} as unknown as DatabasePool;
+  const result = await new CatalogRepository(db).search(normalizeSearchFilters({cursor:'10000'}));
+  assert.equal(result.items.length, 50);
+  assert.equal(result.next_cursor, null);
+});
