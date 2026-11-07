@@ -29,3 +29,21 @@ test('guest request body only accepts allowlisted fields',()=>{
     service_offer_id:offerId,note:'  hello  ',consent_to_contact:true,
   }),{serviceOfferId:offerId,note:'hello',consentToContact:true});
 });
+
+test('guest request rejects absent consent and invalid offer identity',()=>{
+  for(const body of [
+    {service_offer_id:offerId,note:'hello',consent_to_contact:false},
+    {service_offer_id:'invalid',note:'hello',consent_to_contact:true},
+    {service_offer_id:offerId,note:'hello'},
+  ]){
+    assert.throws(()=>validateGuestRequestBody(body),BadRequestException);
+  }
+});
+
+test('guest request rejects oversized and control-character notes',()=>{
+  for(const note of ['a'.repeat(1001),'hello\\u0000world']){
+    assert.throws(()=>validateGuestRequestBody({
+      service_offer_id:offerId,note,consent_to_contact:true,
+    }),BadRequestException);
+  }
+});
