@@ -2,9 +2,11 @@ import {Injectable,UnauthorizedException} from '@nestjs/common';
 import {DatabasePool} from '../../platform/database/database.pool.js';
 import {requireSecret} from '../guest-requests/guest-request.security.js';
 import {
-  listMyAccountSessions,type AccountSessionSummary,
+  listMyAccountSessions,revokeMyAccountSessionById,
+  type AccountSessionSummary,
 } from './account-session-management.js';
 import {revokeCurrentAccountSession} from './session-revocation.js';
+import {resolveActiveUserSession} from './session-proof.js';
 
 /**
  * Bearer-only transport integration. This is not a login issuer.
@@ -25,6 +27,19 @@ export class AccountBearerSessionService{
       const items=await listMyAccountSessions(client,token,pepper);
       if(items===null)throw new UnauthorizedException('Authentication required');
       return {items};
+    });
+  }
+
+  /** Authenticated remote-session revocation. Unknown/foreign targets are
+   * indistinguishable; only a valid current bearer can invoke it. */
+  async revokeSession(token:string,targetId:string):Promise<void>{
+    const pepper=this.getPepper();
+    await this.db.transaction(async client=>{
+      const actor=await resolveActiveUserSession(client,token,pepper);
+      if(!actor)throw new UnauthorizedException('Authentication required');
+      // Ownership and active session state are enforced again in SQL.
+      // Do not leak whether a foreign or unknown UUID exists.
+      await revokeMyAccountSessionById(client,token,pepper,targetId);
     });
   }
 
