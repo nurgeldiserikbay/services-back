@@ -212,7 +212,7 @@ test('template adapter acceptance confirms only provider-accepted account OTP pr
        assert.equal(message.channel,'EMAIL');
        assert.match(message.text,/5 минут/);
        assert.match(nonce,/^[A-Za-z0-9_-]{43}$/);
-       const matches=message.text.match(/\\d{6}/g)??[];
+       const matches=message.text.match(/\d{6}/g)??[];
        assert.equal(matches.length,1);
        deliveredCode=matches[0];
        return {accepted:true,providerRef:'accepted_12345678'};
