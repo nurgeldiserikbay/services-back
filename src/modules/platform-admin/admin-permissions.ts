@@ -25,6 +25,16 @@ const PERMISSIONS:Readonly<Record<PlatformRole,readonly AdminPermission[]>>={
 };
 const VALID_KEYS=['userId','role','mfaVerified','sessionExpiresAt','disabled'];
 
+function validUtcCalendarTime(value:string):boolean{
+ const date=new Date(value);
+ return date.getUTCFullYear()===Number(value.slice(0,4))&&
+  date.getUTCMonth()+1===Number(value.slice(5,7))&&
+  date.getUTCDate()===Number(value.slice(8,10))&&
+  date.getUTCHours()===Number(value.slice(11,13))&&
+  date.getUTCMinutes()===Number(value.slice(14,16))&&
+  date.getUTCSeconds()===Number(value.slice(17,19));
+}
+
 export function isActivePlatformPrincipal(value:unknown,now=Date.now()):value is PlatformPrincipal{
  if(!Number.isSafeInteger(now)||!value||typeof value!=='object'||Array.isArray(value))
   return false;
@@ -37,6 +47,7 @@ export function isActivePlatformPrincipal(value:unknown,now=Date.now()):value is
   typeof p.sessionExpiresAt==='string'&&
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(p.sessionExpiresAt)&&
   Number.isFinite(Date.parse(p.sessionExpiresAt))&&
+  validUtcCalendarTime(p.sessionExpiresAt)&&
   Date.parse(p.sessionExpiresAt)>now;
 }
 
