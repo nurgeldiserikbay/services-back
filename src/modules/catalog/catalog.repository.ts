@@ -49,14 +49,16 @@ export class CatalogRepository {
       WHERE ($2::text = 'all' OR kind = $2::text)
         AND ($1::text = '' OR position(lower($1::text) in lower(title)) > 0)
       ORDER BY title, kind, id
-      LIMIT 50
+      LIMIT 51 OFFSET $8::integer
     `;
     try {
       const res = await this.db.query<SearchItem>(query, [
         filter.q, filter.kind, filter.deliveryMode, filter.scope,
-        filter.cityId, filter.areaId, filter.countryId,
+        filter.cityId, filter.areaId, filter.countryId, Number(filter.cursor ?? '0'),
       ]);
-      return {items: res.rows, next_cursor:null};
+      const offset = Number(filter.cursor ?? '0');
+      const hasMore = res.rows.length > 50;
+      return {items: res.rows.slice(0, 50), next_cursor: hasMore ? String(offset + 50) : null};
     } catch (error) {
       // The shared DB service already sanitizes errors; preserve the generic 503.
       throw error;
