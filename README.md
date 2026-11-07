@@ -6,7 +6,7 @@ NestJS and TypeScript backend for the global Services platform. Canonical produc
 
 The earlier scaffold-only status below is historical and **must not** be used as the current feature inventory. Current `src/modules/app.module.ts` imports CatalogModule, GeographyModule, PublicOfferModule, SellerInboxModule, SellerDecisionHttpModule, GuestVerificationModule and AccountBearerSessionModule, in addition to DatabaseModule and health. The catalog controller exposes `GET /v1/search`; public profile routes include `GET /v1/professionals/:slug` and `GET /v1/organizations/:id`.
 
-**Known limitation:** catalog search currently returns up to 50 items and `next_cursor: null`; real cursor pagination is not implemented. A module's presence does not establish that its complete business journey, database migrations, end-to-end tests or production deployment is verified.
+**Current pagination:** catalog search accepts a bounded decimal `cursor` offset and returns up to 50 items plus `next_cursor` when another page exists. This is offset pagination (not stable keyset pagination under concurrent catalog changes); it is limited to 10,000 skipped rows. Future work: keyset cursor and integration verification. A module's presence does not establish that its complete business journey, database migrations, end-to-end tests or production deployment is verified.
 
 Regression tests: `test/search-contract-regression.test.ts` and `test/catalog-repository-regression.test.ts` (added, execution/CI status not yet confirmed). Run `npm run typecheck && npm run build && npm test` before treating these as passing.
 
