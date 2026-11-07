@@ -10,11 +10,11 @@ type LedgerRow={
   request_hash:string;state:string;response_body:unknown;expires_at:Date;
 };
 
-function validateStoredReply(value:unknown):DecisionResult {
+function validateStoredReply(value:unknown,requestId:string,decision:SellerDecision):DecisionResult {
   if(!value||typeof value!=='object'||Array.isArray(value))
     throw new SellerDecisionRejected('conflict');
   const o=value as Record<string,unknown>;
-  if(typeof o.id!=='string'||(o.state!=='accepted'&&o.state!=='declined')||
+  if(o.id!==requestId||o.state!==(decision==='accept'?'accepted':'declined')||
      typeof o.version!=='number'||!Number.isSafeInteger(o.version)||
      o.version<1||o.replayed!==false)
     throw new SellerDecisionRejected('conflict');
@@ -68,7 +68,7 @@ export async function decideWithIdempotentSession(
     if(previous.request_hash!==requestHash||previous.state!=='COMPLETED'||
        previous.expires_at.getTime()<=Date.now())
       throw new SellerDecisionRejected('conflict');
-    return validateStoredReply(previous.response_body);
+    return validateStoredReply(previous.response_body,requestId,decision);
   }
 
   const result=await decideSellerRequest(
