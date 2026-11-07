@@ -60,6 +60,21 @@ export async function decideSellerRequest(
   if(request.status!=='PENDING'||request.version!==expectedVersion)
     throw new SellerDecisionRejected('conflict');
 
+  // Validate notification eligibility before mutating the request. The caller
+  // still owns the transaction and must roll back if any later write fails.
+  let verifiedGuestChannel:'email'|'sms'|null=null;
+  if(!request.customer_person_id){
+    if(!request.guest_contact_id)throw new SellerDecisionRejected('conflict');
+    const contact=await client.query<GuestContactRow>(`
+      SELECT channel FROM guest_contacts
+      WHERE id=$1::uuid AND verified_at IS NOT NULL AND expires_at>now()
+    `,[request.guest_contact_id]);
+    const channel=contact.rows[0]?.channel;
+    if(channel!=='email'&&channel!=='sms')
+      throw new SellerDecisionRejected('conflict');
+    verifiedGuestChannel=channel;
+  }
+
   const transitioned=await client.query<{version:number}>(`
     UPDATE service_requests
     SET status=$2::"RequestStatus",version=version+1,
@@ -92,19 +107,11 @@ export async function decideSellerRequest(
     `,[randomUUID(),eventId,request.customer_person_id,
       'request-'+decision+':client:'+requestId]);
   } else if(request.guest_contact_id) {
-    const contact=await client.query<GuestContactRow>(`
-      SELECT channel FROM guest_contacts
-      WHERE id=$1::uuid AND verified_at IS NOT NULL AND expires_at>now()
-    `,[request.guest_contact_id]);
-    // Never silently accept an action without being able to notify a guest.
-    const channel=contact.rows[0]?.channel;
-    if(channel!=='email'&&channel!=='sms')
-      throw new SellerDecisionRejected('conflict');
     await client.query(`
       INSERT INTO notification_intents
         (id,domain_event_id,guest_contact_id,audience,channel,dedupe_key)
       VALUES($1::uuid,$2::uuid,$3::uuid,'CLIENT',$4,$5)
-    `,[randomUUID(),eventId,request.guest_contact_id,channel.toUpperCase(),
+    `,[randomUUID(),eventId,request.guest_contact_id,verifiedGuestChannel!.toUpperCase(),
       'request-'+decision+':guest:'+requestId]);
   }else{
     throw new SellerDecisionRejected('conflict');
