@@ -20,6 +20,7 @@ test('seller inbox queries only authenticated ownership and bounded rows',async(
   assert.equal(args[1],'pending');
   assert.equal(args[4],21);
   assert.match(sql,/usr\.id=\$1::uuid/);
+  assert.match(sql,/\(req\.seller_professional_id IS NULL\) <> \(req\.seller_organization_id IS NULL\)/);
   assert.match(sql,/member\.role IN \('OWNER','ADMIN'\)/);
   assert.match(sql,/member\.revoked_at IS NULL/);
   assert.match(sql,/ORDER BY req\.created_at DESC,req\.id DESC/);
