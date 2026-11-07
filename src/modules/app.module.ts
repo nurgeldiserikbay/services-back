@@ -9,6 +9,7 @@ import { SellerInboxModule } from './requests/seller-inbox.module.js';
 import { GuestVerificationModule } from './guest-requests/guest-verification.module.js';
 import { AccountBearerSessionModule } from './identity/account-bearer-session.module.js';
 import { PersonInboxModule } from './notifications/person-inbox.module.js';
+import { AccountLoginPrivateModule } from './identity/account-login-private.module.js';
 
-@Module({ imports: [DatabaseModule, CatalogModule, GeographyModule, PublicOfferModule, SellerInboxModule, SellerDecisionHttpModule, GuestVerificationModule, AccountBearerSessionModule, PersonInboxModule], controllers: [HealthController] })
+@Module({ imports: [DatabaseModule, CatalogModule, GeographyModule, PublicOfferModule, SellerInboxModule, SellerDecisionHttpModule, GuestVerificationModule, AccountBearerSessionModule, PersonInboxModule, AccountLoginPrivateModule], controllers: [HealthController] })
 export class AppModule {}
