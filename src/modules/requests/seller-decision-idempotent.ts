@@ -10,7 +10,7 @@ type LedgerRow={
   request_hash:string;state:string;response_body:unknown;expires_at:Date;
 };
 
-function validateStoredReply(value:unknown,requestId:string,decision:SellerDecision,expectedVersion:number):DecisionResult {
+export function validateStoredReply(value:unknown,requestId:string,decision:SellerDecision,expectedVersion:number):DecisionResult {
   if(!value||typeof value!=='object'||Array.isArray(value))
     throw new SellerDecisionRejected('conflict');
   const o=value as Record<string,unknown>;
