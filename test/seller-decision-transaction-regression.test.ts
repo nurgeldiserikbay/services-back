@@ -84,6 +84,8 @@ test('guest decision requires verified, unexpired notification contact',async()=
     (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='conflict');
   assert.ok(statements.some(sql=>sql.includes('verified_at IS NOT NULL AND expires_at>now()')));
   assert.ok(!statements.some(sql=>sql.includes('INSERT INTO notification_intents')));
+  assert.ok(!statements.some(sql=>sql.includes('UPDATE service_requests')));
+  assert.ok(!statements.some(sql=>sql.includes('INSERT INTO domain_outbox_events')));
   // Caller must roll back the enclosing transaction on this rejection.
 });
 
@@ -103,4 +105,22 @@ test('verified guest receives a channel-specific notification intent',async()=>{
   const intent=statements.find(x=>x.sql.includes('INSERT INTO notification_intents'));
   assert.ok(intent);
   assert.equal(intent.params[3],'SMS');
+});
+
+test('guest verification precedes mutation and outbox writes',async()=>{
+  const statements:string[]=[];
+  const guest={...pending,customer_person_id:null,
+    guest_contact_id:'66666666-6666-4666-8666-666666666666'};
+  const client={query:async(sql:string)=>{
+    statements.push(sql);
+    if(sql.includes('FROM service_requests WHERE'))return {rows:[guest]};
+    if(sql.includes('FROM guest_contacts'))return {rows:[{channel:'email'}]};
+    if(sql.includes('UPDATE service_requests'))return {rows:[{version:2}]};
+    return {rows:[]};
+  }} as unknown as Pick<PoolClient,'query'>;
+  const result=await decideSellerRequest(client,requestId,owner,'accept',1);
+  assert.equal(result.state,'accepted');
+  const verified=statements.findIndex(sql=>sql.includes('FROM guest_contacts'));
+  const updated=statements.findIndex(sql=>sql.includes('UPDATE service_requests'));
+  assert.ok(verified>=0&&updated>verified);
 });
