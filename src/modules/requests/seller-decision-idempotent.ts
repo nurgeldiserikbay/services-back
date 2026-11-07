@@ -18,7 +18,7 @@ export function validateStoredReply(value:unknown,requestId:string,decision:Sell
      typeof o.version!=='number'||!Number.isSafeInteger(o.version)||
      o.version!==expectedVersion+1||o.replayed!==false)
     throw new SellerDecisionRejected('conflict');
-  return {id:o.id,state:o.state,version:o.version,replayed:true};
+  return {id:o.id,state:o.state as DecisionResult['state'],version:o.version,replayed:true};
 }
 
 /**
