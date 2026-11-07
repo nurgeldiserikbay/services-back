@@ -1,0 +1,150 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createHmac,randomBytes} from 'node:crypto';
+import {Client} from 'pg';
+import {ServiceUnavailableException} from '@nestjs/common';
+import {AccountOtpDispatchService}
+  from '../src/modules/identity/account-otp-dispatch.service.js';
+
+const keys=[
+  'ACCOUNT_NETWORK_ATTESTATION_KEY',
+  'ACCOUNT_OTP_HMAC_KEY',
+  'ACCOUNT_CONTACT_HMAC_KEY',
+  'ACCOUNT_CONTACT_ENCRYPTION_KEY',
+] as const;
+type Keys=Record<(typeof keys)[number],string>;
+function freshKeys():Keys{
+  return Object.fromEntries(keys.map(k=>[k,randomBytes(32).toString('base64')])) as Keys;
+}
+async function withSecrets<T>(work:(key:Buffer)=>Promise<T>):Promise<T>{
+  const old=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
+  const current=freshKeys();
+  for(const k of keys)process.env[k]=current[k];
+  try{return await work(Buffer.from(current.ACCOUNT_NETWORK_ATTESTATION_KEY,'base64'));}
+  finally{
+    for(const k of keys){
+      const before=old[k];
+      if(before===undefined)delete process.env[k];
+      else process.env[k]=before;
+    }
+  }
+}
+function signed(key:Buffer,digest:string){
+ const stamp=String(Date.now());
+ const signature=createHmac('sha256',key)
+   .update('services-otp-network:v1\n').update(digest)
+   .update('\n').update(stamp).digest('hex');
+ return 'v1.'+digest+'.'+stamp+'.'+signature;
+}
+const digest=()=>randomBytes(32).toString('hex');
+const request=(proof:unknown)=>({
+  channel:'EMAIL' as const,purpose:'SIGN_IN' as const,
+  contact:'account-dispatch@example.com',locale:'kk' as const,
+  networkProof:proof,
+});
+async function dbReady(){
+  const client=new Client({connectionString:process.env.DATABASE_URL});
+  await client.connect();await client.query('BEGIN');
+  const db={
+    transaction:async <T>(run:(client:Client)=>Promise<T>)=>run(client),
+    query:<T extends import('pg').QueryResultRow>(sql:string,params:unknown[])=>
+      client.query<T>(sql,params),
+  };
+  return {client,db};
+}
+
+test('account dispatch requires signed trusted network and never calls DB for forged proof',async()=>{
+ await withSecrets(async key=>{
+   let hits=0;
+   const db={
+     transaction:async()=>{hits++;throw new Error('not expected');},
+     query:async()=>{hits++;throw new Error('not expected');},
+   };
+   const service=new AccountOtpDispatchService(db as never,{
+     deliver:async()=>{throw new Error('not expected');},
+   });
+   for(const proof of [undefined,'x-forwarded-for: 127.0.0.1',
+      signed(randomBytes(32),digest())]){
+     await assert.rejects(service.dispatch(request(proof)),ServiceUnavailableException);
+   }
+   assert.equal(hits,0);
+   assert.equal(typeof signed(key,digest()),'string');
+ });
+});
+
+test('accepted account dispatch persists only encrypted challenge and digest budget',async()=>{
+ await withSecrets(async key=>{
+   const {client,db}=await dbReady();
+   try{
+     let sent=0;
+     const service=new AccountOtpDispatchService(db as never,{
+       deliver:async message=>{
+         sent++;
+         assert.match(message.code,/^[0-9]{6}$/);
+         assert.equal(message.destination,'account-dispatch@example.com');
+         assert.equal(message.locale,'kk');
+         return {accepted:true,providerRef:'provider_12345'};
+       },
+     });
+     const network=digest();
+     const result=await service.dispatch(request(signed(key,network)));
+     assert.equal(sent,1);
+     assert.deepEqual(Object.keys(result).sort(),['challengeId','expiresInSeconds']);
+     assert.equal(result.expiresInSeconds,300);
+     const row=await client.query<{consumed_at:Date|null;contact_cipher:string;code_hash:string}>(
+       'SELECT consumed_at,contact_cipher,code_hash FROM account_auth_challenges WHERE id=$1',
+       [result.challengeId]);
+     assert.equal(row.rows[0].consumed_at,null);
+     assert.equal(row.rows[0].contact_cipher.includes('account-dispatch@example.com'),false);
+     assert.equal(row.rows[0].code_hash.length,64);
+     const count=await client.query<{total:string}>(`
+       SELECT count(*)::text AS total FROM account_otp_network_issuances
+       WHERE network_digest=$1`,[network]);
+     assert.equal(count.rows[0].total,'1');
+   }finally{await client.query('ROLLBACK').catch(()=>{});await client.end();}
+ });
+});
+
+test('failed or rejected delivery revokes proof but retains send budget',async()=>{
+ await withSecrets(async key=>{
+   const {client,db}=await dbReady();
+   try{
+     const network=digest();
+     let deliveredId:string|undefined;
+     const service=new AccountOtpDispatchService(db as never,{
+       deliver:async message=>{
+         deliveredId=message.challengeId;
+         return {accepted:false,providerRef:null};
+       },
+     });
+     await assert.rejects(service.dispatch(request(signed(key,network))),
+       ServiceUnavailableException);
+     assert.ok(deliveredId);
+     const row=await client.query<{consumed_at:Date|null}>(`
+       SELECT consumed_at FROM account_auth_challenges WHERE id=$1
+     `,[deliveredId]);
+     assert.ok(row.rows[0].consumed_at);
+     const count=await client.query<{total:string}>(`
+       SELECT count(*)::text AS total FROM account_otp_network_issuances
+       WHERE network_digest=$1`,[network]);
+     assert.equal(count.rows[0].total,'1');
+   }finally{await client.query('ROLLBACK').catch(()=>{});await client.end();}
+ });
+});
+
+test('default-disabled provider fails closed and revokes committed challenge',async()=>{
+ await withSecrets(async key=>{
+   const {client,db}=await dbReady();
+   try{
+     const service=new AccountOtpDispatchService(db as never);
+     await assert.rejects(service.dispatch(request(signed(key,digest()))),
+       ServiceUnavailableException);
+     const record=await client.query<{consumed_at:Date|null}>(`
+       SELECT consumed_at FROM account_auth_challenges
+       WHERE contact_cipher LIKE 'v1.%'
+       ORDER BY created_at DESC LIMIT 1
+     `);
+     assert.ok(record.rows[0]?.consumed_at);
+   }finally{await client.query('ROLLBACK').catch(()=>{});await client.end();}
+ });
+});
