@@ -60,3 +60,18 @@ test('seller inbox rejects impossible dates and malformed cursor tuples',()=>{
     assert.throws(()=>parseSellerInboxFilter({cursor}));
   }
 });
+
+test('seller inbox fails closed on unknown database status or invalid version',async()=>{
+  const row={id:requestId,service_offer_id:offerId,title:'Service',
+    status:'PENDING',version:1,seller_kind:'professional',seller_id:sellerId,
+    created_at:new Date('2026-11-07T10:00:00.000Z'),scheduled_start_at:null};
+  for(const bad of [
+    {...row,status:'UNRECOGNIZED'},
+    {...row,version:0},
+    {...row,version:1.5},
+  ]){
+    const client={query:async()=>({rows:[bad]})} as unknown as Pick<PoolClient,'query'>;
+    await assert.rejects(readSellerInbox(client,userId,parseSellerInboxFilter({})),
+      /invalid_seller_inbox_row/);
+  }
+});
