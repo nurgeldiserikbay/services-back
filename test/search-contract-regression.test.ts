@@ -8,7 +8,7 @@ const city = '11111111-1111-4111-8111-111111111111';
 test('search defaults to global, all types, any delivery mode', () => {
   assert.deepEqual(normalizeSearchFilters({}), {
     q: '', kind: 'all', scope: 'global', cityId: null, areaId: null,
-    countryId: null, deliveryMode: 'any',
+    countryId: null, deliveryMode: 'any', cursor: null,
   });
 });
 
@@ -43,4 +43,12 @@ test('search rejects invalid and repeated query parameters', () => {
 
 test('search never silently widens invalid scoped location', () => {
   assert.throws(() => normalizeSearchFilters({ scope: 'country', city_id: city }), BadRequestException);
+});
+
+
+test('search validates pagination cursor', () => {
+  assert.equal(normalizeSearchFilters({cursor:'50'}).cursor, '50');
+  for (const cursor of ['-1', '10001', 'abc', '1.5', '000000', ['0']]) {
+    assert.throws(() => normalizeSearchFilters({cursor}), BadRequestException);
+  }
 });
