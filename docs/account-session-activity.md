@@ -1,0 +1,9 @@
+# Authenticated account-session activity — bounded tracking
+
+Three internal stages:
+
+1. `resolveAndTouchActiveUserSession` verifies the opaque session HMAC against a live session and an ACTIVE user. It conditionally sets `sessions.last_used_at` only when absent or older than 5 minutes, before falling back to the existing verification read. It does not trust a user ID, session ID, family ID, cookie or request body. It does not touch revoked/expired or suspended-user sessions. It does **not** extend `expires_at`.
+2. The authenticated `listMyAccountSessions` inventory uses this primitive to record recent activity of the current bearer; existing bearer-only `GET /v1/auth/sessions` and the gated web BFF can then show useful last-used metadata. A throttled UPDATE is attempted before the fallback read so concurrent callers avoid a SELECT FOR SHARE -> UPDATE lock upgrade. Other session lookups are unchanged, and no global logging of session activity is introduced.
+3. PostgreSQL tests cover one update then no writes within 5 minutes, refresh after a 6-minute interval, unchanged absolute expiry, rejection of revoked/expired/suspended sessions, no cross-user writes, and a safe inventory field.
+
+This is **not** idle-time expiration or continuous presence tracking. The timestamp represents last observed use of the session-inventory endpoint, not every API action or a precise activity audit. Avoid telling users it is exact per-request usage. Work with privacy owner on retention/data visibility for last-used timestamps. No OTP provider, login HTTP route, cookie issuance or mobile refresh rotation is enabled.
