@@ -36,3 +36,26 @@ session issuance do not exist.
 Run `npm run db:validate`, `npm run typecheck`,
 `npm run build`, `npm test` and staging migration/DB integration tests.
 Tests shipped in this PR do not prove these checks passed.
+
+## Staged moderation read API contract (currently default OFF)
+
+The additive `platform_moderation_cases` table is a redacted, scoped
+read projection for future moderation workflow. It stores only an ID,
+server-assigned resource scope, allowed subject kind/state and timestamp.
+The internal NestJS `GET /v1/admin/moderation/cases` is registered but
+refuses requests unless `SERVICES_ENABLE_PLATFORM_MODERATION_HTTP=enabled`.
+An invalid/missing dedicated admin bearer fails closed.
+
+When explicitly enabled for secure integration testing, the backend:
+- resolves the current dedicated administrator session and its authoritative
+  grants in a database transaction;
+- requires `moderation.read`, exact grant scope and fresh MFA for **each**
+  case; never accepts a resource scope from the browser;
+- returns only `{items:[{id,subjectKind,state,createdAt}]}`, with a
+  maximum of 50 recent cases, matching the unmounted Admin PR #10 transport;
+- never exposes case evidence, contact information or arbitrary metadata.
+
+**Do not enable in production yet.** Admin session enrollment/issuance,
+approved MFA, network ingress restrictions for the privileged BFF, audit
+logging, secure cookies, CSRF/origin, throttling and complete E2E testing
+are mandatory prerequisites. Deploy migration only after staging review.
