@@ -17,7 +17,7 @@ test('approved adapter passes only rendered message and opaque stable provider k
  const calls:{rendered:unknown;dedupe:string}[]=[];
  const sender=async(rendered:unknown,dedupe:string)=>{
   calls.push({rendered,dedupe});
-  return {accepted:true,providerRef:'receipt_12345678',debug:'secret'}; // never forwarded
+  return {accepted:true,providerRef:'receipt_12345678'};
  };
  const adapter=new AccountOtpTemplateDeliveryAdapter(sender,key);
  const a=await adapter.deliver(msg);
