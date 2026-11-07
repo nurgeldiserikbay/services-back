@@ -179,6 +179,7 @@ model AccountAuthChallenge {
   attempts        Int                @default(0)
   expiresAt       DateTime           @map("expires_at") @db.Timestamptz(3)
   consumedAt      DateTime?          @map("consumed_at") @db.Timestamptz(3)
+  deliveryConfirmedAt DateTime?      @map("delivery_confirmed_at") @db.Timestamptz(3)
   createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   @@index([contactDigest, createdAt])
   @@index([expiresAt])
