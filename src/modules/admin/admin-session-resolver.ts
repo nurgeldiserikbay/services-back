@@ -74,8 +74,8 @@ export async function resolvePlatformAdminSession(
    sawNullScope=true;
   }else{
    if(typeof row.scope!=='string'||!SCOPE.test(row.scope)||
-     seenScopes.has(row.scope))return null;
-   seenScopes.add(row.scope);
+     seenScopes.has(row.scope.toLowerCase()))return null;
+   seenScopes.add(row.scope.toLowerCase());
    scopes.push(row.scope);
   }
  }
