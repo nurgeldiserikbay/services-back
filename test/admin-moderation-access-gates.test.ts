@@ -32,7 +32,7 @@ test('invalid bearer fails before database access even with feature flag enabled
   process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY='A'.repeat(43);
   const fake=fakeDatabase();
   const service=new PlatformModerationReadService(fake.db);
-  for(const bearer of [undefined,null,'','Bearer ','bearer '+validToken,'Bearer '+validToken+'x','Bearer '+validToken+' ','Basic '+validToken]){
+  for(const bearer of [undefined,null,'','Bearer ','bearer '+validToken,'Bearer '+validToken.slice(0,-1)+'B','Bearer '+validToken+'x','Bearer '+validToken+' ','Basic '+validToken]){
    await assert.rejects(service.list(bearer),{status:401});
   }
   assert.equal(fake.transactions(),0);
