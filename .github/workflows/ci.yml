@@ -48,5 +48,23 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF (SELECT count(*) FROM countries WHERE iso2='KZ') <> 1 OR (SELECT count(*) FROM cities WHERE name IN ('Astana','Almaty','Shymkent')) <> 3 THEN RAISE EXCEPTION 'Geography seed is not idempotent'; END IF; END \$\$;"
           npm run db:smoke
+      - name: Verify migrated application tables before integration tests
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $
+          DECLARE missing text;
+          BEGIN
+            SELECT string_agg(name, ', ' ORDER BY name) INTO missing
+            FROM unnest(ARRAY[
+              'users', 'persons', 'organizations', 'professional_profiles',
+              'service_offers', 'service_requests', 'guest_contacts',
+              'organization_members', 'sessions'
+            ]) AS name
+            WHERE to_regclass('public.' || quote_ident(name)) IS NULL;
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'Missing application tables after Prisma migrate: %', missing;
+            END IF;
+          END $;
+          SQL
       - name: Unit and integration tests (after database migrations)
         run: npm test
