@@ -25,7 +25,8 @@ test('backend CI prepares PostgreSQL before running DB integration tests',()=>{
  assert.match(workflow,/^permissions:\n  contents: read$/m);
  assert.match(workflow,/^    timeout-minutes: 25$/m);
  assert.match(workflow,/DATABASE_URL: postgresql:\/\/services:services@127\.0\.0\.1:5432\/services_test/);
- assert.match(workflow,/to_regclass\('public\.' \|\| quote_ident\(name\)\)/);
+ assert.match(workflow,/AS required\(table_name\)/);
+ assert.match(workflow,/to_regclass\(format\('public\.%I', required\.table_name\)\)/);
  assert.match(workflow,/DO \$verify\$/);
  assert.match(workflow,/END \$verify\$;/);
  assert.doesNotMatch(workflow,/^\s*DO \$\s*$/m);
