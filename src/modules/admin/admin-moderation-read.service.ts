@@ -15,6 +15,27 @@ export type ModerationCaseSummary=Readonly<{
 }>;
 const KINDS=new Set(['professional','organization','review','affiliation']);
 const STATES=new Set(['triage','in_review','decision','appeal','closed']);
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Validate untrusted database rows before returning any moderation data. */
+export function validateModerationCaseRows(
+ rows:readonly CaseRow[],allowedScopes:ReadonlySet<string>,
+):ModerationCaseSummary[]{
+ if(rows.length>50)throw new UnauthorizedException('Authentication required');
+ const seen=new Set<string>();
+ const items:ModerationCaseSummary[]=[];
+ for(const row of rows){
+  if(typeof row.id!=='string'||!UUID.test(row.id)||seen.has(row.id.toLowerCase())||
+   !KINDS.has(row.subject_kind)||!STATES.has(row.state)||
+   !(row.created_at instanceof Date)||!Number.isFinite(row.created_at.getTime())||
+   !allowedScopes.has(row.resource_scope))
+   throw new UnauthorizedException('Authentication required');
+  seen.add(row.id.toLowerCase());
+  items.push({id:row.id,subjectKind:row.subject_kind as ModerationCaseSummary['subjectKind'],
+   state:row.state as ModerationCaseSummary['state'],createdAt:row.created_at.toISOString()});
+ }
+ return items;
+}
 
 /**
  * Read-only, redacted, server-filtered queue. No client-selected scopes.
@@ -44,24 +65,7 @@ export class PlatformModerationReadService{
      ORDER BY created_at DESC,id DESC
      LIMIT 50
    `,[scopes]);
-   const items:ModerationCaseSummary[]=[];
-   const seenIds=new Set<string>();
-   if(result.rows.length>50)throw new UnauthorizedException('Authentication required');
-   for(const row of result.rows){
-    if(typeof row.id!=='string'||!KINDS.has(row.subject_kind)||
-     !STATES.has(row.state)||!(row.created_at instanceof Date)||
-     !Number.isFinite(row.created_at.getTime())||
-     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id)||
-     seenIds.has(row.id.toLowerCase())||
-     !canPerformAdminOperation(principal,'moderation.read',row.resource_scope,now))
-     throw new UnauthorizedException('Authentication required');
-    seenIds.add(row.id.toLowerCase());
-    items.push({
-     id:row.id,subjectKind:row.subject_kind as ModerationCaseSummary['subjectKind'],
-     state:row.state as ModerationCaseSummary['state'],
-     createdAt:row.created_at.toISOString(),
-    });
-   }
+   const items=validateModerationCaseRows(result.rows,new Set(scopes));
    return {items};
   });
  }
