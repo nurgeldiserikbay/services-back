@@ -102,7 +102,15 @@ export async function cancelAcceptedEarlyByCustomer(
       throw new EarlyCancellationRejected('conflict');
     throw e;
   }
-  if(policy.isLate||policy.reliability!==null||
+  const pendingSchedule=await db.query<{initiator:string}>(`
+    SELECT initiator::text FROM schedule_proposals
+    WHERE request_id=$1::uuid AND status='PROPOSED'
+  `,[requestId.toLowerCase()]);
+  const customerMayExitSellerReschedule=
+    row.customer_penalty_suspended&&pendingSchedule.rows.length===1&&
+    pendingSchedule.rows[0].initiator==='SELLER';
+  if((pendingSchedule.rows.length>0&&!customerMayExitSellerReschedule)||
+    (policy.isLate&&!customerMayExitSellerReschedule)||policy.reliability!==null||
      policy.nextState!=='CANCELLED_BY_CUSTOMER'||
      policy.requiredAudiences.length!==2)
     throw new EarlyCancellationRejected('conflict');
@@ -121,13 +129,6 @@ export async function cancelAcceptedEarlyByCustomer(
 
   // A schedule currently being reconciled or with multiple conflicting
   // confirmations is not safe for automated release.
-  const invalidProposal=await db.query<{n:string}>(`
-    SELECT count(*)::text AS n FROM schedule_proposals
-    WHERE request_id=$1::uuid AND status='PROPOSED'
-  `,[requestId.toLowerCase()]);
-  if(Number(invalidProposal.rows[0]?.n??0)>0)
-    throw new EarlyCancellationRejected('conflict');
-
   const updated=await db.query<{version:number}>(`
     UPDATE service_requests
     SET status='CANCELLED_BY_CUSTOMER',version=version+1
@@ -135,6 +136,10 @@ export async function cancelAcceptedEarlyByCustomer(
     RETURNING version
   `,[requestId.toLowerCase(),expectedVersion]);
   if(!updated.rows[0])throw new EarlyCancellationRejected('conflict');
+  await db.query(`
+    UPDATE schedule_proposals SET status='CLOSED',resolved_at=now(),resolved_by='CUSTOMER'
+    WHERE request_id=$1::uuid AND status='PROPOSED'
+  `,[requestId.toLowerCase()]);
 
   // Releasing allocations and updating state happens in the SAME transaction.
   // Existing busy blocks for unrelated requests are never affected.

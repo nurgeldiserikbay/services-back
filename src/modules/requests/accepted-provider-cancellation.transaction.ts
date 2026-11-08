@@ -169,6 +169,10 @@ export async function cancelAcceptedByVerifiedProviderOwner(
     RETURNING version
   `,[id,expectedVersion]);
   if(!updated.rows[0])throw new AcceptedProviderCancellationRejected('conflict');
+  await db.query(`
+    UPDATE schedule_proposals SET status='CLOSED',resolved_at=now(),resolved_by='SELLER'
+    WHERE request_id=$1::uuid AND status='PROPOSED'
+  `,[id]);
   await db.query('DELETE FROM busy_blocks WHERE request_id=$1::uuid',[id]);
   const cancellationId=randomUUID(),eventId=randomUUID();
   await db.query(`
