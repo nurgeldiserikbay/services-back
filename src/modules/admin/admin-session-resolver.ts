@@ -9,6 +9,7 @@ import {
 const TOKEN=/^[A-Za-z0-9_-]{42}[AQgw]$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ROLES=new Set(['owner','admin','operator','auditor']);
+const SCOPE=/^[a-z][a-z0-9_-]{0,31}:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_GRANTS=100;
 
 type AdminRow={
@@ -67,7 +68,7 @@ export async function resolvePlatformAdminSession(
     row.expires_at.getTime()!==expiresAt||
     row.mfa_verified_at.getTime()!==mfaVerifiedAt)return null;
   if(row.scope!==null){
-   if(typeof row.scope!=='string'||row.scope.length===0||
+   if(typeof row.scope!=='string'||!SCOPE.test(row.scope)||
      seenScopes.has(row.scope))return null;
    seenScopes.add(row.scope);
    scopes.push(row.scope);
