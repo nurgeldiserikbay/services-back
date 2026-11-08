@@ -45,6 +45,16 @@ test('admin resolver fails closed for malformed joined grant rows',async()=>{
  }
 });
 
+test('admin resolver accepts a single null grant as an unscoped session',async()=>{
+ const result=await resolvePlatformAdminSession(client([{...valid(),scope:null}]),bearer,pepper,now);
+ assert.deepEqual(result?.resourceScopes,[]);
+});
+
+test('admin resolver rejects mixed null and non-null grants',async()=>{
+ assert.equal(await resolvePlatformAdminSession(client([valid(),{...valid(),scope:null}]),bearer,pepper,now),null);
+ assert.equal(await resolvePlatformAdminSession(client([{...valid(),scope:null},{...valid(),scope:null}]),bearer,pepper,now),null);
+});
+
 test('admin resolver rejects duplicate grants and inconsistent role or expiry',async()=>{
  for(const row of [
   valid(),
