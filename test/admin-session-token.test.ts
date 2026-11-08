@@ -63,3 +63,21 @@ test('issued admin tokens round-trip across every canonical final character',()=
  }
  assert.deepEqual([...suffixes].sort(),[...'AEIMQUYcgkosw048'].sort());
 });
+
+test('admin session proof fails closed on token tampering and hash formatting',()=>{
+ const pepper=Buffer.alloc(32,17);
+ const {token,tokenHash}=issueAdminSessionToken(pepper);
+ const alternatives='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+ for(const position of [0,10,21,41]){
+  const replacement=[...alternatives].find(char=>char!==token[position])!;
+  const tampered=token.slice(0,position)+replacement+token.slice(position+1);
+  assert.equal(adminSessionHashMatches(tampered,tokenHash,pepper),false);
+ }
+ for(const invalidHash of [
+  tokenHash.toUpperCase(),' '+tokenHash,tokenHash+' ',tokenHash.slice(1),
+  tokenHash+'0',null,undefined,
+ ]){
+  assert.equal(adminSessionHashMatches(token,invalidHash,pepper),false);
+ }
+ assert.equal(adminSessionHashMatches(token,tokenHash,pepper),true);
+});
