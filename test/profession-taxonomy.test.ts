@@ -45,5 +45,5 @@ test('public profession controller applies query validation before repository ac
   const controller = new TaxonomyController(repository);
   await controller.professions('  roofer  ');
   assert.deepEqual(seen, ['roofer']);
-  await assert.rejects(controller.professions(['roofer']), BadRequestException);
+  assert.throws(() => controller.professions(['roofer']), BadRequestException);
 });
