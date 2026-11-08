@@ -86,6 +86,26 @@ test('public catalog search composes profession and city filters and hides unpub
        suspendedOrganizationOfferId, suspendedOrganizationId, otherCityOfferId, almaty.id],
     );
 
+    const draftSellerUserId = randomUUID();
+    const draftSellerPersonId = randomUUID();
+    const draftProfessionalId = randomUUID();
+    const draftProfileOfferId = randomUUID();
+    await db.query('INSERT INTO users(id) VALUES($1)', [draftSellerUserId]);
+    await db.query('INSERT INTO persons(id,user_id) VALUES($1,$2)',
+      [draftSellerPersonId, draftSellerUserId]);
+    await db.query(
+      `INSERT INTO professional_profiles(id,person_id,profession_id,slug,status,title)
+       VALUES($1,$2,$3,$4,'DRAFT','Draft specialist')`,
+      [draftProfessionalId, draftSellerPersonId, professionId,
+       'catalog-draft-' + suffix],
+    );
+    await db.query(
+      `INSERT INTO service_offers(
+         id,definition_id,professional_id,city_id,title,status,delivery_mode,contacts
+       ) VALUES($1,$2,$3,$4,'Published offer for draft profile','PUBLISHED','online','{}'::jsonb)`,
+      [draftProfileOfferId, serviceId, draftProfessionalId, astana.id],
+    );
+
     const repo = new CatalogRepository(db as unknown as DatabasePool);
     const result = await repo.search(normalizeSearchFilters({
       scope: 'city',
