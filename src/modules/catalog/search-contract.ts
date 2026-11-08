@@ -18,6 +18,7 @@ export interface SearchItem {
   kind: 'offer' | 'professional' | 'organization';
   id: string;
   title: string;
+  slug: string | null;
   is_sponsored: boolean;
 }
 export interface SearchResult { items: SearchItem[]; next_cursor: string | null }
