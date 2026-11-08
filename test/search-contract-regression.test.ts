@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
-import { normalizeSearchFilters } from '../src/modules/catalog/search-contract.js';
+import { encodeSearchCursor, normalizeSearchFilters } from '../src/modules/catalog/search-contract.js';
 
 const city = '11111111-1111-4111-8111-111111111111';
 
@@ -46,9 +46,16 @@ test('search never silently widens invalid scoped location', () => {
 });
 
 
-test('search validates pagination cursor', () => {
-  assert.equal(normalizeSearchFilters({cursor:'50'}).cursor, '50');
-  for (const cursor of ['-1', '10001', 'abc', '1.5', '000000', ['0']]) {
+test('search validates and decodes opaque keyset cursors', () => {
+  const encoded = encodeSearchCursor({
+    title: 'Electrician', kind: 'professional',
+    id: '11111111-1111-4111-8111-111111111111',
+  });
+  assert.deepEqual(normalizeSearchFilters({cursor: encoded}).cursor, {
+    title: 'Electrician', kind: 'professional',
+    id: '11111111-1111-4111-8111-111111111111',
+  });
+  for (const cursor of ['50', '-1', 'abc', '1.5', 'e30=', 'eyJ4IjoxfQ', ['0']]) {
     assert.throws(() => normalizeSearchFilters({cursor}), BadRequestException);
   }
 });
