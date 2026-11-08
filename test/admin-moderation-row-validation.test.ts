@@ -22,8 +22,11 @@ test('rejects out-of-scope and malformed moderation rows',()=>{
   {...valid(),state:'unknown'},
   {...valid(),created_at:new Date(NaN)},
   {...valid(),created_at:'2026-11-08'},
+  null,
+  undefined,
  ];
- for(const row of bad)assert.throws(()=>validateModerationCaseRows([row],allowed));
+ for(const row of bad)assert.throws(()=>validateModerationCaseRows([row] as never,allowed),{status:401});
+ assert.throws(()=>validateModerationCaseRows(null as never,allowed),{status:401});
 });
 
 test('rejects duplicate IDs regardless of UUID letter casing',()=>{
