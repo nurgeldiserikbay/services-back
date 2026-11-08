@@ -25,3 +25,20 @@ test('native/server mutation validates strong If-Match and mandatory idempotency
   authorization:'Bearer '+token,requestId:id,version:'"1"',idempotencyKey:'short',
  }),BadRequestException);
 });
+
+test('seller decision rejects malformed request IDs before processing a mutation',()=>{
+ const token=issueSessionToken(randomBytes(32)).token;
+ for(const requestId of [undefined,null,'','not-a-uuid','00000000-0000-0000-0000-000000000000',
+  '00000000-0000-4000-0000-000000000000','00000000-0000-4000-8000-00000000000z']){
+  assert.throws(()=>validateSellerDecisionHttp({authorization:'Bearer '+token,
+   requestId,version:'"1"',idempotencyKey:'valid-idempotency-key-123'}),BadRequestException);
+ }
+});
+
+test('seller decision requires canonical quoted versions without leading zeros',()=>{
+ const token=issueSessionToken(randomBytes(32)).token;
+ for(const version of ['"01"','"0001"','"1.0"','"+1"','" 1"','"1 "','"21474836480"','"42949672960"']){
+  assert.throws(()=>validateSellerDecisionHttp({authorization:'Bearer '+token,
+   requestId:randomUUID(),version,idempotencyKey:'valid-idempotency-key-123'}),BadRequestException);
+ }
+});
