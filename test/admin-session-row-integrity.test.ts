@@ -54,3 +54,21 @@ test('admin resolver rejects duplicate grants and inconsistent role or expiry',a
   assert.equal(await resolvePlatformAdminSession(client([valid(),row]),bearer,pepper,now),null);
  }
 });
+
+test('admin resolver rejects expired sessions and invalid MFA dates',async()=>{
+ for(const row of [
+  {...valid(),expires_at:new Date(now)},
+  {...valid(),expires_at:new Date(NaN)},
+  {...valid(),mfa_verified_at:new Date(NaN)},
+ ]){
+  assert.equal(await resolvePlatformAdminSession(client([row]),bearer,pepper,now),null);
+ }
+});
+
+test('admin resolver refuses more than 100 grant rows',async()=>{
+ const rows=Array.from({length:101},(_,i)=>({
+  ...valid(),
+  scope:'platform:123e4567-e89b-42d3-a456-'+String(i).padStart(12,'0'),
+ }));
+ assert.equal(await resolvePlatformAdminSession(client(rows),bearer,pepper,now),null);
+});
