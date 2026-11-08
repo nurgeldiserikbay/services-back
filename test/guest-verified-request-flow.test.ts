@@ -62,3 +62,24 @@ test('verification infrastructure failure cannot create a request or expose a su
   /verification database unavailable/);
  assert.equal(creationCalls,0);
 });
+
+test('request creation waits for OTP verification and uses its scoped proof',async()=>{
+ let finishVerification!: (value:{guestCapability:string;expiresInSeconds:number})=>void;
+ let creationCalls=0;
+ const verifier={verifyCreateRequest:()=>new Promise(resolve=>{
+  finishVerification=resolve;
+ })} as unknown as GuestChallengeVerificationService;
+ const requests={createFromVerifiedContact:async(input:unknown,token:string,idem:unknown)=>{
+  creationCalls++;
+  assert.equal(input,body);
+  assert.equal(token,proof);
+  assert.equal(idem,key);
+  return created;
+ }} as unknown as GuestRequestService;
+ const flow=new GuestVerifiedRequestFlow(verifier,requests);
+ const pending=flow.verifyAndCreate('challenge-id','012345',body,key);
+ assert.equal(creationCalls,0);
+ finishVerification({guestCapability:proof,expiresInSeconds:900});
+ assert.deepEqual(await pending,created);
+ assert.equal(creationCalls,1);
+});
