@@ -24,4 +24,8 @@ test('backend CI prepares PostgreSQL before running DB integration tests',()=>{
  assert.equal(workflow.match(/run: npm test/g)?.length,1);
  assert.match(workflow,/DATABASE_URL: postgresql:\/\/services:services@127\.0\.0\.1:5432\/services_test/);
  assert.match(workflow,/to_regclass\('public\.' \|\| quote_ident\(name\)\)/);
+ assert.match(workflow,/DO \\$verify\\$/);
+ assert.match(workflow,/END \\$verify\\$;/);
+ assert.doesNotMatch(workflow,/^\\s*DO \\$\\s*$/m);
+ assert.match(workflow,/psql "\\$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'/);
 });
