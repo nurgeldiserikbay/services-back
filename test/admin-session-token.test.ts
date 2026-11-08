@@ -10,7 +10,7 @@ import {hashSessionToken,issueSessionToken}
 test('admin tokens have separate hash domain from regular account sessions',()=>{
  const pepper=randomBytes(32);
  const {token,tokenHash}=issueAdminSessionToken(pepper);
- assert.match(token,/^[A-Za-z0-9_-]{43}$/);
+ assert.match(token,/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/);
  assert.match(tokenHash,/^[a-f0-9]{64}$/);
  assert.notEqual(tokenHash,hashSessionToken(token,pepper));
  assert.equal(adminSessionHashMatches(token,tokenHash,pepper),true);
@@ -36,11 +36,15 @@ test('admin bearer rejects noncanonical base64url aliases',()=>{
  const {token,tokenHash}=issueAdminSessionToken(pepper);
  // Base64url encodes 32 bytes with two padding bits in its last digit.
  // Other last characters may decode to identical bytes in permissive decoders.
+ const canonicalSuffixes='AEIMQUYcgkosw048';
  for(const suffix of 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'){
-  if('AQgw'.includes(suffix))continue;
-  const alias=token.slice(0,-1)+suffix;
-  assert.throws(()=>hashAdminSessionToken(alias,pepper));
-  assert.equal(adminSessionHashMatches(alias,tokenHash,pepper),false);
+  const candidate=token.slice(0,-1)+suffix;
+  if(canonicalSuffixes.includes(suffix)){
+   assert.doesNotThrow(()=>hashAdminSessionToken(candidate,pepper));
+   continue;
+  }
+  assert.throws(()=>hashAdminSessionToken(candidate,pepper));
+  assert.equal(adminSessionHashMatches(candidate,tokenHash,pepper),false);
  }
  assert.equal(adminSessionHashMatches(token,tokenHash,pepper),true);
 });

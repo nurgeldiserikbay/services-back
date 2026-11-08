@@ -2,7 +2,7 @@ import {createHmac,randomBytes,timingSafeEqual} from 'node:crypto';
 
 // A 32-byte base64url token has only four valid final characters.
 // Reject noncanonical aliases before hashing or comparing session proofs.
-const TOKEN=/^[A-Za-z0-9_-]{42}[AQgw]$/;
+const TOKEN=/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 const HASH=/^[0-9a-f]{64}$/;
 const DOMAIN='services-platform-admin-session:v1\0';
 
