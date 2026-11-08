@@ -75,15 +75,17 @@ test('PostgreSQL catalog search exposes published sellers and hides unpublished 
       );
 
       assert.equal(result.next_cursor, null);
-      assert.deepEqual(
-        result.items.map(({ kind, title }) => [kind, title]).sort(([a], [b]) => a.localeCompare(b)),
-        [
-          ['offer', `${marker}-organization-visible`],
-          ['offer', `${marker}-professional-visible`],
-          ['organization', marker],
-          ['professional', marker],
-        ].sort(([a], [b]) => a.localeCompare(b)),
+      const actual: Array<[string, string]> = result.items.map(({ kind, title }) => [kind, title]);
+      const expected: Array<[string, string]> = [
+        ['offer', `${marker}-organization-visible`],
+        ['offer', `${marker}-professional-visible`],
+        ['organization', marker],
+        ['professional', marker],
+      ];
+      const sortItems = (items: Array<[string, string]>) => items.sort((a, b) =>
+        JSON.stringify(a).localeCompare(JSON.stringify(b)),
       );
+      assert.deepEqual(sortItems(actual), sortItems(expected));
       assert.ok(result.items.every((item) => !item.title.includes('hidden')));
       assert.ok(result.items.every((item) => item.kind !== 'professional' || item.slug === `${marker}-published`));
     });
