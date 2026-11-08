@@ -51,3 +51,20 @@ test('expired session, invalid MFA and malformed principal are denied',()=>{
  assert.equal(canPerformAdminOperation(null,'audit.read',scope,now),false);
  assert.equal(canPerformAdminOperation(p,'invalid' as AdminOperation,scope,now),false);
 });
+
+test('MFA authorization accepts exact freshness boundary and denies one millisecond later',()=>{
+ const p=principal('owner');
+ const atBoundary={...p,mfaVerifiedAt:now-15*60*1000};
+ assert.equal(canPerformAdminOperation(atBoundary,'audit.read',scope,now),true);
+ assert.equal(canPerformAdminOperation(atBoundary,'audit.read',scope,now+1),false);
+});
+
+test('admin permission denies malformed time and unknown operation without throwing',()=>{
+ const p=principal('owner');
+ for(const invalidTime of [NaN,Infinity,-Infinity,1.5,-1]){
+  assert.equal(canPerformAdminOperation(p,'audit.read',scope,invalidTime),false);
+ }
+ for(const operation of ['', '__proto__','constructor','toString','audit.write']){
+  assert.equal(canPerformAdminOperation(p,operation as AdminOperation,scope,now),false);
+ }
+});
