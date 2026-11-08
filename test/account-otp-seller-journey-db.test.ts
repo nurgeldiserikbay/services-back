@@ -170,6 +170,14 @@ test('unrelated OTP-authenticated account cannot view or decide another seller r
     const stillPending=await db.query<{status:string;version:number}>(`
       SELECT status,version FROM service_requests WHERE id=$1`,[fixture.requestId]);
     assert.deepEqual(stillPending.rows[0],{status:'PENDING',version:1});
+    const forbiddenEvents=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM domain_outbox_events
+      WHERE subject_id=$1 AND topic='service_request.accepted'`,[fixture.requestId]);
+    assert.equal(forbiddenEvents.rows[0].n,'0');
+    const forbiddenNotices=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM notification_intents
+      WHERE dedupe_key=$1`,['request-accept:guest:'+fixture.requestId]);
+    assert.equal(forbiddenNotices.rows[0].n,'0');
     const ownerInbox=await readSellerInbox(db,ownerId,
       parseSellerInboxFilter({state:'pending',limit:'20'}));
     assert.deepEqual(ownerInbox.items.map(item=>item.id),[fixture.requestId]);
