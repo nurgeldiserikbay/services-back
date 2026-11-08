@@ -105,6 +105,46 @@ test('public catalog search composes profession and city filters and hides unpub
     assert.doesNotMatch(JSON.stringify(result), new RegExp(privateContact));
     assert.equal(result.items.find((item) => item.kind === 'professional')?.slug,
       'catalog-visible-' + suffix);
+
+    const textResult = await repo.search(normalizeSearchFilters({
+      scope: 'city',
+      city_id: astana.id,
+      profession_id: professionId,
+      q: 'Visible Astana service',
+    }));
+    assert.deepEqual(textResult.items.map((item) => item.id), [visibleOfferId]);
+
+    const pageOfferIds = Array.from({ length: 52 }, () => randomUUID());
+    const pageOfferTitles = Array.from(
+      { length: pageOfferIds.length },
+      (_, index) => 'Paged service ' + String(index).padStart(2, '0'),
+    );
+    await db.query(
+      `INSERT INTO service_offers(
+         id,definition_id,professional_id,city_id,title,status,delivery_mode,contacts
+       )
+       SELECT page.id::uuid,$1::uuid,$2::uuid,$3::uuid,page.title,
+              'PUBLISHED','online','{}'::jsonb
+       FROM unnest($4::text[],$5::text[]) AS page(id,title)`,
+      [serviceId, professionalId, astana.id, pageOfferIds, pageOfferTitles],
+    );
+    const pageFilters = {
+      kind: 'offer',
+      scope: 'city',
+      city_id: astana.id,
+      profession_id: professionId,
+    };
+    const firstPage = await repo.search(normalizeSearchFilters(pageFilters));
+    assert.equal(firstPage.items.length, 50);
+    assert.ok(firstPage.next_cursor);
+    const secondPage = await repo.search(normalizeSearchFilters({
+      ...pageFilters,
+      cursor: firstPage.next_cursor,
+    }));
+    assert.equal(secondPage.items.length, 4);
+    assert.equal(secondPage.next_cursor, null);
+    const pageIds = [...firstPage.items, ...secondPage.items].map((item) => item.id);
+    assert.equal(new Set(pageIds).size, 54);
   } finally {
     await db.query('ROLLBACK').catch(() => {});
     await db.end();
