@@ -6,7 +6,7 @@ import {
  type VerifiedAdminPrincipal,
 } from './admin-authorization.policy.js';
 
-const TOKEN=/^[A-Za-z0-9_-]{43}$/;
+const TOKEN=/^[A-Za-z0-9_-]{42}[AQgw]$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ROLES=new Set(['owner','admin','operator','auditor']);
 const MAX_GRANTS=100;
