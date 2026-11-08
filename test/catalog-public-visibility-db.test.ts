@@ -74,7 +74,7 @@ test('public catalog search composes profession and city filters and hides unpub
       `INSERT INTO service_offers(
          id,definition_id,professional_id,organization_id,city_id,title,status,delivery_mode,contacts
        ) VALUES
-         ($1,$2,$3,NULL,$4,'Visible Astana service','PUBLISHED','online',jsonb_build_object('private',$10)),
+         ($1,$2,$3,NULL,$4,'Visible Astana service','PUBLISHED','online',jsonb_build_object('private',$10::text)),
          ($5,$6,$7,NULL,$4,'Paused seller service','PUBLISHED','online','{}'::jsonb),
          ($8,$2,$3,NULL,$4,'Draft service','DRAFT','online','{}'::jsonb),
          ($9,$2,NULL,$11,$4,'Organization Astana service','PUBLISHED','online','{}'::jsonb),
