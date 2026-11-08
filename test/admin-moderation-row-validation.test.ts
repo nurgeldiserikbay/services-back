@@ -37,3 +37,19 @@ test('enforces 50-row bound before any data is returned',()=>{
  const rows=Array.from({length:51},(_,i)=>({...valid(),id:`123e4567-e89b-42d3-a456-${String(i).padStart(12,'0')}`}));
  assert.throws(()=>validateModerationCaseRows(rows,allowed));
 });
+
+test('50 authorized moderation rows are returned in redacted shape without private fields',()=>{
+ const rows=Array.from({length:50},(_,i)=>({
+  ...valid(),
+  id:`123e4567-e89b-42d3-a456-${String(i).padStart(12,'0')}`,
+  internal_note:'private-reviewer-note',
+  contact_email:'sensitive@example.org',
+ }));
+ const output=validateModerationCaseRows(rows,allowed);
+ assert.equal(output.length,50);
+ for(const item of output){
+  assert.deepEqual(Object.keys(item).sort(),['createdAt','id','state','subjectKind']);
+  assert.equal(JSON.stringify(item).includes('sensitive@example.org'),false);
+  assert.equal(JSON.stringify(item).includes('private-reviewer-note'),false);
+ }
+});
