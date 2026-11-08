@@ -12,8 +12,9 @@ export interface SearchFilters {
   areaId: string | null;
   countryId: string | null;
   deliveryMode: DeliveryMode;
-  cursor: string | null;
+  cursor: SearchCursor | null;
 }
+export interface SearchCursor { title: string; kind: 'offer' | 'professional' | 'organization'; id: string }
 export interface SearchItem {
   kind: 'offer' | 'professional' | 'organization';
   id: string;
@@ -28,6 +29,25 @@ const scopes: SearchScope[] = ['city','area','country','global'];
 const kinds: CatalogKind[] = ['all','offer','professional','organization'];
 const modes: DeliveryMode[] = ['any','at_location','at_customer','online'];
 
+export function decodeSearchCursor(value: string): SearchCursor {
+  const invalid = () => { throw new BadRequestException('Invalid cursor'); };
+  if (value.length > 512 || !/^[A-Za-z0-9_-]+$/.test(value)) return invalid();
+  let decoded: string;
+  try {
+    const bytes = Buffer.from(value, 'base64url');
+    if (bytes.toString('base64url') !== value) return invalid();
+    decoded = bytes.toString('utf8');
+  } catch { return invalid(); }
+  let payload: unknown;
+  try { payload = JSON.parse(decoded); } catch { return invalid(); }
+  if (!Array.isArray(payload) || payload.length !== 3 || typeof payload[0] !== 'string' ||
+      typeof payload[1] !== 'string' || !['offer', 'professional', 'organization'].includes(payload[1]) ||
+      typeof payload[2] !== 'string' || !uuid.test(payload[2])) return invalid();
+  return { title: payload[0], kind: payload[1] as SearchCursor['kind'], id: payload[2].toLowerCase() };
+}
+export function encodeSearchCursor(item: Pick<SearchItem, 'title' | 'kind' | 'id'>): string {
+  return Buffer.from(JSON.stringify([item.title, item.kind, item.id])).toString('base64url');
+}
 function stringValue(value: unknown, name: string): string | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== 'string') throw new BadRequestException('Invalid ' + name);
@@ -50,10 +70,8 @@ export function normalizeSearchFilters(input: Record<string, unknown>): SearchFi
   const cityId = idValue(input.city_id, 'city_id');
   const areaId = idValue(input.area_id, 'area_id');
   const countryId = idValue(input.country_id, 'country_id');
-  const cursor = stringValue(input.cursor, 'cursor') ?? null;
-  if (cursor !== null && (!/^[0-9]{1,5}$/.test(cursor) || Number(cursor) > 10000)) {
-    throw new BadRequestException('Invalid cursor');
-  }
+  const cursorValue = stringValue(input.cursor, 'cursor');
+  const cursor = cursorValue === undefined ? null : decodeSearchCursor(cursorValue);
   if ((scope === 'city' && (areaId || countryId)) ||
       (scope === 'area' && (cityId || countryId)) ||
       (scope === 'country' && (cityId || areaId)) ||
