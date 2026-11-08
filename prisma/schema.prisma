@@ -446,6 +446,7 @@ model GuestContact {
 model GuestChallenge {
   id             String       @id @default(uuid()) @db.Uuid
   guestContactId String       @map("guest_contact_id") @db.Uuid
+  requestId      String?      @map("request_id") @db.Uuid
   codeHash       String       @map("code_hash")
   purpose        GuestChallengePurpose @default(CREATE_REQUEST)
   consumedAt     DateTime?    @map("consumed_at") @db.Timestamptz(3)
@@ -453,7 +454,9 @@ model GuestChallenge {
   attempts       Int          @default(0)
   expiresAt      DateTime     @map("expires_at") @db.Timestamptz(3)
   guestContact   GuestContact @relation(fields: [guestContactId], references: [id], onDelete: Restrict)
+  request        ServiceRequest? @relation(fields: [requestId], references: [id], onDelete: Restrict)
   @@index([guestContactId, expiresAt])
+  @@index([requestId, purpose, expiresAt])
   @@map("guest_challenges")
 }
 
@@ -486,6 +489,7 @@ model ServiceRequest {
   offerId             String                @map("offer_id") @db.Uuid
   customerPersonId    String?               @map("customer_person_id") @db.Uuid
   guestContactId      String?               @map("guest_contact_id") @db.Uuid
+  guestChallenges     GuestChallenge[]
   sourceContext       RequestSourceContext  @map("source_context")
   sellerProfessionalId String?              @map("seller_professional_id") @db.Uuid
   sellerOrganizationId String?              @map("seller_organization_id") @db.Uuid

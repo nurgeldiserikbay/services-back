@@ -9,9 +9,11 @@ import type {ScheduleProposalInput} from './schedule-proposal.contract.js';
 export class ScheduleProposalHttpService{
   constructor(private readonly db:DatabasePool){}
 
-  mutate(args:{token:string;requestId:string;action:ScheduleProposalAction;expectedVersion:number;
-    key:string;input?:ScheduleProposalInput;proposalId?:string}):Promise<ScheduleProposalCommandResult>{
+  mutate(args:{token?:string;requestId:string;action:ScheduleProposalAction;expectedVersion:number;
+    guestCapability?:string;key:string;input?:ScheduleProposalInput;proposalId?:string}):Promise<ScheduleProposalCommandResult>{
     const pepper=requireSecret(process.env.ACCOUNT_SESSION_HMAC_KEY);
-    return this.db.transaction(client=>mutateScheduleProposal(client,{...args,pepper}));
+    const guestPepper=args.guestCapability
+      ?requireSecret(process.env.GUEST_REQUEST_HMAC_KEY):undefined;
+    return this.db.transaction(client=>mutateScheduleProposal(client,{...args,pepper,guestPepper}));
   }
 }

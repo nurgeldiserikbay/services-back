@@ -7,9 +7,14 @@ import {validateScheduleProposalBody,type ScheduleProposalInput} from './schedul
 import {ScheduleProposalHttpService} from './schedule-proposal-http.service.js';
 import {ScheduleProposalRejected,type ScheduleProposalAction,type ScheduleProposalCommandResult}
   from './schedule-proposal.transaction.js';
+import {validateIdempotencyKey} from '../guest-requests/guest-request.validation.js';
+import {UnauthorizedException} from '@nestjs/common';
 
-/** Bearer-only account API. Guest schedule capabilities are intentionally not
- * accepted until their OTP issuance and verification routes are implemented. */
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CAPABILITY=/^[A-Za-z0-9_-]{43}$/;
+type ParsedMutation={token?:string;guestCapability?:string;requestId:string;expectedVersion:number;key:string};
+
+/** Schedule proposals accept account bearer sessions or request-scoped guest proofs. */
 @Controller('requests')
 export class ScheduleProposalHttpController{
   constructor(private readonly service:ScheduleProposalHttpService){}
@@ -19,10 +24,11 @@ export class ScheduleProposalHttpController{
   @Header('Cache-Control','no-store')
   propose(
     @Param('id') id:unknown,@Headers('authorization') authorization:unknown,
+    @Headers('guest-capability') guestCapability:unknown,
     @Headers('if-match') version:unknown,@Headers('idempotency-key') key:unknown,
     @Body() body:unknown,
   ):Promise<ScheduleProposalCommandResult>{
-    return this.run('propose',id,authorization,version,key,validateScheduleProposalBody(body));
+    return this.run('propose',id,authorization,guestCapability,version,key,validateScheduleProposalBody(body));
   }
 
   @Post(':id/schedule-proposals/:proposalId/decline')
@@ -31,9 +37,10 @@ export class ScheduleProposalHttpController{
   decline(
     @Param('id') id:unknown,@Param('proposalId') proposalId:unknown,
     @Headers('authorization') authorization:unknown,@Headers('if-match') version:unknown,
+    @Headers('guest-capability') guestCapability:unknown,
     @Headers('idempotency-key') key:unknown,
   ):Promise<ScheduleProposalCommandResult>{
-    const parsed=validateSellerDecisionHttp({authorization,requestId:id,version,idempotencyKey:key});
+    const parsed=validateMutation({authorization,guestCapability,requestId:id,version,idempotencyKey:key});
     if(typeof proposalId!=='string'||!/^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(proposalId)){
       throw new BadRequestException('Invalid schedule proposal ID');
     }
@@ -46,9 +53,10 @@ export class ScheduleProposalHttpController{
   confirm(
     @Param('id') id:unknown,@Param('proposalId') proposalId:unknown,
     @Headers('authorization') authorization:unknown,@Headers('if-match') version:unknown,
+    @Headers('guest-capability') guestCapability:unknown,
     @Headers('idempotency-key') key:unknown,
   ):Promise<ScheduleProposalCommandResult>{
-    const parsed=validateSellerDecisionHttp({authorization,requestId:id,version,idempotencyKey:key});
+    const parsed=validateMutation({authorization,guestCapability,requestId:id,version,idempotencyKey:key});
     if(typeof proposalId!=='string'||!/^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(proposalId)){
       throw new BadRequestException('Invalid schedule proposal ID');
     }
@@ -56,16 +64,16 @@ export class ScheduleProposalHttpController{
   }
 
   private async run(
-    action:ScheduleProposalAction,id:unknown,authorization:unknown,version:unknown,key:unknown,
+    action:ScheduleProposalAction,id:unknown,authorization:unknown,guestCapability:unknown,version:unknown,key:unknown,
     input:ScheduleProposalInput,
   ):Promise<ScheduleProposalCommandResult>{
-    const parsed=validateSellerDecisionHttp({authorization,requestId:id,version,idempotencyKey:key});
+    const parsed=validateMutation({authorization,guestCapability,requestId:id,version,idempotencyKey:key});
     return this.execute(action,parsed,input);
   }
 
   private async execute(
     action:ScheduleProposalAction,
-    parsed:ReturnType<typeof validateSellerDecisionHttp>,
+    parsed:ParsedMutation,
     input?:ScheduleProposalInput,proposalId?:string,
   ):Promise<ScheduleProposalCommandResult>{
     try{
@@ -79,4 +87,25 @@ export class ScheduleProposalHttpController{
       throw error;
     }
   }
+}
+
+function validateMutation(input:{authorization:unknown;guestCapability:unknown;
+  requestId:unknown;version:unknown;idempotencyKey:unknown}):ParsedMutation{
+  if(input.authorization!==undefined&&input.authorization!==null){
+    const account=validateSellerDecisionHttp(input);
+    if(input.guestCapability!==undefined&&input.guestCapability!==null)
+      throw new UnauthorizedException('Use one schedule credential');
+    return account;
+  }
+  if(typeof input.guestCapability!=='string'||!CAPABILITY.test(input.guestCapability))
+    throw new UnauthorizedException('Authentication required');
+  if(typeof input.requestId!=='string'||!UUID.test(input.requestId))
+    throw new BadRequestException('Invalid request ID');
+  if(typeof input.version!=='string'||!/^"[1-9][0-9]{0,9}"$/.test(input.version))
+    throw new BadRequestException('If-Match must be a quoted positive version');
+  const expectedVersion=Number(input.version.slice(1,-1));
+  if(!Number.isSafeInteger(expectedVersion)||expectedVersion<1)
+    throw new BadRequestException('Invalid If-Match');
+  return {guestCapability:input.guestCapability,requestId:input.requestId.toLowerCase(),
+    expectedVersion,key:validateIdempotencyKey(input.idempotencyKey)};
 }

@@ -4,6 +4,7 @@ import type {PoolClient} from 'pg';
 import {resolveActiveUserSession} from '../identity/session-proof.js';
 import {resolveSellerDecisionAuthority} from './seller-authority.js';
 import type {ScheduleProposalInput} from './schedule-proposal.contract.js';
+import {hashGuestCapability} from '../guest-requests/guest-request.security.js';
 
 export type ScheduleProposalCommandResult = {
   id:string;request_id:string;revision:number;status:'proposed'|'declined'|'confirmed';
@@ -28,14 +29,16 @@ export class ScheduleProposalRejected extends Error {
   constructor(readonly reason:'not_found'|'forbidden'|'conflict'){super(reason);}
 }
 
-/** Account-only proposal/decline transactions. Guest callers remain denied
- * until request-scoped MANAGE_SCHEDULE issuance and verification are live. */
+/** Account callers use session proofs; guests require a request-bound OTP proof. */
 export async function mutateScheduleProposal(
   client:Pick<PoolClient,'query'>,
-  args:{token:string;requestId:string;action:ScheduleProposalAction;expectedVersion:number;key:string;pepper:Buffer;input?:ScheduleProposalInput;proposalId?:string},
+  args:{token?:string;guestCapability?:string;requestId:string;action:ScheduleProposalAction;
+    expectedVersion:number;key:string;pepper:Buffer;guestPepper?:Buffer;
+    input?:ScheduleProposalInput;proposalId?:string},
 ):Promise<ScheduleProposalCommandResult>{
-  const session=await resolveActiveUserSession(client,args.token,args.pepper);
-  if(!session)throw new UnauthorizedException('Authentication required');
+  const session=args.token?await resolveActiveUserSession(client,args.token,args.pepper):null;
+  if(args.token&&!session)throw new UnauthorizedException('Authentication required');
+  if(!session&&!args.guestCapability)throw new UnauthorizedException('Authentication required');
 
   const locked=await client.query<RequestRow>(`
     SELECT id::text,offer_id::text,status::text,version,schedule_reconciliation_required,
@@ -46,13 +49,36 @@ export async function mutateScheduleProposal(
   `,[args.requestId]);
   const request=locked.rows[0];
   if(!request)throw new ScheduleProposalRejected('not_found');
-  const actor=await resolveActor(client,session.userId,args.requestId,request);
+  let guestContactId:string|null=null;
+  let guestCapabilityHash:string|null=null;
+  if(!session&&args.guestCapability){
+    let hash:string;
+    try{
+      if(!args.guestPepper)throw new Error('guest_key_unavailable');
+      hash=hashGuestCapability('MANAGE_SCHEDULE',args.guestCapability,args.guestPepper);
+    }
+    guestCapabilityHash=hash;
+    catch{throw new ScheduleProposalRejected('forbidden');}
+    const proof=await client.query<{guest_contact_id:string}>(`
+      SELECT cap.guest_contact_id::text
+      FROM guest_capabilities cap JOIN service_requests r
+        ON r.id=cap.request_id AND r.guest_contact_id=cap.guest_contact_id
+      WHERE cap.request_id=$1::uuid AND cap.token_hash=$2 AND cap.scope='MANAGE_SCHEDULE'
+        AND cap.consumed_at IS NULL AND cap.expires_at>now()
+      FOR SHARE OF cap,r
+    `,[args.requestId,hash]);
+    guestContactId=proof.rows[0]?.guest_contact_id??null;
+    if(!guestContactId)throw new ScheduleProposalRejected('forbidden');
+  }
+  const actor=session
+    ?await resolveActor(client,session.userId,args.requestId,request)
+    :request.guest_contact_id===guestContactId?'CUSTOMER':null;
   if(!actor)throw new ScheduleProposalRejected('forbidden');
 
   const route=args.action==='propose'
     ? `/requests/${args.requestId}/schedule-proposals`
     : `/requests/${args.requestId}/schedule-proposals/${args.proposalId}/${args.action}`;
-  const actorScope=`user:${session.userId}`;
+  const actorScope=session?`user:${session.userId}`:`guest:${guestCapabilityHash}`;
   const requestHash=createHmac('sha256',args.pepper)
     .update('schedule-proposal:v1\0')
     .update(JSON.stringify([args.action,args.requestId,args.proposalId??null,args.expectedVersion,args.input??null]))
@@ -74,16 +100,16 @@ export async function mutateScheduleProposal(
   if(request.status!=='ACCEPTED'||request.version!==args.expectedVersion||request.schedule_reconciliation_required){
     throw new ScheduleProposalRejected('conflict');
   }
-  if(request.guest_contact_id||!request.customer_person_id){
-    // Avoid enabling a proposal the guest cannot securely confirm yet.
+  if(request.guest_contact_id&&!guestContactId&&actor==='CUSTOMER'){
     throw new ScheduleProposalRejected('forbidden');
   }
 
+  const actorId=session?.userId??guestContactId!;
   const result=args.action==='propose'
-    ? await propose(client,request,actor,session.userId,args.input!)
+    ? await propose(client,request,actor,actorId,args.input!)
     : args.action==='decline'
-      ? await decline(client,request,actor,session.userId,args.proposalId!)
-      : await confirm(client,request,actor,session.userId,args.proposalId!);
+      ? await decline(client,request,actor,actorId,args.proposalId!)
+      : await confirm(client,request,actor,actorId,args.proposalId!);
   const output={...result,replayed:false};
   await client.query(`
     INSERT INTO idempotency_records
@@ -357,12 +383,26 @@ async function notifyOtherSide(
   db:Pick<PoolClient,'query'>,request:RequestRow,actor:Actor,eventId:string,dedupeKey:string,
 ):Promise<void>{
   if(actor==='SELLER'){
-    if(!request.customer_person_id)throw new ScheduleProposalRejected('forbidden');
-    await db.query(`
-      INSERT INTO notification_intents
-        (id,domain_event_id,recipient_person_id,audience,channel,dedupe_key)
-      VALUES($1::uuid,$2::uuid,$3::uuid,'CLIENT','IN_APP',$4)
-    `,[randomUUID(),eventId,request.customer_person_id,dedupeKey]);
+    if(request.customer_person_id){
+      await db.query(`
+        INSERT INTO notification_intents
+          (id,domain_event_id,recipient_person_id,audience,channel,dedupe_key)
+        VALUES($1::uuid,$2::uuid,$3::uuid,'CLIENT','IN_APP',$4)
+      `,[randomUUID(),eventId,request.customer_person_id,dedupeKey]);
+    }else if(request.guest_contact_id){
+      const contact=await db.query<{channel:string}>(`
+        SELECT channel FROM guest_contacts
+        WHERE id=$1::uuid AND verified_at IS NOT NULL AND expires_at>now()
+        FOR SHARE
+      `,[request.guest_contact_id]);
+      const channel=contact.rows[0]?.channel;
+      if(channel!=='email'&&channel!=='sms')throw new ScheduleProposalRejected('forbidden');
+      await db.query(`
+        INSERT INTO notification_intents
+          (id,domain_event_id,guest_contact_id,audience,channel,dedupe_key)
+        VALUES($1::uuid,$2::uuid,$3::uuid,'CLIENT',$4,$5)
+      `,[randomUUID(),eventId,request.guest_contact_id,channel.toUpperCase(),dedupeKey]);
+    }else throw new ScheduleProposalRejected('forbidden');
     return;
   }
   const recipient=await db.query<{professional_person_id:string|null;organization_id:string|null}>(`

@@ -45,7 +45,7 @@ export async function checkContactSendQuota(
     FROM guest_challenges ch
     JOIN guest_contacts contact ON contact.id=ch.guest_contact_id
     WHERE contact.digest=$1
-      AND ch.purpose='CREATE_REQUEST'
+      AND ch.purpose IN ('CREATE_REQUEST','MANAGE_SCHEDULE')
       AND ch.created_at > $2::timestamptz - interval '24 hours'
   `,[digest,now]);
   const row=result.rows[0];

@@ -32,7 +32,7 @@ export async function checkGlobalSendQuota(
   // Serialize checks and inserts across horizontally scaled instances.
   // Must precede the per-recipient lock in the same transaction.
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))',
-    ['guest-otp-global-v1','CREATE_REQUEST']);
+    ['guest-otp-global-v1','ALL_PURPOSES']);
   const result=await client.query<CountRow>(`
     SELECT
       COUNT(*) FILTER (
@@ -43,7 +43,7 @@ export async function checkGlobalSendQuota(
       )::text AS hour_count,
       COUNT(*)::text AS day_count
     FROM guest_challenges
-    WHERE purpose='CREATE_REQUEST'
+    WHERE purpose IN ('CREATE_REQUEST','MANAGE_SCHEDULE')
       AND created_at > $1::timestamptz - interval '24 hours'
   `,[now]);
   const row=result.rows[0];
