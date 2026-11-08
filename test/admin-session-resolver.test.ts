@@ -45,3 +45,12 @@ test('unknown, stale, duplicate or oversized sessions fail closed',async()=>{
  assert.equal(await resolvePlatformAdminSession(fakeDb(Array.from({length:101},row)),token,pepper,now),null);
  assert.notEqual(issueSessionToken(pepper).token,token);
 });
+
+test('admin grant resolver rejects duplicate scopes with different UUID casing',async()=>{
+ const lower=org.toLowerCase();
+ const upper=org.toUpperCase();
+ assert.equal(await resolvePlatformAdminSession(
+  fakeDb([{...row(),scope:lower},{...row(),scope:upper}]),
+  token,pepper,now,
+ ),null);
+});
