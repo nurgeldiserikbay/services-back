@@ -1,6 +1,6 @@
 # Stage 1 — Catalog and search acceptance contract
 
-Status: implementation pending verification. This document is a delivery gate, not a claim that APIs exist.
+Status: implemented and verified by backend CI on a clean PostgreSQL 16 database. Verification covers migrations, geography seeding, search filters, keyset paging and published-profile visibility. This does not claim a production deployment.
 
 ## Minimum vertical slice
 - Persist country, city, profession taxonomy, specialist profiles, organization profiles and published/hidden state in PostgreSQL via reviewed Prisma migrations.
