@@ -9,7 +9,7 @@ const valid=()=>({
  user_id:userId,role:'operator',
  expires_at:new Date(now+60_000),
  mfa_verified_at:new Date(now-60_000),
- scope:'platform:moderation',
+ scope:'platform:123e4567-e89b-42d3-a456-426614174001',
 });
 const pepper=Buffer.alloc(32,7);
 const bearer='A'.repeat(43);
@@ -27,7 +27,7 @@ test('admin resolver rejects noncanonical 43-character bearer before querying',a
 test('admin resolver accepts a consistent authorized row',async()=>{
  const result=await resolvePlatformAdminSession(client([valid()]),bearer,pepper,now);
  assert.equal(result?.userId,userId);
- assert.deepEqual(result?.resourceScopes,['platform:moderation']);
+ assert.deepEqual(result?.resourceScopes,['platform:123e4567-e89b-42d3-a456-426614174001']);
 });
 
 test('admin resolver fails closed for malformed joined grant rows',async()=>{
@@ -35,6 +35,8 @@ test('admin resolver fails closed for malformed joined grant rows',async()=>{
   {...valid(),expires_at:null},
   {...valid(),mfa_verified_at:'invalid'},
   {...valid(),scope:''},
+  {...valid(),scope:'platform:moderation'},
+  {...valid(),scope:'platform:123e4567-e89b-42d3-a456-426614174001 '},
   {...valid(),scope:42},
   null,
  ]){
