@@ -33,6 +33,7 @@ test('search rejects invalid and repeated query parameters', () => {
   for (const input of [
     { q: ['one', 'two'] },
     { kind: 'unknown' },
+    { profession_id: 'not-a-uuid' },
     { scope: 'city', city_id: 'not-a-uuid' },
     { delivery_mode: 'teleport' },
     { q: 'x'.repeat(181) },
