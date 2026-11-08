@@ -59,6 +59,7 @@ export async function resolvePlatformAdminSession(
   expiresAt<=now)return null;
  const scopes: string[]=[];
  const seenScopes=new Set<string>();
+ let sawNullScope=false;
  for(const row of rows){
   // Validate every joined row before dereferencing date objects. A malformed
   // DB result must deny access rather than trigger a 500 or partial grant.
@@ -67,13 +68,18 @@ export async function resolvePlatformAdminSession(
     !(row.mfa_verified_at instanceof Date)||
     row.expires_at.getTime()!==expiresAt||
     row.mfa_verified_at.getTime()!==mfaVerifiedAt)return null;
-  if(row.scope!==null){
+  if(row.scope===null){
+   // A LEFT JOIN yields a null grant only when there are no grants at all.
+   // Mixed null and non-null rows indicate an inconsistent result.
+   sawNullScope=true;
+  }else{
    if(typeof row.scope!=='string'||!SCOPE.test(row.scope)||
      seenScopes.has(row.scope))return null;
    seenScopes.add(row.scope);
    scopes.push(row.scope);
   }
  }
+ if(sawNullScope&&(rows.length!==1||scopes.length!==0))return null;
  return {userId:first.user_id,role:first.role as VerifiedAdminPrincipal['role'],
   sessionExpiresAt:expiresAt,mfaVerifiedAt,resourceScopes:scopes};
 }
