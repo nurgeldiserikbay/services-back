@@ -51,7 +51,7 @@ jobs:
       - name: Verify migrated application tables before integration tests
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
-          DO $
+          DO $verify$
           DECLARE missing text;
           BEGIN
             SELECT string_agg(name, ', ' ORDER BY name) INTO missing
@@ -64,7 +64,7 @@ jobs:
             IF missing IS NOT NULL THEN
               RAISE EXCEPTION 'Missing application tables after Prisma migrate: %', missing;
             END IF;
-          END $;
+          END $verify$;
           SQL
       - name: Unit and integration tests (after database migrations)
         run: npm test
