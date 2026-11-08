@@ -13,6 +13,11 @@ test('profession filter returns only offers mapped to that canonical profession'
   try {
     await db.transaction(async (client) => {
       const marker = `profession-filter-${randomUUID()}`;
+      const cityResult = await client.query<{ id: string }>(
+        `SELECT id::text AS id FROM cities WHERE name = 'Astana' ORDER BY id LIMIT 1`,
+      );
+      const cityId = cityResult.rows[0]?.id;
+      assert.ok(cityId, 'seeded Astana city must exist');
       const user = randomUUID();
       const person = randomUUID();
       const profession = randomUUID();
@@ -53,20 +58,20 @@ test('profession filter returns only offers mapped to that canonical profession'
         [profession, matchedDefinition],
       );
       await client.query(
-        `INSERT INTO service_offers(id, definition_id, professional_id, organization_id, title, status, delivery_mode, contacts)
-         VALUES ($1::uuid, $2::uuid, $3::uuid, NULL, $4, 'PUBLISHED', 'online', '{}'::jsonb),
-                ($5::uuid, $2::uuid, NULL, $6::uuid, $7, 'PUBLISHED', 'online', '{}'::jsonb),
-                ($8::uuid, $9::uuid, NULL, $6::uuid, $10, 'PUBLISHED', 'online', '{}'::jsonb)`,
-        [matchedProfessionalOffer, matchedDefinition, profile, `${marker}-offer-profession-match`,
-          matchedOrganizationOffer, organization, `${marker}-offer-company-match`,
-          unmatchedOrganizationOffer, unmatchedDefinition, `${marker}-offer-unmatched`],
+        `INSERT INTO service_offers(id, definition_id, professional_id, organization_id, city_id, title, status, delivery_mode, contacts)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, NULL, $4::uuid, $5, 'PUBLISHED', 'online', '{}'::jsonb),
+                ($6::uuid, $2::uuid, NULL, $7::uuid, $8::uuid, $9, 'PUBLISHED', 'online', '{}'::jsonb),
+                ($10::uuid, $11::uuid, NULL, $7::uuid, $12::uuid, $13, 'PUBLISHED', 'online', '{}'::jsonb)`,
+        [matchedProfessionalOffer, matchedDefinition, profile, cityId, `${marker}-offer-profession-match`,
+          matchedOrganizationOffer, organization, cityId, `${marker}-offer-company-match`,
+          unmatchedOrganizationOffer, unmatchedDefinition, cityId, `${marker}-offer-unmatched`],
       );
 
       const txDatabase = {
         query: (sql: string, values: readonly unknown[]) => client.query(sql, [...values]),
       } as unknown as DatabasePool;
       const result = await new CatalogRepository(txDatabase).search(
-        normalizeSearchFilters({ q: marker, profession_id: profession }),
+        normalizeSearchFilters({ q: marker, profession_id: profession, scope: 'city', city_id: cityId }),
       );
 
       const actual: Array<[string, string]> = result.items.map(({ kind, title }) => [kind, title]);
