@@ -57,13 +57,13 @@ jobs:
           DO $verify$
           DECLARE missing text;
           BEGIN
-            SELECT string_agg(name, ', ' ORDER BY name) INTO missing
+            SELECT string_agg(required.table_name, ', ' ORDER BY required.table_name) INTO missing
             FROM unnest(ARRAY[
               'users', 'persons', 'organizations', 'professional_profiles',
               'service_offers', 'service_requests', 'guest_contacts',
               'organization_members', 'sessions'
-            ]) AS name
-            WHERE to_regclass('public.' || quote_ident(name)) IS NULL;
+            ]) AS required(table_name)
+            WHERE to_regclass(format('public.%I', required.table_name)) IS NULL;
             IF missing IS NOT NULL THEN
               RAISE EXCEPTION 'Missing application tables after Prisma migrate: %', missing;
             END IF;
