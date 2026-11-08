@@ -48,3 +48,18 @@ test('admin bearer rejects noncanonical base64url aliases',()=>{
  }
  assert.equal(adminSessionHashMatches(token,tokenHash,pepper),true);
 });
+
+test('issued admin tokens round-trip across every canonical final character',()=>{
+ const pepper=Buffer.alloc(32,11);
+ const suffixes=new Set<string>();
+ for(let lastByte=0;lastByte<256;lastByte++){
+  const bytes=Buffer.alloc(32);
+  bytes[31]=lastByte;
+  const token=bytes.toString('base64url');
+  suffixes.add(token.at(-1)!);
+  const hash=hashAdminSessionToken(token,pepper);
+  assert.equal(adminSessionHashMatches(token,hash,pepper),true);
+  assert.deepEqual(Buffer.from(token,'base64url'),bytes);
+ }
+ assert.deepEqual([...suffixes].sort(),[...'AEIMQUYcgkosw048'].sort());
+});
