@@ -29,7 +29,7 @@ test('moderation read is disabled by default and never touches the database',asy
 test('invalid bearer fails before database access even with feature flag enabled',async()=>{
  try{
   process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
-  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY='A'.repeat(43);
+  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=Buffer.alloc(32,7).toString('base64');
   const fake=fakeDatabase();
   const service=new PlatformModerationReadService(fake.db);
   for(const bearer of [undefined,null,'','Bearer ','bearer '+validToken,'Bearer '+validToken.slice(0,-1)+'B','Bearer '+validToken+'x','Bearer '+validToken+' ','Basic '+validToken]){
