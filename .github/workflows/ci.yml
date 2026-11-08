@@ -27,6 +27,12 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
+      - name: TypeScript typecheck (fail fast)
+        run: npm run typecheck
+      - name: Compile backend (fail fast)
+        run: npm run build
+      - name: Unit and service tests (fail fast)
+        run: npm test
       - name: Validate pinned Prisma model
         run: npm run db:validate
       - name: Recompute migration and reject schema/SQL drift
@@ -44,6 +50,3 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF (SELECT count(*) FROM countries WHERE iso2='KZ') <> 1 OR (SELECT count(*) FROM cities WHERE name IN ('Astana','Almaty','Shymkent')) <> 3 THEN RAISE EXCEPTION 'Geography seed is not idempotent'; END IF; END \$\$;"
           npm run db:smoke
-      - run: npm run typecheck
-      - run: npm run build
-      - run: npm test
