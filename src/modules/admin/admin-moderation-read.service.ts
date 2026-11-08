@@ -21,11 +21,12 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 export function validateModerationCaseRows(
  rows:readonly CaseRow[],allowedScopes:ReadonlySet<string>,
 ):ModerationCaseSummary[]{
- if(rows.length>50)throw new UnauthorizedException('Authentication required');
+ if(!Array.isArray(rows)||rows.length>50)throw new UnauthorizedException('Authentication required');
  const seen=new Set<string>();
  const items:ModerationCaseSummary[]=[];
  for(const row of rows){
-  if(typeof row.id!=='string'||!UUID.test(row.id)||seen.has(row.id.toLowerCase())||
+  if(!row||typeof row!=='object'||
+   typeof row.id!=='string'||!UUID.test(row.id)||seen.has(row.id.toLowerCase())||
    !KINDS.has(row.subject_kind)||!STATES.has(row.state)||
    !(row.created_at instanceof Date)||!Number.isFinite(row.created_at.getTime())||
    !allowedScopes.has(row.resource_scope))
