@@ -5,7 +5,7 @@ import {hashAdminSessionToken} from '../src/modules/admin/admin-session-token.js
 
 test('admin session token regex remains an executable declaration',()=>{
  const source=readFileSync('src/modules/admin/admin-session-token.ts','utf8');
- assert.match(source,/^const TOKEN=\/\^\[A-Za-z0-9_-\]\{42\}\[AQgw\]\$\/;/m);
+ assert.match(source,/^const TOKEN=\/\^\[A-Za-z0-9_-\]\{42\}\[AEIMQUYcgkosw048\]\$\/;/m);
  assert.doesNotMatch(source,/Reject\\n\/\//);
 });
 
