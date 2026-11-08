@@ -7,6 +7,7 @@ export type DeliveryMode = 'any' | 'at_location' | 'at_customer' | 'online';
 export interface SearchFilters {
   q: string;
   kind: CatalogKind;
+  professionId: string | null;
   scope: SearchScope;
   cityId: string | null;
   areaId: string | null;
@@ -67,6 +68,7 @@ export function normalizeSearchFilters(input: Record<string, unknown>): SearchFi
   const deliveryMode = stringValue(input.delivery_mode, 'delivery_mode') ?? 'any';
   if (!kinds.includes(kind as CatalogKind) || !scopes.includes(scope as SearchScope) ||
       !modes.includes(deliveryMode as DeliveryMode)) throw new BadRequestException('Invalid search filter');
+  const professionId = idValue(input.profession_id, 'profession_id');
   const cityId = idValue(input.city_id, 'city_id');
   const areaId = idValue(input.area_id, 'area_id');
   const countryId = idValue(input.country_id, 'country_id');
@@ -83,5 +85,5 @@ export function normalizeSearchFilters(input: Record<string, unknown>): SearchFi
       (scope === 'country' && !countryId)) {
     throw new BadRequestException('Selected search scope requires matching location ID');
   }
-  return {q,kind:kind as CatalogKind,scope:scope as SearchScope,deliveryMode:deliveryMode as DeliveryMode,cityId,areaId,countryId,cursor};
+  return {q,kind:kind as CatalogKind,professionId,scope:scope as SearchScope,deliveryMode:deliveryMode as DeliveryMode,cityId,areaId,countryId,cursor};
 }

@@ -7,7 +7,7 @@ const city = '11111111-1111-4111-8111-111111111111';
 
 test('search defaults to global, all types, any delivery mode', () => {
   assert.deepEqual(normalizeSearchFilters({}), {
-    q: '', kind: 'all', scope: 'global', cityId: null, areaId: null,
+    q: '', kind: 'all', professionId: null, scope: 'global', cityId: null, areaId: null,
     countryId: null, deliveryMode: 'any', cursor: null,
   });
 });

@@ -32,6 +32,10 @@ export class CatalogRepository {
                ($4::text = 'city' AND c.id = $5::uuid) OR
                ($4::text = 'area' AND c.area_id = $6::uuid) OR
                ($4::text = 'country' AND c.country_id = $7::uuid))
+          AND ($11::uuid IS NULL OR EXISTS (
+                SELECT 1 FROM profession_services ps
+                WHERE ps.service_id = o.definition_id AND ps.profession_id = $11::uuid
+              ))
       ),
       candidates AS (
         SELECT 'offer'::text AS kind, offer_id AS id, offer_title AS title, NULL::text AS slug
@@ -59,6 +63,7 @@ export class CatalogRepository {
         filter.q, filter.kind, filter.deliveryMode, filter.scope,
         filter.cityId, filter.areaId, filter.countryId,
         filter.cursor?.title ?? null, filter.cursor?.kind ?? null, filter.cursor?.id ?? null,
+        filter.professionId,
       ]);
       const items = res.rows.slice(0, 50);
       const hasMore = res.rows.length > 50;

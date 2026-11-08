@@ -51,7 +51,7 @@ test('catalog returns an opaque keyset cursor anchored to the last returned resu
   assert.deepEqual(normalizeSearchFilters({cursor: result.next_cursor}).cursor, {
     title: 'Offer 49', kind: 'offer', id: '00000000-0000-4000-8000-000000000050',
   });
-  assert.deepEqual(values.slice(7), [null, null, null]);
+  assert.deepEqual(values.slice(7), [null, null, null, null]);
 });
 
 test('catalog applies keyset cursor values as bound SQL parameters', async () => {
@@ -62,7 +62,7 @@ test('catalog applies keyset cursor values as bound SQL parameters', async () =>
   });
   await new CatalogRepository(db).search(normalizeSearchFilters({cursor}));
   assert.deepEqual(values.slice(7), [
-    'First result', 'professional', '00000000-0000-4000-8000-000000000001',
+    'First result', 'professional', '00000000-0000-4000-8000-000000000001', null,
   ]);
 });
 
