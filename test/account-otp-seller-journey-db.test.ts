@@ -150,3 +150,29 @@ test('logout revokes OTP-issued account bearer for inbox and seller decisions',a
     assert.equal(request.rows[0].status,'PENDING');
   }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
+
+test('unrelated OTP-authenticated account cannot view or decide another seller request',async()=>{
+  const db=await begin(),secret=keys(),ownerId=randomUUID(),outsiderId=randomUUID();
+  try{
+    const owner=await verifiedAccountToken(
+      db,ownerId,'owner-isolation-'+randomUUID()+'@example.test',secret);
+    const outsider=await verifiedAccountToken(
+      db,outsiderId,'outsider-isolation-'+randomUUID()+'@example.test',secret);
+    const fixture=await prepareOrgRequest(db,ownerId);
+    const outsiderInbox=await readSellerInbox(db,outsiderId,
+      parseSellerInboxFilter({state:'pending',limit:'20'}));
+    assert.deepEqual(outsiderInbox.items,[]);
+    await assert.rejects(
+      decideWithIdempotentSession(db,outsider.token,fixture.requestId,
+        'accept',1,randomUUID(),secret.sessionPepper),
+      (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='forbidden',
+    );
+    const stillPending=await db.query<{status:string;version:number}>(`
+      SELECT status,version FROM service_requests WHERE id=$1`,[fixture.requestId]);
+    assert.deepEqual(stillPending.rows[0],{status:'PENDING',version:1});
+    const ownerInbox=await readSellerInbox(db,ownerId,
+      parseSellerInboxFilter({state:'pending',limit:'20'}));
+    assert.deepEqual(ownerInbox.items.map(item=>item.id),[fixture.requestId]);
+    assert.ok(owner.token);
+  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
