@@ -57,12 +57,19 @@ export async function resolvePlatformAdminSession(
  if(!Number.isSafeInteger(expiresAt)||!Number.isSafeInteger(mfaVerifiedAt)||
   expiresAt<=now)return null;
  const scopes: string[]=[];
+ const seenScopes=new Set<string>();
  for(const row of rows){
-  if(row.user_id!==first.user_id||row.role!==first.role||
+  // Validate every joined row before dereferencing date objects. A malformed
+  // DB result must deny access rather than trigger a 500 or partial grant.
+  if(!row||row.user_id!==first.user_id||row.role!==first.role||
+    !(row.expires_at instanceof Date)||
+    !(row.mfa_verified_at instanceof Date)||
     row.expires_at.getTime()!==expiresAt||
     row.mfa_verified_at.getTime()!==mfaVerifiedAt)return null;
   if(row.scope!==null){
-   if(typeof row.scope!=='string')return null;
+   if(typeof row.scope!=='string'||row.scope.length===0||
+     seenScopes.has(row.scope))return null;
+   seenScopes.add(row.scope);
    scopes.push(row.scope);
   }
  }
