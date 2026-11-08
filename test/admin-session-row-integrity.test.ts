@@ -17,6 +17,13 @@ function client(rows:unknown[]){
  return {query:async()=>({rows})} as unknown as Pick<PoolClient,'query'>;
 }
 
+test('admin resolver rejects noncanonical 43-character bearer before querying',async()=>{
+ let queries=0;
+ const db={query:async()=>{queries++;return {rows:[valid()]};}} as unknown as Pick<PoolClient,'query'>;
+ assert.equal(await resolvePlatformAdminSession(db,'A'.repeat(42)+'B',pepper,now),null);
+ assert.equal(queries,0);
+});
+
 test('admin resolver accepts a consistent authorized row',async()=>{
  const result=await resolvePlatformAdminSession(client([valid()]),bearer,pepper,now);
  assert.equal(result?.userId,userId);
