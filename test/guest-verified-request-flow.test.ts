@@ -55,10 +55,8 @@ test('a request creation failure is propagated, never claimed successful',async(
 
 test('verification infrastructure failure cannot create a request or expose a success',async()=>{
  let creationCalls=0;
- const verifier={verifyCreateRequest:async()=>{throw new Error('verification database unavailable');}}
-  as unknown as GuestChallengeVerificationService;
- const requests={createFromVerifiedContact:async()=>{creationCalls++;return created;}}
-  as unknown as GuestRequestService;
+ const verifier={verifyCreateRequest:async()=>{throw new Error('verification database unavailable');}} as unknown as GuestChallengeVerificationService;
+ const requests={createFromVerifiedContact:async()=>{creationCalls++;return created;}} as unknown as GuestRequestService;
  const flow=new GuestVerifiedRequestFlow(verifier,requests);
  await assert.rejects(flow.verifyAndCreate('challenge-id','012345',body,key),
   /verification database unavailable/);
