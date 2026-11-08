@@ -50,3 +50,21 @@ test('catalog never emits cursor outside supported range', async () => {
   assert.equal(result.items.length, 50);
   assert.equal(result.next_cursor, null);
 });
+
+test('catalog search exposes the professional slug in its typed result', async () => {
+  const db = {
+    query: async () => ({
+      rows: [{
+        kind: 'professional',
+        id: '00000000-0000-4000-8000-000000000001',
+        title: 'Electrician',
+        slug: 'electrician',
+        is_sponsored: false,
+      }],
+    }),
+  } as unknown as DatabasePool;
+  const result = await new CatalogRepository(db).search(
+    normalizeSearchFilters({kind: 'professional'}),
+  );
+  assert.equal(result.items[0]?.slug, 'electrician');
+});
