@@ -107,6 +107,17 @@ test('confirmed account OTP -> bearer -> seller inbox -> accept -> notification 
       SELECT count(*)::text AS n FROM notification_intents
       WHERE dedupe_key=$1`,['request-accept:guest:'+f.requestId]);
     assert.equal(notices.rows[0].n,'1');
+    const replayAgain=await decideWithIdempotentSession(
+      db,login.token,f.requestId,'accept',1,key,secret.sessionPepper);
+    assert.deepEqual(replayAgain,{...accepted,replayed:true});
+    const eventsAfterReplay=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM domain_outbox_events
+      WHERE subject_id=$1 AND topic='service_request.accepted'`,[f.requestId]);
+    assert.equal(eventsAfterReplay.rows[0].n,'1');
+    const noticesAfterReplay=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM notification_intents
+      WHERE dedupe_key=$1`,['request-accept:guest:'+f.requestId]);
+    assert.equal(noticesAfterReplay.rows[0].n,'1');
   }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
 
