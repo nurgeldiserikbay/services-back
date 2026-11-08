@@ -1,6 +1,6 @@
 import {createHmac,randomBytes,timingSafeEqual} from 'node:crypto';
 
-// A 32-byte base64url token has only four valid final characters.
+// A 32-byte base64url token has 16 valid final characters (two zero padding bits).
 // Reject noncanonical aliases before hashing or comparing session proofs.
 const TOKEN=/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 const HASH=/^[0-9a-f]{64}$/;
