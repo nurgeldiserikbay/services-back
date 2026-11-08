@@ -97,6 +97,7 @@ test('public catalog search composes profession and city filters and hides unpub
       result.items.map(({ kind, id }) => kind + ':' + id).sort(),
       [
         'offer:' + visibleOfferId,
+        'offer:' + organizationOfferId,
         'professional:' + professionalId,
         'organization:' + organizationId,
       ].sort(),
