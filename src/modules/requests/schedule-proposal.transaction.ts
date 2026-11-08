@@ -56,9 +56,8 @@ export async function mutateScheduleProposal(
     try{
       if(!args.guestPepper)throw new Error('guest_key_unavailable');
       hash=hashGuestCapability('MANAGE_SCHEDULE',args.guestCapability,args.guestPepper);
-    }
+    }catch{throw new ScheduleProposalRejected('forbidden');}
     guestCapabilityHash=hash;
-    catch{throw new ScheduleProposalRejected('forbidden');}
     const proof=await client.query<{guest_contact_id:string}>(`
       SELECT cap.guest_contact_id::text
       FROM guest_capabilities cap JOIN service_requests r
