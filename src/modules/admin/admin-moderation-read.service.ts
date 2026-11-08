@@ -4,7 +4,7 @@ import {requireSecret} from '../guest-requests/guest-request.security.js';
 import {resolvePlatformAdminSession} from './admin-session-resolver.js';
 import {canPerformAdminOperation} from './admin-authorization.policy.js';
 
-const TOKEN=/^Bearer ([A-Za-z0-9_-]{42}[AQgw])$/;
+const TOKEN=/^Bearer ([A-Za-z0-9_-]{42}[AEIMQUYcgkosw048])$/;
 type CaseRow={
  id:string;resource_scope:string;subject_kind:string;state:string;created_at:Date;
 };
