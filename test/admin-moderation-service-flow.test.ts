@@ -52,11 +52,16 @@ test('moderation service queries only authorized scopes and returns redacted row
 });
 test('moderation service does not query cases for missing or stale MFA',async()=>{
  await withFeatureFlag(async()=>{
-  for(const grants of [[],[grant({mfa_verified_at:new Date(Date.now()-20*60_000)})],
-   [grant({role:'invalid'})],[grant({scope:null})]]){
+  const scenarios=[
+   {grants:[],unauthorized:true},
+   {grants:[grant({mfa_verified_at:new Date(Date.now()-20*60_000)})],unauthorized:false},
+   {grants:[grant({role:'invalid'})],unauthorized:true},
+   {grants:[grant({scope:null})],unauthorized:false},
+  ];
+  for(const {grants,unauthorized} of scenarios){
    const {db,calls}=dbWithRows(grants,[moderationCase()]);
    const service=new PlatformModerationReadService(db);
-   if(grants.length===0||grants[0]&&('role' in grants[0])&&grants[0].role==='invalid')
+   if(unauthorized)
     await assert.rejects(service.list('Bearer '+token),{status:401});
    else assert.deepEqual(await service.list('Bearer '+token),{items:[]});
    assert.equal(calls.length,1);
