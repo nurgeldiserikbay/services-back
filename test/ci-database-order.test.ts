@@ -23,6 +23,7 @@ test('backend CI prepares PostgreSQL before running DB integration tests',()=>{
  }
  assert.equal(workflow.match(/run: npm test/g)?.length,1);
  assert.match(workflow,/^permissions:\n  contents: read$/m);
+ assert.match(workflow,/uses: actions\/checkout@v4\n\s+with:\n\s+persist-credentials: false/);
  assert.match(workflow,/^    timeout-minutes: 25$/m);
  assert.match(workflow,/^concurrency:\n  group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}\n  cancel-in-progress: true$/m);
  assert.match(workflow,/DATABASE_URL: postgresql:\/\/services:services@127\.0\.0\.1:5432\/services_test/);
