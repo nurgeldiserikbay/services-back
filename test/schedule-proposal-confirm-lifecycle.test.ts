@@ -11,7 +11,7 @@ const args={
   key:'confirm-guest-test',guestCapability:'A'.repeat(43),pepper,guestPepper:pepper,
 };
 
-function fakeDb(options:{initiator?:string;status?:string;start?:Date}={}){
+function fakeDb(options:{initiator?:string;status?:string;start?:Date; calendarConflict?:boolean}={}){
   const writes:string[]=[];
   const db={query:async(sql:string)=>{
     if(sql.includes('FROM service_requests WHERE id='))return {rows:[{
@@ -31,9 +31,14 @@ function fakeDb(options:{initiator?:string;status?:string;start?:Date}={}){
       timezone:'Asia/Almaty',
     }]};
     if(sql.includes('SELECT now() AS agreed_at'))return {rows:[{agreed_at:new Date('2026-11-10T00:00:00.000Z')}]};
-    if(sql.includes('FROM service_requests r JOIN service_offers'))return {rows:[{performer_id:null,availability:'HIDDEN'}]};
+    if(sql.includes('FROM service_requests r JOIN service_offers'))return {rows:[{performer_id:options.calendarConflict?'10000000-0000-4000-8000-000000000005':null,availability:options.calendarConflict?'PUBLIC':'HIDDEN'}]};
     if(sql.includes('FROM cancellation_policies'))return {rows:[{revision:3,free_cancel_before_min:120}]};
     if(sql.includes('FROM busy_blocks WHERE request_id='))return {rows:[]};
+    if(sql.includes('FROM availability_allocations'))return {rows:[{enabled:true}]};
+    if(sql.includes('INSERT INTO busy_blocks')){
+      if(options.calendarConflict)throw Object.assign(new Error('calendar overlap'),{code:'23P01'});
+      writes.push('busy_block');return {rows:[]};
+    }
     if(sql.includes('INSERT INTO cancellation_snapshot_revisions')){writes.push('snapshot_revision');return {rows:[]};}
     if(sql.includes('INSERT INTO cancellation_snapshots')){writes.push('snapshot');return {rows:[]};}
     if(sql.includes('UPDATE service_requests SET scheduled_start_at=')){writes.push('request');return {rows:[{version:5}]};}
@@ -77,3 +82,10 @@ for(const [description,options] of [
     assert.deepEqual(writes,[]);
   });
 }
+
+test('calendar exclusion conflict rejects confirmation before snapshots or notifications',async()=>{
+  const {db,writes}=fakeDb({calendarConflict:true});
+  await assert.rejects(mutateScheduleProposal(db as never,args),
+    (error:unknown)=>error instanceof ScheduleProposalRejected&&error.reason==='conflict');
+  assert.deepEqual(writes,[]);
+});
