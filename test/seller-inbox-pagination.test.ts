@@ -85,3 +85,12 @@ test('repository rejects invalid internal pagination filters before SQL',async()
  }
  assert.equal(calls,0);
 });
+
+test('repository accepts a valid cursor on the second page',async()=>{
+ let calls=0;
+ const db={query:async()=>{calls++;return {rows:[]};}};
+ const filter=parseSellerInboxFilter({limit:'1',cursor:Buffer.from(
+   JSON.stringify(['2026-11-09T12:00:00.000Z',randomUUID()]),'utf8').toString('base64url')});
+ await assert.doesNotReject(readSellerInbox(db as never,userId,filter));
+ assert.equal(calls,1);
+});
