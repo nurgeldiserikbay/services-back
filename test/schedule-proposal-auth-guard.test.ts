@@ -67,3 +67,34 @@ test('invalid guest schedule capability cannot reach proposal mutations', async 
   assert.equal(statements.length, 1);
   assert.match(statements[0], /FOR UPDATE/);
 });
+
+test('well-formed but unrecognized guest capability is denied before mutations', async () => {
+  const statements: string[] = [];
+  const client = {
+    query: async (sql: string) => {
+      statements.push(sql);
+      if (sql.includes('FROM service_requests WHERE id=')) {
+        return {rows: [{
+          id: requestId, offer_id: requestId, status: 'ACCEPTED', version: 1,
+          schedule_reconciliation_required: false,
+          customer_person_id: null, guest_contact_id: requestId,
+          seller_professional_id: null, seller_organization_id: null,
+          performer_professional_id: null,
+        }]};
+      }
+      if (sql.includes('FROM guest_capabilities cap')) return {rows: []};
+      throw new Error('Unrecognized guest proof must not trigger mutations');
+    },
+  };
+  await assert.rejects(
+    mutateScheduleProposal(client as never, {
+      requestId, action: 'decline', proposalId: requestId,
+      expectedVersion: 1, key: 'unknown-guest-proof',
+      guestCapability: 'A'.repeat(43),
+      pepper, guestPepper: pepper,
+    }),
+    (error: unknown) => error instanceof ScheduleProposalRejected && error.reason === 'forbidden',
+  );
+  assert.equal(statements.length, 2);
+  assert.match(statements[1], /scope='MANAGE_SCHEDULE'/);
+});
