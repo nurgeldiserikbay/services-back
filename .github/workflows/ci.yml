@@ -35,6 +35,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
+      - name: Audit production dependencies for high-severity vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
       - name: TypeScript typecheck (fail fast)
         run: npm run typecheck
       - name: Compile backend (fail fast)
