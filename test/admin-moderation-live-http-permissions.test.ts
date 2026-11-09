@@ -26,6 +26,7 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
  let revoked=false;
  let staleMfa=false;
  let noGrants=false;
+ let malformedSessionReply=false;
  let injectOutOfScopeRow=false;
  let caseQueries=0;
  let app:INestApplication|undefined;
@@ -38,6 +39,7 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
    const client={query:async(sql:string,values:unknown[])=>{
     if(sql.includes('FROM platform_admin_sessions')){
      assert.match(sql,/session\.revoked_at IS NULL/);
+     if(malformedSessionReply)return {rows:null};
      if(revoked||values[0]!==tokenHash)return {rows:[]};
      return {rows:[{
       user_id:randomUUID(),role:'auditor',
@@ -83,6 +85,13 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
   assert.ok(!(await crossScope.text()).includes(caseId));
   assert.equal(caseQueries,2);
   injectOutOfScopeRow=false;
+
+  malformedSessionReply=true;
+  const malformed=await get(token);
+  assert.equal(malformed.status,401);
+  assert.ok(!(await malformed.text()).includes(token));
+  assert.equal(caseQueries,2);
+  malformedSessionReply=false;
 
   const wrong=await get(randomBytes(32).toString('base64url'));
   assert.equal(wrong.status,401);
