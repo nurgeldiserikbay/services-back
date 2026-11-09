@@ -98,3 +98,34 @@ test('well-formed but unrecognized guest capability is denied before mutations',
   assert.equal(statements.length, 2);
   assert.match(statements[1], /scope='MANAGE_SCHEDULE'/);
 });
+
+for (const action of ['propose', 'decline', 'confirm'] as const) {
+  test(`schedule ${action} returns not_found for a missing request without checking guest proofs`, async () => {
+    const statements: string[] = [];
+    const client = {
+      query: async (sql: string) => {
+        statements.push(sql);
+        if (sql.includes('FROM service_requests WHERE id=')) return {rows: []};
+        throw new Error('Missing request must not trigger any further queries');
+      },
+    };
+    await assert.rejects(
+      mutateScheduleProposal(client as never, {
+        requestId, action, expectedVersion: 1, key: 'missing-request',
+        guestCapability: 'A'.repeat(43), pepper, guestPepper: pepper,
+        ...(action === 'propose'
+          ? {input: {
+              startAt: new Date('2026-11-11T10:00:00.000Z'),
+              endAt: new Date('2026-11-11T11:00:00.000Z'),
+              timezone: 'Asia/Almaty',
+              localStartAt: '2026-11-11T15:00:00',
+              utcOffsetSeconds: 18000,
+            }}
+          : {proposalId: requestId}),
+      }),
+      (error: unknown) => error instanceof ScheduleProposalRejected && error.reason === 'not_found',
+    );
+    assert.equal(statements.length, 1);
+    assert.match(statements[0], /FOR UPDATE/);
+  });
+}
