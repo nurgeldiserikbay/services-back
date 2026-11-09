@@ -61,3 +61,11 @@ test('seller inbox cursor uses UUID as tie-breaker for identical timestamps',asy
  assert.equal(second.items[0].id,tied[1]);
  assert.equal(second.next_cursor,null);
 });
+
+test('SQL cursor comparison and ordering use the same millisecond precision',async()=>{
+ let sql='';
+ const db={query:async(query:string)=>{sql=query;return {rows:[]};}};
+ await readSellerInbox(db as never,userId,parseSellerInboxFilter({limit:'1'}));
+ assert.match(sql,/date_trunc\('milliseconds',req\.created_at\),req\.id\)</);
+ assert.match(sql,/ORDER BY date_trunc\('milliseconds',req\.created_at\) DESC,req\.id DESC/);
+});
