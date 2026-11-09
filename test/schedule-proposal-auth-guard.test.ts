@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {UnauthorizedException} from '@nestjs/common';
-import {mutateScheduleProposal} from '../src/modules/requests/schedule-proposal.transaction.js';
+import {mutateScheduleProposal, ScheduleProposalRejected} from '../src/modules/requests/schedule-proposal.transaction.js';
 
 const requestId = '10000000-0000-4000-8000-000000000001';
 const pepper = Buffer.alloc(32, 1);
@@ -37,3 +37,33 @@ for (const action of ['propose', 'decline', 'confirm'] as const) {
     assert.equal(queryCount, 0);
   });
 }
+
+test('invalid guest schedule capability cannot reach proposal mutations', async () => {
+  const statements: string[] = [];
+  const client = {
+    query: async (sql: string) => {
+      statements.push(sql);
+      if (sql.includes('FROM service_requests WHERE id=')) {
+        return {rows: [{
+          id: requestId, offer_id: requestId, status: 'ACCEPTED', version: 1,
+          schedule_reconciliation_required: false,
+          customer_person_id: null, guest_contact_id: requestId,
+          seller_professional_id: null, seller_organization_id: null,
+          performer_professional_id: null,
+        }]};
+      }
+      throw new Error('Invalid capability must not trigger additional queries');
+    },
+  };
+  await assert.rejects(
+    mutateScheduleProposal(client as never, {
+      requestId, action: 'confirm', proposalId: requestId,
+      expectedVersion: 1, key: 'invalid-guest-proof',
+      guestCapability: 'not-a-capability',
+      pepper, guestPepper: pepper,
+    }),
+    (error: unknown) => error instanceof ScheduleProposalRejected && error.reason === 'forbidden',
+  );
+  assert.equal(statements.length, 1);
+  assert.match(statements[0], /FOR UPDATE/);
+});
