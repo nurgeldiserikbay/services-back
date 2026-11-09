@@ -100,3 +100,21 @@ test('authorization never falls back to another seller when membership is denied
  assert.deepEqual(result,{authorized:false});
  assert.equal(count,2);
 });
+
+test('malformed truthy database grants never authorize seller decisions',async()=>{
+ const userId=randomUUID(),requestId=randomUUID(),sellerId=randomUUID();
+ for(const kind of ['professional','organization'] as const){
+   for(const malformed of ['true',1,{},null]){
+     let calls=0;
+     const db={query:async()=>{
+       calls++;
+       return calls===1?{rows:[{
+         professional_id:kind==='professional'?sellerId:null,
+         organization_id:kind==='organization'?sellerId:null,
+       }]}:{rows:[{allowed:malformed}]};
+     }};
+     assert.deepEqual(await resolveSellerDecisionAuthority(db as never,userId,requestId),
+       {authorized:false});
+   }
+ }
+});
