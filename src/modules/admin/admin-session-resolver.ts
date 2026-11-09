@@ -47,6 +47,8 @@ export async function resolvePlatformAdminSession(
  ORDER BY grants.scope ASC NULLS LAST
  LIMIT 101
  `,[hash,now]);
+ // A malformed driver result must never become a 500 or an authorization grant.
+ if(!result||!Array.isArray(result.rows))return null;
  const rows=result.rows;
  if(rows.length===0||rows.length>MAX_GRANTS)return null;
  const first=rows[0];
