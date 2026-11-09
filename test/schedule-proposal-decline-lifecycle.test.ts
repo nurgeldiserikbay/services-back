@@ -9,7 +9,7 @@ const guestId = '10000000-0000-4000-8000-000000000003';
 const pepper = Buffer.alloc(32, 7);
 const token = 'A'.repeat(43);
 
-function fakeDb(options: {version?:number; initiator?:string; proposalStatus?:string} = {}) {
+function fakeDb(options: {version?:number; initiator?:string; proposalStatus?:string; savedHash?:string} = {}) {
   const sqls: string[] = [];
   const events: string[] = [];
   const db = {
@@ -27,7 +27,7 @@ function fakeDb(options: {version?:number; initiator?:string; proposalStatus?:st
         return {rows:[{guest_contact_id:guestId}]};
       }
       if (sql.includes('pg_advisory_xact_lock')) return {rows:[]};
-      if (sql.includes('FROM idempotency_records')) return {rows:[]};
+      if (sql.includes('FROM idempotency_records')) return {rows:options.savedHash ? [{request_hash:options.savedHash,state:'COMPLETED',response_body:{},expires_at:new Date('2099-01-01')}] : []};
       if (sql.includes('FROM schedule_proposals WHERE id=')) return {rows:[{
         id:proposalId, revision:2, status:options.proposalStatus ?? 'PROPOSED',
         initiator:options.initiator ?? 'SELLER',
@@ -85,6 +85,14 @@ test('guest cannot decline an already resolved proposal', async () => {
 
 test('stale request version cannot mutate a proposal', async () => {
   const {db,events,sqls} = fakeDb({version:5});
+  await assert.rejects(mutateScheduleProposal(db as never,args),
+    (error:unknown) => error instanceof ScheduleProposalRejected && error.reason==='conflict');
+  assert.deepEqual(events,[]);
+  assert.equal(sqls.some(sql=>sql.includes('FROM schedule_proposals WHERE id=')),false);
+});
+
+test('reusing an idempotency key for a different request body is rejected before mutation', async () => {
+  const {db,events,sqls} = fakeDb({savedHash:'different-payload-hash'});
   await assert.rejects(mutateScheduleProposal(db as never,args),
     (error:unknown) => error instanceof ScheduleProposalRejected && error.reason==='conflict');
   assert.deepEqual(events,[]);
