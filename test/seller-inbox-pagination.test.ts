@@ -98,3 +98,21 @@ test('repository accepts a valid cursor on the second page',async()=>{
  await assert.doesNotReject(readSellerInbox(db as never,userId,filter));
  assert.equal(calls,1);
 });
+
+test('seller inbox rejects spoofed object identities before database access',async()=>{
+ let calls=0;
+ const db={query:async()=>{calls++;return {rows:[]};}};
+ const spoof={toString:()=>userId};
+ await assert.rejects(readSellerInbox(db as never,spoof as never,
+   parseSellerInboxFilter({limit:'1'})),/invalid_identity/);
+ assert.equal(calls,0);
+});
+
+test('seller inbox rejects object-shaped UUID row values',async()=>{
+ const filter=parseSellerInboxFilter({limit:'1'});
+ for(const field of ['id','service_offer_id','seller_id'] as const){
+   const db={query:async()=>({rows:[{...rows[0],[field]:{toString:()=>rows[0][field]}}]})};
+   await assert.rejects(readSellerInbox(db as never,userId,filter),
+     /invalid_seller_inbox_row/);
+ }
+});
