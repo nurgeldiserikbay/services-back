@@ -49,8 +49,9 @@ jobs:
           git diff --exit-code -- prisma/migrations/20261103_initial_platform/migration.sql prisma/migrations/migration_lock.toml
       - name: Apply committed baseline using Prisma Migrate deploy
         run: npm run db:migrate
-      - name: Verify Prisma migration status and target database
+      - name: Verify migration idempotency and status
         run: |
+          npm run db:migrate
           npx prisma migrate status --schema prisma/schema.prisma
       - name: Seed safe, limited geographic starter set twice
         run: |
