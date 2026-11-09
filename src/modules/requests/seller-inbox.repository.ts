@@ -22,7 +22,8 @@ export async function readSellerInbox(
   authenticatedUserId:string,
   filter:SellerInboxFilter,
 ):Promise<SellerInboxPage>{
-  if(!UUID.test(authenticatedUserId))throw new Error('invalid_identity');
+  if(typeof authenticatedUserId!=='string'||!UUID.test(authenticatedUserId))
+    throw new Error('invalid_identity');
   // Defensive boundary for non-HTTP callers that bypass parseSellerInboxFilter.
   if(!filter||typeof filter!=='object'||
      !Number.isSafeInteger(filter.limit)||filter.limit<1||filter.limit>50||
@@ -80,7 +81,9 @@ export async function readSellerInbox(
   const allowedStates:readonly string[]=SELLER_REQUEST_STATES;
   const items:SellerInboxItem[]=rows.map(row=>{
     const state=typeof row.status==='string'?row.status.toLowerCase():'';
-    if(!UUID.test(row.id)||!UUID.test(row.service_offer_id)||!UUID.test(row.seller_id)||
+    if(typeof row.id!=='string'||!UUID.test(row.id)||
+       typeof row.service_offer_id!=='string'||!UUID.test(row.service_offer_id)||
+       typeof row.seller_id!=='string'||!UUID.test(row.seller_id)||
        typeof row.title!=='string'||row.title.length>500||
        (row.seller_kind!=='professional'&&row.seller_kind!=='organization')||
        !allowedStates.includes(state)||!Number.isSafeInteger(row.version)||row.version<1||
