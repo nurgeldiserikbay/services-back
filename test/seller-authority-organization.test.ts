@@ -118,3 +118,24 @@ test('malformed truthy database grants never authorize seller decisions',async()
    }
  }
 });
+
+test('seller authority rejects object-coerced UUIDs before privilege lookup',async()=>{
+ const userId=randomUUID(),requestId=randomUUID(),sellerId=randomUUID();
+ const spoof={toString:()=>userId};
+ let calls=0;
+ const db={query:async()=>{calls++;return {rows:[]};}};
+ assert.deepEqual(await resolveSellerDecisionAuthority(db as never,spoof as never,requestId),
+   {authorized:false});
+ assert.equal(calls,0);
+ for(const kind of ['professional','organization'] as const){
+   let queries=0;
+   const dbRow={query:async()=>{
+     queries++;
+     return {rows:[{professional_id:kind==='professional'?{toString:()=>sellerId}:null,
+       organization_id:kind==='organization'?{toString:()=>sellerId}:null}]};
+   }};
+   assert.deepEqual(await resolveSellerDecisionAuthority(dbRow as never,userId,requestId),
+     {authorized:false});
+   assert.equal(queries,1);
+ }
+});
