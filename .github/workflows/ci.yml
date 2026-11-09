@@ -50,7 +50,6 @@ jobs:
       - name: Verify Prisma migration status and target database
         run: |
           npx prisma migrate status --schema prisma/schema.prisma
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DO \\$check\\$ BEGIN IF current_database() <> 'services_test' OR current_schema() <> 'public' THEN RAISE EXCEPTION 'Unexpected CI database or schema'; END IF; END \\$check\\$;"
       - name: Seed safe, limited geographic starter set twice
         run: |
           npm run db:seed:geo
@@ -58,6 +57,9 @@ jobs:
       - name: Validate geographic seed and PostgreSQL constraint smoke
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT current_database(), current_schema();"
+          test "$(psql "$DATABASE_URL" -Atc 'SELECT current_database()')" = services_test
+          test "$(psql "$DATABASE_URL" -Atc 'SELECT current_schema()')" = public
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF (SELECT count(*) FROM countries WHERE iso2='KZ') <> 1 OR (SELECT count(*) FROM cities WHERE name IN ('Astana','Almaty','Shymkent')) <> 3 THEN RAISE EXCEPTION 'Geography seed is not idempotent'; END IF; END \$\$;"
           npm run db:smoke
       - name: Verify migrated application tables before integration tests
