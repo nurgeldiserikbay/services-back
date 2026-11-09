@@ -129,3 +129,34 @@ for (const action of ['propose', 'decline', 'confirm'] as const) {
     assert.match(statements[0], /FOR UPDATE/);
   });
 }
+
+test('guest schedule capability for another contact cannot authorize a request', async () => {
+  const statements: string[] = [];
+  const client = {
+    query: async (sql: string) => {
+      statements.push(sql);
+      if (sql.includes('FROM service_requests WHERE id=')) {
+        return {rows: [{
+          id: requestId, offer_id: requestId, status: 'ACCEPTED', version: 1,
+          schedule_reconciliation_required: false,
+          customer_person_id: null, guest_contact_id: requestId,
+          seller_professional_id: null, seller_organization_id: null,
+          performer_professional_id: null,
+        }]};
+      }
+      if (sql.includes('FROM guest_capabilities cap')) {
+        return {rows: [{guest_contact_id: '10000000-0000-4000-8000-000000000099'}]};
+      }
+      throw new Error('Mismatched guest contact must not trigger mutations');
+    },
+  };
+  await assert.rejects(
+    mutateScheduleProposal(client as never, {
+      requestId, action: 'confirm', proposalId: requestId,
+      expectedVersion: 1, key: 'mismatched-guest-contact',
+      guestCapability: 'A'.repeat(43), pepper, guestPepper: pepper,
+    }),
+    (error: unknown) => error instanceof ScheduleProposalRejected && error.reason === 'forbidden',
+  );
+  assert.equal(statements.length, 2);
+});
