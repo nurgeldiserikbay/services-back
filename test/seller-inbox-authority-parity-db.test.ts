@@ -74,7 +74,10 @@ test('personal inbox exposes neither private note nor guest contact',async()=>{
   assert.equal(page.items[0].seller_kind,'professional');
   assert.equal(page.items[0].seller_id,f.profileId);
   assert.doesNotMatch(JSON.stringify(page),/private note|inbox-guest|encrypted/);
-  assert.deepEqual((await readSellerInbox(db,randomUUID(),
+  const strangerId=randomUUID();
+  assert.deepEqual((await readSellerInbox(db,strangerId,
     parseSellerInboxFilter({}))).items,[]);
+  assert.deepEqual(await resolveSellerDecisionAuthority(db,strangerId,f.requestId),
+    {authorized:false});
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
