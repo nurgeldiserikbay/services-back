@@ -55,6 +55,9 @@ test('personal inbox and decision permission agree across profile lifecycle',asy
    [f.profileId]);
   assert.deepEqual((await visible()).items.map(x=>x.id),[f.requestId]);
   assert.equal((await allowed()).authorized,true);
+  // Another account must not gain decision rights merely by knowing the request ID.
+  assert.deepEqual(await resolveSellerDecisionAuthority(db,randomUUID(),f.requestId),
+    {authorized:false});
   await db.query(`UPDATE users SET status='SUSPENDED' WHERE id=$1`,[f.ownerId]);
   assert.deepEqual((await visible()).items,[]);
   assert.deepEqual(await allowed(),{authorized:false});
