@@ -27,7 +27,7 @@ export async function readSellerInbox(
   if(!Number.isSafeInteger(filter.limit)||filter.limit<1||filter.limit>50||
      (filter.state!==null&&!SELLER_REQUEST_STATES.includes(filter.state))||
      (filter.before!==null&&(!UUID.test(filter.before.id)||
-       !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(filter.before.createdAt)||
+       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(filter.before.createdAt)||
        !Number.isFinite(Date.parse(filter.before.createdAt))||
        new Date(filter.before.createdAt).toISOString()!==filter.before.createdAt)))
     throw new Error('invalid_seller_inbox_filter');
