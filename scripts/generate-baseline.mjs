@@ -18,8 +18,15 @@ if(result.status!==0 || !result.stdout.includes('CREATE TABLE')){
   process.exit(1);
 }
 const custom = readFileSync('prisma/constraints.sql','utf8');
+// Prisma 6.19.3 adds an idempotent public-schema declaration to from-empty diffs.
+// Our already-reviewed initial migration predates it; preserve its applied checksum.
+// Do not normalize any other SQL drift: CI must still fail on meaningful changes.
+const generatedSql=result.stdout.replace(
+  /^-- CreateSchema\r?\nCREATE SCHEMA IF NOT EXISTS "public";\r?\n\r?\n/,
+  '',
+);
 const sql='-- GENERATED BASELINE FROM REVIEWED PRISMA SCHEMA; REVIEW BEFORE PRODUCTION.\n'
-  + result.stdout + '\n-- Custom transactional invariants (G0 contracts).\n'
+  + generatedSql + '\n-- Custom transactional invariants (G0 contracts).\n'
   + custom + '\n';
 mkdirSync(target,{recursive:true});
 writeFileSync(join(target,'migration.sql'),sql);
