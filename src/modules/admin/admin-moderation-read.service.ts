@@ -1,4 +1,4 @@
-import {Injectable,UnauthorizedException} from '@nestjs/common';
+import {Inject,Injectable,UnauthorizedException} from '@nestjs/common';
 import {DatabasePool} from '../../platform/database/database.pool.js';
 import {requireSecret} from '../guest-requests/guest-request.security.js';
 import {resolvePlatformAdminSession} from './admin-session-resolver.js';
@@ -44,7 +44,7 @@ export function validateModerationCaseRows(
  */
 @Injectable()
 export class PlatformModerationReadService{
- constructor(private readonly db:DatabasePool){}
+ constructor(@Inject(DatabasePool) private readonly db:DatabasePool){}
  async list(authorization:unknown):Promise<{items:ModerationCaseSummary[]}>{
   if(process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP!=='enabled')
    throw new UnauthorizedException('Authentication required');
