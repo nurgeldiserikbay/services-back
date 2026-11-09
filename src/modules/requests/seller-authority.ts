@@ -24,7 +24,9 @@ export async function resolveSellerDecisionAuthority(
   if(!UUID.test(authenticatedUserId)||!UUID.test(requestId))
     return {authorized:false};
 
-  // Acquire an exclusive request lock BEFORE the subsequent state transition.\n  // Starting with FOR SHARE and upgrading later can deadlock when two sellers\n  // race to accept/decline the same request.
+  // Acquire an exclusive request lock BEFORE the subsequent state transition.
+  // Starting with FOR SHARE and upgrading later can deadlock when two sellers
+  // race to accept/decline the same request.
   const request=await db.query<SellerRow>(`
     SELECT seller_professional_id::text AS professional_id,
            seller_organization_id::text AS organization_id
