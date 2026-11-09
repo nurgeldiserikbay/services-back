@@ -132,3 +132,13 @@ test('seller inbox rejects malformed or oversized query result pages',async()=>{
      /invalid_seller_inbox_page/);
  }
 });
+
+test('seller inbox null-row validation reports domain error rather than TypeError',async()=>{
+ const db={query:async()=>({rows:[null]})};
+ await assert.rejects(readSellerInbox(db as never,userId,
+   parseSellerInboxFilter({limit:'1'})),error=>{
+     assert.equal((error as Error).message,'invalid_seller_inbox_row');
+     assert.equal((error as Error).name,'Error');
+     return true;
+   });
+});
