@@ -116,3 +116,30 @@ test('schedule proposal rejects a Kazakhstan wall time with the wrong offset', (
     utc_offset_seconds: 21600,
   }), BadRequestException);
 });
+
+test('schedule proposal accepts valid UTC timestamps with fractional precision', () => {
+  for (const start_at of [
+    '2026-11-10T04:15:00Z',
+    '2026-11-10T04:15:00.0Z',
+    '2026-11-10T04:15:00.000Z',
+  ]) {
+    const parsed = validateScheduleProposalBody({
+      start_at,
+      end_at: '2026-11-10T05:15:00.000Z',
+      timezone: 'Asia/Almaty',
+      local_start_at: '2026-11-10T09:15:00',
+      utc_offset_seconds: 18000,
+    });
+    assert.equal(parsed.startAt.toISOString(), '2026-11-10T04:15:00.000Z');
+  }
+});
+
+test('schedule proposal rejects a wall time that differs by one second', () => {
+  assert.throws(() => validateScheduleProposalBody({
+    start_at: '2026-11-10T04:15:00.000Z',
+    end_at: '2026-11-10T05:15:00.000Z',
+    timezone: 'Asia/Almaty',
+    local_start_at: '2026-11-10T09:15:01',
+    utc_offset_seconds: 18000,
+  }), BadRequestException);
+});
