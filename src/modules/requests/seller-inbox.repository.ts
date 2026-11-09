@@ -26,9 +26,11 @@ export async function readSellerInbox(
   // Defensive boundary for non-HTTP callers that bypass parseSellerInboxFilter.
   if(!filter||typeof filter!=='object'||
      !Number.isSafeInteger(filter.limit)||filter.limit<1||filter.limit>50||
-     (filter.state!==null&&!SELLER_REQUEST_STATES.includes(filter.state))||
+     (filter.state!==null&&!(typeof filter.state==='string'&&
+       (SELLER_REQUEST_STATES as readonly string[]).includes(filter.state)))||
      (filter.before!==null&&(!filter.before||typeof filter.before!=='object'||
-       !UUID.test(filter.before.id)||
+       typeof filter.before.id!=='string'||!UUID.test(filter.before.id)||
+       typeof filter.before.createdAt!=='string'||
        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(filter.before.createdAt)||
        !Number.isFinite(Date.parse(filter.before.createdAt))||
        new Date(filter.before.createdAt).toISOString()!==filter.before.createdAt)))
