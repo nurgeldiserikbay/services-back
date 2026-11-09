@@ -61,6 +61,10 @@ test('personal inbox and decision permission agree across profile lifecycle',asy
   await db.query(`UPDATE users SET status='SUSPENDED' WHERE id=$1`,[f.ownerId]);
   assert.deepEqual((await visible()).items,[]);
   assert.deepEqual(await allowed(),{authorized:false});
+  // Restoring the owner must restore both read and decision permissions.
+  await db.query(`UPDATE users SET status='ACTIVE' WHERE id=$1`,[f.ownerId]);
+  assert.deepEqual((await visible()).items.map(x=>x.id),[f.requestId]);
+  assert.equal((await allowed()).authorized,true);
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
 
