@@ -63,3 +63,12 @@ test('professional seller authority uses profile owner and denies unknown owner'
    assert.match(calls[1].sql,/prof\.status='PUBLISHED'/);
  }
 });
+
+test('missing request is denied without querying seller membership',async()=>{
+ const userId=randomUUID(),requestId=randomUUID();
+ let calls=0;
+ const db={query:async()=>{calls++;return {rows:[]};}};
+ assert.deepEqual(await resolveSellerDecisionAuthority(db as never,userId,requestId),
+   {authorized:false});
+ assert.equal(calls,1);
+});
