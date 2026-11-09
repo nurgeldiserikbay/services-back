@@ -82,3 +82,12 @@ test('admin resolver refuses more than 100 grant rows',async()=>{
  }));
  assert.equal(await resolvePlatformAdminSession(client(rows),bearer,pepper,now),null);
 });
+
+test('admin resolver denies malformed database query responses instead of throwing',async()=>{
+ for(const response of [null,undefined,{}, {rows:null}, {rows:'not-an-array'}, {rows:{0:valid(),length:1}}]){
+  let calls=0;
+  const db={query:async()=>{calls++;return response;}} as unknown as Pick<PoolClient,'query'>;
+  assert.equal(await resolvePlatformAdminSession(db,bearer,pepper,now),null);
+  assert.equal(calls,1);
+ }
+});
