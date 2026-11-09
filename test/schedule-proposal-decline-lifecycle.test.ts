@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createHmac} from 'node:crypto';
 import test from 'node:test';
 import {mutateScheduleProposal, ScheduleProposalRejected} from '../src/modules/requests/schedule-proposal.transaction.js';
 import {hashGuestCapability} from '../src/modules/guest-requests/guest-request.security.js';
@@ -9,7 +10,7 @@ const guestId = '10000000-0000-4000-8000-000000000003';
 const pepper = Buffer.alloc(32, 7);
 const token = 'A'.repeat(43);
 
-function fakeDb(options: {version?:number; initiator?:string; proposalStatus?:string; savedHash?:string} = {}) {
+function fakeDb(options: {version?:number; initiator?:string; proposalStatus?:string; savedHash?:string; storedResponse?:unknown; storedState?:string; storedExpiry?:Date} = {}) {
   const sqls: string[] = [];
   const events: string[] = [];
   const db = {
@@ -27,7 +28,7 @@ function fakeDb(options: {version?:number; initiator?:string; proposalStatus?:st
         return {rows:[{guest_contact_id:guestId}]};
       }
       if (sql.includes('pg_advisory_xact_lock')) return {rows:[]};
-      if (sql.includes('FROM idempotency_records')) return {rows:options.savedHash ? [{request_hash:options.savedHash,state:'COMPLETED',response_body:{},expires_at:new Date('2099-01-01')}] : []};
+      if (sql.includes('FROM idempotency_records')) return {rows:options.savedHash ? [{request_hash:options.savedHash,state:options.storedState??'COMPLETED',response_body:options.storedResponse??{},expires_at:options.storedExpiry??new Date('2099-01-01')}] : []};
       if (sql.includes('FROM schedule_proposals WHERE id=')) return {rows:[{
         id:proposalId, revision:2, status:options.proposalStatus ?? 'PROPOSED',
         initiator:options.initiator ?? 'SELLER',
@@ -97,4 +98,35 @@ test('reusing an idempotency key for a different request body is rejected before
     (error:unknown) => error instanceof ScheduleProposalRejected && error.reason==='conflict');
   assert.deepEqual(events,[]);
   assert.equal(sqls.some(sql=>sql.includes('FROM schedule_proposals WHERE id=')),false);
+});
+
+test('completed identical decline replays without duplicate side effects', async () => {
+  const hash = createHmac('sha256',pepper)
+    .update('schedule-proposal:v1\\0')
+    .update(JSON.stringify(['decline',requestId,proposalId,4,null]))
+    .digest('hex');
+  const storedResponse = {
+    id:proposalId,request_id:requestId,revision:2,status:'declined',
+    initiator:'seller',start_at:'2026-12-01T10:00:00.000Z',
+    end_at:'2026-12-01T11:00:00.000Z',timezone:'Asia/Almaty',
+    request_version:5,replayed:false,
+  };
+  const {db,events,sqls} = fakeDb({
+    version:5,savedHash:hash,storedResponse,
+  });
+  const result = await mutateScheduleProposal(db as never,args);
+  assert.deepEqual(result,{...storedResponse,replayed:true});
+  assert.deepEqual(events,[]);
+  assert.equal(sqls.some(sql=>sql.includes('FROM schedule_proposals WHERE id=')),false);
+});
+
+test('pending idempotency record cannot be replayed', async () => {
+  const hash = createHmac('sha256',pepper)
+    .update('schedule-proposal:v1\\0')
+    .update(JSON.stringify(['decline',requestId,proposalId,4,null]))
+    .digest('hex');
+  const {db,events} = fakeDb({savedHash:hash,storedState:'PENDING'});
+  await assert.rejects(mutateScheduleProposal(db as never,args),
+    (error:unknown) => error instanceof ScheduleProposalRejected && error.reason==='conflict');
+  assert.deepEqual(events,[]);
 });
