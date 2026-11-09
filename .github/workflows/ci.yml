@@ -8,6 +8,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  # Keep the security gate independent so an advisory cannot hide build, migration, or DB regressions.
+  # Both jobs are required for a green workflow; a failing audit still fails CI.
+  dependency-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Audit production dependencies for high-severity vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
   build-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -35,8 +50,6 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - name: Audit production dependencies for high-severity vulnerabilities
-        run: npm audit --omit=dev --audit-level=high
       - name: TypeScript typecheck (fail fast)
         run: npm run typecheck
       - name: Compile backend (fail fast)
