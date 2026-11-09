@@ -72,3 +72,20 @@ test('missing request is denied without querying seller membership',async()=>{
    {authorized:false});
  assert.equal(calls,1);
 });
+
+test('organization authority requires active organization, user, and unscoped owner membership',async()=>{
+ const userId=randomUUID(),requestId=randomUUID(),orgId=randomUUID();
+ const queries:string[]=[];
+ const db={query:async(sql:string)=>{
+   queries.push(sql);
+   return queries.length===1
+     ? {rows:[{professional_id:null,organization_id:orgId}]}
+     : {rows:[]};
+ }};
+ assert.deepEqual(await resolveSellerDecisionAuthority(db as never,userId,requestId),
+   {authorized:false});
+ assert.match(queries[1],/org\.status='ACTIVE'/);
+ assert.match(queries[1],/usr\.status='ACTIVE'/);
+ assert.match(queries[1],/membership\.scope IS NULL OR membership\.scope='\{\}'::jsonb/);
+ assert.match(queries[1],/FOR SHARE OF org, membership, usr/);
+});
