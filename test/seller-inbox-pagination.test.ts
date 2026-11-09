@@ -31,3 +31,13 @@ test('seller inbox cursor walks all rows without skipping or repeating entries',
  assert.deepEqual(seen,ids);
  assert.equal(new Set(seen).size,ids.length);
 });
+
+test('seller inbox does not expose private request notes or guest contact fields',async()=>{
+ const db={query:async()=>({rows:[rows[0]]})};
+ const page=await readSellerInbox(db as never,userId,parseSellerInboxFilter({limit:'1'}));
+ assert.deepEqual(Object.keys(page.items[0]).sort(),[
+   'created_at','id','scheduled_start_at','seller_id','seller_kind',
+   'service_offer_id','state','title','version',
+ ].sort());
+ assert.equal(page.next_cursor,null);
+});
