@@ -74,3 +74,22 @@ test('moderation service refuses an out-of-scope row returned by database',async
   await assert.rejects(new PlatformModerationReadService(db).list('Bearer '+token),{status:401});
  });
 });
+
+test('moderation service fails closed on malformed database-driver page replies',async()=>{
+ await withFeatureFlag(async()=>{
+  for(const malformed of [null,undefined,{}, {rows:null}, {rows:'invalid'}]){
+   let calls=0;
+   const db={transaction:async(work:(client:unknown)=>Promise<unknown>)=>
+    work({query:async(sql:string)=>{
+     calls++;
+     return sql.includes('FROM platform_admin_sessions')?
+      {rows:[grant()]}:malformed;
+    }})} as unknown as DatabasePool;
+   await assert.rejects(
+    new PlatformModerationReadService(db).list('Bearer '+token),
+    {status:401},
+   );
+   assert.equal(calls,2,'authorization query precedes fail-closed page validation');
+  }
+ });
+});
