@@ -89,3 +89,14 @@ test('organization authority requires active organization, user, and unscoped ow
  assert.match(queries[1],/membership\.scope IS NULL OR membership\.scope='\{\}'::jsonb/);
  assert.match(queries[1],/FOR SHARE OF org, membership, usr/);
 });
+
+test('authorization never falls back to another seller when membership is denied',async()=>{
+ const userId=randomUUID(),requestId=randomUUID(),orgId=randomUUID();
+ let count=0;
+ const db={query:async()=>({rows:++count===1
+   ? [{professional_id:null,organization_id:orgId}]
+   : []})};
+ const result=await resolveSellerDecisionAuthority(db as never,userId,requestId);
+ assert.deepEqual(result,{authorized:false});
+ assert.equal(count,2);
+});
