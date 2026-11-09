@@ -130,3 +130,17 @@ test('pending idempotency record cannot be replayed', async () => {
     (error:unknown) => error instanceof ScheduleProposalRejected && error.reason==='conflict');
   assert.deepEqual(events,[]);
 });
+
+test('expired idempotency record cannot be replayed or mutate a proposal', async () => {
+  const hash = createHmac('sha256',pepper)
+    .update('schedule-proposal:v1\\0')
+    .update(JSON.stringify(['decline',requestId,proposalId,4,null]))
+    .digest('hex');
+  const {db,events,sqls} = fakeDb({
+    savedHash:hash,storedExpiry:new Date('2020-01-01T00:00:00.000Z'),
+  });
+  await assert.rejects(mutateScheduleProposal(db as never,args),
+    (error:unknown) => error instanceof ScheduleProposalRejected && error.reason==='conflict');
+  assert.deepEqual(events,[]);
+  assert.equal(sqls.some(sql=>sql.includes('FROM schedule_proposals WHERE id=')),false);
+});
