@@ -82,3 +82,37 @@ test('schedule proposal rejects unsafe offsets and missing required evidence', (
   const {utc_offset_seconds: _offset, ...withoutOffset} = valid;
   assert.throws(() => validateScheduleProposalBody(withoutOffset), BadRequestException);
 });
+
+test('schedule proposal accepts Kazakhstan local time with a positive UTC offset', () => {
+  const parsed = validateScheduleProposalBody({
+    start_at: '2026-11-10T04:15:00.000Z',
+    end_at: '2026-11-10T05:15:00.000Z',
+    timezone: 'Asia/Almaty',
+    local_start_at: '2026-11-10T09:15:00',
+    utc_offset_seconds: 18000,
+  });
+  assert.equal(parsed.localStartAt, '2026-11-10T09:15:00');
+  assert.equal(parsed.utcOffsetSeconds, 18000);
+});
+
+test('schedule proposal validates local calendar date across a UTC day boundary', () => {
+  const parsed = validateScheduleProposalBody({
+    start_at: '2026-11-09T20:30:00.000Z',
+    end_at: '2026-11-09T21:30:00.000Z',
+    timezone: 'Asia/Almaty',
+    local_start_at: '2026-11-10T01:30:00',
+    utc_offset_seconds: 18000,
+  });
+  assert.equal(parsed.startAt.toISOString(), '2026-11-09T20:30:00.000Z');
+  assert.equal(parsed.localStartAt, '2026-11-10T01:30:00');
+});
+
+test('schedule proposal rejects a Kazakhstan wall time with the wrong offset', () => {
+  assert.throws(() => validateScheduleProposalBody({
+    start_at: '2026-11-10T04:15:00.000Z',
+    end_at: '2026-11-10T05:15:00.000Z',
+    timezone: 'Asia/Almaty',
+    local_start_at: '2026-11-10T09:15:00',
+    utc_offset_seconds: 21600,
+  }), BadRequestException);
+});
