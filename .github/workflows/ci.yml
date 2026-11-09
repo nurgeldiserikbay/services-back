@@ -22,7 +22,17 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Audit production dependencies for high-severity vulnerabilities
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          # Keep the audit exit code so high/critical advisories fail this job.
+          npm audit --omit=dev --audit-level=high --json > npm-audit.json
+      - name: Archive dependency audit evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-production-npm-audit
+          path: npm-audit.json
+          if-no-files-found: warn
+          retention-days: 14
   build-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 25
