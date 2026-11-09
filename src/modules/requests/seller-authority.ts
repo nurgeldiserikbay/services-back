@@ -46,7 +46,7 @@ export async function resolveSellerDecisionAuthority(
         AND usr.status='ACTIVE' AND prof.status='PUBLISHED'
       FOR SHARE OF prof, person, usr
     `,[row.professional_id,authenticatedUserId]);
-    return owner.rows[0]?.allowed
+    return owner.rows[0]?.allowed===true
       ? {authorized:true,seller:{kind:'professional',sellerId:row.professional_id}}
       : {authorized:false};
   }
@@ -65,7 +65,7 @@ export async function resolveSellerDecisionAuthority(
     FOR SHARE OF org, membership, usr
     LIMIT 1
   `,[row.organization_id,authenticatedUserId]);
-  return org.rows[0]?.allowed
+  return org.rows[0]?.allowed===true
     ? {authorized:true,seller:{kind:'organization',sellerId:row.organization_id!}}
     : {authorized:false};
 }
