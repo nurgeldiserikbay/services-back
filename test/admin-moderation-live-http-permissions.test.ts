@@ -26,6 +26,7 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
  let revoked=false;
  let staleMfa=false;
  let noGrants=false;
+ let injectOutOfScopeRow=false;
  let caseQueries=0;
  let app:INestApplication|undefined;
  try{
@@ -50,7 +51,7 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
      assert.deepEqual(values,[[allowedScope]]);
      assert.match(sql,/resource_scope=ANY\(\$1::varchar\[\]\)/);
      return {rows:[{
-      id:caseId,resource_scope:allowedScope,subject_kind:'review',
+      id:caseId,resource_scope:injectOutOfScopeRow?deniedScope:allowedScope,subject_kind:'review',
       state:'triage',created_at:new Date('2026-11-09T09:00:00.000Z'),
       email:'never-return@example.test',
      }]};
@@ -74,29 +75,38 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
    createdAt:'2026-11-09T09:00:00.000Z',
   }]});
   assert.equal(caseQueries,1);
+
+  // A broken/malicious DB adapter must not cause cross-scope data disclosure.
+  injectOutOfScopeRow=true;
+  const crossScope=await get(token);
+  assert.equal(crossScope.status,401);
+  assert.ok(!(await crossScope.text()).includes(caseId));
+  assert.equal(caseQueries,2);
+  injectOutOfScopeRow=false;
+
   const wrong=await get(randomBytes(32).toString('base64url'));
   assert.equal(wrong.status,401);
-  assert.equal(caseQueries,1);
+  assert.equal(caseQueries,2);
 
   noGrants=true;
   const missingScope=await get(token);
   assert.equal(missingScope.status,200);
   assert.deepEqual(await missingScope.json(),{items:[]});
-  assert.equal(caseQueries,1);
+  assert.equal(caseQueries,2);
   noGrants=false;
 
   staleMfa=true;
   const stale=await get(token);
   assert.equal(stale.status,200);
   assert.deepEqual(await stale.json(),{items:[]});
-  assert.equal(caseQueries,1);
+  assert.equal(caseQueries,2);
   staleMfa=false;
 
   revoked=true;
   const denied=await get(token);
   assert.equal(denied.status,401);
   const body=await denied.text();
-  assert.equal(caseQueries,1);
+  assert.equal(caseQueries,2);
   assert.ok(!body.includes(token));
   assert.ok(!body.includes(deniedScope));
  }finally{
