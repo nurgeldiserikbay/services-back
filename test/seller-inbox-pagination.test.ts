@@ -69,3 +69,19 @@ test('SQL cursor comparison and ordering use the same millisecond precision',asy
  assert.match(sql,/date_trunc\('milliseconds',req\.created_at\),req\.id\)</);
  assert.match(sql,/ORDER BY date_trunc\('milliseconds',req\.created_at\) DESC,req\.id DESC/);
 });
+
+test('repository rejects invalid internal pagination filters before SQL',async()=>{
+ let calls=0;
+ const db={query:async()=>{calls++;return {rows:[]};}};
+ const valid=parseSellerInboxFilter({limit:'1'});
+ for(const invalid of [
+   {...valid,limit:0},{...valid,limit:51},{...valid,limit:1.5},
+   {...valid,state:'unauthorized'},
+   {...valid,before:{id:randomUUID(),createdAt:'not-a-date'}},
+   {...valid,before:{id:'invalid',createdAt:'2026-11-09T12:00:00.000Z'}},
+ ]){
+   await assert.rejects(readSellerInbox(db as never,userId,invalid as never),
+     /invalid_seller_inbox_filter/);
+ }
+ assert.equal(calls,0);
+});
