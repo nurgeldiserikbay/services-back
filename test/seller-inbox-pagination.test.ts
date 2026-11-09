@@ -78,6 +78,9 @@ test('repository rejects invalid internal pagination filters before SQL',async()
    null,undefined,{...valid,before:undefined},
    {...valid,limit:0},{...valid,limit:51},{...valid,limit:1.5},
    {...valid,state:'unauthorized'},
+   {...valid,state:undefined},{...valid,state:42},
+   {...valid,before:{id:42,createdAt:'2026-11-09T12:00:00.000Z'}},
+   {...valid,before:{id:randomUUID(),createdAt:42}},
    {...valid,before:{id:randomUUID(),createdAt:'not-a-date'}},
    {...valid,before:{id:'invalid',createdAt:'2026-11-09T12:00:00.000Z'}},
  ]){
