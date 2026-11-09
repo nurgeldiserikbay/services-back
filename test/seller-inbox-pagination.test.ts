@@ -75,6 +75,7 @@ test('repository rejects invalid internal pagination filters before SQL',async()
  const db={query:async()=>{calls++;return {rows:[]};}};
  const valid=parseSellerInboxFilter({limit:'1'});
  for(const invalid of [
+   null,undefined,{...valid,before:undefined},
    {...valid,limit:0},{...valid,limit:51},{...valid,limit:1.5},
    {...valid,state:'unauthorized'},
    {...valid,before:{id:randomUUID(),createdAt:'not-a-date'}},
