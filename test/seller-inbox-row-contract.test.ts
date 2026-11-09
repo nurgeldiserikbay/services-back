@@ -59,7 +59,7 @@ test('seller inbox requests one extra row and emits a cursor only when more exis
  assert.equal(typeof page.next_cursor,'string');
  assert.equal(args[4],2);
  assert.equal(args[1],'pending');
- assert.match(sql,/ORDER BY req\.created_at DESC,req\.id DESC/);
+ assert.match(sql,/ORDER BY date_trunc\('milliseconds',req\.created_at\) DESC,req\.id DESC/);
 });
 test('seller inbox rejects a malformed scheduled timestamp',async()=>{
  await assert.rejects(readSellerInbox(client([{
