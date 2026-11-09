@@ -23,6 +23,14 @@ export async function readSellerInbox(
   filter:SellerInboxFilter,
 ):Promise<SellerInboxPage>{
   if(!UUID.test(authenticatedUserId))throw new Error('invalid_identity');
+  // Defensive boundary for non-HTTP callers that bypass parseSellerInboxFilter.
+  if(!Number.isSafeInteger(filter.limit)||filter.limit<1||filter.limit>50||
+     (filter.state!==null&&!SELLER_REQUEST_STATES.includes(filter.state))||
+     (filter.before!==null&&(!UUID.test(filter.before.id)||
+       !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(filter.before.createdAt)||
+       !Number.isFinite(Date.parse(filter.before.createdAt))||
+       new Date(filter.before.createdAt).toISOString()!==filter.before.createdAt)))
+    throw new Error('invalid_seller_inbox_filter');
   const result=await client.query<InboxRow>(`
     SELECT req.id::text,req.offer_id::text AS service_offer_id,
       offer.title,req.status::text,req.version,
