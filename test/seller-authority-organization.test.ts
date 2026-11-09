@@ -43,3 +43,23 @@ test('ambiguous seller ownership fails closed without membership lookup',async()
    assert.equal(queries,1);
  }
 });
+
+test('professional seller authority uses profile owner and denies unknown owner',async()=>{
+ const userId=randomUUID(),requestId=randomUUID(),profileId=randomUUID();
+ for(const allowed of [true,false]){
+   const calls:Array<{sql:string;params:unknown[]}>=[];
+   const db={query:async(sql:string,params:unknown[])=>{
+     calls.push({sql,params});
+     return calls.length===1
+       ? {rows:[{professional_id:profileId,organization_id:null}]}
+       : {rows:allowed?[{allowed:true}]:[]};
+   }};
+   const result=await resolveSellerDecisionAuthority(db as never,userId,requestId);
+   assert.deepEqual(result,allowed
+     ? {authorized:true,seller:{kind:'professional',sellerId:profileId}}
+     : {authorized:false});
+   assert.deepEqual(calls[1].params,[profileId,userId]);
+   assert.match(calls[1].sql,/usr\.status='ACTIVE'/);
+   assert.match(calls[1].sql,/prof\.status='PUBLISHED'/);
+ }
+});
