@@ -102,7 +102,7 @@ test('reusing an idempotency key for a different request body is rejected before
 
 test('completed identical decline replays without duplicate side effects', async () => {
   const hash = createHmac('sha256',pepper)
-    .update('schedule-proposal:v1\\0')
+    .update('schedule-proposal:v1\0')
     .update(JSON.stringify(['decline',requestId,proposalId,4,null]))
     .digest('hex');
   const storedResponse = {
@@ -122,7 +122,7 @@ test('completed identical decline replays without duplicate side effects', async
 
 test('pending idempotency record cannot be replayed', async () => {
   const hash = createHmac('sha256',pepper)
-    .update('schedule-proposal:v1\\0')
+    .update('schedule-proposal:v1\0')
     .update(JSON.stringify(['decline',requestId,proposalId,4,null]))
     .digest('hex');
   const {db,events} = fakeDb({savedHash:hash,storedState:'PENDING'});
@@ -133,7 +133,7 @@ test('pending idempotency record cannot be replayed', async () => {
 
 test('expired idempotency record cannot be replayed or mutate a proposal', async () => {
   const hash = createHmac('sha256',pepper)
-    .update('schedule-proposal:v1\\0')
+    .update('schedule-proposal:v1\0')
     .update(JSON.stringify(['decline',requestId,proposalId,4,null]))
     .digest('hex');
   const {db,events,sqls} = fakeDb({
