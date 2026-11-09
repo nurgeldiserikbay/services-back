@@ -21,7 +21,8 @@ export async function resolveSellerDecisionAuthority(
   authenticatedUserId:string,
   requestId:string,
 ):Promise<SellerAuthorityResult>{
-  if(!UUID.test(authenticatedUserId)||!UUID.test(requestId))
+  if(typeof authenticatedUserId!=='string'||typeof requestId!=='string'||
+     !UUID.test(authenticatedUserId)||!UUID.test(requestId))
     return {authorized:false};
 
   // Acquire an exclusive request lock BEFORE the subsequent state transition.
@@ -33,7 +34,11 @@ export async function resolveSellerDecisionAuthority(
     FROM service_requests WHERE id=$1::uuid FOR UPDATE
   `,[requestId]);
   const row=request.rows[0];
-  if(!row || Boolean(row.professional_id)===Boolean(row.organization_id))
+  if(!row || Boolean(row.professional_id)===Boolean(row.organization_id)||
+     (row.professional_id!==null&&
+       (typeof row.professional_id!=='string'||!UUID.test(row.professional_id)))||
+     (row.organization_id!==null&&
+       (typeof row.organization_id!=='string'||!UUID.test(row.organization_id))))
     return {authorized:false};
 
   if(row.professional_id){
