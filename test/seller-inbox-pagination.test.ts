@@ -116,3 +116,9 @@ test('seller inbox rejects object-shaped UUID row values',async()=>{
      /invalid_seller_inbox_row/);
  }
 });
+
+test('seller inbox fails closed on null database row',async()=>{
+ const db={query:async()=>({rows:[null]})};
+ await assert.rejects(readSellerInbox(db as never,userId,
+   parseSellerInboxFilter({limit:'1'})),/invalid_seller_inbox_row/);
+});
