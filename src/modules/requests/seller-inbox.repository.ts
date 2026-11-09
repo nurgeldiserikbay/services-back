@@ -76,6 +76,8 @@ export async function readSellerInbox(
     LIMIT $5::integer
   `,[authenticatedUserId,filter.state,filter.before?.createdAt??null,
     filter.before?.id??null,filter.limit+1]);
+  if(!result||!Array.isArray(result.rows)||result.rows.length>filter.limit+1)
+    throw new Error('invalid_seller_inbox_page');
   const hasMore=result.rows.length>filter.limit;
   const rows=result.rows.slice(0,filter.limit);
   const allowedStates:readonly string[]=SELLER_REQUEST_STATES;
