@@ -29,3 +29,17 @@ test('organization authority denies missing membership',async()=>{
  assert.deepEqual(await resolveSellerDecisionAuthority(db as never,userId,requestId),
    {authorized:false});
 });
+
+test('ambiguous seller ownership fails closed without membership lookup',async()=>{
+ const userId=randomUUID(),requestId=randomUUID();
+ for(const row of [
+   {professional_id:null,organization_id:null},
+   {professional_id:randomUUID(),organization_id:randomUUID()},
+ ]){
+   let queries=0;
+   const db={query:async()=>{queries++;return {rows:[row]};}};
+   assert.deepEqual(await resolveSellerDecisionAuthority(db as never,userId,requestId),
+     {authorized:false});
+   assert.equal(queries,1);
+ }
+});
