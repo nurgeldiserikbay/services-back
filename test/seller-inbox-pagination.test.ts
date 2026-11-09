@@ -122,3 +122,13 @@ test('seller inbox fails closed on null database row',async()=>{
  await assert.rejects(readSellerInbox(db as never,userId,
    parseSellerInboxFilter({limit:'1'})),/invalid_seller_inbox_row/);
 });
+
+test('seller inbox rejects malformed or oversized query result pages',async()=>{
+ const filter=parseSellerInboxFilter({limit:'1'});
+ for(const result of [null,{}, {rows:null},{rows:{}},
+   {rows:[rows[0],rows[1],rows[2]]}]){
+   const db={query:async()=>result};
+   await assert.rejects(readSellerInbox(db as never,userId,filter),
+     /invalid_seller_inbox_page/);
+ }
+});
