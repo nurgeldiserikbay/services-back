@@ -23,6 +23,8 @@ test('seller inbox queries only authenticated ownership and bounded rows',async(
   assert.match(sql,/\(req\.seller_professional_id IS NULL\) <> \(req\.seller_organization_id IS NULL\)/);
   assert.match(sql,/member\.role IN \('OWNER','ADMIN'\)/);
   assert.match(sql,/member\.revoked_at IS NULL/);
+  // Cursor comparison and sort order must use the same millisecond precision.
+  assert.match(sql,/\(date_trunc\('milliseconds',req\.created_at\),req\.id\)<\(\$3::timestamptz,\$4::uuid\)/);
   assert.match(sql,/ORDER BY date_trunc\('milliseconds',req\.created_at\) DESC,req\.id DESC/);
 });
 
