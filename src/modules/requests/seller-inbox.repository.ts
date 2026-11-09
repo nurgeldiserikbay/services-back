@@ -36,7 +36,7 @@ export async function readSellerInbox(
       (req.seller_professional_id IS NULL) <> (req.seller_organization_id IS NULL)
       AND ($2::text IS NULL OR LOWER(req.status::text)=$2::text)
       AND ($3::timestamptz IS NULL OR
-           (req.created_at,req.id)<($3::timestamptz,$4::uuid))
+           (date_trunc('milliseconds',req.created_at),req.id)<($3::timestamptz,$4::uuid))
       AND (
         (req.seller_professional_id IS NOT NULL AND EXISTS (
           SELECT 1 FROM professional_profiles prof
@@ -59,7 +59,7 @@ export async function readSellerInbox(
             AND (member.scope IS NULL OR member.scope='{}'::jsonb)
         ))
       )
-    ORDER BY req.created_at DESC,req.id DESC
+    ORDER BY date_trunc('milliseconds',req.created_at) DESC,req.id DESC
     LIMIT $5::integer
   `,[authenticatedUserId,filter.state,filter.before?.createdAt??null,
     filter.before?.id??null,filter.limit+1]);
