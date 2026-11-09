@@ -41,3 +41,23 @@ test('seller inbox does not expose private request notes or guest contact fields
  ].sort());
  assert.equal(page.next_cursor,null);
 });
+
+test('seller inbox cursor uses UUID as tie-breaker for identical timestamps',async()=>{
+ const sameTime=new Date('2026-11-09T12:00:00.000Z');
+ const tied=['ffffffff-ffff-4fff-8fff-ffffffffffff',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'];
+ const tiedRows=tied.map(id=>({...rows[0],id,created_at:sameTime}));
+ const db={query:async(_sql:string,params:unknown[])=>{
+   const before=params[2] as string|null,beforeId=params[3] as string|null;
+   return {rows:tiedRows.filter(row=>!before||row.created_at.toISOString()<before||
+     (row.created_at.toISOString()===before&&row.id<beforeId!))
+     .slice(0,params[4] as number)};
+ }};
+ const first=await readSellerInbox(db as never,userId,parseSellerInboxFilter({limit:'1'}));
+ assert.equal(first.items[0].id,tied[0]);
+ assert.ok(first.next_cursor);
+ const second=await readSellerInbox(db as never,userId,
+   parseSellerInboxFilter({limit:'1',cursor:first.next_cursor!}));
+ assert.equal(second.items[0].id,tied[1]);
+ assert.equal(second.next_cursor,null);
+});
