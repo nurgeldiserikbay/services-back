@@ -144,3 +144,23 @@ test('expired idempotency record cannot be replayed or mutate a proposal', async
   assert.deepEqual(events,[]);
   assert.equal(sqls.some(sql=>sql.includes('FROM schedule_proposals WHERE id=')),false);
 });
+
+test('corrupted completed idempotency response is rejected without new writes', async () => {
+  const hash = createHmac('sha256',pepper)
+    .update('schedule-proposal:v1\0')
+    .update(JSON.stringify(['decline',requestId,proposalId,4,null]))
+    .digest('hex');
+  const {db,events,sqls} = fakeDb({
+    version:5,savedHash:hash,
+    storedResponse:{
+      id:proposalId,request_id:requestId,status:'declined',revision:2,
+      initiator:'seller',start_at:'2026-12-01T10:00:00.000Z',
+      end_at:'2026-12-01T11:00:00.000Z',timezone:'Asia/Almaty',
+      request_version:999,replayed:false,
+    },
+  });
+  await assert.rejects(mutateScheduleProposal(db as never,args),
+    (error:unknown) => error instanceof ScheduleProposalRejected && error.reason==='conflict');
+  assert.deepEqual(events,[]);
+  assert.equal(sqls.some(sql=>sql.includes('FROM schedule_proposals WHERE id=')),false);
+});
