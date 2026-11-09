@@ -66,6 +66,9 @@ export class PlatformModerationReadService{
      ORDER BY created_at DESC,id DESC
      LIMIT 50
    `,[scopes]);
+   // Fail closed on malformed database-driver replies instead of leaking a TypeError.
+   if(!result||!Array.isArray(result.rows))
+    throw new UnauthorizedException('Authentication required');
    const items=validateModerationCaseRows(result.rows,new Set(scopes));
    return {items};
   });
