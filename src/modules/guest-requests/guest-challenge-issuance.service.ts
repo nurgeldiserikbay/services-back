@@ -6,7 +6,7 @@ import {checkGlobalSendQuota,type GlobalSendQuotaResult} from './guest-global-qu
 import {checkNetworkSendQuota,recordNetworkSend,type NetworkQuotaResult}
   from './guest-network-quota.js';
 import {
-  GUEST_OTP_POLICY,contactDigest,encryptGuestContact,makeOtpChallenge,
+  GUEST_OTP_POLICY,contactDigest,decryptGuestContact,encryptGuestContact,hashGuestCapability,makeOtpChallenge,
   normalizeGuestContact,requireSecret,type ContactChannel,
 } from './guest-request.security.js';
 
@@ -76,6 +76,58 @@ export class GuestChallengeIssuanceService {
     });
 
     return {challengeId,code,channel,contact:normalized,
+      expiresInSeconds:GUEST_OTP_POLICY.ttlSeconds};
+  }
+
+  /** Reverify the original guest contact using an active READ_CANCEL proof. */
+  async issueManageSchedule(
+    requestId:unknown,readCapability:unknown,networkDigest:string,
+  ):Promise<GuestOtpIssuance|null>{
+    const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const cap=/^[A-Za-z0-9_-]{43}$/;
+    if(typeof requestId!=='string'||!uuid.test(requestId)||
+       typeof readCapability!=='string'||!cap.test(readCapability)||
+       !/^[0-9a-f]{64}$/.test(networkDigest))return null;
+    let pepper:Buffer,encryptionKey:Buffer;
+    try{
+      pepper=requireSecret(process.env.GUEST_REQUEST_HMAC_KEY);
+      encryptionKey=requireSecret(process.env.GUEST_CONTACT_ENCRYPTION_KEY);
+      if(timingSafeEqual(pepper,encryptionKey))throw new Error('shared_keys');
+    }catch{return null;}
+    const readHash=hashGuestCapability('READ_CANCEL',readCapability,pepper);
+    const challengeId=randomUUID();
+    const {code,codeHash}=makeOtpChallenge(challengeId,pepper);
+    const result=await this.db.transaction(async client=>{
+      const owned=await client.query<{contact_id:string;channel:ContactChannel;
+        encrypted_value:string;digest:string}>(`
+        SELECT c.id::text AS contact_id,c.channel,c.encrypted_value,c.digest
+        FROM service_requests r
+        JOIN guest_capabilities cap ON cap.request_id=r.id
+          AND cap.guest_contact_id=r.guest_contact_id AND cap.scope='READ_CANCEL'
+        JOIN guest_contacts c ON c.id=r.guest_contact_id
+        WHERE r.id=$1::uuid AND r.status='ACCEPTED'
+          AND cap.token_hash=$2 AND cap.consumed_at IS NULL
+          AND cap.expires_at>now() AND c.verified_at IS NOT NULL AND c.expires_at>now()
+        FOR UPDATE OF r,c
+      `,[requestId.toLowerCase(),readHash]);
+      const contact=owned.rows[0];
+      if(!contact)return null;
+      const global=await checkGlobalSendQuota(client);
+      if(!global.allowed)throw new GuestOtpSendLimited(global.reason as Exclude<GlobalSendQuotaResult['reason'],'ok'>,global.retryAfterSeconds);
+      const network=await checkNetworkSendQuota(client,networkDigest);
+      if(!network.allowed)throw new GuestOtpSendLimited(network.reason as Exclude<NetworkQuotaResult['reason'],'ok'>,network.retryAfterSeconds);
+      const quota=await checkContactSendQuota(client,contact.digest);
+      if(!quota.allowed)throw new GuestOtpSendLimited(quota.reason as Exclude<ContactSendQuotaResult['reason'],'ok'>,quota.retryAfterSeconds);
+      await recordNetworkSend(client,networkDigest,'MANAGE_SCHEDULE');
+      await client.query(`
+        INSERT INTO guest_challenges(id,guest_contact_id,request_id,code_hash,purpose,expires_at)
+        VALUES($1::uuid,$2::uuid,$3::uuid,$4,'MANAGE_SCHEDULE',
+          now()+($5::integer*interval '1 second'))
+      `,[challengeId,contact.contact_id,requestId.toLowerCase(),codeHash,GUEST_OTP_POLICY.ttlSeconds]);
+      return {channel:contact.channel,contact:decryptGuestContact(contact.encrypted_value,encryptionKey)};
+    });
+    if(!result)return null;
+    return {challengeId,code,channel:result.channel,contact:result.contact,
       expiresInSeconds:GUEST_OTP_POLICY.ttlSeconds};
   }
 }

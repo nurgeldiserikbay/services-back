@@ -45,6 +45,44 @@ export const VERIFY_CREATE_REQUEST_CHALLENGE_SQL = `
   SELECT EXISTS (SELECT 1 FROM issued) AS verified
 `;
 
+/**
+ * A successful schedule reverification atomically consumes the challenge and
+ * creates a capability tied to the same request and original guest contact.
+ * READ_CANCEL cannot be upgraded or reused as the resulting write proof.
+ */
+export const VERIFY_MANAGE_SCHEDULE_CHALLENGE_SQL = `
+  WITH attempt AS (
+    UPDATE guest_challenges ch
+    SET attempts = ch.attempts + 1,
+        consumed_at = CASE WHEN ch.code_hash = $3::text
+                           THEN now() ELSE ch.consumed_at END
+    FROM guest_contacts c, service_requests r
+    WHERE ch.id = $1::uuid
+      AND ch.request_id = $2::uuid
+      AND ch.purpose = 'MANAGE_SCHEDULE'
+      AND ch.consumed_at IS NULL
+      AND ch.expires_at > now()
+      AND ch.attempts < $6::integer
+      AND c.id = ch.guest_contact_id
+      AND c.verified_at IS NOT NULL
+      AND c.expires_at > now()
+      AND r.id = ch.request_id
+      AND r.guest_contact_id = c.id
+    RETURNING ch.guest_contact_id, ch.code_hash = $3::text AS matched
+  ),
+  issued AS (
+    INSERT INTO guest_capabilities (
+      id, guest_contact_id, request_id, scope, token_hash, expires_at
+    )
+    SELECT $4::uuid, a.guest_contact_id, $2::uuid, 'MANAGE_SCHEDULE',
+           $5::text, now() + ($7::integer * interval '1 second')
+    FROM attempt a
+    WHERE a.matched
+    RETURNING id
+  )
+  SELECT EXISTS (SELECT 1 FROM issued) AS verified
+`;
+
 type VerifyResultRow = {verified:boolean};
 
 @Injectable()
@@ -69,6 +107,23 @@ export class GuestChallengeProofRepository {
       GUEST_OTP_POLICY.capabilityTtlSeconds,
     ]);
     if (result.rows[0]?.verified !== true) return null;
+    return {guestCapability:token,expiresInSeconds:GUEST_OTP_POLICY.capabilityTtlSeconds};
+  }
+
+  async verifyManageSchedule(
+    challengeId:string,
+    requestId:string,
+    enteredCode:string,
+    pepper:Buffer,
+  ):Promise<{guestCapability:string;expiresInSeconds:number}|null>{
+    const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if(!uuid.test(challengeId)||!uuid.test(requestId)||! /^[0-9]{6}$/.test(enteredCode))return null;
+    const {token,tokenHash}=issueGuestCapability('MANAGE_SCHEDULE',pepper);
+    const result=await this.db.query<VerifyResultRow>(VERIFY_MANAGE_SCHEDULE_CHALLENGE_SQL,[
+      challengeId,requestId,hashOtp(challengeId,enteredCode,pepper),randomUUID(),tokenHash,
+      GUEST_OTP_POLICY.maxAttempts,GUEST_OTP_POLICY.capabilityTtlSeconds,
+    ]);
+    if(result.rows[0]?.verified!==true)return null;
     return {guestCapability:token,expiresInSeconds:GUEST_OTP_POLICY.capabilityTtlSeconds};
   }
 }

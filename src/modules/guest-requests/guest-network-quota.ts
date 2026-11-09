@@ -65,7 +65,7 @@ export async function checkNetworkSendQuota(
       count(*)::text AS day_count
     FROM guest_otp_network_issuances
     WHERE network_digest=$1
-      AND purpose='CREATE_REQUEST'
+      AND purpose IN ('CREATE_REQUEST','MANAGE_SCHEDULE')
       AND created_at > $2::timestamptz - interval '24 hours'
   `,[digest,now]);
   const row=result.rows[0];
@@ -87,10 +87,11 @@ export async function checkNetworkSendQuota(
 /** Must be inserted together with the OTP challenge in the SAME transaction. */
 export async function recordNetworkSend(
   client:Pick<PoolClient,'query'>,digest:string,
+  purpose:'CREATE_REQUEST'|'MANAGE_SCHEDULE'='CREATE_REQUEST',
 ):Promise<void>{
   if(!DIGEST.test(digest))throw new Error('invalid_network_digest');
   await client.query(`
     INSERT INTO guest_otp_network_issuances(id,network_digest,purpose)
-    VALUES($1::uuid,$2,'CREATE_REQUEST')
-  `,[randomUUID(),digest]);
+    VALUES($1::uuid,$2,$3)
+  `,[randomUUID(),digest,purpose]);
 }

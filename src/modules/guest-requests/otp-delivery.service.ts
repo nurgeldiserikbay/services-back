@@ -12,6 +12,7 @@ export type VerifiedOtpIssuance = Readonly<{
   channel:ContactChannel;
   contact:string;
   locale:'kk'|'ru';
+  purpose?:'CREATE_REQUEST'|'MANAGE_SCHEDULE';
   expiresInSeconds:number;
 }>;
 
@@ -31,7 +32,7 @@ export class OtpDeliveryService {
         channel:issuance.channel,
         destination:normalizeGuestContact(issuance.channel,issuance.contact),
         code:issuance.code,
-        purpose:'CREATE_REQUEST',
+        purpose:issuance.purpose??'CREATE_REQUEST',
         expiresInSeconds:issuance.expiresInSeconds,
         locale:issuance.locale,
       });

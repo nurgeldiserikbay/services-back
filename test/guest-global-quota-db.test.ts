@@ -14,7 +14,7 @@ test('global quota checks hold PostgreSQL advisory lock before counting',async()
   assert.equal(result.allowed,true);
   assert.match(statements[0],/pg_advisory_xact_lock/);
   assert.match(statements[1],/FROM guest_challenges/);
-  assert.match(statements[1],/purpose='CREATE_REQUEST'/);
+  assert.match(statements[1],/purpose IN \('CREATE_REQUEST','MANAGE_SCHEDULE'\)/);
   assert.match(statements[1],/interval '24 hours'/);
 });
 

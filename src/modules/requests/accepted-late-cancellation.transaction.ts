@@ -85,11 +85,14 @@ export async function cancelAcceptedLateByRegisteredCustomer(
 
   // Block pending schedule changes and locked reconciliation state; the
   // immutable cutoff must correspond to this confirmed schedule.
-  const proposals=await db.query<{count:string}>(`
-    SELECT count(*)::text AS count FROM schedule_proposals
+  const proposals=await db.query<{initiator:string}>(`
+    SELECT initiator::text FROM schedule_proposals
     WHERE request_id=$1::uuid AND status='PROPOSED'
   `,[id]);
-  if(Number(proposals.rows[0]?.count??0)>0)
+  const customerMayExitSellerReschedule=
+    row.customer_penalty_suspended&&proposals.rows.length===1&&
+    proposals.rows[0].initiator==='SELLER';
+  if(proposals.rows.length>0&&!customerMayExitSellerReschedule)
     throw new LateCancellationRejected('conflict');
   const nowResult=await db.query<{now:Date}>('SELECT clock_timestamp() AS now');
   const now=nowResult.rows[0]?.now;
@@ -141,6 +144,10 @@ export async function cancelAcceptedLateByRegisteredCustomer(
     RETURNING version
   `,[id,expectedVersion]);
   if(!updated.rows[0])throw new LateCancellationRejected('conflict');
+  await db.query(`
+    UPDATE schedule_proposals SET status='CLOSED',resolved_at=now(),resolved_by='CUSTOMER'
+    WHERE request_id=$1::uuid AND status='PROPOSED'
+  `,[id]);
   await db.query('DELETE FROM busy_blocks WHERE request_id=$1::uuid',[id]);
   const cancellationId=randomUUID(),eventId=randomUUID();
   await db.query(`

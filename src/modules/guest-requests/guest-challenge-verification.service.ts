@@ -24,4 +24,18 @@ export class GuestChallengeVerificationService {
     if(!result)throw new UnauthorizedException('Invalid or expired verification code');
     return result;
   }
+
+  async verifyManageSchedule(requestId:unknown,challengeId:unknown,code:unknown):
+    Promise<{guestCapability:string;expiresInSeconds:number}>{
+    const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if(typeof requestId!=='string'||!uuid.test(requestId)||typeof challengeId!=='string'||
+      !uuid.test(challengeId)||typeof code!=='string'||! /^[0-9]{6}$/.test(code))
+      throw new UnauthorizedException('Invalid or expired verification code');
+    let pepper:Buffer;
+    try{pepper=requireSecret(process.env.GUEST_REQUEST_HMAC_KEY);}
+    catch{throw new ServiceUnavailableException('Verification temporarily unavailable');}
+    const result=await this.proofs.verifyManageSchedule(challengeId,requestId,code,pepper);
+    if(!result)throw new UnauthorizedException('Invalid or expired verification code');
+    return result;
+  }
 }
