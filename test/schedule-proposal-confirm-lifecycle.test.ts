@@ -1,0 +1,79 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {mutateScheduleProposal, ScheduleProposalRejected} from '../src/modules/requests/schedule-proposal.transaction.js';
+
+const requestId='10000000-0000-4000-8000-000000000001';
+const proposalId='10000000-0000-4000-8000-000000000002';
+const guestId='10000000-0000-4000-8000-000000000003';
+const pepper=Buffer.alloc(32,7);
+const args={
+  requestId,proposalId,action:'confirm' as const,expectedVersion:4,
+  key:'confirm-guest-test',guestCapability:'A'.repeat(43),pepper,guestPepper:pepper,
+};
+
+function fakeDb(options:{initiator?:string;status?:string;start?:Date}={}){
+  const writes:string[]=[];
+  const db={query:async(sql:string)=>{
+    if(sql.includes('FROM service_requests WHERE id='))return {rows:[{
+      id:requestId,offer_id:requestId,status:'ACCEPTED',version:4,
+      schedule_reconciliation_required:false,customer_person_id:null,
+      guest_contact_id:guestId,seller_professional_id:null,
+      seller_organization_id:null,performer_professional_id:null,
+    }]};
+    if(sql.includes('FROM guest_capabilities cap'))return {rows:[{guest_contact_id:guestId}]};
+    if(sql.includes('pg_advisory_xact_lock'))return {rows:[]};
+    if(sql.includes('FROM idempotency_records'))return {rows:[]};
+    if(sql.includes('FROM schedule_proposals WHERE id='))return {rows:[{
+      id:proposalId,revision:2,status:options.status??'PROPOSED',
+      initiator:options.initiator??'SELLER',
+      proposed_start_at:options.start??new Date('2027-12-01T10:00:00.000Z'),
+      proposed_end_at:new Date('2027-12-01T11:00:00.000Z'),
+      timezone:'Asia/Almaty',
+    }]};
+    if(sql.includes('SELECT now() AS agreed_at'))return {rows:[{agreed_at:new Date('2026-11-10T00:00:00.000Z')}]};
+    if(sql.includes('FROM service_requests r JOIN service_offers'))return {rows:[{performer_id:null,availability:'HIDDEN'}]};
+    if(sql.includes('FROM cancellation_policies'))return {rows:[{revision:3,free_cancel_before_min:120}]};
+    if(sql.includes('FROM busy_blocks WHERE request_id='))return {rows:[]};
+    if(sql.includes('INSERT INTO cancellation_snapshot_revisions')){writes.push('snapshot_revision');return {rows:[]};}
+    if(sql.includes('INSERT INTO cancellation_snapshots')){writes.push('snapshot');return {rows:[]};}
+    if(sql.includes('UPDATE service_requests SET scheduled_start_at=')){writes.push('request');return {rows:[{version:5}]};}
+    if(sql.includes('UPDATE schedule_proposals SET status=')){writes.push('proposal');return {rows:[]};}
+    if(sql.includes('INSERT INTO service_request_events')){writes.push('event');return {rows:[]};}
+    if(sql.includes('INSERT INTO domain_outbox_events')){writes.push('outbox');return {rows:[]};}
+    if(sql.includes('FROM service_requests r')&&sql.includes('professional_profiles'))return {rows:[{
+      professional_person_id:'10000000-0000-4000-8000-000000000004',organization_id:null,
+    }]};
+    if(sql.includes('INSERT INTO notification_intents')){writes.push('notification');return {rows:[]};}
+    if(sql.includes('FROM guest_contacts'))return {rows:[{channel:'email'}]};
+    if(sql.includes('INSERT INTO idempotency_records')){writes.push('idempotency');return {rows:[]};}
+    throw new Error('Unexpected SQL: '+sql);
+  }};
+  return {db,writes};
+}
+
+test('confirm persists cancellation snapshots, schedule, event and both notifications',async()=>{
+  const {db,writes}=fakeDb();
+  const result=await mutateScheduleProposal(db as never,args);
+  assert.equal(result.status,'confirmed');
+  assert.equal(result.request_version,5);
+  assert.equal(result.replayed,false);
+  assert.equal(result.confirmed_at,'2026-11-10T00:00:00.000Z');
+  assert.equal(result.cancellation_deadline_at,'2027-12-01T08:00:00.000Z');
+  assert.deepEqual(writes,[
+    'snapshot_revision','snapshot','request','proposal','event','outbox',
+    'notification','notification','idempotency',
+  ]);
+});
+
+for(const [description,options] of [
+  ['own proposal',{initiator:'CUSTOMER'}],
+  ['already declined proposal',{status:'DECLINED'}],
+  ['past proposal',{start:new Date('2026-11-09T10:00:00.000Z')}],
+] as const){
+  test('confirm rejects '+description+' before writing',async()=>{
+    const {db,writes}=fakeDb(options);
+    await assert.rejects(mutateScheduleProposal(db as never,args),
+      (error:unknown)=>error instanceof ScheduleProposalRejected&&error.reason==='conflict');
+    assert.deepEqual(writes,[]);
+  });
+}
