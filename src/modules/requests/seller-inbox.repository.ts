@@ -82,8 +82,9 @@ export async function readSellerInbox(
   const rows=result.rows.slice(0,filter.limit);
   const allowedStates:readonly string[]=SELLER_REQUEST_STATES;
   const items:SellerInboxItem[]=rows.map(row=>{
+    if(!row||typeof row!=='object')throw new Error('invalid_seller_inbox_row');
     const state=typeof row.status==='string'?row.status.toLowerCase():'';
-    if(!row||typeof row!=='object'||
+    if(
        typeof row.id!=='string'||!UUID.test(row.id)||
        typeof row.service_offer_id!=='string'||!UUID.test(row.service_offer_id)||
        typeof row.seller_id!=='string'||!UUID.test(row.seller_id)||
