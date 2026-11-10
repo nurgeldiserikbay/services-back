@@ -443,7 +443,9 @@ function readStoredResult(value:unknown,requestId:string,action:ScheduleProposal
      (action==='confirm'&&
        (typeof result.confirmed_at!=='string'||!Number.isFinite(Date.parse(result.confirmed_at))||
         typeof result.cancellation_deadline_at!=='string'||
-        !Number.isFinite(Date.parse(result.cancellation_deadline_at))))){
+        !Number.isFinite(Date.parse(result.cancellation_deadline_at))||
+        Date.parse(result.cancellation_deadline_at)>Date.parse(result.start_at)||
+        Date.parse(result.confirmed_at)>Date.parse(result.start_at))))){
     throw new ScheduleProposalRejected('conflict');
   }
   return {...result,replayed:true} as ScheduleProposalCommandResult;
