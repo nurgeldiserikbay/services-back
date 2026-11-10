@@ -29,7 +29,7 @@ export function validateModerationCaseRows(
    typeof row.id!=='string'||!UUID.test(row.id)||seen.has(row.id.toLowerCase())||
    !KINDS.has(row.subject_kind)||!STATES.has(row.state)||
    !(row.created_at instanceof Date)||!Number.isFinite(row.created_at.getTime())||
-   !allowedScopes.has(row.resource_scope))
+   typeof row.resource_scope!=='string'||!allowedScopes.has(row.resource_scope))
    throw new UnauthorizedException('Authentication required');
   seen.add(row.id.toLowerCase());
   items.push({id:row.id,subjectKind:row.subject_kind as ModerationCaseSummary['subjectKind'],
