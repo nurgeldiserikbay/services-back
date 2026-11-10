@@ -54,7 +54,7 @@ export class PlatformModerationReadService{
   try{pepper=requireSecret(process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY);}
   catch{throw new UnauthorizedException('Authentication required');}
   const now=Date.now();
-  return this.db.transaction(async client=>{
+  try{return await this.db.transaction(async client=>{
    const principal=await resolvePlatformAdminSession(client,match[1],pepper,now);
    if(!principal)throw new UnauthorizedException('Authentication required');
    // No discoverability for users with no moderation.read grant.
