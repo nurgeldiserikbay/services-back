@@ -61,3 +61,33 @@ test('admin grant resolver rejects duplicate scopes with different UUID casing',
   token,pepper,now,
  ),null);
 });
+
+test('MFA freshness boundary accepts 15 minutes exactly and denies one millisecond later',async()=>{
+ const atBoundary={...row(),mfa_verified_at:new Date(now-15*60*1000)};
+ const expired={...row(),mfa_verified_at:new Date(now-15*60*1000-1)};
+ assert.equal(await canAccessPlatformAdminResource(
+  fakeDb([atBoundary]),token,pepper,'moderation.read',org,now),true);
+ assert.equal(await canAccessPlatformAdminResource(
+  fakeDb([expired]),token,pepper,'moderation.read',org,now),false);
+});
+test('session expiry boundary rejects an expired session, even with fresh MFA',async()=>{
+ const expired={...row(),expires_at:new Date(now)};
+ assert.equal(await resolvePlatformAdminSession(fakeDb([expired]),token,pepper,now),null);
+});
+test('joined admin grant rows must agree on principal and session timestamps',async()=>{
+ const first=row();
+ for(const mismatch of [
+  {...row(),user_id:randomUUID()},
+  {...row(),role:'operator'},
+  {...row(),expires_at:new Date(now+120000)},
+  {...row(),mfa_verified_at:new Date(now-2000)},
+ ]){
+  assert.equal(await resolvePlatformAdminSession(
+   fakeDb([first,mismatch]),token,pepper,now),null);
+ }
+});
+test('zero grants cannot authorize a resource even for an owner',async()=>{
+ const noGrant={...row(),role:'owner',scope:null};
+ assert.equal(await canAccessPlatformAdminResource(
+  fakeDb([noGrant] as never),token,pepper,'platform_roles.manage',org,now),false);
+});
