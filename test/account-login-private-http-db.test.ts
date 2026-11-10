@@ -76,6 +76,11 @@ test('private verified OTP issues only server-to-server session, once; wrong cod
    const invalid=otp.code==='123456'?'654321':'123456';
    await db.query('UPDATE account_auth_challenges SET delivery_confirmed_at=now() WHERE id=$1',
     [otp.challengeId]);
+   await assert.rejects(ctrl.verify(randomBytes(32).toString('base64'),input),NotFoundException);
+   const untouchedChallenge=await db.query<{attempts:number}>(
+    'SELECT attempts FROM account_auth_challenges WHERE id=$1',[otp.challengeId]);
+   assert.equal(untouchedChallenge.rows[0].attempts,0,
+    'untrusted BFF must not consume or mutate a valid OTP challenge');
    await assert.rejects(ctrl.verify(key.toString('base64'),{...input,code:invalid}),
     UnauthorizedException);
    const attempts=await db.query<{attempts:number}>(
