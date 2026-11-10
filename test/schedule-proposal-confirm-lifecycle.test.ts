@@ -11,7 +11,7 @@ const args={
   key:'confirm-guest-test',guestCapability:'A'.repeat(43),pepper,guestPepper:pepper,
 };
 
-function fakeDb(options:{initiator?:string;status?:string;start?:Date; calendarConflict?:boolean; orphanBlock?:boolean}={}){
+function fakeDb(options:{initiator?:string;status?:string;start?:Date; end?:Date; calendarConflict?:boolean; orphanBlock?:boolean}={}){
   const writes:string[]=[];
   const db={query:async(sql:string)=>{
     if(sql.includes('FROM service_requests WHERE id='))return {rows:[{
@@ -27,7 +27,7 @@ function fakeDb(options:{initiator?:string;status?:string;start?:Date; calendarC
       id:proposalId,revision:2,status:options.status??'PROPOSED',
       initiator:options.initiator??'SELLER',
       proposed_start_at:options.start??new Date('2027-12-01T10:00:00.000Z'),
-      proposed_end_at:new Date('2027-12-01T11:00:00.000Z'),
+      proposed_end_at:options.end??new Date('2027-12-01T11:00:00.000Z'),
       timezone:'Asia/Almaty',
     }]};
     if(sql.includes('SELECT now() AS agreed_at'))return {rows:[{agreed_at:new Date('2026-11-10T00:00:00.000Z')}]};
@@ -74,6 +74,10 @@ for(const [description,options] of [
   ['own proposal',{initiator:'CUSTOMER'}],
   ['already declined proposal',{status:'DECLINED'}],
   ['past proposal',{start:new Date('2026-11-09T10:00:00.000Z')}],
+  ['reversed time range',{end:new Date('2027-12-01T09:00:00.000Z')}],
+  ['zero-duration time range',{end:new Date('2027-12-01T10:00:00.000Z')}],
+  ['invalid start timestamp',{start:new Date(Number.NaN)}],
+  ['invalid end timestamp',{end:new Date(Number.NaN)}],
 ] as const){
   test('confirm rejects '+description+' before writing',async()=>{
     const {db,writes}=fakeDb(options);
