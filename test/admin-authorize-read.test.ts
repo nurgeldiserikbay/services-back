@@ -12,6 +12,7 @@ const session={
   role:'operator',
   expires_at:new Date('2026-11-10T11:00:00.000Z'),
   revoked_at:null,
+  disabled_at:null,
   mfa_verified_at:new Date('2026-11-10T09:00:00.000Z'),
 };
 
@@ -28,6 +29,7 @@ test('read policy cannot authorize an expired, revoked, forged or MFA-less sessi
     {expires_at:now},
     {revoked_at:new Date('2026-11-10T09:00:00.000Z')},
     {mfa_verified_at:null},
+    {disabled_at:new Date('2026-11-10T09:00:00.000Z')},
     {role:'superadmin'},
     {token_hash:'0'.repeat(64)},
   ]){
