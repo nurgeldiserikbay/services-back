@@ -95,6 +95,10 @@ test('confirmed OTP -> seller accepts registered request -> customer IN_APP inbo
   assert.equal(buyerView.items[0].subject_id,requestId);
   assert.equal(JSON.stringify(buyerView).includes(customer.sessionToken),false);
   assert.deepEqual((await controller.list('Bearer '+seller.sessionToken,'20')).items,[]);
+  // A separate verified account cannot read the customer's notification.
+  const outsider=await verifiedAccount(db,
+   'outsider-notify-'+randomUUID()+'@example.test',secrets);
+  assert.deepEqual((await controller.list('Bearer '+outsider.sessionToken,'20')).items,[]);
   const req=await db.query<{status:string;scheduled_start_at:Date|null}>(`
    SELECT status,scheduled_start_at FROM service_requests WHERE id=$1`,[requestId]);
   assert.equal(req.rows[0].status,'ACCEPTED');
