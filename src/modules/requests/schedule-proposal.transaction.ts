@@ -433,9 +433,17 @@ function readStoredResult(value:unknown,requestId:string,action:ScheduleProposal
   const expectedStatus=action==='propose'?'proposed':action==='decline'?'declined':'confirmed';
   if(result.request_id!==requestId||result.status!==expectedStatus||
      result.request_version!==expectedVersion+1||typeof result.id!=='string'||
-     typeof result.revision!=='number'||typeof result.initiator!=='string'||
-     typeof result.start_at!=='string'||typeof result.end_at!=='string'||
-     typeof result.timezone!=='string'||result.replayed!==false){
+     !Number.isSafeInteger(result.revision)||result.revision<1||
+     (result.initiator!=='customer'&&result.initiator!=='seller')||
+     typeof result.start_at!=='string'||!Number.isFinite(Date.parse(result.start_at))||
+     typeof result.end_at!=='string'||!Number.isFinite(Date.parse(result.end_at))||
+     Date.parse(result.end_at)<=Date.parse(result.start_at)||
+     typeof result.timezone!=='string'||!result.timezone||
+     result.replayed!==false||
+     (action==='confirm'&&
+       (typeof result.confirmed_at!=='string'||!Number.isFinite(Date.parse(result.confirmed_at))||
+        typeof result.cancellation_deadline_at!=='string'||
+        !Number.isFinite(Date.parse(result.cancellation_deadline_at))))){
     throw new ScheduleProposalRejected('conflict');
   }
   return {...result,replayed:true} as ScheduleProposalCommandResult;
