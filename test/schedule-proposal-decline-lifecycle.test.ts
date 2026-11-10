@@ -189,3 +189,17 @@ test('replay rejects malformed proposal revision, actor and timestamps', async (
     assert.deepEqual(events,[]);
   }
 });
+
+test('idempotency record with missing or invalid expiry is rejected without mutation',async()=>{
+  const hash=createHmac('sha256',pepper)
+    .update('schedule-proposal:v1\0')
+    .update(JSON.stringify(['decline',requestId,proposalId,4,null]))
+    .digest('hex');
+  for(const expiry of [null,new Date(Number.NaN)]){
+    const {db,events,sqls}=fakeDb({savedHash:hash,storedExpiry:expiry as Date});
+    await assert.rejects(mutateScheduleProposal(db as never,args),
+      (error:unknown)=>error instanceof ScheduleProposalRejected&&error.reason==='conflict');
+    assert.deepEqual(events,[]);
+    assert.equal(sqls.some(sql=>sql.includes('FROM schedule_proposals WHERE id=')),false);
+  }
+});
