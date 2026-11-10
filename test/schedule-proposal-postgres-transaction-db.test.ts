@@ -143,3 +143,26 @@ test('PostgreSQL half-open calendar ranges allow back-to-back reservations', {
     await pool.end();
   }
 });
+
+test('migrated busy_blocks has the real exclusion constraint for known calendar slots', {
+  skip: !process.env.DATABASE_URL,
+  timeout: 15_000,
+}, async () => {
+  const pool=new Pool({connectionString:process.env.DATABASE_URL,max:1,connectionTimeoutMillis:3000});
+  try {
+    const result=await pool.query(`
+      SELECT c.contype, pg_get_constraintdef(c.oid) AS definition
+      FROM pg_constraint c
+      WHERE c.conrelid='public.busy_blocks'::regclass
+        AND c.conname='no_overlapping_known_busy_blocks'
+    `);
+    assert.equal(result.rows.length,1,'busy_blocks exclusion constraint must be deployed');
+    assert.equal(result.rows[0]?.contype,'x');
+    const definition=String(result.rows[0]?.definition);
+    assert.match(definition,/EXCLUDE USING gist/i);
+    assert.match(definition,/professional_id/i);
+    assert.match(definition,/tstzrange/i);
+  } finally {
+    await pool.end();
+  }
+});
