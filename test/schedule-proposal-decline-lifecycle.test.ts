@@ -164,3 +164,28 @@ test('corrupted completed idempotency response is rejected without new writes', 
   assert.deepEqual(events,[]);
   assert.equal(sqls.some(sql=>sql.includes('FROM schedule_proposals WHERE id=')),false);
 });
+
+test('replay rejects malformed proposal revision, actor and timestamps', async () => {
+  const hash = createHmac('sha256',pepper)
+    .update('schedule-proposal:v1\0')
+    .update(JSON.stringify(['decline',requestId,proposalId,4,null]))
+    .digest('hex');
+  const valid = {
+    id:proposalId,request_id:requestId,revision:2,status:'declined',
+    initiator:'seller',start_at:'2026-12-01T10:00:00.000Z',
+    end_at:'2026-12-01T11:00:00.000Z',timezone:'Asia/Almaty',
+    request_version:5,replayed:false,
+  };
+  for (const invalid of [
+    {revision:0},{revision:2.5},{initiator:'UNKNOWN'},
+    {start_at:'not-a-date'},{end_at:'2026-12-01T09:00:00.000Z'},
+    {timezone:''},
+  ]) {
+    const {db,events} = fakeDb({
+      version:5,savedHash:hash,storedResponse:{...valid,...invalid},
+    });
+    await assert.rejects(mutateScheduleProposal(db as never,args),
+      (error:unknown) => error instanceof ScheduleProposalRejected && error.reason==='conflict');
+    assert.deepEqual(events,[]);
+  }
+});
