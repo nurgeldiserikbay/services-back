@@ -82,6 +82,18 @@ test('confirmed account OTP -> bearer -> seller inbox -> accept -> notification 
     const before=await readSellerInbox(db,actor!.userId,filter);
     assert.deepEqual(before.items.map(x=>x.id),[f.requestId]);
     assert.equal(before.items[0].seller_kind,'organization');
+    // An unrelated, otherwise valid account session cannot view or decide
+    // another organization's pending request.
+    const outsiderId=randomUUID();
+    const outsider=await verifiedAccountToken(db,outsiderId,
+      'outsider-e2e-'+randomUUID()+'@example.test',secret);
+    assert.deepEqual((await readSellerInbox(db,outsiderId,filter)).items,[]);
+    await assert.rejects(decideWithIdempotentSession(
+      db,outsider.token,f.requestId,'accept',1,randomUUID(),secret.sessionPepper),
+      (e:unknown)=>e instanceof SellerDecisionRejected&&e.reason==='forbidden');
+    const stillPending=await db.query<{status:string;version:number}>(
+      'SELECT status,version FROM service_requests WHERE id=$1',[f.requestId]);
+    assert.deepEqual(stillPending.rows[0],{status:'PENDING',version:1});
     const key=randomUUID();
     const accepted=await decideWithIdempotentSession(
       db,login.token,f.requestId,'accept',1,key,secret.sessionPepper);
