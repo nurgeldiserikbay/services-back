@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {UnauthorizedException} from '@nestjs/common';
 import {issueAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
-import {PlatformModerationReadService} from '../src/modules/admin/admin-moderation-read.service.js';
+import {PlatformModerationReadService,validateModerationCaseRows} from '../src/modules/admin/admin-moderation-read.service.js';
 
 const key=randomBytes(32);
 const token=issueAdminSessionToken(key).token;
@@ -121,4 +121,27 @@ test('moderation read does not disclose database error details',async()=>{
    return true;
   });
  }finally{restore();}
+});
+
+test('moderation response validation rejects unauthorized scopes and malformed rows',()=>{
+ const id=randomUUID(),created_at=new Date();
+ const valid={id,resource_scope:scope,subject_kind:'review',state:'triage',created_at};
+ assert.deepEqual(validateModerationCaseRows([valid],new Set([scope])),[
+  {id,subjectKind:'review',state:'triage',createdAt:created_at.toISOString()}
+ ]);
+ for(const invalid of [
+  {...valid,resource_scope:'organization:'+randomUUID()},
+  {...valid,resource_scope:null},
+  {...valid,subject_kind:'unknown'},
+  {...valid,state:'unknown'},
+  {...valid,created_at:new Date('invalid')},
+  {...valid,id:'invalid'},
+ ]){
+  assert.throws(()=>validateModerationCaseRows([invalid] as never,new Set([scope])),
+   UnauthorizedException);
+ }
+ assert.throws(()=>validateModerationCaseRows([valid,valid],new Set([scope])),
+  UnauthorizedException);
+ assert.throws(()=>validateModerationCaseRows(Array.from({length:51},()=>valid),new Set([scope])),
+  UnauthorizedException);
 });
