@@ -10,7 +10,7 @@ const guestId = '10000000-0000-4000-8000-000000000003';
 const pepper = Buffer.alloc(32, 7);
 const token = 'A'.repeat(43);
 
-function fakeDb(options: {version?:number; initiator?:string; proposalStatus?:string; savedHash?:string; storedResponse?:unknown; storedState?:string; storedExpiry?:Date} = {}) {
+function fakeDb(options: {version?:number; initiator?:string; proposalStatus?:string; savedHash?:string; storedResponse?:unknown; storedState?:string; storedExpiry?:Date|null} = {}) {
   const sqls: string[] = [];
   const events: string[] = [];
   const db = {
@@ -28,7 +28,7 @@ function fakeDb(options: {version?:number; initiator?:string; proposalStatus?:st
         return {rows:[{guest_contact_id:guestId}]};
       }
       if (sql.includes('pg_advisory_xact_lock')) return {rows:[]};
-      if (sql.includes('FROM idempotency_records')) return {rows:options.savedHash ? [{request_hash:options.savedHash,state:options.storedState??'COMPLETED',response_body:options.storedResponse??{},expires_at:options.storedExpiry??new Date('2099-01-01')}] : []};
+      if (sql.includes('FROM idempotency_records')) return {rows:options.savedHash ? [{request_hash:options.savedHash,state:options.storedState??'COMPLETED',response_body:options.storedResponse??{},expires_at:options.storedExpiry===undefined?new Date('2099-01-01'):options.storedExpiry}] : []};
       if (sql.includes('FROM schedule_proposals WHERE id=')) return {rows:[{
         id:proposalId, revision:2, status:options.proposalStatus ?? 'PROPOSED',
         initiator:options.initiator ?? 'SELLER',
@@ -195,8 +195,16 @@ test('idempotency record with missing or invalid expiry is rejected without muta
     .update('schedule-proposal:v1\0')
     .update(JSON.stringify(['decline',requestId,proposalId,4,null]))
     .digest('hex');
+  const validResponse={
+    id:proposalId,request_id:requestId,revision:2,status:'declined',
+    initiator:'seller',start_at:'2026-12-01T10:00:00.000Z',
+    end_at:'2026-12-01T11:00:00.000Z',timezone:'Asia/Almaty',
+    request_version:5,replayed:false,
+  };
   for(const expiry of [null,new Date(Number.NaN)]){
-    const {db,events,sqls}=fakeDb({savedHash:hash,storedExpiry:expiry as Date});
+    const {db,events,sqls}=fakeDb({
+      savedHash:hash,storedExpiry:expiry,storedResponse:validResponse,
+    });
     await assert.rejects(mutateScheduleProposal(db as never,args),
       (error:unknown)=>error instanceof ScheduleProposalRejected&&error.reason==='conflict');
     assert.deepEqual(events,[]);
