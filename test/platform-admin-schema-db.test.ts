@@ -22,13 +22,13 @@ test('migrated platform admin identity, session and grant constraints exist',{
     const byName=new Map(constraints.rows.map((r:{conname:string;contype:string})=>[r.conname,r.contype]));
     assert.equal(byName.get('platform_admin_staff_role_check'),'c');
     assert.equal(byName.get('platform_admin_sessions_valid_times'),'c');
-    assert.equal(byName.get('platform_admin_sessions_token_hash_format'),'c');
+    assert.equal(byName.get('platform_admin_sessions_token_hash_check'),'c');
     assert.equal(byName.get('platform_admin_sessions_staff_id_fkey'),'f');
     assert.equal(byName.get('platform_admin_grants_staff_id_fkey'),'f');
     assert.equal(byName.get('platform_moderation_cases_subject_kind_check'),'c');
     assert.equal(byName.get('platform_moderation_cases_state_check'),'c');
-    assert.equal(byName.get('platform_admin_grants_scope_format_check'),'c');
-    assert.equal(byName.get('platform_moderation_cases_resource_scope_format_check'),'c');
+    assert.equal(byName.get('platform_admin_grants_scope_check'),'c');
+    assert.equal(byName.get('platform_moderation_cases_resource_scope_check'),'c');
     const indexes=await pool.query(`
       SELECT indexname,indexdef FROM pg_indexes WHERE schemaname='public'
       AND indexname=ANY($1::text[])
