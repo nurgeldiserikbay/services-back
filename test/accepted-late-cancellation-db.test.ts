@@ -121,6 +121,8 @@ test('no snapshot, free window, foreign owner and stale version are rejected bef
       assert.equal(ledger.events,'0');
       assert.equal(ledger.notices,'0');
       assert.equal(ledger.penalties,'0');
+      assert.equal(ledger.outbox,'0');
+      assert.equal(ledger.version,1);
     });
   }
 });
