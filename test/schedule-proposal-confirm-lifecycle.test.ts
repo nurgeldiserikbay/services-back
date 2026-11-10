@@ -11,7 +11,7 @@ const args={
   key:'confirm-guest-test',guestCapability:'A'.repeat(43),pepper,guestPepper:pepper,
 };
 
-function fakeDb(options:{initiator?:string;status?:string;start?:Date; end?:Date; calendarConflict?:boolean; orphanBlock?:boolean}={}){
+function fakeDb(options:{initiator?:string;status?:string;start?:Date; end?:Date; agreedAt?:Date|null; calendarConflict?:boolean; orphanBlock?:boolean}={}){
   const writes:string[]=[];
   const db={query:async(sql:string)=>{
     if(sql.includes('FROM service_requests WHERE id='))return {rows:[{
@@ -30,7 +30,7 @@ function fakeDb(options:{initiator?:string;status?:string;start?:Date; end?:Date
       proposed_end_at:options.end??new Date('2027-12-01T11:00:00.000Z'),
       timezone:'Asia/Almaty',
     }]};
-    if(sql.includes('SELECT now() AS agreed_at'))return {rows:[{agreed_at:new Date('2026-11-10T00:00:00.000Z')}]};
+    if(sql.includes('SELECT now() AS agreed_at'))return {rows:[{agreed_at:options.agreedAt===undefined?new Date('2026-11-10T00:00:00.000Z'):options.agreedAt}]};
     if(sql.includes('FROM service_requests r JOIN service_offers'))return {rows:[{performer_id:options.calendarConflict?'10000000-0000-4000-8000-000000000005':null,availability:options.calendarConflict?'PUBLIC':'HIDDEN'}]};
     if(sql.includes('FROM cancellation_policies'))return {rows:[{revision:3,free_cancel_before_min:120}]};
     if(sql.includes('FROM busy_blocks WHERE request_id='))return {rows:options.orphanBlock?[{id:'10000000-0000-4000-8000-000000000006'}]:[]};
@@ -78,6 +78,8 @@ for(const [description,options] of [
   ['zero-duration time range',{end:new Date('2027-12-01T10:00:00.000Z')}],
   ['invalid start timestamp',{start:new Date(Number.NaN)}],
   ['invalid end timestamp',{end:new Date(Number.NaN)}],
+  ['missing database agreement time',{agreedAt:null}],
+  ['invalid database agreement time',{agreedAt:new Date(Number.NaN)}],
 ] as const){
   test('confirm rejects '+description+' before writing',async()=>{
     const {db,writes}=fakeDb(options);
