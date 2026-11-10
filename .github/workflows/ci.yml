@@ -102,7 +102,9 @@ jobs:
               'schedule_proposals', 'idempotency_records',
               'busy_blocks', 'cancellation_snapshot_revisions',
               'cancellation_snapshots', 'domain_outbox_events',
-              'notification_intents'
+              'notification_intents',
+              'platform_admin_staff', 'platform_admin_sessions',
+              'platform_admin_grants'
             ]) AS required(table_name)
             WHERE to_regclass(format('public.%I', required.table_name)) IS NULL;
             IF missing IS NOT NULL THEN
