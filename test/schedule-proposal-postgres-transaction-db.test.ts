@@ -168,3 +168,34 @@ test('migrated busy_blocks has the real exclusion constraint for known calendar 
     await pool.end();
   }
 });
+
+test('migrated schedule revisions and idempotency scopes have unique indexes', {
+  skip: !process.env.DATABASE_URL,
+  timeout: 15_000,
+}, async () => {
+  const pool=new Pool({connectionString:process.env.DATABASE_URL,max:1,connectionTimeoutMillis:3000});
+  try {
+    const result=await pool.query(`
+      SELECT tablename,indexname,indexdef
+      FROM pg_indexes
+      WHERE schemaname='public'
+        AND indexname=ANY($1::text[])
+    `,[[
+      'schedule_proposals_request_id_revision_key',
+      'idempotency_records_actor_scope_method_route_key_key',
+      'cancellation_snapshot_revisions_request_id_schedule_revisio_key',
+    ]]);
+    const indexes=new Map(result.rows.map((row:{indexname:string;indexdef:string})=>[
+      row.indexname,row.indexdef,
+    ]));
+    assert.equal(indexes.size,3,'all three uniqueness protections must be migrated');
+    for(const definition of indexes.values()){
+      assert.match(definition,/CREATE UNIQUE INDEX/i);
+    }
+    assert.match(indexes.get('schedule_proposals_request_id_revision_key')!,/request_id, revision/);
+    assert.match(indexes.get('idempotency_records_actor_scope_method_route_key_key')!,/actor_scope, method, route, key/);
+    assert.match(indexes.get('cancellation_snapshot_revisions_request_id_schedule_revisio_key')!,/request_id, schedule_revision/);
+  } finally {
+    await pool.end();
+  }
+});
