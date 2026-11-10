@@ -117,7 +117,7 @@ test('moderation read does not disclose database error details',async()=>{
   } as never);
   await assert.rejects(service.list('Bearer '+token),(error:unknown)=>{
    assert.ok(error instanceof UnauthorizedException);
-   assert.doesNotMatch(String(error),'database host and SQL details');
+   assert.doesNotMatch(String(error),/database host and SQL details/);
    return true;
   });
  }finally{restore();}
