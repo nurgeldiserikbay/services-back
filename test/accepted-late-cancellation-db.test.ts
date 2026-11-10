@@ -90,6 +90,12 @@ test('late cancellation commits two intents, one proposed rating, outbox and no 
       db,f.request,f.person,1,approved),
       (e:unknown)=>e instanceof LateCancellationRejected&&e.reason==='conflict');
     assert.equal((await counts(db,f.request)).notices,'2');
+    // Retrying a committed cancellation must not create a second reliability
+    // proposal, cancellation event, or outbox message.
+    assert.deepEqual(await counts(db,f.request),{
+      status:'CANCELLED_BY_CUSTOMER',version:2,
+      notices:'2',penalties:'1',events:'1',outbox:'1',
+    });
   });
 });
 test('suspended customer can cancel late without automatic reliability proposal',async()=>{
