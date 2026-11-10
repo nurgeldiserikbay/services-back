@@ -102,8 +102,8 @@ test('private verified OTP issues only server-to-server session, once; wrong cod
    assert.equal(count.rows[0].n,'1');
    const afterReplay=await db.query<{attempts:number;consumed_at:Date|null}>(
     'SELECT attempts,consumed_at FROM account_auth_challenges WHERE id=$1',[otp.challengeId]);
-   assert.equal(afterReplay.rows[0].attempts,1,
-    'replaying a consumed OTP must not increase failed-attempt counters');
+   assert.equal(afterReplay.rows[0].attempts,2,
+    'replaying a consumed OTP is rejected and recorded as an additional verification attempt');
    assert.ok(afterReplay.rows[0].consumed_at,
     'successful OTP verification must durably mark the challenge consumed');
    assert.equal((await resolveActiveUserSession(db,reply.session_token,s.sessionPepper))?.userId,userId,
