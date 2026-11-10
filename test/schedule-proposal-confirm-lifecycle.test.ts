@@ -96,3 +96,43 @@ test('existing busy block without a performer rejects confirmation before writes
     (error:unknown)=>error instanceof ScheduleProposalRejected&&error.reason==='conflict');
   assert.deepEqual(writes,[]);
 });
+
+test('confirmed idempotency replay requires consistent confirmation and cancellation timestamps',async()=>{
+  const {createHmac}=await import('node:crypto');
+  const hash=createHmac('sha256',pepper)
+    .update('schedule-proposal:v1\0')
+    .update(JSON.stringify(['confirm',requestId,proposalId,4,null]))
+    .digest('hex');
+  const valid={
+    id:proposalId,request_id:requestId,revision:2,status:'confirmed',
+    initiator:'seller',start_at:'2027-12-01T10:00:00.000Z',
+    end_at:'2027-12-01T11:00:00.000Z',timezone:'Asia/Almaty',
+    request_version:5,replayed:false,
+    confirmed_at:'2026-11-10T00:00:00.000Z',
+    cancellation_deadline_at:'2027-12-01T08:00:00.000Z',
+  };
+  for(const invalid of [
+    {confirmed_at:undefined},
+    {cancellation_deadline_at:undefined},
+    {confirmed_at:'2027-12-02T10:00:00.000Z'},
+    {cancellation_deadline_at:'2027-12-02T10:00:00.000Z'},
+  ]){
+    const db={query:async(sql:string)=>{
+      if(sql.includes('FROM service_requests WHERE id='))return {rows:[{
+        id:requestId,offer_id:requestId,status:'ACCEPTED',version:5,
+        schedule_reconciliation_required:false,customer_person_id:null,
+        guest_contact_id:guestId,seller_professional_id:null,
+        seller_organization_id:null,performer_professional_id:null,
+      }]};
+      if(sql.includes('FROM guest_capabilities cap'))return {rows:[{guest_contact_id:guestId}]};
+      if(sql.includes('pg_advisory_xact_lock'))return {rows:[]};
+      if(sql.includes('FROM idempotency_records'))return {rows:[{
+        request_hash:hash,state:'COMPLETED',response_body:{...valid,...invalid},
+        expires_at:new Date('2099-01-01T00:00:00.000Z'),
+      }]};
+      throw new Error('Replay unexpectedly attempted SQL mutation: '+sql);
+    }};
+    await assert.rejects(mutateScheduleProposal(db as never,args),
+      (error:unknown)=>error instanceof ScheduleProposalRejected&&error.reason==='conflict');
+  }
+});
