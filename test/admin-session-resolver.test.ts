@@ -91,3 +91,24 @@ test('zero grants cannot authorize a resource even for an owner',async()=>{
  assert.equal(await canAccessPlatformAdminResource(
   fakeDb([noGrant] as never),token,pepper,'platform_roles.manage',org,now),false);
 });
+
+test('exactly 100 unique grants remain valid; the 101st denies the whole session',async()=>{
+ const grants=Array.from({length:100},()=>({...row(),scope:'organization:'+randomUUID()}));
+ const principal=await resolvePlatformAdminSession(fakeDb(grants),token,pepper,now);
+ assert.ok(principal);
+ assert.equal(principal.resourceScopes.length,100);
+ assert.equal(await resolvePlatformAdminSession(
+  fakeDb([...grants,{...row(),scope:'organization:'+randomUUID()}]),token,pepper,now),null);
+});
+test('malformed joined rows never create partial authorization',async()=>{
+ const good=row();
+ for(const invalid of [
+  {...row(),scope:'*'},
+  {...row(),scope:null},
+  {...row(),mfa_verified_at:new Date('invalid')},
+  {...row(),expires_at:new Date('invalid')},
+ ]){
+  assert.equal(await resolvePlatformAdminSession(
+   fakeDb([good,invalid] as never),token,pepper,now),null);
+ }
+});
