@@ -107,3 +107,18 @@ test('moderation read denies missing or malformed admin HMAC configuration',asyn
   assert.equal(queried,false);
  }finally{restore();}
 });
+
+test('moderation read does not disclose database error details',async()=>{
+ try{
+  process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
+  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=key.toString('base64');
+  const service=new PlatformModerationReadService({
+   transaction:async()=>{throw new Error('database host and SQL details');}
+  } as never);
+  await assert.rejects(service.list('Bearer '+token),(error:unknown)=>{
+   assert.ok(error instanceof UnauthorizedException);
+   assert.doesNotMatch(String(error),'database host and SQL details');
+   return true;
+  });
+ }finally{restore();}
+});
