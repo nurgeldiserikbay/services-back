@@ -162,6 +162,8 @@ test('migrated busy_blocks has the real exclusion constraint for known calendar 
     assert.match(definition,/EXCLUDE USING gist/i);
     assert.match(definition,/professional_id/i);
     assert.match(definition,/tstzrange/i);
+    assert.match(definition,/WITH &&/i);
+    assert.match(definition,/\\[\\)/);
   } finally {
     await pool.end();
   }
