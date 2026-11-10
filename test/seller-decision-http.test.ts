@@ -42,3 +42,21 @@ test('seller decision requires canonical quoted versions without leading zeros',
    requestId:randomUUID(),version,idempotencyKey:'valid-idempotency-key-123'}),BadRequestException);
  }
 });
+
+test('seller decision normalizes UUID casing but rejects ambiguous bearer formatting',()=>{
+ const token=issueSessionToken(randomBytes(32)).token;
+ const requestId=randomUUID();
+ const key='valid-idempotency-key-123';
+ const accepted=validateSellerDecisionHttp({
+  authorization:'Bearer '+token,requestId:requestId.toUpperCase(),
+  version:'"2"',idempotencyKey:key,
+ });
+ assert.equal(accepted.requestId,requestId);
+ assert.equal(accepted.expectedVersion,2);
+ for(const authorization of ['bearer '+token,'Bearer  '+token,
+  'Bearer '+token+' ','Bearer '+token+'\\n','Basic '+token]){
+  assert.throws(()=>validateSellerDecisionHttp({
+   authorization,requestId,version:'"2"',idempotencyKey:key,
+  }),UnauthorizedException);
+ }
+});
