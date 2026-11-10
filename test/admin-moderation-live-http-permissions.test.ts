@@ -106,8 +106,7 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
 
   staleMfa=true;
   const stale=await get(token);
-  assert.equal(stale.status,200);
-  assert.deepEqual(await stale.json(),{items:[]});
+  assert.equal(stale.status,401);
   assert.equal(caseQueries,2);
   staleMfa=false;
 
