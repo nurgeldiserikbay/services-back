@@ -31,6 +31,20 @@ test('platform admin migration rejects invalid role, orphan grants and malformed
       VALUES ($1,$2,$3,now(),now()+interval '1 hour')
     `,[randomUUID(),staffId,'not-a-hash']),{code:'23514'});
     await client.query('ROLLBACK');
+    await client.query('BEGIN');
+    await client.query(`INSERT INTO users (id,status) VALUES ($1,'ACTIVE')`,[userId]);
+    await client.query(`INSERT INTO platform_admin_staff (id,user_id,role)
+      VALUES ($1,$2,'auditor')`,[staffId,userId]);
+    await assert.rejects(client.query(`
+      INSERT INTO platform_admin_grants (id,staff_id,scope) VALUES ($1,$2,'*')
+    `,[randomUUID(),staffId]),{code:'23514'});
+    await client.query('ROLLBACK');
+    await client.query('BEGIN');
+    await assert.rejects(client.query(`
+      INSERT INTO platform_moderation_cases
+      (id,resource_scope,subject_kind,state) VALUES ($1,'*','review','triage')
+    `,[randomUUID()]),{code:'23514'});
+    await client.query('ROLLBACK');
   }finally{
     try{await client.query('ROLLBACK');}catch{}
     client.release();await pool.end();
