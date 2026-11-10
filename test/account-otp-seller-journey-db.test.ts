@@ -190,6 +190,11 @@ test('unrelated OTP-authenticated account cannot view or decide another seller r
         'accept',1,randomUUID(),secret.sessionPepper),
       (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='forbidden',
     );
+    await assert.rejects(
+      decideWithIdempotentSession(db,outsider.token,fixture.requestId,
+        'decline',1,randomUUID(),secret.sessionPepper),
+      (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='forbidden',
+    );
     const stillPending=await db.query<{status:string;version:number}>(`
       SELECT status,version FROM service_requests WHERE id=$1`,[fixture.requestId]);
     assert.deepEqual(stillPending.rows[0],{status:'PENDING',version:1});
