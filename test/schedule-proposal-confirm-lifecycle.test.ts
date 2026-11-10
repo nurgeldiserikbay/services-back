@@ -11,7 +11,7 @@ const args={
   key:'confirm-guest-test',guestCapability:'A'.repeat(43),pepper,guestPepper:pepper,
 };
 
-function fakeDb(options:{initiator?:string;status?:string;start?:Date; end?:Date; agreedAt?:Date|null; calendarConflict?:boolean; orphanBlock?:boolean}={}){
+function fakeDb(options:{initiator?:string;status?:string;start?:Date|null|string; end?:Date|null|string; agreedAt?:Date|null; calendarConflict?:boolean; orphanBlock?:boolean}={}){
   const writes:string[]=[];
   const db={query:async(sql:string)=>{
     if(sql.includes('FROM service_requests WHERE id='))return {rows:[{
@@ -26,8 +26,8 @@ function fakeDb(options:{initiator?:string;status?:string;start?:Date; end?:Date
     if(sql.includes('FROM schedule_proposals WHERE id='))return {rows:[{
       id:proposalId,revision:2,status:options.status??'PROPOSED',
       initiator:options.initiator??'SELLER',
-      proposed_start_at:options.start??new Date('2027-12-01T10:00:00.000Z'),
-      proposed_end_at:options.end??new Date('2027-12-01T11:00:00.000Z'),
+      proposed_start_at:options.start===undefined?new Date('2027-12-01T10:00:00.000Z'):options.start,
+      proposed_end_at:options.end===undefined?new Date('2027-12-01T11:00:00.000Z'):options.end,
       timezone:'Asia/Almaty',
     }]};
     if(sql.includes('SELECT now() AS agreed_at'))return {rows:[{agreed_at:options.agreedAt===undefined?new Date('2026-11-10T00:00:00.000Z'):options.agreedAt}]};
@@ -78,6 +78,10 @@ for(const [description,options] of [
   ['zero-duration time range',{end:new Date('2027-12-01T10:00:00.000Z')}],
   ['invalid start timestamp',{start:new Date(Number.NaN)}],
   ['invalid end timestamp',{end:new Date(Number.NaN)}],
+  ['null start timestamp',{start:null}],
+  ['null end timestamp',{end:null}],
+  ['string start timestamp',{start:'2027-12-01T10:00:00.000Z'}],
+  ['string end timestamp',{end:'2027-12-01T11:00:00.000Z'}],
   ['missing database agreement time',{agreedAt:null}],
   ['invalid database agreement time',{agreedAt:new Date(Number.NaN)}],
 ] as const){
