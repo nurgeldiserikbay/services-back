@@ -2,6 +2,14 @@
 
 NestJS and TypeScript backend for the global Services platform. Canonical product decisions, public API contract and database reference schema live in [services](https://github.com/nurgeldiserikbay/services). Contract reconciliation is under [services PR #4](https://github.com/nurgeldiserikbay/services/pull/4).
 
+## Verified CI baseline (2026-11-10)
+
+GitHub Actions [run 42833641292](https://github.com/nurgeldiserikbay/services-back/actions/runs/42833641292) succeeded on commit `b2c43b16aa4e2d0d3693de1a2f212aca6d829aee`. The `build-and-test` job passed TypeScript typecheck, build, Prisma model validation, migration baseline drift check, migration deploy twice and status, idempotent geography seeding, PostgreSQL smoke/table checks, and unit/integration tests. The independent production dependency audit job also passed. This verifies the CI environment only; it does **not** certify production deployment, live secrets, backups, data residency, performance or real customer journeys.
+
+**Migration release caution:** the historical `20261110_platform_admin_foundation` migration was corrected after duplicate table DDL blocked clean installs. Before applying to any persistent database, inspect `_prisma_migrations` and reconcile checksums/history if that migration was already recorded there. Never blindly reset or delete a production database.
+
+**Release gates still outstanding:** staging deployment and rollback rehearsal; backup/restore test; production environment and secrets review; cross-repository API contract/E2E verification; observability and load testing; documented security sign-off.
+
 ## Verified code inventory (2026-11-07)
 
 The earlier scaffold-only status below is historical and **must not** be used as the current feature inventory. Current `src/modules/app.module.ts` imports CatalogModule, GeographyModule, PublicOfferModule, SellerInboxModule, SellerDecisionHttpModule, GuestVerificationModule and AccountBearerSessionModule, in addition to DatabaseModule and health. The catalog controller exposes `GET /v1/search`; public profile routes include `GET /v1/professionals/:slug` and `GET /v1/organizations/:id`.
