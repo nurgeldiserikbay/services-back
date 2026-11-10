@@ -114,3 +114,32 @@ test('PostgreSQL exclusion conflict rolls back schedule event and calendar reser
     await pool.end();
   }
 });
+
+test('PostgreSQL half-open calendar ranges allow back-to-back reservations', {
+  skip: !process.env.DATABASE_URL,
+  timeout: 15_000,
+}, async () => {
+  const pool=new Pool({connectionString:process.env.DATABASE_URL,max:1,connectionTimeoutMillis:3000});
+  const client=await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`
+      CREATE TEMP TABLE schedule_calendar_adjacent (
+        slot tstzrange NOT NULL,
+        EXCLUDE USING gist (slot WITH &&)
+      ) ON COMMIT DROP
+    `);
+    await client.query(`
+      INSERT INTO schedule_calendar_adjacent(slot) VALUES
+      (tstzrange('2027-01-01 10:00+00','2027-01-01 11:00+00','[)')),
+      (tstzrange('2027-01-01 11:00+00','2027-01-01 12:00+00','[)'))
+    `);
+    const result=await client.query('SELECT count(*)::int AS count FROM schedule_calendar_adjacent');
+    assert.equal(result.rows[0]?.count,2);
+    await client.query('ROLLBACK');
+  } finally {
+    await client.query('ROLLBACK').catch(()=>undefined);
+    client.release();
+    await pool.end();
+  }
+});
