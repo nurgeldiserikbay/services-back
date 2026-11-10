@@ -11,6 +11,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 const ROLES=new Set(['owner','admin','operator','auditor']);
 const SCOPE=/^[a-z][a-z0-9_-]{0,31}:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_GRANTS=100;
+const MAX_MFA_AGE_MS=15*60*1000;
 
 type AdminRow={
  user_id:string;role:string;expires_at:Date;
@@ -50,6 +51,8 @@ export async function resolvePlatformAdminSession(
  // A malformed driver result must never become a 500 or an authorization grant.
  if(!result||!Array.isArray(result.rows))return null;
  const rows=result.rows;
+ // A LEFT JOIN returns one null-scope row for a principal with no grants.
+ // Exactly 100 explicit grants are valid; 101 rows indicate overflow.
  if(rows.length===0||rows.length>MAX_GRANTS)return null;
  const first=rows[0];
  if(!first||!UUID.test(first.user_id)||!ROLES.has(first.role)||
@@ -58,7 +61,7 @@ export async function resolvePlatformAdminSession(
  const expiresAt=first.expires_at.getTime();
  const mfaVerifiedAt=first.mfa_verified_at.getTime();
  if(!Number.isSafeInteger(expiresAt)||!Number.isSafeInteger(mfaVerifiedAt)||
-  expiresAt<=now||mfaVerifiedAt>now||now-mfaVerifiedAt>15*60*1000)return null;
+  expiresAt<=now||mfaVerifiedAt>now||now-mfaVerifiedAt>MAX_MFA_AGE_MS)return null;
  const scopes: string[]=[];
  const seenScopes=new Set<string>();
  let sawNullScope=false;
