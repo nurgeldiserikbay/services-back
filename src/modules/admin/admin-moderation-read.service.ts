@@ -50,7 +50,9 @@ export class PlatformModerationReadService{
    throw new UnauthorizedException('Authentication required');
   const match=typeof authorization==='string'?TOKEN.exec(authorization):null;
   if(!match)throw new UnauthorizedException('Authentication required');
-  const pepper=requireSecret(process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY);
+  let pepper:Buffer;
+  try{pepper=requireSecret(process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY);}
+  catch{throw new UnauthorizedException('Authentication required');}
   const now=Date.now();
   return this.db.transaction(async client=>{
    const principal=await resolvePlatformAdminSession(client,match[1],pepper,now);
