@@ -81,6 +81,10 @@ test('private verified OTP issues only server-to-server session, once; wrong cod
    const attempts=await db.query<{attempts:number}>(
     'SELECT attempts FROM account_auth_challenges WHERE id=$1',[otp.challengeId]);
    assert.equal(attempts.rows[0].attempts,1);
+   const noPrematureSessions=await db.query<{n:string}>(
+    'SELECT count(*)::text n FROM sessions WHERE user_id=$1',[userId]);
+   assert.equal(noPrematureSessions.rows[0].n,'0',
+    'failed OTP attempts must not create an authenticated session');
    const reply=await ctrl.verify(key.toString('base64'),input);
    assert.deepEqual(Object.keys(reply).sort(),['expires_in_seconds','session_token']);
    assert.equal(reply.expires_in_seconds,43200);
