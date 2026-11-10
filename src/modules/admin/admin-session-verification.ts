@@ -21,7 +21,7 @@ export function verifyAdminSessionRecord(
   pepper:Buffer,now:Date,
 ):{userId:string;role:AdminRole}|null{
   if(!record||!(now instanceof Date)||!Number.isFinite(now.getTime()))return null;
-  if(typeof record.user_id!=='string'||!/^[-0-9a-f]{36}$/i.test(record.user_id))return null;
+  if(typeof record.user_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(record.user_id))return null;
   const role=record.role;
   if(role!=='owner'&&role!=='admin'&&role!=='operator'&&role!=='auditor')return null;
   if(record.revoked_at!==null||!(record.expires_at instanceof Date)||
