@@ -232,7 +232,10 @@ async function confirm(
   }
   const clock=await db.query<{agreed_at:Date}>(`SELECT now() AS agreed_at`);
   const agreedAt=clock.rows[0].agreed_at;
-  if(proposal.proposed_start_at.getTime()<=agreedAt.getTime()){
+  const startMillis=proposal.proposed_start_at.getTime();
+  const endMillis=proposal.proposed_end_at.getTime();
+  if(!Number.isFinite(startMillis)||!Number.isFinite(endMillis)||
+     startMillis<=agreedAt.getTime()||endMillis<=startMillis){
     throw new ScheduleProposalRejected('conflict');
   }
   const terms=await db.query<{performer_id:string|null;availability:string}>(`
