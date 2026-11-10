@@ -206,6 +206,14 @@ test('unrelated OTP-authenticated account cannot view or decide another seller r
       SELECT count(*)::text AS n FROM notification_intents
       WHERE dedupe_key=$1`,['request-accept:guest:'+fixture.requestId]);
     assert.equal(forbiddenNotices.rows[0].n,'0');
+    const declinedEvents=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM domain_outbox_events
+      WHERE subject_id=$1 AND topic='service_request.declined'`,[fixture.requestId]);
+    assert.equal(declinedEvents.rows[0].n,'0');
+    const declinedNotices=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM notification_intents
+      WHERE dedupe_key LIKE $1`,['request-decline:%'+fixture.requestId]);
+    assert.equal(declinedNotices.rows[0].n,'0');
     const ownerInbox=await readSellerInbox(db,ownerId,
       parseSellerInboxFilter({state:'pending',limit:'20'}));
     assert.deepEqual(ownerInbox.items.map(item=>item.id),[fixture.requestId]);
