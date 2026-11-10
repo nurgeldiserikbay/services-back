@@ -150,6 +150,15 @@ test('revoked seller membership denies both new decisions and idempotency replay
     await assert.rejects(decideWithIdempotentSession(
       db,login.token,f.requestId,'decline',1,key,secret.sessionPepper),
       (e:unknown)=>e instanceof SellerDecisionRejected&&e.reason==='forbidden');
+    const decision=await db.query<{status:string;version:number}>(
+      'SELECT status,version FROM service_requests WHERE id=$1',[f.requestId]);
+    assert.deepEqual(decision.rows[0],{status:'DECLINED',version:2},
+      'revoked membership must not mutate the previous decision on replay');
+    const outbox=await db.query<{n:string}>(
+      `SELECT count(*)::text AS n FROM domain_outbox_events
+       WHERE subject_id=$1 AND topic='service_request.declined'`,[f.requestId]);
+    assert.equal(outbox.rows[0].n,'1',
+      'forbidden replay after membership revocation must not publish a second event');
   }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
 
