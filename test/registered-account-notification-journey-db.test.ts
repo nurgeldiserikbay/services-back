@@ -107,11 +107,12 @@ test('confirmed OTP -> seller accepts registered request -> customer IN_APP inbo
    db,customer.sessionToken,secrets.sessionPepper),true);
   await assert.rejects(controller.list('Bearer '+customer.sessionToken,'20'),
    UnauthorizedException);
-  // Revoking the session must not delete the underlying private notification:
-  // it remains accessible only to the rightful customer with a new session.
-  const renewed=await verifiedAccount(db,
-   'another-buyer-notify-'+randomUUID()+'@example.test',secrets);
-  assert.deepEqual((await controller.list('Bearer '+renewed.sessionToken,'20')).items,[]);
+  // Revoking access must not delete the durable notification for the customer.
+  const durable=await db.query<{n:string}>(`
+   SELECT count(*)::text AS n FROM notification_intents
+   WHERE dedupe_key=$1 AND recipient_person_id=$2`,
+   ['request-accept:client:'+requestId,customer.personId]);
+  assert.equal(durable.rows[0].n,'1');
   assert.deepEqual((await controller.list('Bearer '+seller.sessionToken,'20')).items,[]);
  }finally{
   if(old===undefined)delete process.env.ACCOUNT_SESSION_HMAC_KEY;
