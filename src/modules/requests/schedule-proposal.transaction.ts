@@ -237,6 +237,10 @@ async function confirm(
   if(!(agreedAt instanceof Date)||!Number.isFinite(agreedAt.getTime())){
     throw new ScheduleProposalRejected('conflict');
   }
+  if(!(proposal.proposed_start_at instanceof Date)||
+     !(proposal.proposed_end_at instanceof Date)){
+    throw new ScheduleProposalRejected('conflict');
+  }
   const startMillis=proposal.proposed_start_at.getTime();
   const endMillis=proposal.proposed_end_at.getTime();
   if(!Number.isFinite(startMillis)||!Number.isFinite(endMillis)||
