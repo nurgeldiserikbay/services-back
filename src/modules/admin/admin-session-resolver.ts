@@ -58,7 +58,7 @@ export async function resolvePlatformAdminSession(
  const expiresAt=first.expires_at.getTime();
  const mfaVerifiedAt=first.mfa_verified_at.getTime();
  if(!Number.isSafeInteger(expiresAt)||!Number.isSafeInteger(mfaVerifiedAt)||
-  expiresAt<=now||mfaVerifiedAt>now)return null;
+  expiresAt<=now||mfaVerifiedAt>now||now-mfaVerifiedAt>15*60*1000)return null;
  const scopes: string[]=[];
  const seenScopes=new Set<string>();
  let sawNullScope=false;
