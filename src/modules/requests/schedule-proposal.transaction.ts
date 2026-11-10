@@ -433,7 +433,7 @@ function readStoredResult(value:unknown,requestId:string,action:ScheduleProposal
   const expectedStatus=action==='propose'?'proposed':action==='decline'?'declined':'confirmed';
   if(result.request_id!==requestId||result.status!==expectedStatus||
      result.request_version!==expectedVersion+1||typeof result.id!=='string'||
-     !Number.isSafeInteger(result.revision)||result.revision<1||
+     (typeof result.revision!=='number'||!Number.isSafeInteger(result.revision)||result.revision<1)||
      (result.initiator!=='customer'&&result.initiator!=='seller')||
      typeof result.start_at!=='string'||!Number.isFinite(Date.parse(result.start_at))||
      typeof result.end_at!=='string'||!Number.isFinite(Date.parse(result.end_at))||
