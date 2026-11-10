@@ -54,7 +54,7 @@ test('moderation service does not query cases for missing or stale MFA',async()=
  await withFeatureFlag(async()=>{
   const scenarios=[
    {grants:[],unauthorized:true},
-   {grants:[grant({mfa_verified_at:new Date(Date.now()-20*60_000)})],unauthorized:false},
+   {grants:[grant({mfa_verified_at:new Date(Date.now()-20*60_000)})],unauthorized:true},
    {grants:[grant({role:'invalid'})],unauthorized:true},
    {grants:[grant({scope:null})],unauthorized:false},
   ];
