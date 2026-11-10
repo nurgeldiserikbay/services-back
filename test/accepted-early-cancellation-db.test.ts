@@ -76,6 +76,15 @@ test('early accepted cancellation writes two intents, no penalty and releases re
       SELECT count(*)::text AS count FROM cancellation_events WHERE request_id=$1
     `,[f.request]);
     assert.equal(events.rows[0].count,'1');
+    const outbox=await db.query<{count:string}>(`
+      SELECT count(*)::text AS count FROM domain_outbox_events
+      WHERE subject_id=$1 AND topic='service_request.cancelled'`,[f.request]);
+    assert.equal(outbox.rows[0].count,'1');
+    // A repeated cancellation cannot duplicate notifications or outbox events.
+    const noticesAfter=await db.query<{count:string}>(`
+      SELECT count(*)::text AS count FROM notification_intents
+      WHERE cancellation_id=$1`,[result.cancellationId]);
+    assert.equal(noticesAfter.rows[0].count,'2');
   });
 });
 
