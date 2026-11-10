@@ -46,6 +46,13 @@ test('unknown, stale, duplicate or oversized sessions fail closed',async()=>{
  assert.notEqual(issueSessionToken(pepper).token,token);
 });
 
+test('future-dated MFA verification cannot authenticate a privileged principal',async()=>{
+ const future={...row(),mfa_verified_at:new Date(now+1)};
+ assert.equal(await resolvePlatformAdminSession(fakeDb([future]),token,pepper,now),null);
+ assert.equal(await canAccessPlatformAdminResource(
+  fakeDb([future]),token,pepper,'audit.read',org,now),false);
+});
+
 test('admin grant resolver rejects duplicate scopes with different UUID casing',async()=>{
  const lower=org.toLowerCase();
  const upper=org.toUpperCase();
