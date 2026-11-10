@@ -24,7 +24,9 @@ export async function revokePlatformAdminSession(
    AND created_at<=to_timestamp($3::double precision/1000.0)
   RETURNING id::text
  `,[hash,staffId,now]);
- if(!result||!Array.isArray(result.rows)||result.rows.length>1)
+ if(!result||!Array.isArray(result.rows)||result.rows.length>1||
+  (result.rows.length===1&&(!result.rows[0]||
+   typeof result.rows[0].id!=='string'||!UUID.test(result.rows[0].id))))
   throw new Error('admin_session_revocation_unavailable');
  return result.rows.length===1;
 }
