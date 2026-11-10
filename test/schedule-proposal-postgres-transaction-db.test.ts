@@ -163,7 +163,7 @@ test('migrated busy_blocks has the real exclusion constraint for known calendar 
     assert.match(definition,/professional_id/i);
     assert.match(definition,/tstzrange/i);
     assert.match(definition,/WITH &&/i);
-    assert.match(definition,/\\[\\)/);
+    assert.ok(definition.includes('[)'), 'calendar ranges must be half-open');
   } finally {
     await pool.end();
   }
