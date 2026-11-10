@@ -92,6 +92,8 @@ export async function mutateScheduleProposal(
   const previous=saved.rows[0];
   if(previous){
     if(previous.request_hash!==requestHash||previous.state!=='COMPLETED'||
+       !(previous.expires_at instanceof Date)||
+       !Number.isFinite(previous.expires_at.getTime())||
        previous.expires_at.getTime()<=Date.now())throw new ScheduleProposalRejected('conflict');
     return readStoredResult(previous.response_body,args.requestId,args.action,args.expectedVersion);
   }
