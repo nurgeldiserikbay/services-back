@@ -49,3 +49,19 @@ CREATE TABLE "platform_admin_grants" (
 );
 CREATE UNIQUE INDEX "platform_admin_grants_staff_id_scope_key"
   ON "platform_admin_grants"("staff_id","scope");
+
+-- Redacted moderation read projection consumed by the existing private API.
+CREATE TABLE "platform_moderation_cases" (
+  "id" UUID NOT NULL,
+  "resource_scope" VARCHAR(80) NOT NULL,
+  "subject_kind" VARCHAR(24) NOT NULL,
+  "state" VARCHAR(16) NOT NULL,
+  "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "platform_moderation_cases_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "platform_moderation_cases_subject_kind_check"
+    CHECK ("subject_kind" IN ('professional','organization','review','affiliation')),
+  CONSTRAINT "platform_moderation_cases_state_check"
+    CHECK ("state" IN ('triage','in_review','decision','appeal','closed'))
+);
+CREATE INDEX "platform_moderation_cases_resource_scope_created_at_idx"
+  ON "platform_moderation_cases"("resource_scope","created_at");
