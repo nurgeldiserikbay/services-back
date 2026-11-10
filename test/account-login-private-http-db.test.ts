@@ -108,6 +108,13 @@ test('private verified OTP issues only server-to-server session, once; wrong cod
     'successful OTP verification must durably mark the challenge consumed');
    assert.equal((await resolveActiveUserSession(db,reply.session_token,s.sessionPepper))?.userId,userId,
     'replaying a consumed OTP must not revoke the previously issued session');
+   await assert.rejects(ctrl.verify(randomBytes(32).toString('base64'),input),NotFoundException);
+   const afterUntrustedReplay=await db.query<{attempts:number}>(
+    'SELECT attempts FROM account_auth_challenges WHERE id=$1',[otp.challengeId]);
+   assert.equal(afterUntrustedReplay.rows[0].attempts,2,
+    'untrusted BFF must not mutate a consumed challenge, even after successful sign-in');
+   assert.equal((await resolveActiveUserSession(db,reply.session_token,s.sessionPepper))?.userId,userId,
+    'untrusted BFF replay must not invalidate the legitimate authenticated session');
   });
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
