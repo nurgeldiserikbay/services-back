@@ -49,6 +49,14 @@ test('pipeline stages in-app and external intents, materializes only IN_APP, and
   const inbox=await readPersonInAppInbox(db,person);
   assert.deepEqual(inbox.map(x=>x.id),[inApp]);
   assert.deepEqual(await readPersonInAppInbox(db,randomUUID()),[]);
+  // Reprocessing must not create duplicate delivery records or inbox items.
+  const deliveryCounts=await db.query<{intent_id:string;count:string}>(`
+   SELECT intent_id::text,count(*)::text AS count
+   FROM notification_deliveries WHERE intent_id=ANY($1::uuid[])
+   GROUP BY intent_id`,[[inApp,external]]);
+  assert.equal(deliveryCounts.rows.length,2);
+  assert.ok(deliveryCounts.rows.every(row=>row.count==='1'));
+  assert.deepEqual((await readPersonInAppInbox(db,person)).map(x=>x.id),[inApp]);
   const outbox=await db.query<{processed_at:Date|null}>(
    'SELECT processed_at FROM domain_outbox_events WHERE id=$1',[event]);
   assert.equal(outbox.rows[0].processed_at,null);
