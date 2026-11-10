@@ -91,3 +91,19 @@ test('moderation read denies stale MFA without loading case data',async()=>{
   assert.equal(caseQueries,0);
  }finally{restore();}
 });
+
+test('moderation read denies missing or malformed admin HMAC configuration',async()=>{
+ try{
+  process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
+  let queried=false;
+  const service=new PlatformModerationReadService({
+   transaction:async()=>{queried=true;return {items:[]};}
+  } as never);
+  for(const secret of [undefined,'invalid','AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=']){
+   if(secret===undefined)delete process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+   else process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=secret;
+   await assert.rejects(service.list('Bearer '+token),UnauthorizedException);
+  }
+  assert.equal(queried,false);
+ }finally{restore();}
+});
