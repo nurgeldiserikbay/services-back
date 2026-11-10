@@ -98,7 +98,11 @@ jobs:
             FROM unnest(ARRAY[
               'users', 'persons', 'organizations', 'professional_profiles',
               'service_offers', 'service_requests', 'guest_contacts',
-              'organization_members', 'sessions'
+              'organization_members', 'sessions',
+              'schedule_proposals', 'idempotency_records',
+              'busy_blocks', 'cancellation_snapshot_revisions',
+              'cancellation_snapshots', 'domain_outbox_events',
+              'notification_intents'
             ]) AS required(table_name)
             WHERE to_regclass(format('public.%I', required.table_name)) IS NULL;
             IF missing IS NOT NULL THEN
