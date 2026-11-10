@@ -40,7 +40,7 @@ test('resolved current server role and scoped grants enforce auditor read-only',
 test('unknown, stale, duplicate or oversized sessions fail closed',async()=>{
  assert.equal(await resolvePlatformAdminSession(fakeDb([]),token,pepper,now),null);
  assert.equal(await resolvePlatformAdminSession(fakeDb([{...row(),role:'seller'}]),token,pepper,now),null);
- assert.equal((await resolvePlatformAdminSession(fakeDb([{...row(),mfa_verified_at:new Date(now-901000)}]),token,pepper,now))?.mfaVerifiedAt,now-901000);
+ assert.equal(await resolvePlatformAdminSession(fakeDb([{...row(),mfa_verified_at:new Date(now-901000)}]),token,pepper,now),null);
  assert.equal(await canAccessPlatformAdminResource(fakeDb([{...row(),mfa_verified_at:new Date(now-901000)}]),token,pepper,'audit.read',org,now),false);
  assert.equal(await resolvePlatformAdminSession(fakeDb(Array.from({length:101},row)),token,pepper,now),null);
  assert.notEqual(issueSessionToken(pepper).token,token);
