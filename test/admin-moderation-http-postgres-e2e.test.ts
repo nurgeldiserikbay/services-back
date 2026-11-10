@@ -38,7 +38,7 @@ test('moderation HTTP enforces persisted admin grants MFA and revocation',async(
   await db.query("INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'auditor')",[staffId,userId]);
   await db.query(`
    INSERT INTO platform_admin_sessions(id,staff_id,token_hash,mfa_verified_at,expires_at)
-   VALUES($1,$2,$3,now(),now()+interval '1 hour')
+   VALUES($1,$2,$3,now()-interval '1 second',now()+interval '1 hour')
   `,[sessionId,staffId,tokenHash]);
   await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',[grantId,staffId,allowedScope]);
   await db.query(`
@@ -79,8 +79,7 @@ test('moderation HTTP enforces persisted admin grants MFA and revocation',async(
 
   await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '20 minutes' WHERE id=$1",[sessionId]);
   const stale=await get(token);
-  assert.equal(stale.status,200);
-  assert.deepEqual(await stale.json(),{items:[]});
+  assert.equal(stale.status,401);
 
   await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now(),revoked_at=now() WHERE id=$1',[sessionId]);
   const revoked=await get(token);
