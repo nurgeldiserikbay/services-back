@@ -69,3 +69,25 @@ test('moderation read returns only redacted cases within active grants',async()=
    state:'triage',createdAt:new Date(now-1000).toISOString()}]});
  }finally{restore();}
 });
+
+test('moderation read denies stale MFA without loading case data',async()=>{
+ try{
+  process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
+  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=key.toString('base64');
+  const now=Date.now();
+  let caseQueries=0;
+  const db={transaction:async(work:(client:unknown)=>Promise<unknown>)=>work({
+   query:async(sql:string)=>{
+    if(sql.includes('FROM platform_admin_sessions'))
+     return {rows:[{user_id:userId,role:'auditor',
+      expires_at:new Date(now+60000),mfa_verified_at:new Date(now-16*60000),
+      scope}]};
+    caseQueries++;
+    return {rows:[]};
+   }
+  })};
+  const service=new PlatformModerationReadService(db as never);
+  await assert.rejects(service.list('Bearer '+token),UnauthorizedException);
+  assert.equal(caseQueries,0);
+ }finally{restore();}
+});
