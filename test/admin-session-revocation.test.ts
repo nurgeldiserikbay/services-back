@@ -44,7 +44,7 @@ test('invalid credentials and staff identifiers never reach database',async()=>{
 });
 
 test('unexpected driver results cannot report successful revocation',async()=>{
- for(const result of [null,{rows:null},{rows:[{},{}]}]){
+ for(const result of [null,{rows:null},{rows:[{},{}]},{rows:[{id:'bad'}]}]){
   const db={query:async()=>result} as never;
   await assert.rejects(revokePlatformAdminSession(db,token,pepper,staffId,now),
    /admin_session_revocation_unavailable/);
