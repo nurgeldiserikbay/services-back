@@ -23,7 +23,7 @@ function fakeDb(options:{initiator?:string;status?:string;start?:Date|null|strin
     if(sql.includes('FROM guest_capabilities cap'))return {rows:[{guest_contact_id:guestId}]};
     if(sql.includes('pg_advisory_xact_lock'))return {rows:[]};
     if(sql.includes('FROM idempotency_records'))return {rows:[]};
-    if(sql.includes('FROM schedule_proposals WHERE id='))return {rows:[{
+    if(sql.trimStart().startsWith('SELECT')&&sql.includes('FROM schedule_proposals WHERE id='))return {rows:[{
       id:proposalId,revision:2,status:options.status??'PROPOSED',
       initiator:options.initiator??'SELLER',
       proposed_start_at:options.start===undefined?new Date('2027-12-01T10:00:00.000Z'):options.start,
