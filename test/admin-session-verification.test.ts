@@ -12,6 +12,7 @@ const base={
   user_id:'10000000-0000-4000-8000-000000000001',
   expires_at:new Date('2026-11-10T11:00:00.000Z'),
   revoked_at:null,
+  disabled_at:null,
   mfa_verified_at:new Date('2026-11-10T09:00:00.000Z'),
 };
 test('valid admin session requires matching token, active expiry and MFA',()=>{
@@ -29,7 +30,8 @@ test('invalid admin session claims fail closed',()=>{
     {expires_at:null}, {expires_at:new Date(Number.NaN)},
     {expires_at:now}, {expires_at:new Date(now.getTime()-1)},
     {revoked_at:new Date('2026-11-10T09:00:00.000Z')},
-    {revoked_at:undefined}, {mfa_verified_at:null},
+    {revoked_at:undefined}, {disabled_at:undefined},
+    {disabled_at:new Date('2026-11-10T09:00:00.000Z')}, {mfa_verified_at:null},
     {mfa_verified_at:new Date(Number.NaN)},
     {mfa_verified_at:new Date(now.getTime()+1)},
   ];
