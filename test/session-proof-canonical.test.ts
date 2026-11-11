@@ -67,3 +67,36 @@ test('account session proof accepts every canonical final character',()=>{
  }
  assert.deepEqual([...suffixes].sort(),[...'AEIMQUYcgkosw048'].sort());
 });
+
+test('active account session lookup uses only a derived hash and validates returned IDs',async()=>{
+ const pepper=Buffer.alloc(32,21);
+ const {token,hash}=issueSessionToken(pepper);
+ const userId='11111111-1111-4111-8111-111111111111';
+ const sessionId='22222222-2222-4222-8222-222222222222';
+ let calls=0;
+ const db={query:async(sql:string,params:unknown[])=>{
+  calls++;
+  assert.match(sql,/session\.revoked_at IS NULL/);
+  assert.match(sql,/session\.expires_at>now\(\)/);
+  assert.match(sql,/usr\.status='ACTIVE'/);
+  assert.deepEqual(params,[hash]);
+  assert.equal(sql.includes(token),false);
+  return {rows:[{user_id:userId,session_id:sessionId}]};
+ }};
+ assert.deepEqual(await resolveActiveUserSession(db as never,token,pepper),
+  {userId,sessionId});
+ assert.equal(calls,1);
+});
+
+test('account session lookup fails closed on malformed database identifiers',async()=>{
+ const pepper=Buffer.alloc(32,22);
+ const {token}=issueSessionToken(pepper);
+ for(const row of [
+  undefined,
+  {user_id:'not-a-uuid',session_id:'22222222-2222-4222-8222-222222222222'},
+  {user_id:'11111111-1111-4111-8111-111111111111',session_id:null},
+ ]){
+  const db={query:async()=>({rows:row?[row]:[]})};
+  assert.equal(await resolveActiveUserSession(db as never,token,pepper),null);
+ }
+});
