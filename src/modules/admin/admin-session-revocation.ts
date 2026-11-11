@@ -30,3 +30,31 @@ export async function revokePlatformAdminSession(
   throw new Error('admin_session_revocation_unavailable');
  return result.rows.length===1;
 }
+
+
+/**
+ * Self-logout: possession of the exact canonical admin bearer is sufficient
+ * to revoke that same session, but never another staff member's sessions.
+ * Expired sessions may still be revoked; repeated requests are idempotent.
+ * A caller must not log the bearer or hash.
+ */
+export async function revokeOwnPlatformAdminSession(
+ db:Pick<PoolClient,'query'>,token:unknown,pepper:Buffer,now=Date.now(),
+):Promise<boolean>{
+ if(!Number.isSafeInteger(now)||now<0)return false;
+ let hash:string;
+ try{hash=hashAdminSessionToken(token,pepper);}catch{return false;}
+ const result=await db.query<{id:string}>(`
+  UPDATE platform_admin_sessions
+  SET revoked_at=to_timestamp($2::double precision/1000.0)
+  WHERE token_hash=$1
+    AND revoked_at IS NULL
+    AND created_at<=to_timestamp($2::double precision/1000.0)
+  RETURNING id::text
+ `,[hash,now]);
+ if(!result||!Array.isArray(result.rows)||result.rows.length>1||
+    (result.rows.length===1&&(!result.rows[0]||
+      typeof result.rows[0].id!=='string'||!UUID.test(result.rows[0].id))))
+  throw new Error('admin_session_revocation_unavailable');
+ return result.rows.length===1;
+}
