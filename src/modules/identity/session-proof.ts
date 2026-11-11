@@ -8,7 +8,9 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 
 /** Compatible only with sessions issued using this exact v1 scheme. */
 export function hashSessionToken(token:string,pepper:Buffer):string{
-  if(!TOKEN.test(token)||pepper.length!==32)throw new Error('invalid_session_proof');
+  if(typeof token!=='string'||!TOKEN.test(token)||
+     !Buffer.isBuffer(pepper)||pepper.length!==32)
+    throw new Error('invalid_session_proof');
   return createHmac('sha256',pepper).update('services-session:v1\0').update(token).digest('hex');
 }
 export function issueSessionToken(pepper:Buffer):{token:string;hash:string}{
@@ -29,7 +31,8 @@ export async function resolveActiveUserSession(
   pepper:Buffer,
 ):Promise<VerifiedUserSession|null>{
   if(typeof opaqueToken!=='string'||!TOKEN.test(opaqueToken))return null;
-  if(pepper.length!==32)throw new Error('invalid_session_secret');
+  if(!Buffer.isBuffer(pepper)||pepper.length!==32)
+    throw new Error('invalid_session_secret');
   const tokenHash=hashSessionToken(opaqueToken,pepper);
   const rows=await db.query<{session_id:string;user_id:string}>(`
     SELECT session.id::text AS session_id,usr.id::text AS user_id
