@@ -3,8 +3,8 @@ import {DatabasePool} from '../../platform/database/database.pool.js';
 import {requireSecret} from '../guest-requests/guest-request.security.js';
 import {resolvePlatformAdminSession} from './admin-session-resolver.js';
 import {canPerformAdminOperation} from './admin-authorization.policy.js';
+import {extractAdminBearerToken} from './admin-bearer-proof.js';
 
-const TOKEN=/^Bearer ([A-Za-z0-9_-]{42}[AEIMQUYcgkosw048])$/;
 type CaseRow={
  id:string;resource_scope:string;subject_kind:string;state:string;created_at:Date;
 };
@@ -48,14 +48,14 @@ export class PlatformModerationReadService{
  async list(authorization:unknown):Promise<{items:ModerationCaseSummary[]}>{
   if(process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP!=='enabled')
    throw new UnauthorizedException('Authentication required');
-  const match=typeof authorization==='string'?TOKEN.exec(authorization):null;
-  if(!match)throw new UnauthorizedException('Authentication required');
+  const token=extractAdminBearerToken(authorization);
+  if(token===null)throw new UnauthorizedException('Authentication required');
   let pepper:Buffer;
   try{pepper=requireSecret(process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY);}
   catch{throw new UnauthorizedException('Authentication required');}
   const now=Date.now();
   try{return await this.db.transaction(async client=>{
-   const principal=await resolvePlatformAdminSession(client,match[1],pepper,now);
+   const principal=await resolvePlatformAdminSession(client,token,pepper,now);
    if(!principal)throw new UnauthorizedException('Authentication required');
    // No discoverability for users with no moderation.read grant.
    const scopes=principal.resourceScopes.filter(scope=>
