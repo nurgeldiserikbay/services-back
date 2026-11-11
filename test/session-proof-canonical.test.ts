@@ -53,3 +53,17 @@ test('account session proof rejects invalid runtime secret types before database
   assert.throws(()=>hashSessionToken(invalidToken as string,pepper),/invalid_session_proof/);
  }
 });
+
+test('account session proof accepts every canonical final character',()=>{
+ const pepper=Buffer.alloc(32,13);
+ const suffixes=new Set<string>();
+ for(let lastByte=0;lastByte<256;lastByte++){
+  const bytes=Buffer.alloc(32);
+  bytes[31]=lastByte;
+  const token=bytes.toString('base64url');
+  suffixes.add(token.at(-1)!);
+  assert.match(hashSessionToken(token,pepper),/^[a-f0-9]{64}$/);
+  assert.deepEqual(Buffer.from(token,'base64url'),bytes);
+ }
+ assert.deepEqual([...suffixes].sort(),[...'AEIMQUYcgkosw048'].sort());
+});
