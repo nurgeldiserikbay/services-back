@@ -105,6 +105,16 @@ test('admin database rejects duplicate grants, duplicate token hashes and orphan
     VALUES($1,$2,$3,now(),now()+interval '1 hour')`,
    [randomUUID(),staffId,'Z'.repeat(64)],'23514');
   await expectConstraint(
+   `INSERT INTO platform_admin_sessions
+    (id,staff_id,token_hash,mfa_verified_at,expires_at,created_at)
+    VALUES($1,$2,$3,now(),now()-interval '1 minute',now())`,
+   [randomUUID(),staffId,'b'.repeat(64)],'23514');
+  await expectConstraint(
+   `INSERT INTO platform_admin_sessions
+    (id,staff_id,token_hash,mfa_verified_at,expires_at,created_at)
+    VALUES($1,$2,$3,now()+interval '2 hours',now()+interval '1 hour',now())`,
+   [randomUUID(),staffId,'c'.repeat(64)],'23514');
+  await expectConstraint(
    'INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [randomUUID(),staffId,'organization:not-a-uuid'],'23514');
   await expectConstraint(
