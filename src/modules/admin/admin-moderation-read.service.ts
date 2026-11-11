@@ -4,6 +4,7 @@ import {requireSecret} from '../guest-requests/guest-request.security.js';
 import {resolvePlatformAdminSession} from './admin-session-resolver.js';
 import {canPerformAdminOperation} from './admin-authorization.policy.js';
 import {extractAdminBearerToken} from './admin-bearer-proof.js';
+import {hashAdminSessionToken} from './admin-session-token.js';
 
 type CaseRow={
  id:string;resource_scope:string;subject_kind:string;state:string;created_at:Date;
@@ -70,13 +71,24 @@ export class PlatformModerationReadService{
          FROM platform_admin_grants AS current_grant
          JOIN platform_admin_staff AS current_staff
            ON current_staff.id=current_grant.staff_id
+         JOIN platform_admin_sessions AS current_session
+           ON current_session.staff_id=current_staff.id
+         JOIN users AS current_user
+           ON current_user.id=current_staff.user_id
          WHERE current_staff.user_id=$2::uuid
            AND current_staff.disabled_at IS NULL
+           AND current_staff.role IN ('owner','admin','operator','auditor')
+           AND current_user.status='ACTIVE'
+           AND current_session.token_hash=$3
+           AND current_session.revoked_at IS NULL
+           AND current_session.expires_at>to_timestamp($4::double precision/1000.0)
+           AND current_session.mfa_verified_at<=to_timestamp($4::double precision/1000.0)
+           AND current_session.mfa_verified_at>=to_timestamp(($4::double precision-900000)/1000.0)
            AND current_grant.scope=moderation.resource_scope
        )
      ORDER BY moderation.created_at DESC,moderation.id DESC
      LIMIT 50
-   `,[scopes,principal.userId]);
+   `,[scopes,principal.userId,hashAdminSessionToken(token,pepper),now]);
    // Fail closed on malformed database-driver replies instead of leaking a TypeError.
    if(!result||!Array.isArray(result.rows))
     throw new UnauthorizedException('Authentication required');
