@@ -116,6 +116,25 @@ test('moderation queue only returns redacted cases from currently granted scopes
     await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '1 minute' WHERE id=$1",[sessionId]);
    else await db.query("UPDATE users SET status='ACTIVE' WHERE id=$1",[userId]);
   }
+  // A staff suspension between authorization and the SELECT also denies data.
+  let disabledDuringQueue=false;
+  const disabledClient=new Proxy(db,{
+   get(target,property){
+    if(property==='query')return async(sql:string,params:unknown[])=>{
+     if(!disabledDuringQueue&&sql.includes('FROM platform_moderation_cases AS moderation')){
+      disabledDuringQueue=true;
+      await db.query('UPDATE platform_admin_staff SET disabled_at=now() WHERE id=$1',[staffId]);
+     }
+     return db.query(sql,params);
+    };
+    return Reflect.get(target,property);
+   },
+  });
+  const disabledAdapter={transaction:async<T>(work:(client:Client)=>Promise<T>)=>work(disabledClient)};
+  const disabledService=new PlatformModerationReadService(disabledAdapter as unknown as DatabasePool);
+  assert.deepEqual(await disabledService.list('Bearer '+token),{items:[]});
+  assert.equal(disabledDuringQueue,true);
+  await db.query('UPDATE platform_admin_staff SET disabled_at=NULL WHERE id=$1',[staffId]);
   await assert.rejects(service.list('Bearer '+issueAdminSessionToken(pepper).token),
    {name:'UnauthorizedException'});
   await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval \'16 minutes\' WHERE id=$1',
