@@ -24,7 +24,7 @@ test('moderation queue only returns redacted cases from currently granted scopes
    [staffId,userId,'auditor']);
   await db.query(`INSERT INTO platform_admin_sessions
    (id,staff_id,token_hash,mfa_verified_at,expires_at)
-   VALUES($1,$2,$3,now(),now()+interval '1 hour')`,
+   VALUES($1,$2,$3,now()-interval '1 minute',now()+interval '1 hour')`,
    [sessionId,staffId,hash]);
   await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [randomUUID(),staffId,granted]);
@@ -55,7 +55,7 @@ test('moderation queue only returns redacted cases from currently granted scopes
   await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval \'16 minutes\' WHERE id=$1',
    [sessionId]);
   await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
-  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now() WHERE id=$1',
+  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '1 minute' WHERE id=$1',
    [sessionId]);
   await db.query('UPDATE platform_admin_staff SET disabled_at=now() WHERE id=$1',[staffId]);
   await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
