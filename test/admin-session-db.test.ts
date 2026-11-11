@@ -127,9 +127,12 @@ test('admin database rejects duplicate grants, duplicate token hashes and orphan
    `INSERT INTO platform_moderation_cases
     (id,resource_scope,subject_kind,state) VALUES($1,$2,$3,$4)`,
    [randomUUID(),'organization:not-a-uuid','review','triage'],'23514');
+  // Use a real account so the role CHECK, not the user FK, is what fails.
+  const invalidRoleUserId=randomUUID();
+  await db.query('INSERT INTO users(id) VALUES($1)',[invalidRoleUserId]);
   await expectConstraint(
    'INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
-   [randomUUID(),randomUUID(),'superadmin'],'23514');
+   [randomUUID(),invalidRoleUserId,'superadmin'],'23514');
   await expectConstraint(
    `INSERT INTO platform_moderation_cases
     (id,resource_scope,subject_kind,state)
