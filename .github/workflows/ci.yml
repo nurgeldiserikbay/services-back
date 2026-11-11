@@ -64,6 +64,12 @@ jobs:
         run: npm run typecheck
       - name: Compile backend (fail fast)
         run: npm run build
+      - name: Account and admin session proof regression tests (fail fast)
+        run: |
+          node --import tsx --test \
+            test/session-proof-canonical.test.ts \
+            test/admin-session-token.test.ts \
+            test/admin-session-token-source-integrity.test.ts
       - name: Validate pinned Prisma model
         run: npm run db:validate
       - name: Recompute migration and reject schema/SQL drift
