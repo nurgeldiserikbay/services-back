@@ -45,3 +45,28 @@ Run `npm run typecheck && npm run build && npm test` before PR review.
 Backend owns all authorization, policies, write transactions, SQL migrations, outbox and data residency. Frontend consumes reviewed OpenAPI only and never determines permission from client state. Keep contract revisions in the documentation repository first.
 
 Next backend vertical slices: country/city/taxonomy, public published catalog, then identity and request workflows. Use real database migrations and transactional tests, not in-memory fake persistence. Do not merge this PR without reviewer approval.
+
+
+## Privileged admin session issuance foundation (2026-11-11)
+
+`src/modules/admin/admin-session-issuance.ts` provides
+`createVerifiedPlatformAdminSession(db, verified, pepper, now)`.
+It is a **server-only persistence primitive**, not an authentication route.
+A trusted, independent MFA/login service must first authenticate the staff
+member, verify the second factor, and supply the authoritative staff UUID and
+verification timestamp. Never accept either value from an untrusted browser
+payload. The caller must use `DatabasePool.transaction` and only release the
+bearer after the transaction commits successfully.
+
+The insertion checks live staff status, active account status and the
+presence of at least one explicit grant. The session lasts 15 minutes;
+only a domain-separated HMAC hash of its random bearer is persisted.
+Backend resource APIs must still independently revalidate session,
+revocation, MFA freshness, role and exact resource scope on every request.
+A grant alone does not imply permission for all scopes.
+
+Before exposing login, implement a dedicated MFA challenge lifecycle,
+attempt limits, replay prevention, privileged identity provisioning and
+recovery controls, then end-to-end tests against migrated PostgreSQL.
+No public admin login or token-issuing HTTP endpoint is enabled by this
+change. The implementation is **not production-ready**.
