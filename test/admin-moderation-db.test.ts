@@ -38,6 +38,14 @@ test('moderation queue only returns redacted cases from currently granted scopes
   // Reuse the already-open transaction so fixture writes remain visible.
   const adapter={transaction:async<T>(work:(client:Client)=>Promise<T>)=>work(db)};
   const service=new PlatformModerationReadService(adapter as unknown as DatabasePool);
+  // Configuration must fail closed even when the token and DB grant are valid.
+  process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='disabled';
+  await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
+  process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
+  delete process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+  await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
+  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=pepper.toString('base64');
+  await assert.rejects(service.list('Basic '+token),{name:'UnauthorizedException'});
   const result=await service.list('Bearer '+token);
   assert.deepEqual(result.items.map(item=>item.id),[visibleId]);
   assert.deepEqual(Object.keys(result.items[0]!).sort(),
