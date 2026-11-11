@@ -45,3 +45,24 @@ test('forward-only database checks reject unknown admin roles and moderation sta
   for(const state of ['triage','in_review','decision','appeal','closed'])
     assert.ok(checks.includes("'"+state+"'"));
 });
+
+test('admin proof and scope format constraints are forward-only',()=>{
+  const checks=readFileSync(
+    'prisma/migrations/20261111_platform_admin_proof_integrity/migration.sql','utf8',
+  );
+  for(const name of [
+    'platform_admin_sessions_token_hash_format_check',
+    'platform_admin_grants_scope_format_check',
+    'platform_moderation_cases_resource_scope_format_check',
+  ])assert.ok(checks.includes('ADD CONSTRAINT "'+name+'"'),name);
+  assert.ok(checks.includes("^[0-9a-f]{64}$"),'canonical lowercase HMAC digest');
+  assert.ok(checks.includes("[0-9a-f]{12}$"),'scoped UUID suffix');
+});
+
+test('moderation queue migration indexes scope and stable newest-first order',()=>{
+  const index=readFileSync(
+    'prisma/migrations/20261111_platform_moderation_queue_index/migration.sql','utf8',
+  );
+  assert.match(index,/CREATE INDEX IF NOT EXISTS "platform_moderation_cases_scope_newest_idx"/);
+  assert.match(index,/\("resource_scope", "created_at" DESC, "id" DESC\)/);
+});
