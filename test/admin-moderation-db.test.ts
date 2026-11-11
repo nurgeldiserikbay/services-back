@@ -55,7 +55,7 @@ test('moderation queue only returns redacted cases from currently granted scopes
   await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval \'16 minutes\' WHERE id=$1',
    [sessionId]);
   await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
-  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '1 minute' WHERE id=$1',
+  await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '1 minute' WHERE id=$1",
    [sessionId]);
   await db.query('UPDATE platform_admin_staff SET disabled_at=now() WHERE id=$1',[staffId]);
   await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
@@ -102,7 +102,7 @@ test('moderation queue only returns redacted cases from currently granted scopes
   await db.query("UPDATE users SET status='SUSPENDED' WHERE id=$1",[userId]);
   await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
   await db.query("UPDATE users SET status='ACTIVE' WHERE id=$1",[userId]);
-  await db.query('UPDATE platform_admin_sessions SET expires_at=now()-interval \'1 second\' WHERE id=$1',
+  await db.query("UPDATE platform_admin_sessions SET created_at=now()-interval '2 hours', expires_at=now()-interval '1 second' WHERE id=$1",
    [sessionId]);
   await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
  }finally{
