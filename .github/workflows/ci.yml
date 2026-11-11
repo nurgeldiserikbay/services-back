@@ -236,5 +236,9 @@ jobs:
           done
           status="$(curl --connect-timeout 2 --max-time 5 --silent -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3001/v1/admin/session/logout)"
           test "$status" = 401 || { echo "Unexpected admin logout status: $status"; exit 1; }
+          curl --connect-timeout 2 --max-time 5 --silent -D "$RUNNER_TEMP/admin-logout-headers.txt" -o /dev/null -X POST http://127.0.0.1:3001/v1/admin/session/logout
+          grep -Eiq '^cache-control:.*no-store' "$RUNNER_TEMP/admin-logout-headers.txt"
+          grep -Eiq '^x-content-type-options:.*nosniff' "$RUNNER_TEMP/admin-logout-headers.txt"
+          grep -Eiq '^x-robots-tag:.*noindex' "$RUNNER_TEMP/admin-logout-headers.txt"
       - name: Unit and integration tests (after database migrations)
         run: npm test
