@@ -35,3 +35,21 @@ test('noncanonical account bearer is rejected without querying the database',asy
  assert.equal(await resolveActiveUserSession(db as never,alias,pepper),null);
  assert.equal(queried,false);
 });
+
+test('account session proof rejects invalid runtime secret types before database access',async()=>{
+ const pepper=Buffer.alloc(32,7);
+ const {token}=issueSessionToken(pepper);
+ for(const invalidPepper of [null,undefined,'secret',{},Buffer.alloc(16),Buffer.alloc(33)]){
+  assert.throws(()=>hashSessionToken(token,invalidPepper as Buffer),/invalid_session_proof/);
+  let queried=false;
+  const db={query:async()=>{queried=true;throw new Error('unexpected query');}};
+  await assert.rejects(
+   resolveActiveUserSession(db as never,token,invalidPepper as Buffer),
+   /invalid_session_secret/,
+  );
+  assert.equal(queried,false);
+ }
+ for(const invalidToken of [null,undefined,42,{},Buffer.alloc(32)]){
+  assert.throws(()=>hashSessionToken(invalidToken as string,pepper),/invalid_session_proof/);
+ }
+});
