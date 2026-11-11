@@ -53,3 +53,48 @@ test('migrated admin session grants are checked against live DB revocation and M
   await db.end();
  }
 });
+
+test('admin database rejects duplicate grants, duplicate token hashes and orphan sessions',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ try{
+  await db.query('BEGIN');
+  const userId=randomUUID(),staffId=randomUUID(),sessionId=randomUUID();
+  const scope='organization:'+randomUUID();
+  const {hash}=issueAdminSessionToken(randomBytes(32));
+  await db.query('INSERT INTO users(id) VALUES($1)',[userId]);
+  await db.query('INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
+   [staffId,userId,'auditor']);
+  await db.query(`INSERT INTO platform_admin_sessions
+   (id,staff_id,token_hash,mfa_verified_at,expires_at)
+   VALUES($1,$2,$3,now(),now()+interval '1 hour')`,
+   [sessionId,staffId,hash]);
+  await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [randomUUID(),staffId,scope]);
+  async function expectConstraint(sql:string,params:unknown[],code:string){
+   await db.query('SAVEPOINT admin_constraint_check');
+   try{
+    await assert.rejects(db.query(sql,params),{code});
+   }finally{
+    await db.query('ROLLBACK TO SAVEPOINT admin_constraint_check');
+    await db.query('RELEASE SAVEPOINT admin_constraint_check');
+   }
+  }
+  await expectConstraint(
+   'INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [randomUUID(),staffId,scope],'23505');
+  await expectConstraint(
+   `INSERT INTO platform_admin_sessions
+    (id,staff_id,token_hash,mfa_verified_at,expires_at)
+    VALUES($1,$2,$3,now(),now()+interval '1 hour')`,
+   [randomUUID(),staffId,hash],'23505');
+  await expectConstraint(
+   `INSERT INTO platform_admin_sessions
+    (id,staff_id,token_hash,mfa_verified_at,expires_at)
+    VALUES($1,$2,$3,now(),now()+interval '1 hour')`,
+   [randomUUID(),randomUUID(),'a'.repeat(64)],'23503');
+ }finally{
+  await db.query('ROLLBACK').catch(()=>{});
+  await db.end();
+ }
+});
