@@ -31,6 +31,12 @@ test('migrated admin session grants are checked against live DB revocation and M
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'moderation.decide',scope,now),false);
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read','organization:'+randomUUID(),now),false);
+  // Role changes must take effect immediately for an existing valid session.
+  await db.query("UPDATE platform_admin_staff SET role='operator' WHERE id=$1",[staffId]);
+  assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'audit.read',scope,now),false);
+  assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'moderation.read',scope,now),true);
+  await db.query("UPDATE platform_admin_staff SET role='auditor' WHERE id=$1",[staffId]);
+  assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'audit.read',scope,now),true);
   await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
   assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
   await db.query('UPDATE platform_admin_sessions SET revoked_at=NULL WHERE id=$1',[sessionId]);
