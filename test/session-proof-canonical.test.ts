@@ -49,6 +49,9 @@ test('account session proof rejects invalid runtime secret types before database
   );
   assert.equal(queried,false);
  }
+ for(const invalidPepper of [null,undefined,'secret',{},Buffer.alloc(16),Buffer.alloc(33)]){
+  assert.throws(()=>issueSessionToken(invalidPepper as Buffer),/invalid_session_secret/);
+ }
  for(const invalidToken of [null,undefined,42,{},Buffer.alloc(32)]){
   assert.throws(()=>hashSessionToken(invalidToken as string,pepper),/invalid_session_proof/);
  }
