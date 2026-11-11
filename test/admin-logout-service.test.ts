@@ -49,3 +49,28 @@ test('enabled admin logout revokes exact token hash within a transaction',async(
   else process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=oldKey;
  }
 });
+
+
+test('admin logout denies database failure and malformed driver responses',async()=>{
+ const oldFlag=process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP;
+ const oldKey=process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+ try{
+  process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP='enabled';
+  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=key.toString('base64');
+  for(const query of [
+   async()=>{throw new Error('private database credentials');},
+   async()=>({rows:[{id:'not-a-uuid'}]}),
+   async()=>({rows:[{id:randomUUID()},{id:randomUUID()}]}),
+  ]){
+   const service=new PlatformAdminLogoutService({
+    transaction:async(work:(client:unknown)=>Promise<unknown>)=>work({query}),
+   } as never);
+   await assert.rejects(service.logout('Bearer '+token),{status:401});
+  }
+ }finally{
+  if(oldFlag===undefined)delete process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP;
+  else process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP=oldFlag;
+  if(oldKey===undefined)delete process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+  else process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=oldKey;
+ }
+});
