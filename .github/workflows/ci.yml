@@ -230,10 +230,19 @@ jobs:
           npm run start > "$RUNNER_TEMP/services-back-smoke.log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          ready=0
           for attempt in {1..30}; do
-            if curl --connect-timeout 2 --max-time 2 --silent http://127.0.0.1:3001/v1/health >/dev/null; then break; fi
+            if curl --fail --connect-timeout 2 --max-time 2 --silent http://127.0.0.1:3001/v1/health >/dev/null; then
+              ready=1
+              break
+            fi
             sleep 1
           done
+          if [ "$ready" -ne 1 ]; then
+            echo 'Backend health endpoint did not become ready'
+            tail -n 150 "$RUNNER_TEMP/services-back-smoke.log" || true
+            exit 1
+          fi
           status="$(curl --connect-timeout 2 --max-time 5 --silent -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3001/v1/admin/session/logout)"
           test "$status" = 401 || { echo "Unexpected admin logout status: $status"; exit 1; }
           curl --connect-timeout 2 --max-time 5 --silent -D "$RUNNER_TEMP/admin-logout-headers.txt" -o /dev/null -X POST http://127.0.0.1:3001/v1/admin/session/logout
