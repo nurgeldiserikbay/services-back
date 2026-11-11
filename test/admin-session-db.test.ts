@@ -37,6 +37,15 @@ test('migrated admin session grants are checked against live DB revocation and M
   await db.query('UPDATE platform_admin_staff SET disabled_at=now() WHERE id=$1',[staffId]);
   assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
   await db.query('UPDATE platform_admin_staff SET disabled_at=NULL WHERE id=$1',[staffId]);
+  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
+   [sessionId,new Date(now-16*60_000)]);
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
+  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
+   [sessionId,new Date(now-60_000)]);
+  await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
+  assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'audit.read',scope,now),false);
+  await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [grantId,staffId,scope]);
   await db.query("UPDATE users SET status='SUSPENDED' WHERE id=$1",[userId]);
   assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
  }finally{
