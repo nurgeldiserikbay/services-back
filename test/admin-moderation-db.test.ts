@@ -71,6 +71,25 @@ test('moderation queue only returns redacted cases from currently granted scopes
   assert.equal(revokedDuringRead,true);
   await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [randomUUID(),staffId,granted]);
+  // Revocation after the first session lookup must still hide every case.
+  let revokedDuringQueue=false;
+  const revokedClient=new Proxy(db,{
+   get(target,property){
+    if(property==='query')return async(sql:string,params:unknown[])=>{
+     if(!revokedDuringQueue&&sql.includes('FROM platform_moderation_cases AS moderation')){
+      revokedDuringQueue=true;
+      await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
+     }
+     return db.query(sql,params);
+    };
+    return Reflect.get(target,property);
+   },
+  });
+  const revokedAdapter={transaction:async<T>(work:(client:Client)=>Promise<T>)=>work(revokedClient)};
+  const revokedService=new PlatformModerationReadService(revokedAdapter as unknown as DatabasePool);
+  assert.deepEqual(await revokedService.list('Bearer '+token),{items:[]});
+  assert.equal(revokedDuringQueue,true);
+  await db.query('UPDATE platform_admin_sessions SET revoked_at=NULL WHERE id=$1',[sessionId]);
   await assert.rejects(service.list('Bearer '+issueAdminSessionToken(pepper).token),
    {name:'UnauthorizedException'});
   await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval \'16 minutes\' WHERE id=$1',
