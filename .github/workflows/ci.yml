@@ -185,6 +185,28 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Verify privileged session lifetime constraints
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $verify$
+          DECLARE missing text;
+          BEGIN
+            SELECT string_agg(expected.name, ', ' ORDER BY expected.name) INTO missing
+            FROM (VALUES
+              ('platform_admin_sessions_lifetime_check'),
+              ('platform_admin_sessions_mfa_before_expiry_check')
+            ) AS expected(name)
+            WHERE NOT EXISTS (
+              SELECT 1 FROM pg_constraint c
+              JOIN pg_class t ON t.oid=c.conrelid
+              WHERE c.conname=expected.name AND t.relname='platform_admin_sessions'
+                AND c.contype='c' AND c.convalidated
+            );
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'Missing admin session lifetime constraints: %', missing;
+            END IF;
+          END $verify$;
+          SQL
       - name: Verify moderation queue ordering index
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
