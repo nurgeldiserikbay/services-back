@@ -99,6 +99,28 @@ test('admin database rejects duplicate grants, duplicate token hashes and orphan
   await expectConstraint(
    'INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
    [randomUUID(),randomUUID(),'operator'],'23503');
+  await expectConstraint(
+   'INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
+   [randomUUID(),userId,'superadmin'],'23514');
+  await expectConstraint(
+   `INSERT INTO platform_moderation_cases
+    (id,resource_scope,subject_kind,state)
+    VALUES($1,$2,$3,$4)`,
+   [randomUUID(),scope,'private_contact','triage'],'23514');
+  await expectConstraint(
+   `INSERT INTO platform_moderation_cases
+    (id,resource_scope,subject_kind,state)
+    VALUES($1,$2,$3,$4)`,
+   [randomUUID(),scope,'review','unrestricted'],'23514');
+  // A valid projection remains writable after rejected values.
+  const validCase=randomUUID();
+  await db.query(
+   `INSERT INTO platform_moderation_cases
+    (id,resource_scope,subject_kind,state)
+    VALUES($1,$2,$3,$4)`,
+   [validCase,scope,'review','triage']);
+  const saved=await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[validCase]);
+  assert.equal(saved.rows[0]?.state,'triage');
  }finally{
   await db.query('ROLLBACK').catch(()=>{});
   await db.end();
