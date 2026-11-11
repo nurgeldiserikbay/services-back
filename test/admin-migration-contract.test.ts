@@ -30,3 +30,18 @@ test('admin grants and sessions have database-enforced ownership',()=>{
     'platform_admin_grants_staff_id_scope_key',
   ])assert.ok(migration.includes('CREATE UNIQUE INDEX IF NOT EXISTS "'+key+'"'));
 });
+
+test('forward-only database checks reject unknown admin roles and moderation states',()=>{
+  const checks=readFileSync(
+    'prisma/migrations/20261111_platform_admin_domain_checks/migration.sql','utf8',
+  );
+  for(const name of [
+    'platform_admin_staff_role_check',
+    'platform_moderation_cases_subject_kind_check',
+    'platform_moderation_cases_state_check',
+  ])assert.ok(checks.includes('ADD CONSTRAINT "'+name+'"'));
+  for(const role of ['owner','admin','operator','auditor'])
+    assert.ok(checks.includes("'"+role+"'"));
+  for(const state of ['triage','in_review','decision','appeal','closed'])
+    assert.ok(checks.includes("'"+state+"'"));
+});
