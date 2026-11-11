@@ -83,6 +83,17 @@ test('moderation queue only returns redacted cases from currently granted scopes
   const limited=await service.list('Bearer '+token);
   assert.equal(limited.items.length,50);
   assert.deepEqual(limited.items.map(item=>item.id),additionalIds.slice(-50).reverse());
+  // The second ordering key must make pagination deterministic on equal timestamps.
+  const tiedAt=new Date(Date.now()+120_000);
+  const tiedIds=[randomUUID(),randomUUID()].sort();
+  for(const id of tiedIds){
+   await db.query(`INSERT INTO platform_moderation_cases
+    (id,resource_scope,subject_kind,state,created_at)
+    VALUES($1,$2,'review','triage',$3)`,[id,granted,tiedAt]);
+  }
+  const tied=await service.list('Bearer '+token);
+  assert.equal(tied.items.length,50);
+  assert.deepEqual(tied.items.slice(0,2).map(item=>item.id),tiedIds.reverse());
   await db.query('DELETE FROM platform_admin_grants WHERE staff_id=$1',[staffId]);
   assert.deepEqual(await service.list('Bearer '+token),{items:[]});
   await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
