@@ -50,6 +50,27 @@ test('moderation queue only returns redacted cases from currently granted scopes
   assert.deepEqual(result.items.map(item=>item.id),[visibleId]);
   assert.deepEqual(Object.keys(result.items[0]!).sort(),
    ['createdAt','id','state','subjectKind']);
+  // Simulate a grant revoked after the session lookup but before the queue
+  // SELECT. The SELECT itself must recheck the live grant.
+  let revokedDuringRead=false;
+  const racingClient=new Proxy(db,{
+   get(target,property){
+    if(property==='query')return async(sql:string,params:unknown[])=>{
+     if(!revokedDuringRead&&sql.includes('FROM platform_moderation_cases AS moderation')){
+      revokedDuringRead=true;
+      await db.query('DELETE FROM platform_admin_grants WHERE staff_id=$1',[staffId]);
+     }
+     return db.query(sql,params);
+    };
+    return Reflect.get(target,property);
+   },
+  });
+  const racingAdapter={transaction:async<T>(work:(client:Client)=>Promise<T>)=>work(racingClient)};
+  const racingService=new PlatformModerationReadService(racingAdapter as unknown as DatabasePool);
+  assert.deepEqual(await racingService.list('Bearer '+token),{items:[]});
+  assert.equal(revokedDuringRead,true);
+  await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [randomUUID(),staffId,granted]);
   await assert.rejects(service.list('Bearer '+issueAdminSessionToken(pepper).token),
    {name:'UnauthorizedException'});
   await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval \'16 minutes\' WHERE id=$1',
