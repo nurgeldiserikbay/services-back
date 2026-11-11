@@ -14,6 +14,8 @@ export function hashSessionToken(token:string,pepper:Buffer):string{
   return createHmac('sha256',pepper).update('services-session:v1\0').update(token).digest('hex');
 }
 export function issueSessionToken(pepper:Buffer):{token:string;hash:string}{
+  if(!Buffer.isBuffer(pepper)||pepper.length!==32)
+    throw new Error('invalid_session_secret');
   const token=randomBytes(32).toString('base64url');
   return {token,hash:hashSessionToken(token,pepper)};
 }
