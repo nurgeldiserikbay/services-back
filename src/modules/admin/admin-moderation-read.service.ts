@@ -61,7 +61,7 @@ export class PlatformModerationReadService{
    // No discoverability for users with no moderation.read grant.
    const scopes=principal.resourceScopes.filter(scope=>
     canPerformAdminOperation(principal,'moderation.read',scope,now));
-   if(scopes.length===0)return {items:[]};
+   if(scopes.length===0)throw new UnauthorizedException('Authentication required');
    // Use a fresh timestamp for the final SQL gate: a session or MFA proof
    // may expire while the preceding authorization query is running.
    const readAt=Date.now();
