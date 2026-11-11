@@ -42,6 +42,17 @@ test('moderation queue only returns redacted cases from currently granted scopes
   assert.deepEqual(result.items.map(item=>item.id),[visibleId]);
   assert.deepEqual(Object.keys(result.items[0]!).sort(),
    ['createdAt','id','state','subjectKind']);
+  await assert.rejects(service.list('Bearer '+issueAdminSessionToken(pepper).token),
+   {name:'UnauthorizedException'});
+  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval \'16 minutes\' WHERE id=$1',
+   [sessionId]);
+  await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
+  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now() WHERE id=$1',
+   [sessionId]);
+  await db.query('UPDATE platform_admin_staff SET disabled_at=now() WHERE id=$1',[staffId]);
+  await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
+  await db.query('UPDATE platform_admin_staff SET disabled_at=NULL WHERE id=$1',[staffId]);
+  assert.deepEqual((await service.list('Bearer '+token)).items.map(item=>item.id),[visibleId]);
   await db.query('DELETE FROM platform_admin_grants WHERE staff_id=$1',[staffId]);
   assert.deepEqual(await service.list('Bearer '+token),{items:[]});
   await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
