@@ -1,7 +1,9 @@
 import {createHmac,randomBytes} from 'node:crypto';
 import type {PoolClient} from 'pg';
 
-const TOKEN=/^[A-Za-z0-9_-]{43}$/;
+// 32 random bytes encode to 43 base64url characters; the final digit has two zero padding bits.
+// Reject alternate textual encodings of the same bearer proof.
+const TOKEN=/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /** Compatible only with sessions issued using this exact v1 scheme. */
