@@ -185,5 +185,23 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Verify moderation queue ordering index
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $verify$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_indexes
+              WHERE schemaname='public'
+                AND tablename='platform_moderation_cases'
+                AND indexname='platform_moderation_cases_scope_newest_idx'
+                AND indexdef LIKE '%resource_scope%'
+                AND indexdef LIKE '%created_at DESC%'
+                AND indexdef LIKE '%id DESC%'
+            ) THEN
+              RAISE EXCEPTION 'Missing ordered moderation queue index';
+            END IF;
+          END $verify$;
+          SQL
       - name: Unit and integration tests (after database migrations)
         run: npm test
