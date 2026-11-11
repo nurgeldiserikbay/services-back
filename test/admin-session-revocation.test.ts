@@ -77,3 +77,23 @@ test('self-logout rejects invalid proofs without touching database',async()=>{
  assert.equal(await revokeOwnPlatformAdminSession(db,token,pepper,now),false);
  assert.equal(calls,1);
 });
+
+
+test('self-logout rejects malformed database replies instead of claiming success',async()=>{
+ for(const result of [null,{rows:null},{rows:[{},{}]},{rows:[{id:'bad'}]}]){
+  const db={query:async()=>result} as never;
+  await assert.rejects(revokeOwnPlatformAdminSession(db,token,pepper,now),
+   /admin_session_revocation_unavailable/);
+ }
+});
+
+test('self-logout query is guarded against future-created and already revoked sessions',async()=>{
+ const db={query:async(sql:string,params:unknown[])=>{
+  assert.match(sql,/created_at<=to_timestamp/);
+  assert.match(sql,/revoked_at IS NULL/);
+  assert.match(sql,/WHERE token_hash=\$1/);
+  assert.equal(params.length,2);
+  return {rows:[]};
+ }} as never;
+ assert.equal(await revokeOwnPlatformAdminSession(db,token,pepper,now),false);
+});
