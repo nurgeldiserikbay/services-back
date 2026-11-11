@@ -153,3 +153,28 @@ test('moderation response validation rejects unauthorized scopes and malformed r
  assert.throws(()=>validateModerationCaseRows(Array.from({length:51},()=>valid),new Set([scope])),
   UnauthorizedException);
 });
+
+test('moderation read denies session expiry between authentication and case query',async()=>{
+ const originalNow=Date.now;
+ try{
+  process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
+  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=key.toString('base64');
+  const initial=1_800_000_000_000;
+  let calls=0,caseQueries=0;
+  Date.now=()=>initial+(calls++===0?0:2000);
+  const db={transaction:async(work:(client:unknown)=>Promise<unknown>)=>work({
+   query:async(sql:string)=>{
+    if(sql.includes('FROM platform_admin_sessions'))
+     return {rows:[{user_id:userId,role:'auditor',
+      expires_at:new Date(initial+1000),mfa_verified_at:new Date(initial-1000),
+      scope}]};
+    caseQueries++;
+    return {rows:[]};
+   }
+  })};
+  await assert.rejects(
+   new PlatformModerationReadService(db as never).list('Bearer '+token),
+   UnauthorizedException);
+  assert.equal(caseQueries,0);
+ }finally{Date.now=originalNow;restore();}
+});
