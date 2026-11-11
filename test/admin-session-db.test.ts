@@ -93,6 +93,12 @@ test('admin database rejects duplicate grants, duplicate token hashes and orphan
     (id,staff_id,token_hash,mfa_verified_at,expires_at)
     VALUES($1,$2,$3,now(),now()+interval '1 hour')`,
    [randomUUID(),randomUUID(),'a'.repeat(64)],'23503');
+  await expectConstraint(
+   'INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
+   [randomUUID(),userId,'operator'],'23505');
+  await expectConstraint(
+   'INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
+   [randomUUID(),randomUUID(),'operator'],'23503');
  }finally{
   await db.query('ROLLBACK').catch(()=>{});
   await db.end();
