@@ -62,6 +62,13 @@ export class PlatformModerationReadService{
    const scopes=principal.resourceScopes.filter(scope=>
     canPerformAdminOperation(principal,'moderation.read',scope,now));
    if(scopes.length===0)return {items:[]};
+   // Use a fresh timestamp for the final SQL gate: a session or MFA proof
+   // may expire while the preceding authorization query is running.
+   const readAt=Date.now();
+   if(!Number.isSafeInteger(readAt)||readAt<now||
+      principal.sessionExpiresAt<=readAt||
+      readAt-principal.mfaVerifiedAt>15*60*1000)
+    throw new UnauthorizedException('Authentication required');
    const result=await client.query<CaseRow>(`
      SELECT id::text,resource_scope,subject_kind,state,created_at
      FROM platform_moderation_cases AS moderation
@@ -88,7 +95,7 @@ export class PlatformModerationReadService{
        )
      ORDER BY moderation.created_at DESC,moderation.id DESC
      LIMIT 50
-   `,[scopes,principal.userId,hashAdminSessionToken(token,pepper),now]);
+   `,[scopes,principal.userId,hashAdminSessionToken(token,pepper),readAt]);
    // Fail closed on malformed database-driver replies instead of leaking a TypeError.
    if(!result||!Array.isArray(result.rows))
     throw new UnauthorizedException('Authentication required');
