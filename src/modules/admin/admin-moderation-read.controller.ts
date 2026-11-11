@@ -9,6 +9,9 @@ export class PlatformModerationReadController{
  @Header('Cache-Control','private, no-store, max-age=0')
  @Header('Pragma','no-cache')
  @Header('X-Robots-Tag','noindex, nofollow')
+ @Header('Referrer-Policy','no-referrer')
+ @Header('Vary','Authorization')
+ @Header('X-Content-Type-Options','nosniff')
  list(@Headers('authorization') bearer:unknown){
   return this.service.list(bearer);
  }
