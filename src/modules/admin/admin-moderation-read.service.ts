@@ -63,11 +63,20 @@ export class PlatformModerationReadService{
    if(scopes.length===0)return {items:[]};
    const result=await client.query<CaseRow>(`
      SELECT id::text,resource_scope,subject_kind,state,created_at
-     FROM platform_moderation_cases
-     WHERE resource_scope=ANY($1::varchar[])
-     ORDER BY created_at DESC,id DESC
+     FROM platform_moderation_cases AS moderation
+     WHERE moderation.resource_scope=ANY($1::varchar[])
+       AND EXISTS (
+         SELECT 1
+         FROM platform_admin_grants AS current_grant
+         JOIN platform_admin_staff AS current_staff
+           ON current_staff.id=current_grant.staff_id
+         WHERE current_staff.user_id=$2::uuid
+           AND current_staff.disabled_at IS NULL
+           AND current_grant.scope=moderation.resource_scope
+       )
+     ORDER BY moderation.created_at DESC,moderation.id DESC
      LIMIT 50
-   `,[scopes]);
+   `,[scopes,principal.userId]);
    // Fail closed on malformed database-driver replies instead of leaking a TypeError.
    if(!result||!Array.isArray(result.rows))
     throw new UnauthorizedException('Authentication required');
