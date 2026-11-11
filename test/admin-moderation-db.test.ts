@@ -90,6 +90,32 @@ test('moderation queue only returns redacted cases from currently granted scopes
   assert.deepEqual(await revokedService.list('Bearer '+token),{items:[]});
   assert.equal(revokedDuringQueue,true);
   await db.query('UPDATE platform_admin_sessions SET revoked_at=NULL WHERE id=$1',[sessionId]);
+  // MFA freshness and account state can also change after the initial lookup.
+  for(const mutation of [
+   "UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '16 minutes' WHERE id=$1",
+   "UPDATE users SET status='SUSPENDED' WHERE id=$1",
+  ]){
+   let mutated=false;
+   const mutationClient=new Proxy(db,{
+    get(target,property){
+     if(property==='query')return async(sql:string,params:unknown[])=>{
+      if(!mutated&&sql.includes('FROM platform_moderation_cases AS moderation')){
+       mutated=true;
+       await db.query(mutation,[mutation.includes('platform_admin_sessions')?sessionId:userId]);
+      }
+      return db.query(sql,params);
+     };
+     return Reflect.get(target,property);
+    },
+   });
+   const mutationAdapter={transaction:async<T>(work:(client:Client)=>Promise<T>)=>work(mutationClient)};
+   const mutationService=new PlatformModerationReadService(mutationAdapter as unknown as DatabasePool);
+   assert.deepEqual(await mutationService.list('Bearer '+token),{items:[]});
+   assert.equal(mutated,true);
+   if(mutation.includes('platform_admin_sessions'))
+    await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '1 minute' WHERE id=$1",[sessionId]);
+   else await db.query("UPDATE users SET status='ACTIVE' WHERE id=$1",[userId]);
+  }
   await assert.rejects(service.list('Bearer '+issueAdminSessionToken(pepper).token),
    {name:'UnauthorizedException'});
   await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval \'16 minutes\' WHERE id=$1',
