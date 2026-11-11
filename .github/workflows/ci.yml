@@ -118,6 +118,8 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Verify account session authorization against migrated PostgreSQL
+        run: node --import tsx --test test/session-proof-db.test.ts
       - name: Verify admin access foreign keys and unique constraints
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
