@@ -53,6 +53,15 @@ test('moderation queue only returns redacted cases from currently granted scopes
   await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
   await db.query('UPDATE platform_admin_staff SET disabled_at=NULL WHERE id=$1',[staffId]);
   assert.deepEqual((await service.list('Bearer '+token)).items.map(item=>item.id),[visibleId]);
+  // A new explicit grant makes the second resource visible; removing it must
+  // immediately hide that resource without revoking the first grant.
+  const extraGrant=randomUUID();
+  await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [extraGrant,staffId,forbidden]);
+  const both=(await service.list('Bearer '+token)).items.map(item=>item.id);
+  assert.deepEqual(new Set(both),new Set([visibleId,hiddenId]));
+  await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[extraGrant]);
+  assert.deepEqual((await service.list('Bearer '+token)).items.map(item=>item.id),[visibleId]);
   await db.query('DELETE FROM platform_admin_grants WHERE staff_id=$1',[staffId]);
   assert.deepEqual(await service.list('Bearer '+token),{items:[]});
   await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
