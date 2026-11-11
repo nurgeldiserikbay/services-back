@@ -81,3 +81,20 @@ test('admin session proof fails closed on token tampering and hash formatting',(
  }
  assert.equal(adminSessionHashMatches(token,tokenHash,pepper),true);
 });
+
+test('admin token verification rejects malformed stored hashes and secret types without throwing',()=>{
+ const pepper=Buffer.alloc(32,23);
+ const {token,tokenHash}=issueAdminSessionToken(pepper);
+ const malformedHashes:unknown[]=[
+  '', '0'.repeat(63), '0'.repeat(65), 'g'.repeat(64),
+  tokenHash.toUpperCase(), ' '+tokenHash, tokenHash+'\\n',
+  Buffer.from(tokenHash), {}, [], 123, null, undefined,
+ ];
+ for(const storedHash of malformedHashes){
+  assert.equal(adminSessionHashMatches(token,storedHash,pepper),false);
+ }
+ for(const invalidPepper of [undefined,null,'secret',Buffer.alloc(31),Buffer.alloc(33),{}]){
+  assert.equal(adminSessionHashMatches(token,tokenHash,invalidPepper as Buffer),false);
+ }
+ assert.equal(adminSessionHashMatches(token,tokenHash,pepper),true);
+});
