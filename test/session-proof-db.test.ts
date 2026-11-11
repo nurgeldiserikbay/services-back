@@ -6,7 +6,7 @@ import {hashSessionToken,issueSessionToken,resolveActiveUserSession} from '../sr
 
 test('session proof uses 256-bit opaque tokens and domain-separated hash',()=>{
  const key=randomBytes(32),a=issueSessionToken(key),b=issueSessionToken(key);
- assert.match(a.token,/^[A-Za-z0-9_-]{43}$/);
+ assert.match(a.token,/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/);
  assert.notEqual(a.hash,a.token);
  assert.notEqual(a.hash,b.hash);
  assert.equal(hashSessionToken(a.token,key),a.hash);
@@ -28,6 +28,8 @@ test('active session resolves user; revoked, expired and suspended are denied',a
    assert.deepEqual(await resolveActiveUserSession(db,token,key),
      {userId,sessionId});
    assert.equal(await resolveActiveUserSession(db,'malformed',key),null);
+   // Reject a noncanonical base64url spelling before the database lookup.
+   assert.equal(await resolveActiveUserSession(db,token.slice(0,-1)+'B',key),null);
    assert.equal(await resolveActiveUserSession(db,issueSessionToken(key).token,key),null);
    await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
    assert.equal(await resolveActiveUserSession(db,token,key),null);
