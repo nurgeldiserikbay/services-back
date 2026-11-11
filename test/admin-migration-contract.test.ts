@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 
-const schema=readFileSync(new URL('../prisma/schema.prisma',import.meta.url),'utf8');
+const schema=readFileSync('prisma/schema.prisma','utf8');
 const migration=readFileSync(
-  new URL('../prisma/migrations/20261111_platform_admin_access/migration.sql',import.meta.url),'utf8',
+  'prisma/migrations/20261111_platform_admin_access/migration.sql','utf8',
 );
 
 test('platform admin tables are represented in schema and forward migration',()=>{
