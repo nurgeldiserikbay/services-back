@@ -48,3 +48,26 @@ test('moderation read returns only cases within fresh MFA-verified DB grants',as
   else process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=oldKey;
  }
 });
+
+test('moderation read rejects revoked or expired admin sessions before querying cases',async()=>{
+ const oldFlag=process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP;
+ const oldKey=process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+ const pepper=Buffer.alloc(32,17);
+ const {token}=issueAdminSessionToken(pepper);
+ try{
+  process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
+  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=pepper.toString('base64');
+  let calls=0;
+  const db={async transaction<T>(work:(client:{query:()=>Promise<{rows:unknown[]}>})=>Promise<T>):Promise<T>{
+   return work({async query(){calls++;return {rows:[]};}});
+  }};
+  const service=new PlatformModerationReadService(db as unknown as DatabasePool);
+  await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
+  assert.equal(calls,1);
+ }finally{
+  if(oldFlag===undefined)delete process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP;
+  else process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP=oldFlag;
+  if(oldKey===undefined)delete process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+  else process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=oldKey;
+ }
+});
