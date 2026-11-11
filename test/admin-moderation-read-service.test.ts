@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {UnauthorizedException} from '@nestjs/common';
-import {issueAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
+import {issueAdminSessionToken,hashAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
 import {PlatformModerationReadService,validateModerationCaseRows} from '../src/modules/admin/admin-moderation-read.service.js';
 
 const key=randomBytes(32);
@@ -57,7 +57,15 @@ test('moderation read returns only redacted cases within active grants',async()=
        scope}]};
      }
      assert.match(sql,/resource_scope=ANY/);
-     assert.deepEqual(params,[[scope]]);
+     assert.match(sql,/current_session\.revoked_at IS NULL/);
+     assert.match(sql,/current_session\.mfa_verified_at/);
+     assert.match(sql,/current_user\.status='ACTIVE'/);
+     assert.equal(params.length,4);
+     assert.deepEqual(params[0],[scope]);
+     assert.equal(params[1],userId);
+     assert.equal(params[2],hashAdminSessionToken(token,key));
+     assert.ok(typeof params[3]==='number');
+     assert.ok(Math.abs((params[3] as number)-now)<5000);
      return {rows:[{id,resource_scope:scope,subject_kind:'review',
       state:'triage',created_at:new Date(now-1000)}]};
     }
