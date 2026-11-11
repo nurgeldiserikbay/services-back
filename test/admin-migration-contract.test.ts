@@ -66,3 +66,13 @@ test('moderation queue migration indexes scope and stable newest-first order',()
   assert.match(index,/CREATE INDEX IF NOT EXISTS "platform_moderation_cases_scope_newest_idx"/);
   assert.match(index,/\("resource_scope", "created_at" DESC, "id" DESC\)/);
 });
+
+test('privileged session chronology is enforced by an additive migration',()=>{
+  const sql=readFileSync(
+    'prisma/migrations/20261111_platform_admin_session_lifecycle/migration.sql','utf8',
+  );
+  assert.ok(sql.includes('platform_admin_sessions_lifetime_check'));
+  assert.ok(sql.includes('platform_admin_sessions_mfa_before_expiry_check'));
+  assert.ok(sql.includes('"expires_at" > "created_at"'));
+  assert.ok(sql.includes('"mfa_verified_at" < "expires_at"'));
+});
