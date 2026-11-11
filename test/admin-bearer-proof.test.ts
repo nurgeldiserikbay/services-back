@@ -15,11 +15,13 @@ test('admin bearer accepts only one canonical Authorization value',()=>{
   'Bearer  '+token,' Bearer '+token,'Bearer '+token+' ',
   'Bearer '+token+', Bearer '+token,'Bearer '+token+'=',
   'Bearer '+token+'\n', 'Bearer '+token+'\r\nBearer '+token,
-  'Bearer '+token.slice(0,-1)+'B',
  ]){
   assert.equal(extractAdminBearerToken(invalid),null);
   assert.equal(verifyAdminBearerProof(invalid,tokenHash,pepper),false);
  }
+ const changed=token.slice(0,-1)+(token.endsWith('A')?'E':'A');
+ assert.equal(extractAdminBearerToken('Bearer '+changed),changed);
+ assert.equal(verifyAdminBearerProof('Bearer '+changed,tokenHash,pepper),false);
  assert.equal(verifyAdminBearerProof('Bearer '+token,'f'.repeat(64),pepper),false);
  assert.equal(verifyAdminBearerProof('Bearer '+token,tokenHash,Buffer.alloc(32,30)),false);
 });
