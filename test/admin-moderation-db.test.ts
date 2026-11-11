@@ -18,7 +18,7 @@ test('moderation queue only returns redacted cases from currently granted scopes
   const forbidden='organization:'+randomUUID();
   const visibleId=randomUUID(),hiddenId=randomUUID();
   const pepper=randomBytes(32);
-  const {token,hash}=issueAdminSessionToken(pepper);
+  const {token,tokenHash:hash}=issueAdminSessionToken(pepper);
   await db.query('INSERT INTO users(id) VALUES($1)',[userId]);
   await db.query('INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
    [staffId,userId,'auditor']);
