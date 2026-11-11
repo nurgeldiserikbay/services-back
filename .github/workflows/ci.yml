@@ -141,5 +141,28 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Verify moderation and admin role CHECK constraints
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $verify$
+          DECLARE missing text;
+          BEGIN
+            SELECT string_agg(expected.name, ', ' ORDER BY expected.name) INTO missing
+            FROM (VALUES
+              ('platform_admin_staff_role_check'),
+              ('platform_moderation_cases_subject_kind_check'),
+              ('platform_moderation_cases_state_check')
+            ) AS expected(name)
+            WHERE NOT EXISTS (
+              SELECT 1 FROM pg_constraint c
+              WHERE c.conname=expected.name
+                AND c.contype='c'
+                AND c.convalidated
+            );
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'Missing admin domain CHECK constraints: %', missing;
+            END IF;
+          END $verify$;
+          SQL
       - name: Unit and integration tests (after database migrations)
         run: npm test
