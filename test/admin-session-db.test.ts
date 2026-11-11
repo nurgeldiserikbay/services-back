@@ -13,7 +13,7 @@ test('migrated admin session grants are checked against live DB revocation and M
   const userId=randomUUID(),staffId=randomUUID(),sessionId=randomUUID(),grantId=randomUUID();
   const scope='organization:'+randomUUID();
   const pepper=randomBytes(32);
-  const {token,hash}=issueAdminSessionToken(pepper);
+  const {token,tokenHash:hash}=issueAdminSessionToken(pepper);
   const now=Date.now();
   await db.query('INSERT INTO users(id) VALUES($1)',[userId]);
   await db.query('INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
