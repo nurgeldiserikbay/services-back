@@ -61,7 +61,7 @@ test('admin database rejects duplicate grants, duplicate token hashes and orphan
   await db.query('BEGIN');
   const userId=randomUUID(),staffId=randomUUID(),sessionId=randomUUID();
   const scope='organization:'+randomUUID();
-  const {hash}=issueAdminSessionToken(randomBytes(32));
+  const {tokenHash:hash}=issueAdminSessionToken(randomBytes(32));
   await db.query('INSERT INTO users(id) VALUES($1)',[userId]);
   await db.query('INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
    [staffId,userId,'auditor']);
@@ -113,7 +113,7 @@ test('admin database rejects duplicate grants, duplicate token hashes and orphan
    [randomUUID(),'organization:not-a-uuid','review','triage'],'23514');
   await expectConstraint(
    'INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
-   [randomUUID(),userId,'superadmin'],'23514');
+   [randomUUID(),randomUUID(),'superadmin'],'23514');
   await expectConstraint(
    `INSERT INTO platform_moderation_cases
     (id,resource_scope,subject_kind,state)
