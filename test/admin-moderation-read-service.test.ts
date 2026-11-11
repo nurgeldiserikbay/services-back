@@ -178,3 +178,26 @@ test('moderation read denies session expiry between authentication and case quer
   assert.equal(caseQueries,0);
  }finally{Date.now=originalNow;restore();}
 });
+
+test('moderation read denies a valid session without a moderation.read grant',async()=>{
+ try{
+  process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
+  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=key.toString('base64');
+  const now=Date.now();
+  let caseQueries=0;
+  const db={transaction:async(work:(client:unknown)=>Promise<unknown>)=>work({
+   query:async(sql:string)=>{
+    if(sql.includes('FROM platform_admin_sessions'))
+     return {rows:[{user_id:userId,role:'auditor',
+      expires_at:new Date(now+60000),mfa_verified_at:new Date(now-1000),
+      scope:null}]};
+    caseQueries++;
+    return {rows:[]};
+   }
+  })};
+  await assert.rejects(
+   new PlatformModerationReadService(db as never).list('Bearer '+token),
+   UnauthorizedException);
+  assert.equal(caseQueries,0);
+ }finally{restore();}
+});
