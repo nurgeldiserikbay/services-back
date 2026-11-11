@@ -164,5 +164,26 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Verify admin proof and scope format constraints
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $verify$
+          DECLARE missing text;
+          BEGIN
+            SELECT string_agg(expected.name, ', ' ORDER BY expected.name) INTO missing
+            FROM (VALUES
+              ('platform_admin_sessions_token_hash_format_check'),
+              ('platform_admin_grants_scope_format_check'),
+              ('platform_moderation_cases_resource_scope_format_check')
+            ) AS expected(name)
+            WHERE NOT EXISTS (
+              SELECT 1 FROM pg_constraint c
+              WHERE c.conname=expected.name AND c.contype='c' AND c.convalidated
+            );
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'Missing admin proof format constraints: %', missing;
+            END IF;
+          END $verify$;
+          SQL
       - name: Unit and integration tests (after database migrations)
         run: npm test
