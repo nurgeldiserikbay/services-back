@@ -251,3 +251,17 @@ jobs:
           grep -Eiq '^x-robots-tag:.*noindex' "$RUNNER_TEMP/admin-logout-headers.txt"
       - name: Unit and integration tests (after database migrations)
         run: npm test
+      - name: Diagnose database state after failed backend checks
+        if: failure()
+        run: |
+          echo '### Backend CI database diagnostics' >> "$GITHUB_STEP_SUMMARY"
+          if command -v psql >/dev/null 2>&1; then
+            echo 'Database connection and schema:' >> "$GITHUB_STEP_SUMMARY"
+            psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c               "SELECT current_database(), current_schema(), to_regclass('public.users'), to_regclass('public.platform_admin_sessions');"               >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+          fi
+          if [ -f "$RUNNER_TEMP/services-back-smoke.log" ]; then
+            echo '=== Backend smoke log (last 100 lines) ==='
+            tail -n 100 "$RUNNER_TEMP/services-back-smoke.log"
+          fi
+          echo '=== Prisma migration status ==='
+          npx prisma migrate status --schema prisma/schema.prisma || true
