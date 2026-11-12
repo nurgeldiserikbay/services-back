@@ -13,6 +13,11 @@ test('direct repository callers cannot omit normalized state or cursor fields',a
   {limit:20,state:null},
   {limit:20,state:undefined,before:null},
   {limit:20,state:null,before:undefined},
+  {limit:0,state:null,before:null},
+  {limit:51,state:null,before:null},
+  {limit:20,state:'unknown',before:null},
+  {limit:20,state:null,before:{createdAt:'2026-02-30T10:00:00.000Z',id:randomUUID()}},
+  {limit:20,state:null,before:{createdAt:'2026-11-13T10:00:00.000Z',id:'not-a-uuid'}},
  ]){
   await assert.rejects(
    readSellerInbox(db as never,userId,filter as never),
