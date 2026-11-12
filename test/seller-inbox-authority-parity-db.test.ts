@@ -219,3 +219,37 @@ test('declined guest request creates one durable notification and rejects replay
   assert.equal(after.rows[0].count,1);
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
+
+test('expired or unverified guest contact cannot trigger seller transition or outbox',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();await db.query('BEGIN');
+ try{
+  const f=await fixture(db);
+  const authority=await resolveSellerDecisionAuthority(db,f.ownerId,f.requestId);
+  assert.equal(authority.authorized,true);
+  if(!authority.authorized)throw new Error('fixture authorization failed');
+  const contact=await db.query(
+   'SELECT guest_contact_id FROM service_requests WHERE id=$1',[f.requestId]);
+  const guestId=contact.rows[0].guest_contact_id;
+  for(const state of ['unverified','expired'] as const){
+   await db.query(`UPDATE guest_contacts SET
+     verified_at=CASE WHEN $2='expired' THEN now() ELSE NULL END,
+     expires_at=CASE WHEN $2='expired' THEN now()-interval '1 minute'
+                     ELSE now()+interval '1 day' END
+     WHERE id=$1`,[guestId,state]);
+   await assert.rejects(decideSellerRequest(db,f.requestId,authority.seller,'accept',1),
+    (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='conflict');
+   const row=await db.query(
+    'SELECT status::text,version FROM service_requests WHERE id=$1',[f.requestId]);
+   assert.deepEqual([row.rows[0].status,row.rows[0].version],['PENDING',1]);
+   const events=await db.query(
+    'SELECT count(*)::int AS count FROM service_request_events WHERE request_id=$1',
+    [f.requestId]);
+   assert.equal(events.rows[0].count,0);
+   const outbox=await db.query(`
+    SELECT count(*)::int AS count FROM domain_outbox_events
+    WHERE subject_kind='ServiceRequest' AND subject_id=$1`,[f.requestId]);
+   assert.equal(outbox.rows[0].count,0);
+  }
+ }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
