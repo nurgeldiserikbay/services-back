@@ -253,3 +253,37 @@ test('expired or unverified guest contact cannot trigger seller transition or ou
   }
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
+
+test('registered customer acceptance stores IN_APP notification without guest recipient',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();await db.query('BEGIN');
+ try{
+  const f=await fixture(db);
+  const person=await db.query(
+   'SELECT person_id FROM professional_profiles WHERE id=$1',[f.profileId]);
+  const customerUserId=randomUUID(),customerPersonId=randomUUID();
+  await db.query('INSERT INTO users(id) VALUES($1)',[customerUserId]);
+  await db.query('INSERT INTO persons(id,user_id) VALUES($1,$2)',
+   [customerPersonId,customerUserId]);
+  assert.notEqual(customerPersonId,person.rows[0].person_id);
+  await db.query(`UPDATE service_requests
+   SET guest_contact_id=NULL,customer_person_id=$2 WHERE id=$1`,
+   [f.requestId,customerPersonId]);
+  const authority=await resolveSellerDecisionAuthority(db,f.ownerId,f.requestId);
+  assert.equal(authority.authorized,true);
+  if(!authority.authorized)throw new Error('fixture authorization failed');
+  const result=await decideSellerRequest(db,f.requestId,authority.seller,'accept',1);
+  assert.equal(result.state,'accepted');
+  const notification=await db.query(`
+   SELECT n.channel,n.recipient_person_id,n.guest_contact_id,n.dedupe_key
+   FROM notification_intents n
+   JOIN domain_outbox_events o ON o.id=n.domain_event_id
+   WHERE o.subject_kind='ServiceRequest' AND o.subject_id=$1`,[f.requestId]);
+  assert.equal(notification.rows.length,1);
+  assert.equal(notification.rows[0].channel,'IN_APP');
+  assert.equal(notification.rows[0].recipient_person_id,customerPersonId);
+  assert.equal(notification.rows[0].guest_contact_id,null);
+  assert.equal(notification.rows[0].dedupe_key,
+   'request-accept:client:'+f.requestId);
+ }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
