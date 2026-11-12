@@ -27,12 +27,19 @@ export class PlatformAdminAccessService{
   try{pepper=requireSecret(process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY);}
   catch{throw new UnauthorizedException('Authentication required');}
   const now=Date.now();
-  return this.database.transaction(async client=>{
-   const principal=await resolvePlatformAdminSession(client,token,pepper,now);
-   if(!principal)throw new UnauthorizedException('Authentication required');
-   if(!canPerformAdminOperation(principal,operation,resourceScope,now))
-    throw new ForbiddenException('Insufficient permission');
-   return principal;
-  });
+  try{
+   return await this.database.transaction(async client=>{
+    const principal=await resolvePlatformAdminSession(client,token,pepper,now);
+    if(!principal)throw new UnauthorizedException('Authentication required');
+    if(!canPerformAdminOperation(principal,operation,resourceScope,now))
+     throw new ForbiddenException('Insufficient permission');
+    return principal;
+   });
+  }catch(error){
+   if(error instanceof UnauthorizedException||error instanceof ForbiddenException)
+    throw error;
+   // Database/driver errors must not disclose internal details to callers.
+   throw new UnauthorizedException('Authentication required');
+  }
  }
 }
