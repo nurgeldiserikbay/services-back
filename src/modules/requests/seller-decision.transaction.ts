@@ -52,9 +52,12 @@ export async function decideSellerRequest(
   `,[requestId]);
   const request=selection.rows[0];
   if(!request)throw new SellerDecisionRejected('not_found');
+  // PostgreSQL renders uuid::text in lowercase. Compare canonical UUID values,
+  // not caller-supplied letter casing, while retaining strict input validation.
+  const canonicalSellerId=seller.sellerId.toLowerCase();
   const owns=(seller.kind==='professional'
-    ? request.seller_professional_id===seller.sellerId && request.seller_organization_id===null
-    : request.seller_organization_id===seller.sellerId && request.seller_professional_id===null);
+    ? request.seller_professional_id===canonicalSellerId && request.seller_organization_id===null
+    : request.seller_organization_id===canonicalSellerId && request.seller_professional_id===null);
   if(!owns)throw new SellerDecisionRejected('forbidden');
   const state=decision==='accept'?'ACCEPTED':'DECLINED';
   // Replays are authorized only by the actor-scoped idempotency ledger.
