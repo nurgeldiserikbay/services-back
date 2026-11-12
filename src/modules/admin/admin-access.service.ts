@@ -31,7 +31,15 @@ export class PlatformAdminAccessService{
    return await this.database.transaction(async client=>{
     const principal=await resolvePlatformAdminSession(client,token,pepper,now);
     if(!principal)throw new UnauthorizedException('Authentication required');
-    if(!canPerformAdminOperation(principal,operation,resourceScope,now))
+    // Recheck against the clock after the database lookup: an MFA proof or
+    // session may expire while the query is in flight.
+    const checkedAt=Date.now();
+    if(!Number.isSafeInteger(checkedAt)||checkedAt<now||
+       principal.sessionExpiresAt<=checkedAt||
+       principal.mfaVerifiedAt>checkedAt||
+       checkedAt-principal.mfaVerifiedAt>15*60*1000)
+     throw new UnauthorizedException('Authentication required');
+    if(!canPerformAdminOperation(principal,operation,resourceScope,checkedAt))
      throw new ForbiddenException('Insufficient permission');
     return principal;
    });
