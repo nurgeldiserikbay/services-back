@@ -188,3 +188,34 @@ test('failed notification insert rolls back seller decision and outbox in Postgr
   assert.equal(outbox.rows[0].count,0);
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
+
+test('declined guest request creates one durable notification and rejects replay',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();await db.query('BEGIN');
+ try{
+  const f=await fixture(db);
+  await db.query(`UPDATE guest_contacts SET verified_at=now()
+    WHERE id=(SELECT guest_contact_id FROM service_requests WHERE id=$1)`,[f.requestId]);
+  const authority=await resolveSellerDecisionAuthority(db,f.ownerId,f.requestId);
+  assert.equal(authority.authorized,true);
+  if(!authority.authorized)throw new Error('fixture authorization failed');
+  const result=await decideSellerRequest(db,f.requestId,authority.seller,'decline',1);
+  assert.deepEqual(result,{id:f.requestId,state:'declined',version:2,replayed:false});
+  const notifications=await db.query(`
+   SELECT n.channel,n.dedupe_key,n.guest_contact_id,o.topic
+   FROM notification_intents n
+   JOIN domain_outbox_events o ON o.id=n.domain_event_id
+   WHERE o.subject_kind='ServiceRequest' AND o.subject_id=$1`,[f.requestId]);
+  assert.equal(notifications.rows.length,1);
+  assert.equal(notifications.rows[0].channel,'EMAIL');
+  assert.equal(notifications.rows[0].topic,'service_request.declined');
+  assert.equal(notifications.rows[0].dedupe_key,'request-decline:guest:'+f.requestId);
+  await assert.rejects(decideSellerRequest(db,f.requestId,authority.seller,'accept',1),
+   (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='conflict');
+  const after=await db.query(`
+   SELECT count(*)::int AS count FROM notification_intents n
+   JOIN domain_outbox_events o ON o.id=n.domain_event_id
+   WHERE o.subject_kind='ServiceRequest' AND o.subject_id=$1`,[f.requestId]);
+  assert.equal(after.rows[0].count,1);
+ }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
