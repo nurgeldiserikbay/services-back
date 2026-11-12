@@ -70,3 +70,26 @@ test('seller decisions reject already decided requests without event emission',a
   assert.equal(queries,1);
  }
 });
+
+test('guest decision requires a verified non-expired contact before mutation',async()=>{
+ const requestId=randomUUID(),sellerId=randomUUID(),guestId=randomUUID();
+ for(const contact of [undefined,{channel:'push'},{channel:null}]){
+  const statements:string[]=[];
+  const db={query:async(sql:string)=>{
+   statements.push(sql);
+   if(statements.length===1)return {rows:[{
+    id:requestId,status:'PENDING',version:1,
+    seller_professional_id:sellerId,seller_organization_id:null,
+    customer_person_id:null,guest_contact_id:guestId,
+   }]};
+   if(statements.length===2)return {rows:contact?[contact]:[]};
+   throw new Error('unexpected mutation or notification write');
+  }};
+  await assert.rejects(decideSellerRequest(db as never,requestId,
+   {kind:'professional',sellerId},'accept',1),
+   (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='conflict');
+  assert.equal(statements.length,2);
+  assert.ok(statements[1].includes('verified_at IS NOT NULL'));
+  assert.ok(statements[1].includes('expires_at>now()'));
+ }
+});
