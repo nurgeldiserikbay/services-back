@@ -16,7 +16,7 @@ test('seller authority rejects invalid identities and request IDs before queryin
   [42,valid],[valid,{}],
  ]){
   assert.deepEqual(await resolveSellerDecisionAuthority(db as never,
-    userId as string,requestId as string),{authorized:false});
+    userId as unknown as string,requestId as unknown as string),{authorized:false});
  }
  assert.equal(calls,0);
 });
