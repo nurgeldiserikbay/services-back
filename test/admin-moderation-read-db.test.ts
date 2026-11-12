@@ -5,6 +5,7 @@ import {Client} from 'pg';
 import {UnauthorizedException} from '@nestjs/common';
 import {issueAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
 import {PlatformModerationReadService} from '../src/modules/admin/admin-moderation-read.service.js';
+import {resolvePlatformAdminSession} from '../src/modules/admin/admin-session-resolver.js';
 
 test('moderation read endpoint stays disabled without approved rollout',async()=>{
  const current=process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP;
@@ -46,6 +47,30 @@ test('privileged read returns only redacted cases in live authorized scopes',asy
   const service=new PlatformModerationReadService({
    transaction:async<T>(work:(client:Client)=>Promise<T>)=>work(db),
   } as never);
+  // Isolate the PostgreSQL auth lookup from the subsequent moderation query.
+  // These assertions expose the failing boundary without logging bearer secrets.
+  const principal=await resolvePlatformAdminSession(db,token,key);
+  assert.ok(principal,'PostgreSQL admin session lookup must return a principal');
+  assert.deepEqual(principal.resourceScopes,[allowedScope]);
+  const scoped=await db.query<{id:string}>(`
+    SELECT moderation.id::text AS id FROM platform_moderation_cases AS moderation
+    WHERE moderation.resource_scope=ANY($1::varchar[])
+      AND EXISTS (
+        SELECT 1 FROM platform_admin_grants AS current_grant
+        JOIN platform_admin_staff AS current_staff ON current_staff.id=current_grant.staff_id
+        JOIN platform_admin_sessions AS current_session ON current_session.staff_id=current_staff.id
+        JOIN users AS current_user ON current_user.id=current_staff.user_id
+        WHERE current_staff.user_id=$2::uuid AND current_staff.disabled_at IS NULL
+          AND current_user.status='ACTIVE' AND current_session.token_hash=$3
+          AND current_session.revoked_at IS NULL
+          AND current_session.expires_at>to_timestamp($4::double precision/1000.0)
+          AND current_session.mfa_verified_at<=to_timestamp($4::double precision/1000.0)
+          AND current_session.mfa_verified_at>=to_timestamp(($4::double precision-900000)/1000.0)
+          AND current_grant.scope=moderation.resource_scope
+      )
+  `,[[allowedScope],userId,tokenHash,Date.now()]);
+  assert.deepEqual(scoped.rows.map(row=>row.id),[allowedId],
+    'PostgreSQL live grant gate must return only the allowed case');
   const response=await service.list('Bearer '+token);
   assert.deepEqual(Object.keys(response),['items']);
   assert.equal(response.items.length,1);
