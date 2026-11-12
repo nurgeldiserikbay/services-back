@@ -42,7 +42,7 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
      if(malformedSessionReply)return {rows:null};
      if(revoked||values[0]!==tokenHash)return {rows:[]};
      return {rows:[{
-      user_id:randomUUID(),role:'auditor',
+      user_id:userId,role:'auditor',
       expires_at:new Date(Date.now()+60_000),
       mfa_verified_at:new Date(Date.now()-(staleMfa?20*60_000:1_000)),
       scope:noGrants?null:allowedScope,
@@ -50,7 +50,9 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
     }
     if(sql.includes('FROM platform_moderation_cases')){
      caseQueries++;
-     assert.deepEqual(values,[[allowedScope]]);
+     assert.equal(values[0] instanceof Array,true);
+     assert.deepEqual(values,[ [allowedScope],userId,tokenHash,values[3] ]);
+     assert.equal(typeof values[3],'number');
      assert.match(sql,/resource_scope=ANY\(\$1::varchar\[\]\)/);
      return {rows:[{
       id:caseId,resource_scope:injectOutOfScopeRow?deniedScope:allowedScope,subject_kind:'review',
@@ -99,8 +101,7 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
 
   noGrants=true;
   const missingScope=await get(token);
-  assert.equal(missingScope.status,200);
-  assert.deepEqual(await missingScope.json(),{items:[]});
+  assert.equal(missingScope.status,401);
   assert.equal(caseQueries,2);
   noGrants=false;
 
