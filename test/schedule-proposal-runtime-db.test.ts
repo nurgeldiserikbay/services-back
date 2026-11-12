@@ -50,9 +50,14 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
       customerAuth.hash,randomUUID(),
     ]);
 
-    const nextStart=new Date('2026-11-12T08:00:00.000Z');
+    // Keep the proposal in the future; fixed dates become invalid as CI ages.
+    // Asia/Qyzylorda is UTC+05:00 for this test's scheduling window.
+    const nextStart=new Date(Date.now()+7*24*60*60_000);
+    nextStart.setUTCMinutes(0,0,0);
+    const localStartAt=new Date(nextStart.getTime()+5*60*60_000)
+      .toISOString().slice(0,19);
     const input={startAt:nextStart,endAt:new Date(nextStart.getTime()+60*60_000),
-      timezone:'Asia/Qyzylorda',localStartAt:'2026-11-12T13:00:00',
+      timezone:'Asia/Qyzylorda',localStartAt,
       utcOffsetSeconds:18000};
     const proposalKey='schedule_proposal_key_12345';
     const proposed=await mutateScheduleProposal(db,{token:sellerAuth.token,requestId:request,
