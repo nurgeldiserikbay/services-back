@@ -146,3 +146,23 @@ test('guest decline writes a verified-channel notification without exposing cont
  assert.equal(statements.filter(item=>item.sql.includes('INSERT INTO domain_outbox_events')).length,1);
  assert.equal(statements.length,6);
 });
+
+test('failed optimistic update never emits an outbox event or notification',async()=>{
+ const requestId=randomUUID(),sellerId=randomUUID(),customerId=randomUUID();
+ const statements:string[]=[];
+ const db={query:async(sql:string)=>{
+  statements.push(sql);
+  if(sql.includes('FROM service_requests WHERE'))return {rows:[{
+   id:requestId,status:'PENDING',version:1,
+   seller_professional_id:sellerId,seller_organization_id:null,
+   customer_person_id:customerId,guest_contact_id:null,
+  }]};
+  if(sql.includes('UPDATE service_requests'))return {rows:[]};
+  throw new Error('unexpected outbox or notification write');
+ }};
+ await assert.rejects(decideSellerRequest(db as never,requestId,
+  {kind:'professional',sellerId},'accept',1),
+  (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='conflict');
+ assert.equal(statements.length,2);
+ assert.ok(!statements.some(sql=>sql.includes('INSERT INTO')));
+});
