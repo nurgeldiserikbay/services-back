@@ -59,3 +59,29 @@ test('admin logout HTTP confirms revocation without cache or token disclosure',a
   else process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=oldKey;
  }
 });
+
+test('admin logout HTTP stays unavailable when feature flag is disabled',async()=>{
+ const previous=process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP;
+ let app:INestApplication|undefined;
+ try{
+  delete process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP;
+  app=await NestFactory.create(AppModule,{logger:false});
+  const db=app.get(DatabasePool);
+  let queried=false;
+  db.transaction=async()=>{queried=true;throw new Error('unexpected database access');};
+  app.setGlobalPrefix('v1');
+  await app.listen(0,'127.0.0.1');
+  const address=app.getHttpServer().address();
+  assert.ok(address&&typeof address!=='string');
+  const response=await fetch(
+   `http://127.0.0.1:${address.port}/v1/admin/session/logout`,
+   {method:'POST',headers:{Authorization:'Bearer '+issueAdminSessionToken(randomBytes(32)).token}},
+  );
+  assert.equal(response.status,401);
+  assert.equal(queried,false);
+ }finally{
+  if(app)await app.close();
+  if(previous===undefined)delete process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP;
+  else process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP=previous;
+ }
+});
