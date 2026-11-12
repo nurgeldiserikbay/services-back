@@ -318,3 +318,89 @@ test('cross-tenant seller decision is denied before any event or notification wr
   assert.equal(notifications.rows[0].n,0);
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
+
+test('PostgreSQL serializes competing seller decisions with one winning transition',async()=>{
+ const setup=new Client({connectionString:process.env.DATABASE_URL});
+ const first=new Client({connectionString:process.env.DATABASE_URL});
+ const second=new Client({connectionString:process.env.DATABASE_URL});
+ await setup.connect();await first.connect();await second.connect();
+ let ids:{ownerId:string;profileId:string;requestId:string}|undefined;
+ try{
+  await setup.query('BEGIN');
+  ids=await fixture(setup);
+  await setup.query(`UPDATE guest_contacts SET verified_at=now()
+   WHERE id=(SELECT guest_contact_id FROM service_requests WHERE id=$1)`,
+   [ids.requestId]);
+  await setup.query('COMMIT');
+  await first.query('BEGIN');
+  await second.query('BEGIN');
+  await first.query("SET LOCAL lock_timeout='5s'");
+  await second.query("SET LOCAL lock_timeout='5s'");
+  const authorized=await resolveSellerDecisionAuthority(first,ids.ownerId,ids.requestId);
+  assert.equal(authorized.authorized,true);
+  if(!authorized.authorized)throw new Error('fixture authorization failed');
+  const waiting=resolveSellerDecisionAuthority(second,ids.ownerId,ids.requestId);
+  const winner=await decideSellerRequest(first,ids.requestId,authorized.seller,'accept',1);
+  assert.equal(winner.state,'accepted');
+  await first.query('COMMIT');
+  const other=await waiting;
+  assert.equal(other.authorized,true);
+  if(!other.authorized)throw new Error('fixture authorization failed');
+  await assert.rejects(
+   decideSellerRequest(second,ids.requestId,other.seller,'decline',1),
+   (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='conflict');
+  await second.query('COMMIT');
+  const state=await setup.query(
+   'SELECT status::text,version FROM service_requests WHERE id=$1',[ids.requestId]);
+  assert.deepEqual([state.rows[0].status,state.rows[0].version],['ACCEPTED',2]);
+  const events=await setup.query(
+   'SELECT count(*)::int AS n FROM service_request_events WHERE request_id=$1',[ids.requestId]);
+  const outbox=await setup.query(`
+   SELECT count(*)::int AS n FROM domain_outbox_events
+   WHERE subject_kind='ServiceRequest' AND subject_id=$1`,[ids.requestId]);
+  const notifications=await setup.query(`
+   SELECT count(*)::int AS n FROM notification_intents n
+   JOIN domain_outbox_events o ON o.id=n.domain_event_id
+   WHERE o.subject_kind='ServiceRequest' AND o.subject_id=$1`,[ids.requestId]);
+  assert.equal(events.rows[0].n,1);
+  assert.equal(outbox.rows[0].n,1);
+  assert.equal(notifications.rows[0].n,1);
+ }finally{
+  await first.query('ROLLBACK').catch(()=>{});
+  await second.query('ROLLBACK').catch(()=>{});
+  // The fixture is committed so both independent PostgreSQL sessions can see it.
+  // Delete dependent records before their parents, even after a failed assertion.
+  if(ids){
+   await setup.query('BEGIN').catch(()=>{});
+   try{
+    await setup.query(`DELETE FROM notification_intents WHERE domain_event_id IN
+     (SELECT id FROM domain_outbox_events
+      WHERE subject_kind='ServiceRequest' AND subject_id=$1)`,[ids.requestId]);
+    await setup.query(`DELETE FROM domain_outbox_events
+     WHERE subject_kind='ServiceRequest' AND subject_id=$1`,[ids.requestId]);
+    await setup.query('DELETE FROM service_request_events WHERE request_id=$1',[ids.requestId]);
+    const info=await setup.query(`
+     SELECT offer_id,guest_contact_id FROM service_requests WHERE id=$1`,[ids.requestId]);
+    await setup.query('DELETE FROM service_requests WHERE id=$1',[ids.requestId]);
+    if(info.rows[0]){
+     await setup.query('DELETE FROM service_offers WHERE id=$1',[info.rows[0].offer_id]);
+     if(info.rows[0].guest_contact_id)
+      await setup.query('DELETE FROM guest_contacts WHERE id=$1',[info.rows[0].guest_contact_id]);
+    }
+    const profile=await setup.query(`
+     SELECT person_id,profession_id FROM professional_profiles WHERE id=$1`,[ids.profileId]);
+    await setup.query('DELETE FROM professional_profiles WHERE id=$1',[ids.profileId]);
+    if(profile.rows[0]){
+     await setup.query('DELETE FROM professions WHERE id=$1',[profile.rows[0].profession_id]);
+     await setup.query('DELETE FROM persons WHERE id=$1',[profile.rows[0].person_id]);
+    }
+    await setup.query('DELETE FROM users WHERE id=$1',[ids.ownerId]);
+    await setup.query('COMMIT');
+   }catch(error){
+    await setup.query('ROLLBACK').catch(()=>{});
+    throw error;
+   }
+  }
+  await Promise.all([setup.end(),first.end(),second.end()]);
+ }
+});
