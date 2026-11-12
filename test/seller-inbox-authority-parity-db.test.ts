@@ -287,3 +287,34 @@ test('registered customer acceptance stores IN_APP notification without guest re
    'request-accept:client:'+f.requestId);
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
+
+test('cross-tenant seller decision is denied before any event or notification write',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();await db.query('BEGIN');
+ try{
+  const owner=await fixture(db),other=await fixture(db);
+  await db.query(`UPDATE guest_contacts SET verified_at=now()
+    WHERE id=(SELECT guest_contact_id FROM service_requests WHERE id=$1)`,
+   [owner.requestId]);
+  await assert.rejects(
+   decideSellerRequest(db,owner.requestId,
+    {kind:'professional',sellerId:other.profileId},'accept',1),
+   (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='forbidden');
+  const state=await db.query(
+   'SELECT status::text,version FROM service_requests WHERE id=$1',[owner.requestId]);
+  assert.deepEqual([state.rows[0].status,state.rows[0].version],['PENDING',1]);
+  const events=await db.query(
+   'SELECT count(*)::int AS n FROM service_request_events WHERE request_id=$1',
+   [owner.requestId]);
+  const outbox=await db.query(
+   `SELECT count(*)::int AS n FROM domain_outbox_events
+    WHERE subject_kind='ServiceRequest' AND subject_id=$1`,[owner.requestId]);
+  assert.equal(events.rows[0].n,0);
+  assert.equal(outbox.rows[0].n,0);
+  const notifications=await db.query(`
+   SELECT count(*)::int AS n FROM notification_intents n
+   JOIN domain_outbox_events o ON o.id=n.domain_event_id
+   WHERE o.subject_kind='ServiceRequest' AND o.subject_id=$1`,[owner.requestId]);
+  assert.equal(notifications.rows[0].n,0);
+ }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
