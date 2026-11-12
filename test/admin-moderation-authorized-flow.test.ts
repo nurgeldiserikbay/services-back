@@ -29,7 +29,7 @@ test('moderation read returns only cases within fresh MFA-verified DB grants',as
       mfa_verified_at:new Date(fixed-60_000),scope}]};
     }
     assert.match(sql,/platform_moderation_cases/);
-    assert.deepEqual(params,[[scope]]);
+    assert.deepEqual(params,[[scope],'33333333-3333-4333-8333-333333333333',hashAdminSessionToken(token,pepper),fixed]);
     return {rows:[{id:caseId,resource_scope:scope,subject_kind:'organization',
       state:'triage',created_at:new Date(fixed-30_000)}]};
    }});
@@ -132,7 +132,7 @@ test('moderation read returns no cases and skips data query without explicit sco
    }});
   }};
   const service=new PlatformModerationReadService(db as unknown as DatabasePool);
-  assert.deepEqual(await service.list('Bearer '+token),{items:[]});
+  await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
   assert.equal(queries,1);
  }finally{
   Date.now=oldNow;
@@ -166,7 +166,7 @@ test('moderation read denies an out-of-scope row even when SQL returns it',async
      mfa_verified_at:new Date(fixed-60_000),scope:allowed,
     }]};
     assert.match(sql,/platform_moderation_cases/);
-    assert.deepEqual(params,[[allowed]]);
+    assert.deepEqual(params,[[allowed],'33333333-3333-4333-8333-333333333333',hashAdminSessionToken(token,pepper),fixed]);
     return {rows:[{id:'22222222-2222-4222-8222-222222222222',
      resource_scope:forbidden,subject_kind:'organization',
      state:'triage',created_at:new Date(fixed-30_000)}]};
