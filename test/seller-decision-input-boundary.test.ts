@@ -232,3 +232,23 @@ test('registered customer notification references the same outbox event and stab
  assert.equal(outbox.params[1],'service_request.accepted');
  assert.equal(outbox.params[2],requestId);
 });
+
+test('seller UUID casing does not deny the same canonical PostgreSQL owner',async()=>{
+ const requestId=randomUUID(),sellerId=randomUUID(),customerId=randomUUID();
+ const statements:string[]=[];
+ const db={query:async(sql:string)=>{
+  statements.push(sql);
+  if(sql.includes('FROM service_requests WHERE'))return {rows:[{
+   id:requestId,status:'PENDING',version:1,
+   seller_professional_id:sellerId,seller_organization_id:null,
+   customer_person_id:customerId,guest_contact_id:null,
+  }]};
+  if(sql.includes('UPDATE service_requests'))return {rows:[{version:2}]};
+  if(sql.includes('INSERT INTO'))return {rows:[]};
+  throw new Error('unexpected SQL');
+ }};
+ const result=await decideSellerRequest(db as never,requestId,
+  {kind:'professional',sellerId:sellerId.toUpperCase()},'accept',1);
+ assert.equal(result.state,'accepted');
+ assert.equal(statements.filter(sql=>sql.includes('UPDATE service_requests')).length,1);
+});
