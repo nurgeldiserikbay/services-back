@@ -37,3 +37,24 @@ test('admin access denies valid bearer without configured session secret before 
   else process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=previous;
  }
 });
+
+test('admin access hides unexpected transaction failures but preserves explicit denials',async()=>{
+ const previous=process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+ try{
+  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=Buffer.alloc(32,7).toString('base64');
+  const proof='Bearer '+'A'.repeat(43);
+  for(const [failure,expected] of [
+   [new Error('private database connection details'),401],
+   [Object.assign(new Error('Authentication required'),{status:401}),401],
+  ] as const){
+   const db={transaction:async()=>{throw failure;}} as unknown as DatabasePool;
+   const access=new PlatformAdminAccessService(db);
+   await assert.rejects(access.requireOperation(proof,'moderation.read','platform'),error=>
+    typeof error==='object'&&error!==null&&'status' in error&&error.status===expected&&
+    !String(error.message).includes('private database'));
+  }
+ }finally{
+  if(previous===undefined)delete process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+  else process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=previous;
+ }
+});
