@@ -166,3 +166,44 @@ test('failed optimistic update never emits an outbox event or notification',asyn
  assert.equal(statements.length,2);
  assert.ok(!statements.some(sql=>sql.includes('INSERT INTO')));
 });
+
+test('outbox insert failure propagates and skips notification insert',async()=>{
+ const requestId=randomUUID(),sellerId=randomUUID(),customerId=randomUUID();
+ const statements:string[]=[];
+ const db={query:async(sql:string)=>{
+  statements.push(sql);
+  if(sql.includes('FROM service_requests WHERE'))return {rows:[{
+   id:requestId,status:'PENDING',version:1,
+   seller_professional_id:sellerId,seller_organization_id:null,
+   customer_person_id:customerId,guest_contact_id:null,
+  }]};
+  if(sql.includes('UPDATE service_requests'))return {rows:[{version:2}]};
+  if(sql.includes('INSERT INTO service_request_events'))return {rows:[]};
+  if(sql.includes('INSERT INTO domain_outbox_events'))throw new Error('outbox_write_failed');
+  throw new Error('unexpected notification insert');
+ }};
+ await assert.rejects(decideSellerRequest(db as never,requestId,
+  {kind:'professional',sellerId},'accept',1),/outbox_write_failed/);
+ assert.equal(statements.length,4);
+ assert.ok(!statements.some(sql=>sql.includes('INSERT INTO notification_intents')));
+});
+
+test('notification insert failure propagates to transaction owner',async()=>{
+ const requestId=randomUUID(),sellerId=randomUUID(),customerId=randomUUID();
+ const statements:string[]=[];
+ const db={query:async(sql:string)=>{
+  statements.push(sql);
+  if(sql.includes('FROM service_requests WHERE'))return {rows:[{
+   id:requestId,status:'PENDING',version:1,
+   seller_professional_id:sellerId,seller_organization_id:null,
+   customer_person_id:customerId,guest_contact_id:null,
+  }]};
+  if(sql.includes('UPDATE service_requests'))return {rows:[{version:2}]};
+  if(sql.includes('INSERT INTO notification_intents'))throw new Error('notification_write_failed');
+  if(sql.includes('INSERT INTO'))return {rows:[]};
+  throw new Error('unexpected SQL');
+ }};
+ await assert.rejects(decideSellerRequest(db as never,requestId,
+  {kind:'professional',sellerId},'decline',1),/notification_write_failed/);
+ assert.equal(statements.length,5);
+});
