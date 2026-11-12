@@ -78,7 +78,7 @@ test('admin logout denies database failure and malformed driver responses',async
 
 
 test('admin logout controller explicitly returns HTTP 200 and disables caching',()=>{
- const source=readFileSync(new URL('../src/modules/admin/admin-logout.controller.ts',import.meta.url),'utf8');
+ const source=readFileSync('src/modules/admin/admin-logout.controller.ts','utf8');
  assert.match(source,/@Post\('logout'\)\s*@HttpCode\(200\)/);
  assert.match(source,/@Header\('Cache-Control','private, no-store, max-age=0'\)/);
  assert.match(source,/return \{status:'revoked'\}/);
