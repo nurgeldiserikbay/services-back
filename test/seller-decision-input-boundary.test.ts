@@ -93,3 +93,56 @@ test('guest decision requires a verified non-expired contact before mutation',as
   assert.ok(statements[1].includes('expires_at>now()'));
  }
 });
+
+test('accepted registered request writes exactly one transition, event, outbox and notification intent',async()=>{
+ const requestId=randomUUID(),sellerId=randomUUID(),customerId=randomUUID();
+ const statements:string[]=[];
+ const db={query:async(sql:string,params?:unknown[])=>{
+  statements.push(sql);
+  if(sql.includes('FROM service_requests WHERE'))return {rows:[{
+   id:requestId,status:'PENDING',version:1,
+   seller_professional_id:sellerId,seller_organization_id:null,
+   customer_person_id:customerId,guest_contact_id:null,
+  }]};
+  if(sql.includes('UPDATE service_requests')){
+   assert.deepEqual(params,[requestId,'ACCEPTED',1]);
+   return {rows:[{version:2}]};
+  }
+  if(sql.includes('INSERT INTO'))return {rows:[]};
+  throw new Error('unexpected SQL');
+ }};
+ const result=await decideSellerRequest(db as never,requestId,
+  {kind:'professional',sellerId},'accept',1);
+ assert.deepEqual(result,{id:requestId,state:'accepted',version:2,replayed:false});
+ assert.equal(statements.filter(sql=>sql.includes('UPDATE service_requests')).length,1);
+ assert.equal(statements.filter(sql=>sql.includes('INSERT INTO service_request_events')).length,1);
+ assert.equal(statements.filter(sql=>sql.includes('INSERT INTO domain_outbox_events')).length,1);
+ assert.equal(statements.filter(sql=>sql.includes('INSERT INTO notification_intents')).length,1);
+ assert.equal(statements.length,5);
+});
+
+test('guest decline writes a verified-channel notification without exposing contact',async()=>{
+ const requestId=randomUUID(),sellerId=randomUUID(),guestId=randomUUID();
+ const statements:Array<{sql:string;params:unknown[]}>=[];
+ const db={query:async(sql:string,params:unknown[]=[])=>{
+  statements.push({sql,params});
+  if(sql.includes('FROM service_requests WHERE'))return {rows:[{
+   id:requestId,status:'PENDING',version:4,
+   seller_professional_id:sellerId,seller_organization_id:null,
+   customer_person_id:null,guest_contact_id:guestId,
+  }]};
+  if(sql.includes('FROM guest_contacts'))return {rows:[{channel:'email'}]};
+  if(sql.includes('UPDATE service_requests'))return {rows:[{version:5}]};
+  if(sql.includes('INSERT INTO'))return {rows:[]};
+  throw new Error('unexpected SQL');
+ }};
+ const result=await decideSellerRequest(db as never,requestId,
+  {kind:'professional',sellerId},'decline',4);
+ assert.deepEqual(result,{id:requestId,state:'declined',version:5,replayed:false});
+ const notification=statements.filter(item=>item.sql.includes('INSERT INTO notification_intents'));
+ assert.equal(notification.length,1);
+ assert.equal(notification[0].params[2],guestId);
+ assert.equal(notification[0].params[3],'EMAIL');
+ assert.equal(statements.filter(item=>item.sql.includes('INSERT INTO domain_outbox_events')).length,1);
+ assert.equal(statements.length,6);
+});
