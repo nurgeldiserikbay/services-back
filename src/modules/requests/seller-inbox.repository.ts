@@ -27,6 +27,7 @@ export async function readSellerInbox(
   // Defensive boundary for non-HTTP callers that bypass parseSellerInboxFilter.
   if(!filter||typeof filter!=='object'||
      !Number.isSafeInteger(filter.limit)||filter.limit<1||filter.limit>50||
+     filter.state===undefined||filter.before===undefined||
      (filter.state!==null&&!(typeof filter.state==='string'&&
        (SELLER_REQUEST_STATES as readonly string[]).includes(filter.state)))||
      (filter.before!==null&&(!filter.before||typeof filter.before!=='object'||
