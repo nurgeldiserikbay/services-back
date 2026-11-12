@@ -100,6 +100,17 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
   assert.equal(wrong.status,401);
   assert.equal(caseQueries,2);
 
+  // Reject malformed and non-bearer Authorization headers before DB access.
+  for(const header of [undefined,'Basic '+token,'Bearer bad',
+    'Bearer '+token+', Bearer '+token,'bearer '+token]){
+   const response=await fetch(url,{
+    headers:header===undefined?{}:{Authorization:header},redirect:'manual',
+   });
+   assert.equal(response.status,401,header);
+   assert.ok(!(await response.text()).includes(caseId));
+   assert.equal(caseQueries,2);
+  }
+
   noGrants=true;
   const missingScope=await get(token);
   assert.equal(missingScope.status,401);
