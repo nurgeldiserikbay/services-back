@@ -23,6 +23,7 @@ test('admin HTTP honors live scope, MFA freshness and session revocation',async(
  const allowedScope='organization:'+randomUUID();
  const deniedScope='organization:'+randomUUID();
  const caseId=randomUUID();
+ const userId=randomUUID();
  let revoked=false;
  let staleMfa=false;
  let noGrants=false;
