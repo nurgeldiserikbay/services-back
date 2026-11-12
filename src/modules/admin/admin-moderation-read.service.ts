@@ -80,12 +80,12 @@ export class PlatformModerationReadService{
            ON current_staff.id=current_grant.staff_id
          JOIN platform_admin_sessions AS current_session
            ON current_session.staff_id=current_staff.id
-         JOIN users AS current_user
-           ON current_user.id=current_staff.user_id
+         JOIN users AS account_row
+           ON account_row.id=current_staff.user_id
          WHERE current_staff.user_id=$2::uuid
            AND current_staff.disabled_at IS NULL
            AND current_staff.role IN ('owner','admin','operator','auditor')
-           AND current_user.status='ACTIVE'
+           AND account_row.status='ACTIVE'
            AND current_session.token_hash=$3
            AND current_session.revoked_at IS NULL
            AND current_session.expires_at>to_timestamp($4::double precision/1000.0)
