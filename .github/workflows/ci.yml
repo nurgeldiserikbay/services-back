@@ -120,6 +120,8 @@ jobs:
           SQL
       - name: Verify seller decision input and side-effect boundaries
         run: node --import tsx --test test/seller-decision-input-boundary.test.ts
+      - name: Verify seller inbox repository filter boundary
+        run: node --import tsx --test test/seller-inbox-repository-filter-boundary.test.ts
       - name: Verify seller notification integrity constraints
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
