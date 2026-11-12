@@ -380,10 +380,13 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
      WHERE subject_kind='ServiceRequest' AND subject_id=$1`,[ids.requestId]);
     await setup.query('DELETE FROM service_request_events WHERE request_id=$1',[ids.requestId]);
     const info=await setup.query(`
-     SELECT offer_id,guest_contact_id FROM service_requests WHERE id=$1`,[ids.requestId]);
+     SELECT req.offer_id,req.guest_contact_id,offer.definition_id
+     FROM service_requests req JOIN service_offers offer ON offer.id=req.offer_id
+     WHERE req.id=$1`,[ids.requestId]);
     await setup.query('DELETE FROM service_requests WHERE id=$1',[ids.requestId]);
     if(info.rows[0]){
      await setup.query('DELETE FROM service_offers WHERE id=$1',[info.rows[0].offer_id]);
+     await setup.query('DELETE FROM service_definitions WHERE id=$1',[info.rows[0].definition_id]);
      if(info.rows[0].guest_contact_id)
       await setup.query('DELETE FROM guest_contacts WHERE id=$1',[info.rows[0].guest_contact_id]);
     }
