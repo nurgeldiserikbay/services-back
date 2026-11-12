@@ -186,7 +186,7 @@ test('moderation queue only returns redacted cases from currently granted scopes
   assert.equal(tied.items.length,50);
   assert.deepEqual(tied.items.slice(0,2).map(item=>item.id),tiedIds.reverse());
   await db.query('DELETE FROM platform_admin_grants WHERE staff_id=$1',[staffId]);
-  assert.deepEqual(await service.list('Bearer '+token),{items:[]});
+  await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
   await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
   await assert.rejects(service.list('Bearer '+token),{name:'UnauthorizedException'});
   await db.query('UPDATE platform_admin_sessions SET revoked_at=NULL WHERE id=$1',[sessionId]);
