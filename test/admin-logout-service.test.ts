@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import {PlatformAdminLogoutService} from '../src/modules/admin/admin-logout.service.js';
 import {issueAdminSessionToken,hashAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
 
@@ -73,4 +74,12 @@ test('admin logout denies database failure and malformed driver responses',async
   if(oldKey===undefined)delete process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
   else process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=oldKey;
  }
+});
+
+
+test('admin logout controller explicitly returns HTTP 200 and disables caching',()=>{
+ const source=readFileSync(new URL('../src/modules/admin/admin-logout.controller.ts',import.meta.url),'utf8');
+ assert.match(source,/@Post\('logout'\)\s*@HttpCode\(200\)/);
+ assert.match(source,/@Header\('Cache-Control','private, no-store, max-age=0'\)/);
+ assert.match(source,/return \{status:'revoked'\}/);
 });
