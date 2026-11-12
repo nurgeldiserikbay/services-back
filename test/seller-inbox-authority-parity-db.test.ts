@@ -5,6 +5,7 @@ import {Client} from 'pg';
 import {readSellerInbox} from '../src/modules/requests/seller-inbox.repository.js';
 import {parseSellerInboxFilter} from '../src/modules/requests/seller-inbox.contract.js';
 import {resolveSellerDecisionAuthority} from '../src/modules/requests/seller-authority.js';
+import {decideSellerRequest,SellerDecisionRejected} from '../src/modules/requests/seller-decision.transaction.js';
 
 async function fixture(db:Client){
  const ownerId=randomUUID(),personId=randomUUID(),profileId=randomUUID();
@@ -109,5 +110,45 @@ test('seller request isolation survives owner suspension and reinstatement',asyn
   assert.deepEqual(await ids(b.ownerId),[b.requestId]);
   assert.deepEqual(await resolveSellerDecisionAuthority(db,a.ownerId,b.requestId),
     {authorized:false});
+ }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
+
+test('seller decision persists exactly one request event, outbox and guest notification in PostgreSQL',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();await db.query('BEGIN');
+ try{
+  const f=await fixture(db);
+  await db.query(`UPDATE guest_contacts SET verified_at=now()
+    WHERE id=(SELECT guest_contact_id FROM service_requests WHERE id=$1)`,[f.requestId]);
+  const authority=await resolveSellerDecisionAuthority(db,f.ownerId,f.requestId);
+  assert.equal(authority.authorized,true);
+  if(!authority.authorized)throw new Error('fixture authorization failed');
+  const decision=await decideSellerRequest(db,f.requestId,authority.seller,'accept',1);
+  assert.deepEqual(decision,{id:f.requestId,state:'accepted',version:2,replayed:false});
+  const state=await db.query(
+   'SELECT status::text,version FROM service_requests WHERE id=$1',[f.requestId]);
+  assert.equal(state.rows[0].status,'ACCEPTED');
+  assert.equal(state.rows[0].version,2);
+  const events=await db.query(
+   'SELECT kind::text FROM service_request_events WHERE request_id=$1',[f.requestId]);
+  assert.equal(events.rows.length,1);
+  assert.equal(events.rows[0].kind,'ACCEPTED');
+  const outbox=await db.query(
+   "SELECT id,topic,safe_payload FROM domain_outbox_events WHERE subject_kind='ServiceRequest' AND subject_id=$1",
+   [f.requestId]);
+  assert.equal(outbox.rows.length,1);
+  assert.equal(outbox.rows[0].topic,'service_request.accepted');
+  assert.deepEqual(outbox.rows[0].safe_payload,{});
+  const notifications=await db.query(
+   'SELECT channel::text,guest_contact_id,recipient_person_id FROM notification_intents WHERE domain_event_id=$1',
+   [outbox.rows[0].id]);
+  assert.equal(notifications.rows.length,1);
+  assert.equal(notifications.rows[0].channel,'EMAIL');
+  assert.equal(notifications.rows[0].recipient_person_id,null);
+  await assert.rejects(decideSellerRequest(db,f.requestId,authority.seller,'decline',2),
+   (error:unknown)=>error instanceof SellerDecisionRejected&&error.reason==='conflict');
+  const after=await db.query(
+   'SELECT count(*)::int AS count FROM service_request_events WHERE request_id=$1',[f.requestId]);
+  assert.equal(after.rows[0].count,1);
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
