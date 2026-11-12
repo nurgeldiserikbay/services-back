@@ -152,3 +152,39 @@ test('seller decision persists exactly one request event, outbox and guest notif
   assert.equal(after.rows[0].count,1);
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
+
+test('failed notification insert rolls back seller decision and outbox in PostgreSQL',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();await db.query('BEGIN');
+ try{
+  const f=await fixture(db);
+  await db.query(`UPDATE guest_contacts SET verified_at=now()
+    WHERE id=(SELECT guest_contact_id FROM service_requests WHERE id=$1)`,[f.requestId]);
+  const authority=await resolveSellerDecisionAuthority(db,f.ownerId,f.requestId);
+  assert.equal(authority.authorized,true);
+  if(!authority.authorized)throw new Error('fixture authorization failed');
+  await db.query('SAVEPOINT before_decision');
+  // A transaction-local trigger simulates a notification storage failure.
+  await db.query(`CREATE FUNCTION pg_temp.reject_notification_insert()
+    RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN RAISE EXCEPTION 'test_notification_failure'; END $$`);
+  await db.query(`CREATE TRIGGER test_reject_notification_insert
+    BEFORE INSERT ON notification_intents FOR EACH ROW
+    EXECUTE FUNCTION pg_temp.reject_notification_insert()`);
+  await assert.rejects(decideSellerRequest(db,f.requestId,authority.seller,'accept',1),
+   /test_notification_failure/);
+  // PostgreSQL transactions are aborted on statement failure; caller must roll back.
+  await db.query('ROLLBACK TO SAVEPOINT before_decision');
+  const state=await db.query(
+   'SELECT status::text,version FROM service_requests WHERE id=$1',[f.requestId]);
+  assert.equal(state.rows[0].status,'PENDING');
+  assert.equal(state.rows[0].version,1);
+  const events=await db.query(
+   'SELECT count(*)::int AS count FROM service_request_events WHERE request_id=$1',[f.requestId]);
+  assert.equal(events.rows[0].count,0);
+  const outbox=await db.query(
+   "SELECT count(*)::int AS count FROM domain_outbox_events WHERE subject_kind='ServiceRequest' AND subject_id=$1",
+   [f.requestId]);
+  assert.equal(outbox.rows[0].count,0);
+ }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
