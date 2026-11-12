@@ -85,3 +85,29 @@ test('personal inbox exposes neither private note nor guest contact',async()=>{
     {authorized:false});
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
+
+test('seller request isolation survives owner suspension and reinstatement',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();await db.query('BEGIN');
+ try{
+  const a=await fixture(db),b=await fixture(db);
+  const filter=parseSellerInboxFilter({state:'pending'});
+  const ids=async(userId:string)=>(await readSellerInbox(db,userId,filter)).items.map(x=>x.id);
+  assert.deepEqual(await ids(a.ownerId),[a.requestId]);
+  assert.deepEqual(await ids(b.ownerId),[b.requestId]);
+  assert.deepEqual(await resolveSellerDecisionAuthority(db,a.ownerId,b.requestId),
+    {authorized:false});
+  assert.deepEqual(await resolveSellerDecisionAuthority(db,b.ownerId,a.requestId),
+    {authorized:false});
+  await db.query("UPDATE users SET status='SUSPENDED' WHERE id=$1",[a.ownerId]);
+  assert.deepEqual(await ids(a.ownerId),[]);
+  assert.deepEqual(await ids(b.ownerId),[b.requestId]);
+  assert.deepEqual(await resolveSellerDecisionAuthority(db,a.ownerId,a.requestId),
+    {authorized:false});
+  await db.query("UPDATE users SET status='ACTIVE' WHERE id=$1",[a.ownerId]);
+  assert.deepEqual(await ids(a.ownerId),[a.requestId]);
+  assert.deepEqual(await ids(b.ownerId),[b.requestId]);
+  assert.deepEqual(await resolveSellerDecisionAuthority(db,a.ownerId,b.requestId),
+    {authorized:false});
+ }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
