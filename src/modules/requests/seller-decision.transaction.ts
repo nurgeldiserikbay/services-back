@@ -35,7 +35,9 @@ export async function decideSellerRequest(
   decision:SellerDecision,
   expectedVersion:number,
 ):Promise<DecisionResult> {
-  if(!UUID_STRICT.test(requestId)||!UUID_STRICT.test(seller.sellerId) ||
+  if(typeof requestId!=='string'||!UUID_STRICT.test(requestId)||
+     !seller||typeof seller!=='object'||
+     typeof seller.sellerId!=='string'||!UUID_STRICT.test(seller.sellerId) ||
      (seller.kind!=='professional'&&seller.kind!=='organization') ||
      (decision!=='accept'&&decision!=='decline') ||
      !Number.isSafeInteger(expectedVersion)||expectedVersion<1)
