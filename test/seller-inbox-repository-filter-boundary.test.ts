@@ -13,9 +13,7 @@ test('direct repository callers cannot omit normalized state or cursor fields',a
   {limit:20,state:null},
   {limit:20,state:undefined,before:null},
   {limit:20,state:null,before:undefined},
-  {limit:20,state:null,before:null,extra:'ignored',limitOverride:0},
  ]){
-  if('extra' in filter)continue;
   await assert.rejects(
    readSellerInbox(db as never,userId,filter as never),
    /invalid_seller_inbox_filter/,
