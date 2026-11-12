@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import type {DatabasePool} from '../src/platform/database/database.pool.js';
+import {hashAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
 import {PlatformModerationReadService} from '../src/modules/admin/admin-moderation-read.service.js';
 
 const scope='platform:123e4567-e89b-42d3-a456-426614174001';
@@ -46,7 +47,9 @@ test('moderation service queries only authorized scopes and returns redacted row
   assert.deepEqual(result.items,[{id:caseId,subjectKind:'professional',
    state:'triage',createdAt:'2026-11-08T00:00:00.000Z'}]);
   assert.equal(calls.length,2);
-  assert.deepEqual(calls[1].params,[[scope]]);
+  assert.deepEqual(calls[1].params.slice(0,3),[
+   [scope],userId,hashAdminSessionToken(token,Buffer.alloc(32,7))]);
+  assert.equal(typeof calls[1].params[3],'number');
   assert.match(calls[1].sql,/LIMIT 50/);
  });
 });
@@ -56,7 +59,7 @@ test('moderation service does not query cases for missing or stale MFA',async()=
    {grants:[],unauthorized:true},
    {grants:[grant({mfa_verified_at:new Date(Date.now()-20*60_000)})],unauthorized:true},
    {grants:[grant({role:'invalid'})],unauthorized:true},
-   {grants:[grant({scope:null})],unauthorized:false},
+   {grants:[grant({scope:null})],unauthorized:true},
   ];
   for(const {grants,unauthorized} of scenarios){
    const {db,calls}=dbWithRows(grants,[moderationCase()]);
