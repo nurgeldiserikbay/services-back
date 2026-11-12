@@ -207,3 +207,28 @@ test('notification insert failure propagates to transaction owner',async()=>{
   {kind:'professional',sellerId},'decline',1),/notification_write_failed/);
  assert.equal(statements.length,5);
 });
+
+test('registered customer notification references the same outbox event and stable dedupe key',async()=>{
+ const requestId=randomUUID(),sellerId=randomUUID(),customerId=randomUUID();
+ const writes:Array<{sql:string;params:unknown[]}>= [];
+ const db={query:async(sql:string,params:unknown[]=[])=>{
+  if(sql.includes('FROM service_requests WHERE'))return {rows:[{
+   id:requestId,status:'PENDING',version:7,
+   seller_professional_id:sellerId,seller_organization_id:null,
+   customer_person_id:customerId,guest_contact_id:null,
+  }]};
+  if(sql.includes('UPDATE service_requests'))return {rows:[{version:8}]};
+  if(sql.includes('INSERT INTO')){writes.push({sql,params});return {rows:[]};}
+  throw new Error('unexpected SQL');
+ }};
+ await decideSellerRequest(db as never,requestId,{kind:'professional',sellerId},'accept',7);
+ const outbox=writes.find(item=>item.sql.includes('INSERT INTO domain_outbox_events'));
+ const notification=writes.find(item=>item.sql.includes('INSERT INTO notification_intents'));
+ assert.ok(outbox);
+ assert.ok(notification);
+ assert.equal(notification.params[1],outbox.params[0]);
+ assert.equal(notification.params[2],customerId);
+ assert.equal(notification.params[3],'request-accept:client:'+requestId);
+ assert.equal(outbox.params[1],'service_request.accepted');
+ assert.equal(outbox.params[2],requestId);
+});
