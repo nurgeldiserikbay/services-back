@@ -23,7 +23,9 @@ export class PlatformAdminAccessService{
   const token=extractAdminBearerToken(authorization);
   if(token===null)throw new UnauthorizedException('Authentication required');
   // Independent key: never reuse ACCOUNT_SESSION_HMAC_KEY.
-  const pepper=requireSecret(process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY);
+  let pepper:Buffer;
+  try{pepper=requireSecret(process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY);}
+  catch{throw new UnauthorizedException('Authentication required');}
   const now=Date.now();
   return this.database.transaction(async client=>{
    const principal=await resolvePlatformAdminSession(client,token,pepper,now);
