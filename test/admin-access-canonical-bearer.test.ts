@@ -50,8 +50,8 @@ test('admin access hides unexpected transaction failures but preserves explicit 
    const db={transaction:async()=>{throw failure;}} as unknown as DatabasePool;
    const access=new PlatformAdminAccessService(db);
    await assert.rejects(access.requireOperation(proof,'moderation.read','platform'),error=>
-    typeof error==='object'&&error!==null&&'status' in error&&error.status===expected&&
-    !String(error.message).includes('private database'));
+    error instanceof Error&&'status' in error&&error.status===expected&&
+    !error.message.includes('private database'));
   }
  }finally{
   if(previous===undefined)delete process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
