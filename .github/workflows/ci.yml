@@ -103,7 +103,7 @@ jobs:
             SELECT string_agg(required.table_name, ', ' ORDER BY required.table_name) INTO missing
             FROM unnest(ARRAY[
               'users', 'persons', 'organizations', 'professional_profiles',
-              'service_offers', 'service_requests', 'guest_contacts',
+              'service_offers', 'service_requests', 'service_request_events', 'guest_contacts',
               'organization_members', 'sessions',
               'schedule_proposals', 'idempotency_records',
               'busy_blocks', 'cancellation_snapshot_revisions',
@@ -118,6 +118,8 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Verify seller decision input and side-effect boundaries
+        run: node --import tsx --test test/seller-decision-input-boundary.test.ts
       - name: Verify account session authorization against migrated PostgreSQL
         run: node --import tsx --test test/session-proof-db.test.ts
       - name: Verify seller inbox authorization against migrated PostgreSQL
