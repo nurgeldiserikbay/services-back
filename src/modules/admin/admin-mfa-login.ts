@@ -2,6 +2,7 @@ import type {Pool,PoolClient} from 'pg';
 import {loadActiveAdminTotpFactor} from './admin-totp-factor-store.js';
 import {isAdminMfaLocked,recordAdminMfaFailure} from './admin-mfa-attempts.js';
 import {issueAdminSessionAfterTotp} from './admin-mfa-session.js';
+import {recordAdminMfaSecurityEvent} from './admin-mfa-security-audit.js';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -76,6 +77,7 @@ export async function loginAdminWithProvisionedTotp(
   );
   if(!session){
    await recordAdminMfaFailure(client,primary.staffId,now);
+   await recordAdminMfaSecurityEvent(client,primary.staffId,'admin_mfa_login_failed');
    await client.query('COMMIT');
    began=false;
    return null;
@@ -85,6 +87,7 @@ export async function loginAdminWithProvisionedTotp(
   await client.query(`
    DELETE FROM platform_admin_mfa_attempts WHERE staff_id=$1::uuid
   `,[primary.staffId]);
+  await recordAdminMfaSecurityEvent(client,primary.staffId,'admin_mfa_login_succeeded');
   await client.query('COMMIT');
   began=false;
   return session;
