@@ -188,6 +188,11 @@ jobs:
           # an untracked temporary database behind.
           restore_created=1
           createdb "$restore_db"
+          # A restored database must not inherit unexpected session connections.
+          test "$(psql --dbname=postgres -At -v ON_ERROR_STOP=1 -v target="$restore_db" <<'SQL'
+          SELECT count(*) FROM pg_stat_activity WHERE datname = :'target';
+          SQL
+          )" = 0
           # Prevent a stalled restore from consuming the entire CI job timeout.
           timeout --signal=TERM --kill-after=15s 180s \
             pg_restore --dbname="$restore_db" --no-owner --no-acl --single-transaction --exit-on-error "$backup"
