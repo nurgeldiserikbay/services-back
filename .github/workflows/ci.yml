@@ -134,7 +134,7 @@ jobs:
             if [ "$restore_created" -eq 1 ]; then
               dropdb --if-exists "$restore_db" >/dev/null 2>&1 || true
             fi
-            rm -f "$backup"
+            rm -f "$backup" "$backup.sha256"
           }
           trap cleanup_restore EXIT
           # Refuse to touch an existing database, including one left by another run.
@@ -151,6 +151,9 @@ jobs:
           # A fresh recovery database is essential; never restore into services_test.
           pg_dump --dbname=services_test --format=custom --no-owner --no-acl --file="$backup"
           test -s "$backup"
+          # Verify backup bytes before restore and keep checksum evidence in the runner only.
+          sha256sum "$backup" > "$backup.sha256"
+          sha256sum --check "$backup.sha256"
           pg_restore --list "$backup" >/dev/null
           # Capture exact counts before backup restore. CI is quiescent at this stage.
           source_users="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public.users')"
