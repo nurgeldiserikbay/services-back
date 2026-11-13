@@ -124,3 +124,21 @@ test('malformed primary attestation is rejected before database connection',asyn
  }
  assert.equal(connections,0);
 });
+
+test('invalid key resolver is rejected before opening database',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected database access');}} as never;
+ assert.equal(await loginAdminWithProvisionedTotp(
+  pool,primary,code,null as never,pepper,now,
+ ),null);
+ assert.equal(connections,0);
+});
+test('session expiry overflow is rejected before opening database',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected database access');}} as never;
+ const late=Number.MAX_SAFE_INTEGER-1000;
+ assert.equal(await loginAdminWithProvisionedTotp(
+  pool,{staffId,authenticatedAt:late-1000},code,async()=>key,pepper,late,
+ ),null);
+ assert.equal(connections,0);
+});
