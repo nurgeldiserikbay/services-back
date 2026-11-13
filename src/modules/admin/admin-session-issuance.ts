@@ -24,7 +24,7 @@ export async function createVerifiedPlatformAdminSession(
     !Number.isSafeInteger(verified.mfaVerifiedAt)||verified.mfaVerifiedAt<0||
     !Number.isSafeInteger(now)||now<0||
     verified.mfaVerifiedAt>now||now-verified.mfaVerifiedAt>SESSION_MS||
-    now>Number.MAX_SAFE_INTEGER-SESSION_MS||
+    now>8640000000000000-SESSION_MS||
     !Buffer.isBuffer(pepper)||pepper.length!==32)return null;
  const {token,tokenHash}=issueAdminSessionToken(pepper);
  const expiresAt=now+SESSION_MS;
