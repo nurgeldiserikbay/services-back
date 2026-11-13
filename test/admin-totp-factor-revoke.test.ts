@@ -24,6 +24,11 @@ function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'){
     assert.match(sql,/session.expires_at>/);
     return {rows:mode==='no-actor'?[]:[{id:actor}]};
    }
+   if(sql.includes('pg_advisory_xact_lock')){
+    events.push('target-lock');
+    assert.deepEqual(params,[target]);
+    return {rows:[{}]};
+   }
    if(sql.includes('UPDATE platform_admin_totp_factors')){
     events.push('disable-factor');
     assert.equal(params?.[0],target);
@@ -48,7 +53,7 @@ test('revocation disables factor, revokes sessions and audits before commit',asy
  const f=fixture('ok');
  assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),true);
  assert.deepEqual(f.events,[
-  'BEGIN','authorize-actor','disable-factor','revoke-sessions',
+  'BEGIN','authorize-actor','target-lock','disable-factor','revoke-sessions',
   'audit','COMMIT','release',
  ]);
 });
@@ -61,7 +66,7 @@ test('missing factor does not revoke sessions',async()=>{
  const f=fixture('no-factor');
  assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),false);
  assert.deepEqual(f.events,[
-  'BEGIN','authorize-actor','disable-factor','ROLLBACK','release',
+  'BEGIN','authorize-actor','target-lock','disable-factor','ROLLBACK','release',
  ]);
 });
 test('audit failure rolls back factor and session revocation',async()=>{
@@ -69,7 +74,7 @@ test('audit failure rolls back factor and session revocation',async()=>{
  await assert.rejects(revokeAdminTotpFactor(f.pool,token,target,pepper),
   /admin_totp_revocation_audit_unavailable/);
  assert.deepEqual(f.events,[
-  'BEGIN','authorize-actor','disable-factor','revoke-sessions',
+  'BEGIN','authorize-actor','target-lock','disable-factor','revoke-sessions',
   'audit','ROLLBACK','release',
  ]);
 });
