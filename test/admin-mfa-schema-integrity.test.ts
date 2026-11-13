@@ -37,3 +37,13 @@ test('privileged security audit model and migration stay aligned',()=>{
  assert.ok(sql.includes("'totp_factor_revoked'"));
  assert.ok(sql.includes('ON DELETE RESTRICT'));
 });
+
+test('security audit append-only migration blocks updates and deletes',()=>{
+ const sql=readFileSync(
+  'prisma/migrations/20261113180000_platform_admin_security_events_append_only/migration.sql',
+  'utf8',
+ );
+ assert.ok(sql.includes('BEFORE UPDATE OR DELETE ON "platform_admin_security_events"'));
+ assert.ok(sql.includes('RAISE EXCEPTION'));
+ assert.ok(sql.includes('CREATE TRIGGER "platform_admin_security_events_append_only"'));
+});
