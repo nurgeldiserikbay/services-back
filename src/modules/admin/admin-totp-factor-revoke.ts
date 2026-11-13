@@ -26,6 +26,12 @@ export async function revokeAdminTotpFactor(
  try{
   await client.query('BEGIN');
   began=true;
+  // Acquire the target lock BEFORE any row locks. MFA login and activation
+  // take this advisory lock first; reversing the order risks deadlock.
+  await client.query(
+   'SELECT pg_advisory_xact_lock(hashtextextended($1::text, 104729))',
+   [targetStaffId],
+  );
   const actor=await client.query<{id:string}>(`
    SELECT staff.id::text AS id FROM platform_admin_staff staff
    JOIN users usr ON usr.id=staff.user_id
@@ -45,12 +51,6 @@ export async function revokeAdminTotpFactor(
    await client.query('ROLLBACK');began=false;return false;
   }
   const actorStaffId=actor.rows[0]!.id;
-  // Serialize factor lifecycle changes against enrollment/login transactions.
-  // The advisory lock is keyed by target staff, not by the acting owner.
-  await client.query(
-   'SELECT pg_advisory_xact_lock(hashtextextended($1::text, 104729))',
-   [targetStaffId],
-  );
   const factor=await client.query<{staff_id:string}>(`
    UPDATE platform_admin_totp_factors
    SET disabled_at=to_timestamp($2::double precision/1000)
