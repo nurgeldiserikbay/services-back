@@ -146,3 +146,13 @@ test('session expiry overflow is rejected before opening database',async()=>{
  ),null);
  assert.equal(connections,0);
 });
+
+test('timestamps beyond supported Date range fail before database connection',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected');}} as never;
+ const late=8640000000000000-1000;
+ assert.equal(await loginAdminWithProvisionedTotp(
+  pool,{staffId,authenticatedAt:late-1000},code,async()=>key,pepper,late,
+ ),null);
+ assert.equal(connections,0);
+});
