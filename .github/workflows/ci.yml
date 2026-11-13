@@ -133,7 +133,7 @@ jobs:
           DO $verify$
           DECLARE missing text;
           BEGIN
-            SELECT string_agg(expected.name, ', ' ORDER BY expected.name)
+            SELECT string_agg(expected.table_name || '.' || expected.column_name, ', ' ORDER BY expected.table_name, expected.column_name)
               INTO missing
             FROM (VALUES
               ('platform_admin_totp_replay', 'staff_id'),
