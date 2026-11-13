@@ -71,6 +71,12 @@ jobs:
             test/session-proof-canonical.test.ts \
             test/admin-session-token.test.ts \
             test/admin-session-token-source-integrity.test.ts
+      - name: Privileged MFA schema and transaction regression tests
+        run: |
+          node --import tsx --test \
+            test/admin-mfa-schema-integrity.test.ts \
+            test/admin-totp-factor-revocation.test.ts \
+            test/admin-totp-activation-transaction.test.ts
       - name: Validate pinned Prisma model
         run: npm run db:validate
       - name: Recompute migration and reject schema/SQL drift
