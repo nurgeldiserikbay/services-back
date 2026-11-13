@@ -64,18 +64,24 @@ export async function revokeAdminTotpFactorAndSessions(
    throw new Error('admin_totp_revocation_unavailable');
   // Revoke sessions even when factor was previously disabled: idempotent
   // security cleanup must not leave an existing privileged bearer usable.
-  await client.query(`
+  const revoked=await client.query(`
    UPDATE platform_admin_sessions
    SET revoked_at=to_timestamp($2::double precision/1000)
    WHERE staff_id=$1::uuid AND revoked_at IS NULL
   `,[staffId,now]);
+  if(!revoked||!Number.isSafeInteger(revoked.rowCount)||revoked.rowCount<0)
+   throw new Error('admin_totp_session_revocation_unavailable');
   // Audit record is committed atomically with factor and session revocation.
-  await client.query(`
+  const audited=await client.query<{id:string}>(`
    INSERT INTO platform_admin_security_events
     (actor_staff_id,target_staff_id,action,occurred_at)
    VALUES ($1::uuid,$2::uuid,'totp_factor_revoked',
            to_timestamp($3::double precision/1000))
+   RETURNING id::text
   `,[actorId,staffId,now]);
+  if(!audited||!Array.isArray(audited.rows)||audited.rows.length!==1||
+     typeof audited.rows[0]?.id!=='string'||!STAFF_UUID.test(audited.rows[0].id))
+   throw new Error('admin_totp_revocation_audit_unavailable');
   await client.query('COMMIT');
   began=false;
   return disabled.rows.length===1;
