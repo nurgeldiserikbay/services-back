@@ -25,7 +25,7 @@ test('Prisma declares every privileged MFA table created by migrations',()=>{
 });
 
 test('privileged security audit model and migration stay aligned',()=>{
- const model=schema.match(/model PlatformAdminSecurityEvent \\{([\\s\\S]*?)\\n\\}/)?.[1];
+ const model=schema.split('model PlatformAdminSecurityEvent {')[1]?.split('\n}')[0];
  assert.ok(model,'security audit model missing');
  assert.ok(model.includes('@@map("platform_admin_security_events")'));
  assert.ok(model.includes('SecurityEventActor'));
