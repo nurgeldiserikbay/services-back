@@ -252,3 +252,29 @@ test('seller UUID casing does not deny the same canonical PostgreSQL owner',asyn
  assert.equal(result.state,'accepted');
  assert.equal(statements.filter(sql=>sql.includes('UPDATE service_requests')).length,1);
 });
+
+test('uppercase request UUID yields canonical id and identical notification dedupe key',async()=>{
+ const requestId=randomUUID(),sellerId=randomUUID(),customerId=randomUUID();
+ const writes:Array<{sql:string;params:unknown[]}>= [];
+ const db={query:async(sql:string,params:unknown[]=[])=>{
+  writes.push({sql,params});
+  if(sql.includes('FROM service_requests WHERE'))return {rows:[{
+   id:requestId,status:'PENDING',version:1,
+   seller_professional_id:sellerId,seller_organization_id:null,
+   customer_person_id:customerId,guest_contact_id:null,
+  }]};
+  if(sql.includes('UPDATE service_requests'))return {rows:[{version:2}]};
+  if(sql.includes('INSERT INTO'))return {rows:[]};
+  throw new Error('unexpected SQL');
+ }};
+ const result=await decideSellerRequest(db as never,requestId.toUpperCase(),
+  {kind:'professional',sellerId},'accept',1);
+ assert.equal(result.id,requestId);
+ const notification=writes.find(item=>item.sql.includes('INSERT INTO notification_intents'));
+ assert.ok(notification);
+ assert.equal(notification.params[3],'request-accept:client:'+requestId);
+ const outbox=writes.find(item=>item.sql.includes('INSERT INTO domain_outbox_events'));
+ assert.ok(outbox);
+ assert.equal(outbox.params[2],requestId);
+ assert.equal(writes[0].params[0],requestId);
+});
