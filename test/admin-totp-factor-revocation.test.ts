@@ -22,6 +22,8 @@ function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'
    if(sql.includes('FROM platform_admin_sessions session')){
     events.push('authorize');
     assert.deepEqual(params?.slice(1),[now,300000]);
+    assert.ok(sql.includes('JOIN platform_admin_grants security_grant'));
+    assert.ok(sql.includes('FOR SHARE OF session,actor,security_grant'));
     return {rows:mode==='unauthorized'?[]:[{staff_id:staffId}]};
    }
    if(sql.includes('INSERT INTO platform_admin_security_events')){
