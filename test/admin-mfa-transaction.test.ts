@@ -29,6 +29,10 @@ function poolFor(mode:'success'|'replay'|'denied'|'commit-failure'|'locked'){
     events.push('lockout-check');
     return {rows:mode==='locked'?[{locked_until:new Date(now+60000)}]:[]};
    }
+   if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
+    events.push('record-failure');
+    return {rows:[{failed_attempts:1,locked_until:null}]};
+   }
    if(sql.includes('platform_admin_totp_replay')){
     events.push('consume');
     return {rows:mode==='replay'?[]:[{last_consumed_counter:String(counter)}]};
@@ -60,7 +64,7 @@ test('replayed code rolls back without issuing a session',async()=>{
  assert.equal(await issueAdminSessionInTransaction(
   fixture.pool,primary,secret,code,pepper,now,
  ),null);
- assert.deepEqual(fixture.events,['BEGIN','lockout-check','consume','ROLLBACK','release']);
+ assert.deepEqual(fixture.events,['BEGIN','lockout-check','consume','record-failure','COMMIT','release']);
 });
 test('failed issuance rolls back consumed TOTP watermark',async()=>{
  const fixture=poolFor('denied');
