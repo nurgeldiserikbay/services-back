@@ -40,6 +40,9 @@ export async function revokeAdminTotpFactorAndSessions(
    FROM platform_admin_sessions session
    JOIN platform_admin_staff actor ON actor.id=session.staff_id
    JOIN users usr ON usr.id=actor.user_id
+   JOIN platform_admin_grants security_grant
+     ON security_grant.staff_id=actor.id
+    AND security_grant.scope='platform.admin.security'
    WHERE session.token_hash=$1 AND session.revoked_at IS NULL
      AND session.expires_at>to_timestamp($2::double precision/1000)
      AND session.mfa_verified_at IS NOT NULL
@@ -47,9 +50,7 @@ export async function revokeAdminTotpFactorAndSessions(
      AND session.mfa_verified_at>to_timestamp(($2::double precision-$3::double precision)/1000)
      AND actor.disabled_at IS NULL AND usr.status='ACTIVE'
      AND actor.role='owner'
-     AND EXISTS (SELECT 1 FROM platform_admin_grants grant_row
-       WHERE grant_row.staff_id=actor.id AND grant_row.scope='platform.admin.security')
-   FOR SHARE OF session,actor
+   FOR SHARE OF session,actor,security_grant
   `,[actorHash,now,RECENT_MFA_MS]);
   if(!authority||!Array.isArray(authority.rows)||authority.rows.length>1)
    throw new Error('admin_totp_revocation_authority_unavailable');
