@@ -1,5 +1,6 @@
 import type {Pool,PoolClient} from 'pg';
 import {issueAdminSessionAfterTotp} from './admin-mfa-session.js';
+import {isAdminMfaLocked} from './admin-mfa-attempts.js';
 
 /**
  * Transaction boundary for a trusted MFA login service.
@@ -20,6 +21,11 @@ export async function issueAdminSessionInTransaction(
  try{
   await client.query('BEGIN');
   began=true;
+  if(await isAdminMfaLocked(client,primary?.staffId,now)){
+   await client.query('ROLLBACK');
+   began=false;
+   return null;
+  }
   const session=await issueAdminSessionAfterTotp(
    client,primary,totpSecret,totpCode,pepper,now,
   );
