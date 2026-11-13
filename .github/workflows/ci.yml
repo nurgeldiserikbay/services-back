@@ -188,7 +188,9 @@ jobs:
           # an untracked temporary database behind.
           restore_created=1
           createdb "$restore_db"
-          pg_restore --dbname="$restore_db" --no-owner --no-acl --single-transaction --exit-on-error "$backup"
+          # Prevent a stalled restore from consuming the entire CI job timeout.
+          timeout --signal=TERM --kill-after=15s 180s \
+            pg_restore --dbname="$restore_db" --no-owner --no-acl --single-transaction --exit-on-error "$backup"
           psql --dbname="$restore_db" -v ON_ERROR_STOP=1 <<'SQL'
           DO $verify$
           BEGIN
