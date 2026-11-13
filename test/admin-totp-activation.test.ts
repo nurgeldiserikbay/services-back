@@ -16,7 +16,7 @@ const offset=digest[digest.length-1]!&15;
 const code=String((digest.readUInt32BE(offset)&0x7fffffff)%1000000).padStart(6,'0');
 const envelope=sealAdminTotpSecret(secret,staffId,key);
 
-function fixture(mode:'ok'|'missing'|'replayed'|'commit-fails'|'locked'){
+function fixture(mode:'ok'|'missing'|'replayed'|'commit-fails'|'locked'|'audit-fails'){
  const events:string[]=[];
  const client={
   query:async(sql:string)=>{
@@ -26,7 +26,7 @@ function fixture(mode:'ok'|'missing'|'replayed'|'commit-fails'|'locked'){
     return {rows:[]};
    }
    if(sql.includes('INSERT INTO platform_admin_security_events')){
-    events.push('audit');return {rows:[{id:randomUUID()}]};
+    events.push('audit');return {rows:mode==='audit-fails'?[]:[{id:randomUUID()}]};
    }
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('staff-lock');return {rows:[{}]};
@@ -100,4 +100,16 @@ test('locked MFA identity cannot attempt enrollment activation',async()=>{
  const f=fixture('locked');
  assert.equal(await activateProvisionedAdminTotp(f.pool,staffId,code,async()=>key,now),false);
  assert.deepEqual(f.events,['BEGIN','staff-lock','lockout','ROLLBACK','release']);
+});
+
+test('replayed enrollment rolls back failure counter when audit write fails',async()=>{
+ const f=fixture('audit-fails');
+ const bad=code==='999999'?'000000':'999999';
+ await assert.rejects(
+  activateProvisionedAdminTotp(f.pool,staffId,bad,async()=>key,now),
+  /admin_mfa_security_audit_unavailable/,
+ );
+ assert.deepEqual(f.events,[
+  'BEGIN','staff-lock','lockout','factor-lock','failure','audit','ROLLBACK','release',
+ ]);
 });
