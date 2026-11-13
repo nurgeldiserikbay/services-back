@@ -16,6 +16,7 @@ test('admin issuance rejects stale MFA and invalid identities before SQL',async(
   {staffId,mfaVerifiedAt:now-15*60*1000-1},
   {staffId,mfaVerifiedAt:now+1},
   {staffId,mfaVerifiedAt:NaN},
+  {staffId,mfaVerifiedAt:-1},
  ]){
   assert.equal(await createVerifiedPlatformAdminSession(db,verified,pepper,now),null);
  }
