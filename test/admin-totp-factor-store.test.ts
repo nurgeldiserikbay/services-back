@@ -52,3 +52,23 @@ test('missing factor fails closed without key lookup',async()=>{
  }),null);
  assert.equal(calls,0);
 });
+
+test('provisioning rejects malformed and mismatched database identities',async()=>{
+ for(const rows of [null,[{staff_id:'invalid'}],[{staff_id:randomUUID()}],
+  [{staff_id:staffId},{staff_id:staffId}],[{}]]){
+  const db={query:async()=>({rows})} as never;
+  await assert.rejects(provisionAdminTotpFactor(
+   db,staffId,secret,'key-1',key,
+  ),/admin_totp_provision_unavailable/);
+ }
+});
+
+test('duplicate provision attempt does not replace an existing factor',async()=>{
+ const db={query:async(sql:string)=>{
+  assert.match(sql,/ON CONFLICT \(staff_id\) DO NOTHING/);
+  return {rows:[]};
+ }} as never;
+ assert.equal(await provisionAdminTotpFactor(
+  db,staffId,secret,'key-1',key,
+ ),false);
+});
