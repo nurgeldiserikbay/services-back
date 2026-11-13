@@ -134,7 +134,9 @@ jobs:
           restore_created=0
           cleanup_restore() {
             if [ "$restore_created" -eq 1 ]; then
-              dropdb --if-exists "$restore_db" >/dev/null 2>&1 || true
+              # --force terminates a restore backend left after a timeout.
+              # Cleanup must not mask the original failing test.
+              dropdb --if-exists --force "$restore_db" >/dev/null 2>&1 || true
             fi
             rm -f "$backup" "$backup.sha256"
           }
