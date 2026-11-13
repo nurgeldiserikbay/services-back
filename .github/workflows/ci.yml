@@ -162,6 +162,7 @@ jobs:
           # Counts alone cannot detect changed or missing rows with the same cardinality.
           # JSON rows include all columns; order by UUID to make the digest deterministic.
           source_geo_digest="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY id), '')) FROM (SELECT * FROM public.cities) t")"
+          source_migration_digest="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY migration_name), '')) FROM (SELECT * FROM public._prisma_migrations) t")"
           createdb "$restore_db"
           restore_created=1
           pg_restore --dbname="$restore_db" --no-owner --no-acl --single-transaction --exit-on-error "$backup"
@@ -188,6 +189,8 @@ jobs:
           test "$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public._prisma_migrations')" = "$source_migrations"
           restored_geo_digest="$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY id), '')) FROM (SELECT * FROM public.cities) t")"
           test "$restored_geo_digest" = "$source_geo_digest"
+          restored_migration_digest="$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY migration_name), '')) FROM (SELECT * FROM public._prisma_migrations) t")"
+          test "$restored_migration_digest" = "$source_migration_digest"
           # Run the same transactional constraint smoke suite against recovered data.
           # The smoke SQL rolls back all its fixture rows.
           restore_url="postgresql://services:services@127.0.0.1:5432/$restore_db"
