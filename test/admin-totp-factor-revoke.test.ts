@@ -1,9 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import {randomUUID,randomBytes} from 'node:crypto';
+import {issueAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
 import {revokeAdminTotpFactor} from '../src/modules/admin/admin-totp-factor-revoke.js';
 
-const actor=randomUUID(),target=randomUUID(),session=randomUUID();
+const actor=randomUUID(),target=randomUUID();
+const pepper=randomBytes(32);
+const {token,tokenHash}=issueAdminSessionToken(pepper);
 function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'){
  const events:string[]=[];
  const client={
@@ -13,7 +16,8 @@ function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'){
    }
    if(sql.includes('FOR SHARE OF staff')){
     events.push('authorize-actor');
-    assert.deepEqual(params,[actor,session,params?.[2]]);
+    assert.deepEqual(params,[tokenHash,params?.[1]]);
+    assert.match(sql,/session.token_hash=\$1/);
     assert.match(sql,/staff.role='owner'/);
     assert.match(sql,/grants.scope='admin.security.revoke'/);
     assert.match(sql,/session.revoked_at IS NULL/);
@@ -42,7 +46,7 @@ function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'){
 
 test('revocation disables factor, revokes sessions and audits before commit',async()=>{
  const f=fixture('ok');
- assert.equal(await revokeAdminTotpFactor(f.pool,actor,target,session),true);
+ assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),true);
  assert.deepEqual(f.events,[
   'BEGIN','authorize-actor','disable-factor','revoke-sessions',
   'audit','COMMIT','release',
@@ -50,19 +54,19 @@ test('revocation disables factor, revokes sessions and audits before commit',asy
 });
 test('unknown actor cannot revoke factor',async()=>{
  const f=fixture('no-actor');
- assert.equal(await revokeAdminTotpFactor(f.pool,actor,target,session),false);
+ assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),false);
  assert.deepEqual(f.events,['BEGIN','authorize-actor','ROLLBACK','release']);
 });
 test('missing factor does not revoke sessions',async()=>{
  const f=fixture('no-factor');
- assert.equal(await revokeAdminTotpFactor(f.pool,actor,target,session),false);
+ assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),false);
  assert.deepEqual(f.events,[
   'BEGIN','authorize-actor','disable-factor','ROLLBACK','release',
  ]);
 });
 test('audit failure rolls back factor and session revocation',async()=>{
  const f=fixture('audit-fails');
- await assert.rejects(revokeAdminTotpFactor(f.pool,actor,target,session),
+ await assert.rejects(revokeAdminTotpFactor(f.pool,token,target,pepper),
   /admin_totp_revocation_audit_unavailable/);
  assert.deepEqual(f.events,[
   'BEGIN','authorize-actor','disable-factor','revoke-sessions',
@@ -72,8 +76,8 @@ test('audit failure rolls back factor and session revocation',async()=>{
 test('invalid identities fail before connecting to database',async()=>{
  let calls=0;
  const pool={connect:async()=>{calls++;throw Error('unexpected');}} as never;
- assert.equal(await revokeAdminTotpFactor(pool,'invalid',target,session),false);
- assert.equal(await revokeAdminTotpFactor(pool,actor,'invalid',session),false);
- assert.equal(await revokeAdminTotpFactor(pool,actor,target,'invalid'),false);
+ assert.equal(await revokeAdminTotpFactor(pool,'invalid',target,pepper),false);
+ assert.equal(await revokeAdminTotpFactor(pool,token,'invalid',pepper),false);
+ assert.equal(await revokeAdminTotpFactor(pool,token,target,Buffer.alloc(4)),false);
  assert.equal(calls,0);
 });
