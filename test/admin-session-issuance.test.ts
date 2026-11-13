@@ -23,6 +23,24 @@ test('admin issuance rejects stale MFA and invalid identities before SQL',async(
  assert.equal(queries,0);
 });
 
+test('admin issuance rejects non-exact MFA assertions without querying SQL',async()=>{
+ let queries=0;
+ const db={query:async()=>{queries++;return {rows:[]};}} as never;
+ const valid={staffId,mfaVerifiedAt:now};
+ for(const assertion of [
+  {...valid,challenge:'browser-supplied'},
+  Object.assign(Object.create(null),valid),
+  Object.assign(Object.create({admin:true}),valid),
+  [valid],
+  {staffId},
+ ]){
+  assert.equal(await createVerifiedPlatformAdminSession(
+   db,assertion as never,pepper,now,
+  ),null);
+ }
+ assert.equal(queries,0);
+});
+
 test('admin issuance stores a hash and requires active staff, user and grants',async()=>{
  const db={query:async(sql:string,params:unknown[])=>{
   assert.match(sql,/INSERT INTO platform_admin_sessions/);
