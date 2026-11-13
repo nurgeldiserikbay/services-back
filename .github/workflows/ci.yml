@@ -127,6 +127,36 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Verify privileged MFA and audit database constraints
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $verify$
+          DECLARE missing text;
+          BEGIN
+            SELECT string_agg(expected.name, ', ' ORDER BY expected.name)
+              INTO missing
+            FROM (VALUES
+              ('platform_admin_totp_replay', 'staff_id'),
+              ('platform_admin_mfa_attempts', 'staff_id'),
+              ('platform_admin_totp_factors', 'staff_id'),
+              ('platform_admin_security_events', 'actor_staff_id'),
+              ('platform_admin_security_events', 'target_staff_id')
+            ) AS expected(table_name,column_name)
+            WHERE NOT EXISTS (
+              SELECT 1 FROM pg_constraint c
+              JOIN pg_class tbl ON tbl.oid=c.conrelid
+              JOIN pg_namespace ns ON ns.oid=tbl.relnamespace
+              JOIN unnest(c.conkey) AS keys(attnum) ON true
+              JOIN pg_attribute att ON att.attrelid=tbl.oid AND att.attnum=keys.attnum
+              WHERE ns.nspname='public' AND tbl.relname=expected.table_name
+                AND att.attname=expected.column_name
+                AND c.contype='f' AND c.confdeltype IN ('c','r')
+            );
+            IF missing IS NOT NULL THEN
+              RAISE EXCEPTION 'Missing MFA/audit staff foreign keys: %', missing;
+            END IF;
+          END $verify$;
+          SQL
       - name: Exercise isolated PostgreSQL logical backup and restore
         env:
           PGHOST: 127.0.0.1
