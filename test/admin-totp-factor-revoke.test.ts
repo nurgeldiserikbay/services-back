@@ -53,14 +53,14 @@ test('revocation disables factor, revokes sessions and audits before commit',asy
  const f=fixture('ok');
  assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),true);
  assert.deepEqual(f.events,[
-  'BEGIN','authorize-actor','target-lock','disable-factor','revoke-sessions',
+  'BEGIN','target-lock','authorize-actor','disable-factor','revoke-sessions',
   'audit','COMMIT','release',
  ]);
 });
 test('unknown actor cannot revoke factor',async()=>{
  const f=fixture('no-actor');
  assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),false);
- assert.deepEqual(f.events,['BEGIN','authorize-actor','ROLLBACK','release']);
+ assert.deepEqual(f.events,['BEGIN','target-lock','authorize-actor','ROLLBACK','release']);
 });
 test('missing factor does not revoke sessions',async()=>{
  const f=fixture('no-factor');
