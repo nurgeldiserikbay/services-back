@@ -33,6 +33,10 @@ function poolFor(mode:'success'|'replay'|'denied'|'commit-failure'|'locked'){
     events.push('lockout-check');
     return {rows:mode==='locked'?[{locked_until:new Date(now+60000)}]:[]};
    }
+   if(sql.includes('DELETE FROM platform_admin_mfa_attempts')){
+    events.push('clear-failures');
+    return {rows:[]};
+   }
    if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
     events.push('record-failure');
     return {rows:[{failed_attempts:1,locked_until:null}]};
@@ -60,7 +64,7 @@ test('admin session is returned only after successful commit',async()=>{
  );
  assert.ok(result);
  assert.equal(result.token.length,43);
- assert.deepEqual(fixture.events,['BEGIN','staff-lock','lockout-check','consume','issue','COMMIT','release']);
+ assert.deepEqual(fixture.events,['BEGIN','staff-lock','lockout-check','consume','issue','clear-failures','COMMIT','release']);
  assert.equal(fixture.released,true);
 });
 test('replayed code rolls back without issuing a session',async()=>{
@@ -82,7 +86,7 @@ test('failed commit never returns the generated bearer',async()=>{
  await assert.rejects(issueAdminSessionInTransaction(
   fixture.pool,primary,secret,code,pepper,now,
  ),/commit failed/);
- assert.deepEqual(fixture.events,['BEGIN','staff-lock','lockout-check','consume','issue','COMMIT','ROLLBACK','release']);
+ assert.deepEqual(fixture.events,['BEGIN','staff-lock','lockout-check','consume','issue','clear-failures','COMMIT','ROLLBACK','release']);
 });
 
 test('locked MFA account never verifies or issues a privileged session',async()=>{
