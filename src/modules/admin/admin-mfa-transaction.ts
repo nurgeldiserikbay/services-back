@@ -3,6 +3,8 @@ import {issueAdminSessionAfterTotp} from './admin-mfa-session.js';
 import {isAdminMfaLocked,recordAdminMfaFailure} from './admin-mfa-attempts.js';
 import {recordAdminMfaSecurityEvent} from './admin-mfa-security-audit.js';
 
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 /**
  * Transaction boundary for a trusted MFA login service.
  * Only return the privileged bearer after PostgreSQL confirms COMMIT.
@@ -16,6 +18,15 @@ export async function issueAdminSessionInTransaction(
  pepper:Buffer,
  now=Date.now(),
 ):Promise<{token:string;expiresAt:number}|null>{
+ if(!primary||typeof primary!=='object'||Array.isArray(primary)||
+    Object.getPrototypeOf(primary)!==Object.prototype||
+    Object.keys(primary).length!==2||
+    typeof primary.staffId!=='string'||!UUID.test(primary.staffId)||
+    !Number.isSafeInteger(primary.authenticatedAt)||primary.authenticatedAt<0||
+    !Number.isSafeInteger(now)||now<0||primary.authenticatedAt>now||
+    now-primary.authenticatedAt>300000||
+    !Buffer.isBuffer(totpSecret)||totpSecret.length<20||totpSecret.length>128||
+    !Buffer.isBuffer(pepper)||pepper.length!==32)return null;
  const client:PoolClient=await pool.connect();
  let committed=false;
  let began=false;
@@ -31,10 +42,27 @@ export async function issueAdminSessionInTransaction(
     [primary.staffId],
    );
   }
-  if(await isAdminMfaLocked(client,primary?.staffId,now)){
+  if(await isAdminMfaLocked(client,primary.staffId,now)){
    await client.query('ROLLBACK');
    began=false;
    return null;
+  }
+  // The raw-secret compatibility path must not bypass factor revocation.
+  // Lock the activated factor until session issuance commits.
+  const factor=await client.query<{staff_id:string}>(`
+   SELECT factor.staff_id::text FROM platform_admin_totp_factors factor
+   JOIN platform_admin_staff staff ON staff.id=factor.staff_id
+   JOIN users usr ON usr.id=staff.user_id
+   WHERE factor.staff_id=$1::uuid AND factor.activated_at IS NOT NULL
+     AND factor.disabled_at IS NULL AND staff.disabled_at IS NULL
+     AND usr.status='ACTIVE'
+     AND EXISTS (SELECT 1 FROM platform_admin_grants grants
+       WHERE grants.staff_id=staff.id)
+   FOR SHARE OF factor
+  `,[primary.staffId]);
+  if(!factor||!Array.isArray(factor.rows)||factor.rows.length!==1||
+     factor.rows[0]?.staff_id?.toLowerCase()!==primary.staffId.toLowerCase()){
+   await client.query('ROLLBACK');began=false;return null;
   }
   const session=await issueAdminSessionAfterTotp(
    client,primary,totpSecret,totpCode,pepper,now,
