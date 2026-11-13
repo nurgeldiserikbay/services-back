@@ -5,8 +5,10 @@ const RECENT_MFA_MS=5*60*1000;
 const STAFF_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
- * Privileged server-only security operation. The caller MUST independently
- * authorize the revocation (e.g. an authenticated security administrator).
+ * Privileged server-only security operation. Authorization is checked against
+ * a live, recently MFA-verified owner session with a security grant in SQL.
+ * The caller must keep the raw bearer secret and never expose this operation
+ * directly as an unauthenticated HTTP endpoint.
  * Disabling the factor and revoking every active privileged session are atomic.
  * The replay watermark is intentionally retained: an old code cannot be reused.
  */
