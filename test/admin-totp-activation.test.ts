@@ -113,3 +113,12 @@ test('replayed enrollment rolls back failure counter when audit write fails',asy
   'BEGIN','staff-lock','lockout','factor-lock','failure','audit','ROLLBACK','release',
  ]);
 });
+
+test('activation rejects timestamps outside supported Date range without SQL',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected');}} as never;
+ assert.equal(await activateProvisionedAdminTotp(
+  pool,staffId,code,async()=>key,8640000000000001,
+ ),false);
+ assert.equal(connections,0);
+});
