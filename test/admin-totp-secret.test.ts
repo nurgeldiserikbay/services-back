@@ -21,7 +21,8 @@ test('TOTP secret envelope rejects tampering and noncanonical encodings',()=>{
  const fields=envelope.split('.');
  assert.equal(openAdminTotpSecret('v2.'+fields.slice(1).join('.'),staffId,key),null);
  assert.equal(openAdminTotpSecret(envelope+'.extra',staffId,key),null);
- assert.equal(openAdminTotpSecret(envelope.replace(/.$/,'A'),staffId,key),null);
+ const alteredTag=(fields[3]![0]==='A'?'B':'A')+fields[3]!.slice(1);
+ assert.equal(openAdminTotpSecret([...fields.slice(0,3),alteredTag].join('.'),staffId,key),null);
  assert.equal(openAdminTotpSecret('v1.invalid',staffId,key),null);
  assert.equal(openAdminTotpSecret(null,staffId,key),null);
 });
