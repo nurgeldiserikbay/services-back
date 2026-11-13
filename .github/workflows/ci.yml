@@ -190,6 +190,12 @@ jobs:
           # an untracked temporary database behind.
           restore_created=1
           createdb "$restore_db"
+          # Confirm the recovery target is a fresh empty database before writing.
+          existing_relations="$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S','f')")"
+          if [ "$existing_relations" != 0 ]; then
+            echo 'Recovery database is not empty; refusing restore' >&2
+            exit 1
+          fi
           # A restored database must not inherit unexpected session connections.
           test "$(psql --dbname=postgres -At -v ON_ERROR_STOP=1 -v target="$restore_db" <<'SQL'
           SELECT count(*) FROM pg_stat_activity WHERE datname = :'target';
