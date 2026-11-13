@@ -123,3 +123,23 @@ test('malformed primary assertion is denied before database connection',async()=
  ),null);
  assert.equal(connects,0);
 });
+
+test('invalid trusted assertion shape and overflowing clock fail before connect',async()=>{
+ let connects=0;
+ const pool={connect:async()=>{connects++;throw Error('unexpected connection');}} as never;
+ const invalid=[
+  Object.assign(Object.create(null),primary),
+  {...primary,extra:true},
+  {staffId,authenticatedAt:now+1},
+  {staffId,authenticatedAt:now-300001},
+ ];
+ for(const value of invalid){
+  assert.equal(await issueAdminSessionInTransaction(
+   pool,value as typeof primary,secret,code,pepper,now,
+  ),null);
+ }
+ assert.equal(await issueAdminSessionInTransaction(
+  pool,primary,secret,code,pepper,Number.MAX_SAFE_INTEGER,
+ ),null);
+ assert.equal(connects,0);
+});
