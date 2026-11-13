@@ -16,7 +16,11 @@ export async function createVerifiedPlatformAdminSession(
  pepper:Buffer,
  now=Date.now(),
 ):Promise<{token:string;expiresAt:number}|null>{
- if(!verified||typeof verified.staffId!=='string'||!UUID.test(verified.staffId)||
+ if(!verified||typeof verified!=='object'||Array.isArray(verified)||
+    Object.getPrototypeOf(verified)!==Object.prototype||
+    Object.keys(verified).length!==2||
+    !Object.hasOwn(verified,'staffId')||!Object.hasOwn(verified,'mfaVerifiedAt')||
+    typeof verified.staffId!=='string'||!UUID.test(verified.staffId)||
     !Number.isSafeInteger(verified.mfaVerifiedAt)||verified.mfaVerifiedAt<0||
     !Number.isSafeInteger(now)||now<0||
     verified.mfaVerifiedAt>now||now-verified.mfaVerifiedAt>SESSION_MS||
