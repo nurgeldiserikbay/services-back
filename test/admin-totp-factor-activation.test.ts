@@ -26,6 +26,10 @@ function fakeDb(mode:'valid'|'wrong'|'missing'='valid'){
     encrypted_secret:mode==='wrong'?'v1.invalid':envelope,key_version:'key-1',
    }]};
   }
+  if(sql.includes('platform_admin_totp_replay')){
+   events.push('consume-enrollment-code');
+   return {rows:[{last_consumed_counter:String(counter)}]};
+  }
   if(sql.includes('UPDATE platform_admin_totp_factors')){
    events.push('activate');
    assert.deepEqual(params,[staffId,now]);
@@ -40,7 +44,7 @@ test('valid TOTP proof activates a pending factor',async()=>{
  assert.equal(await activateAdminTotpFactor(
   fixture.db,staffId,code,async()=>key,now,
  ),true);
- assert.deepEqual(fixture.events,['read','activate']);
+ assert.deepEqual(fixture.events,['read','consume-enrollment-code','activate']);
 });
 test('wrong code never activates a pending factor',async()=>{
  const fixture=fakeDb();
