@@ -11,15 +11,22 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
  */
 export async function activateAdminTotpInTransaction(
  pool:Pick<Pool,'connect'>,
- staffId:string,
+ primary:{staffId:string;authenticatedAt:number},
  code:unknown,
  resolveKey:(version:string)=>Promise<Buffer|null>,
  now=Date.now(),
 ):Promise<boolean>{
  // Do not let malformed identities reach SQL or advisory-lock hashing.
- if(typeof staffId!=='string'||!UUID.test(staffId)||
+ if(!primary||typeof primary!=='object'||Array.isArray(primary)||
+    Object.getPrototypeOf(primary)!==Object.prototype||
+    Object.keys(primary).length!==2||
+    typeof primary.staffId!=='string'||!UUID.test(primary.staffId)||
+    !Number.isSafeInteger(primary.authenticatedAt)||
     !Number.isSafeInteger(now)||now<0||
+    primary.authenticatedAt<0||primary.authenticatedAt>now||
+    now-primary.authenticatedAt>300000||
     typeof code!=='string'||code.length>32)return false;
+ const staffId=primary.staffId;
  const client:PoolClient=await pool.connect();
  let began=false;
  try{
