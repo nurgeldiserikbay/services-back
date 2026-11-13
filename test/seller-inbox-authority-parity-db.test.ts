@@ -69,6 +69,22 @@ test('personal inbox and decision permission agree across profile lifecycle',asy
  }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 });
 
+test('seller authority rejects nil UUIDs before database access',async()=>{
+ let queries=0;
+ const db={query:async()=>{queries++;return {rows:[]};}};
+ const nil='00000000-0000-0000-0000-000000000000';
+ const valid=randomUUID();
+ for(const [userId,requestId] of [
+  [nil,valid],[valid,nil],[nil,nil],
+ ]){
+  assert.deepEqual(
+   await resolveSellerDecisionAuthority(db as never,userId,requestId),
+   {authorized:false},
+  );
+ }
+ assert.equal(queries,0);
+});
+
 test('personal inbox exposes neither private note nor guest contact',async()=>{
  const db=new Client({connectionString:process.env.DATABASE_URL});
  await db.connect();await db.query('BEGIN');
