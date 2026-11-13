@@ -169,7 +169,8 @@ jobs:
               WHERE n.nspname='public'
                 AND c.relname='platform_admin_security_events'
                 AND t.tgname='platform_admin_security_events_append_only'
-                AND NOT t.tgisinternal AND t.tgenabled <> 'D'
+                AND NOT t.tgisinternal AND t.tgenabled IN ('O','A')
+                AND (t.tgtype & 1) <> 0
                 AND (t.tgtype & 16) <> 0
                 AND (t.tgtype & 8) <> 0
             ) THEN
