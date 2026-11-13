@@ -1,5 +1,8 @@
 import type {Pool,PoolClient} from 'pg';
 import {activateAdminTotpFactor} from './admin-totp-factor-activation.js';
+import {isAdminMfaLocked,recordAdminMfaFailure} from './admin-mfa-attempts.js';
+
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Transaction boundary for trusted TOTP enrollment.
@@ -13,6 +16,10 @@ export async function activateAdminTotpInTransaction(
  resolveKey:(version:string)=>Promise<Buffer|null>,
  now=Date.now(),
 ):Promise<boolean>{
+ // Do not let malformed identities reach SQL or advisory-lock hashing.
+ if(typeof staffId!=='string'||!UUID.test(staffId)||
+    !Number.isSafeInteger(now)||now<0||
+    typeof code!=='string'||code.length>32)return false;
  const client:PoolClient=await pool.connect();
  let began=false;
  try{
@@ -23,14 +30,23 @@ export async function activateAdminTotpInTransaction(
    'SELECT pg_advisory_xact_lock(hashtextextended($1::text, 104729))',
    [staffId],
   );
-  const activated=await activateAdminTotpFactor(
-   client,staffId,code,resolveKey,now,
-  );
-  if(!activated){
+  if(await isAdminMfaLocked(client,staffId,now)){
    await client.query('ROLLBACK');
    began=false;
    return false;
   }
+  const activated=await activateAdminTotpFactor(
+   client,staffId,code,resolveKey,now,
+  );
+  if(!activated){
+   // Invalid enrollment proofs count toward the same durable lockout as
+   // login attempts. Commit the failure, not the activation.
+   await recordAdminMfaFailure(client,staffId,now);
+   await client.query('COMMIT');
+   began=false;
+   return false;
+  }
+  await client.query('DELETE FROM platform_admin_mfa_attempts WHERE staff_id=$1::uuid',[staffId]);
   await client.query('COMMIT');
   began=false;
   return true;
