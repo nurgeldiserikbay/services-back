@@ -7,12 +7,14 @@ import {revokeAdminTotpFactor} from '../src/modules/admin/admin-totp-factor-revo
 const actor=randomUUID(),target=randomUUID();
 const pepper=randomBytes(32);
 const {token,tokenHash}=issueAdminSessionToken(pepper);
-function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'){
+function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'|'commit-fails'){
  const events:string[]=[];
  const client={
   query:async(sql:string,params?:unknown[])=>{
    if(['BEGIN','COMMIT','ROLLBACK'].includes(sql)){
-    events.push(sql);return {rows:[]};
+    events.push(sql);
+    if(sql==='COMMIT'&&mode==='commit-fails')throw Error('commit failed');
+    return {rows:[]};
    }
    if(sql.includes('FOR SHARE OF staff')){
     events.push('authorize-actor');
@@ -85,4 +87,13 @@ test('invalid identities fail before connecting to database',async()=>{
  assert.equal(await revokeAdminTotpFactor(pool,token,'invalid',pepper),false);
  assert.equal(await revokeAdminTotpFactor(pool,token,target,Buffer.alloc(4)),false);
  assert.equal(calls,0);
+});
+
+test('commit failure does not report successful revocation',async()=>{
+ const f=fixture('commit-fails');
+ await assert.rejects(revokeAdminTotpFactor(f.pool,token,target,pepper),/commit failed/);
+ assert.deepEqual(f.events,[
+  'BEGIN','target-lock','authorize-actor','disable-factor','revoke-sessions',
+  'audit','COMMIT','ROLLBACK','release',
+ ]);
 });
