@@ -134,6 +134,10 @@ jobs:
           pg_dump --dbname=services_test --format=custom --no-owner --no-acl --file="$backup"
           test -s "$backup"
           pg_restore --list "$backup" >/dev/null
+          # Capture exact counts before backup restore. CI is quiescent at this stage.
+          source_users="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public.users')"
+          source_cities="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public.cities')"
+          source_migrations="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public._prisma_migrations')"
           createdb "$restore_db"
           pg_restore --dbname="$restore_db" --no-owner --no-acl --single-transaction --exit-on-error "$backup"
           psql --dbname="$restore_db" -v ON_ERROR_STOP=1 <<'SQL'
@@ -154,6 +158,9 @@ jobs:
             END IF;
           END $verify$;
           SQL
+          test "$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public.users')" = "$source_users"
+          test "$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public.cities')" = "$source_cities"
+          test "$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public._prisma_migrations')" = "$source_migrations"
           echo 'Isolated logical backup/restore verification passed'
       - name: Verify seller decision input and side-effect boundaries
         run: node --import tsx --test test/seller-decision-input-boundary.test.ts
