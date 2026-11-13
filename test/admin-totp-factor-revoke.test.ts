@@ -26,6 +26,8 @@ function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'|'commit-fails'){
     assert.match(sql,/actor_factor.activated_at IS NOT NULL/);
     assert.match(sql,/actor_factor.disabled_at IS NULL/);
     assert.match(sql,/session.mfa_verified_at<=to_timestamp/);
+    assert.match(sql,/session.mfa_verified_at>to_timestamp\(\(\$2::double precision-900000\)\/1000\)/);
+    assert.match(sql,/session.expires_at>session.mfa_verified_at/);
     assert.match(sql,/grants.scope='admin.security.revoke'/);
     assert.match(sql,/session.revoked_at IS NULL/);
     assert.match(sql,/session.expires_at>/);
