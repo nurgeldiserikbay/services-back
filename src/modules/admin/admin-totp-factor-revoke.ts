@@ -4,17 +4,19 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 
 /**
  * Trusted server-only incident response. Caller must authorize actor to
- * revoke target; never take actorStaffId directly from a request body.
+ * revoke target; actor session ID must be obtained from a verified bearer.
  * Disabling the factor, revoking sessions and auditing are one transaction.
  */
 export async function revokeAdminTotpFactor(
  pool:Pick<Pool,'connect'>,
  actorStaffId:string,
  targetStaffId:string,
+ actorSessionId:string,
  now=Date.now(),
 ):Promise<boolean>{
  if(typeof actorStaffId!=='string'||!UUID.test(actorStaffId)||
     typeof targetStaffId!=='string'||!UUID.test(targetStaffId)||
+    typeof actorSessionId!=='string'||!UUID.test(actorSessionId)||
     !Number.isSafeInteger(now)||now<0)return false;
  const client:PoolClient=await pool.connect();
  let began=false;
@@ -24,12 +26,17 @@ export async function revokeAdminTotpFactor(
   const actor=await client.query<{id:string}>(`
    SELECT staff.id::text AS id FROM platform_admin_staff staff
    JOIN users usr ON usr.id=staff.user_id
-   WHERE staff.id=$1::uuid AND staff.disabled_at IS NULL
-     AND usr.status='ACTIVE'
+   JOIN platform_admin_sessions session ON session.staff_id=staff.id
+   WHERE staff.id=$1::uuid AND session.id=$2::uuid
+     AND session.revoked_at IS NULL
+     AND session.expires_at>to_timestamp($3::double precision/1000)
+     AND session.mfa_verified_at IS NOT NULL
+     AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
+     AND staff.role='owner'
      AND EXISTS (SELECT 1 FROM platform_admin_grants grants
-       WHERE grants.staff_id=staff.id)
-   FOR SHARE OF staff
-  `,[actorStaffId]);
+       WHERE grants.staff_id=staff.id AND grants.scope='admin.security.revoke')
+   FOR SHARE OF staff,session
+  `,[actorStaffId,actorSessionId,now]);
   if(!actor||!Array.isArray(actor.rows)||actor.rows.length!==1||
      actor.rows[0]?.id?.toLowerCase()!==actorStaffId.toLowerCase()){
    await client.query('ROLLBACK');began=false;return false;
