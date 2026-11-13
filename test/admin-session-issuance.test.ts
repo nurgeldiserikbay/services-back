@@ -77,3 +77,13 @@ test('admin issuance denies malformed driver output',async()=>{
   );
  }
 });
+
+test('session expiry outside supported Date range is rejected without SQL',async()=>{
+ let queries=0;
+ const db={query:async()=>{queries++;throw Error('unexpected');}} as never;
+ const late=8640000000000000-1000;
+ assert.equal(await createVerifiedPlatformAdminSession(
+  db,{staffId,mfaVerifiedAt:late},pepper,late,
+ ),null);
+ assert.equal(queries,0);
+});
