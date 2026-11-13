@@ -325,6 +325,7 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
  const second=new Client({connectionString:process.env.DATABASE_URL});
  await setup.connect();await first.connect();await second.connect();
  let ids:{ownerId:string;profileId:string;requestId:string}|undefined;
+ let fixtureCommitted=false;
  try{
   await setup.query('BEGIN');
   ids=await fixture(setup);
@@ -332,6 +333,7 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
    WHERE id=(SELECT guest_contact_id FROM service_requests WHERE id=$1)`,
    [ids.requestId]);
   await setup.query('COMMIT');
+  fixtureCommitted=true;
   await first.query('BEGIN');
   await second.query('BEGIN');
   await first.query("SET LOCAL lock_timeout='5s'");
@@ -370,8 +372,9 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
   await second.query('ROLLBACK').catch(()=>{});
   // The fixture is committed so both independent PostgreSQL sessions can see it.
   // Delete dependent records before their parents, even after a failed assertion.
-  if(ids){
-   await setup.query('BEGIN').catch(()=>{});
+  if(!fixtureCommitted)await setup.query('ROLLBACK').catch(()=>{});
+  if(ids&&fixtureCommitted){
+   await setup.query('BEGIN');
    try{
     await setup.query(`DELETE FROM notification_intents WHERE domain_event_id IN
      (SELECT id FROM domain_outbox_events
