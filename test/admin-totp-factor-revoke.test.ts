@@ -23,6 +23,9 @@ function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'|'commit-fails'){
     assert.ok(Number.isSafeInteger(params?.[1] as number));
     assert.match(sql,/session.token_hash=\$1/);
     assert.match(sql,/staff.role='owner'/);
+    assert.match(sql,/actor_factor.activated_at IS NOT NULL/);
+    assert.match(sql,/actor_factor.disabled_at IS NULL/);
+    assert.match(sql,/session.mfa_verified_at<=to_timestamp/);
     assert.match(sql,/grants.scope='admin.security.revoke'/);
     assert.match(sql,/session.revoked_at IS NULL/);
     assert.match(sql,/session.expires_at>/);
