@@ -22,7 +22,9 @@ export async function resolveSellerDecisionAuthority(
   requestId:string,
 ):Promise<SellerAuthorityResult>{
   if(typeof authenticatedUserId!=='string'||typeof requestId!=='string'||
-     !UUID.test(authenticatedUserId)||!UUID.test(requestId))
+     !UUID.test(authenticatedUserId)||!UUID.test(requestId)||
+     authenticatedUserId.toLowerCase()==='00000000-0000-0000-0000-000000000000'||
+     requestId.toLowerCase()==='00000000-0000-0000-0000-000000000000')
     return {authorized:false};
 
   // Acquire an exclusive request lock BEFORE the subsequent state transition.
