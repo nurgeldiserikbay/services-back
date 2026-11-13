@@ -425,8 +425,11 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
     cleanupFailure=error;
    }
   }
-  await Promise.allSettled([setup.end(),first.end(),second.end()]);
+  const closed=await Promise.allSettled([setup.end(),first.end(),second.end()]);
+  // Attempt every close, but do not silently hide a failed disconnect.
+  const closeFailure=closed.find((result)=>result.status==='rejected');
   if(cleanupFailure)throw cleanupFailure;
+  if(closeFailure?.status==='rejected')throw closeFailure.reason;
  }
 });
 
