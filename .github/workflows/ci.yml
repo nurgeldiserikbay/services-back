@@ -161,6 +161,8 @@ jobs:
           source_users="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public.users')"
           source_cities="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public.cities')"
           source_migrations="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public._prisma_migrations')"
+          source_constraints="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE n.nspname = 'public'")"
+          source_indexes="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_indexes WHERE schemaname = 'public'")"
           # Counts alone cannot detect changed or missing rows with the same cardinality.
           # JSON rows include all columns; order by UUID to make the digest deterministic.
           source_geo_digest="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY id), '')) FROM (SELECT * FROM public.cities) t")"
@@ -191,6 +193,8 @@ jobs:
           test "$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public.users')" = "$source_users"
           test "$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public.cities')" = "$source_cities"
           test "$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public._prisma_migrations')" = "$source_migrations"
+          test "$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE n.nspname = 'public'")" = "$source_constraints"
+          test "$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_indexes WHERE schemaname = 'public'")" = "$source_indexes"
           restored_geo_digest="$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY id), '')) FROM (SELECT * FROM public.cities) t")"
           test "$restored_geo_digest" = "$source_geo_digest"
           restored_migration_digest="$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY migration_name), '')) FROM (SELECT * FROM public._prisma_migrations) t")"
