@@ -43,6 +43,10 @@ export function encodeInboxCursor(createdAt:string,id:string):string {
   return Buffer.from(JSON.stringify([createdAt,id]),'utf8').toString('base64url');
 }
 export function parseSellerInboxFilter(input:{limit?:unknown;state?:unknown;cursor?:unknown}):SellerInboxFilter {
+  // Non-HTTP callers can bypass controller validation; reject malformed input
+  // as a client error rather than throwing an uncaught TypeError.
+  if(!input||typeof input!=='object'||Array.isArray(input))
+    throw new BadRequestException('Invalid inbox filter');
   const limitText=input.limit===undefined?'20':input.limit;
   if(typeof limitText!=='string'||!/^(?:[1-9]|[1-4][0-9]|50)$/.test(limitText))
     throw new BadRequestException('Invalid limit');
