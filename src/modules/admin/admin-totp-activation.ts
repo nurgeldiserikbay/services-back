@@ -1,5 +1,4 @@
 import type {Pool,PoolClient} from 'pg';
-import {loadActiveAdminTotpFactor} from './admin-totp-factor-store.js';
 import {openAdminTotpSecret} from './admin-totp-secret.js';
 import {verifyAdminTotp} from './admin-totp.js';
 import {consumeAdminTotpCounter} from './admin-totp-replay.js';
