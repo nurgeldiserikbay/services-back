@@ -28,7 +28,7 @@ export async function loginAdminWithProvisionedTotp(
     !Number.isSafeInteger(primary.authenticatedAt)||primary.authenticatedAt<0||
     !Number.isSafeInteger(now)||now<0||primary.authenticatedAt>now||
     now-primary.authenticatedAt>300000||
-    now>Number.MAX_SAFE_INTEGER-15*60*1000||
+    now>8640000000000000-15*60*1000||
     typeof resolveKey!=='function'||
     !Buffer.isBuffer(sessionPepper)||sessionPepper.length!==32)return null;
  const client:PoolClient=await pool.connect();
