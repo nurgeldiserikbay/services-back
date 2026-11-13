@@ -51,6 +51,9 @@ export async function revokeAdminTotpFactorAndSessions(
   if(authority.rows.length!==1){
    await client.query('ROLLBACK');began=false;return false;
   }
+  const actorId=authority.rows[0]?.staff_id;
+  if(typeof actorId!=='string'||!STAFF_UUID.test(actorId))
+   throw new Error('admin_totp_revocation_authority_unavailable');
   const disabled=await client.query<{staff_id:string}>(`
    UPDATE platform_admin_totp_factors
    SET disabled_at=to_timestamp($2::double precision/1000)
@@ -66,6 +69,13 @@ export async function revokeAdminTotpFactorAndSessions(
    SET revoked_at=to_timestamp($2::double precision/1000)
    WHERE staff_id=$1::uuid AND revoked_at IS NULL
   `,[staffId,now]);
+  // Audit record is committed atomically with factor and session revocation.
+  await client.query(`
+   INSERT INTO platform_admin_security_events
+    (actor_staff_id,target_staff_id,action,occurred_at)
+   VALUES ($1::uuid,$2::uuid,'totp_factor_revoked',
+           to_timestamp($3::double precision/1000))
+  `,[actorId,staffId,now]);
   await client.query('COMMIT');
   began=false;
   return disabled.rows.length===1;
