@@ -118,6 +118,43 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Exercise isolated PostgreSQL logical backup and restore
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: services
+          PGPASSWORD: services
+        run: |
+          set -euo pipefail
+          umask 077
+          backup="$RUNNER_TEMP/services-ci-backup.dump"
+          restore_db="services_restore_ci"
+          trap 'dropdb --if-exists "$restore_db" >/dev/null 2>&1 || true; rm -f "$backup"' EXIT
+          # A fresh recovery database is essential; never restore into services_test.
+          pg_dump --dbname=services_test --format=custom --no-owner --no-acl --file="$backup"
+          test -s "$backup"
+          pg_restore --list "$backup" >/dev/null
+          createdb "$restore_db"
+          pg_restore --dbname="$restore_db" --no-owner --no-acl --single-transaction --exit-on-error "$backup"
+          psql --dbname="$restore_db" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $verify$
+          BEGIN
+            IF to_regclass('public.users') IS NULL
+               OR to_regclass('public.service_requests') IS NULL
+               OR to_regclass('public.notification_intents') IS NULL
+               OR to_regclass('public._prisma_migrations') IS NULL
+            THEN
+              RAISE EXCEPTION 'Recovery database is missing required tables';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM public._prisma_migrations
+              WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL
+            ) THEN
+              RAISE EXCEPTION 'Recovery database has no applied migration';
+            END IF;
+          END $verify$;
+          SQL
+          echo 'Isolated logical backup/restore verification passed'
       - name: Verify seller decision input and side-effect boundaries
         run: node --import tsx --test test/seller-decision-input-boundary.test.ts
       - name: Verify seller inbox repository filter boundary
