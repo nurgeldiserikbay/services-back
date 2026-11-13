@@ -1,6 +1,7 @@
 import type {Pool,PoolClient} from 'pg';
 import {hashAdminSessionToken} from './admin-session-token.js';
 
+const RECENT_MFA_MS=5*60*1000;
 const STAFF_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
@@ -40,12 +41,14 @@ export async function revokeAdminTotpFactorAndSessions(
    WHERE session.token_hash=$1 AND session.revoked_at IS NULL
      AND session.expires_at>to_timestamp($2::double precision/1000)
      AND session.mfa_verified_at IS NOT NULL
+     AND session.mfa_verified_at<=to_timestamp($2::double precision/1000)
+     AND session.mfa_verified_at>to_timestamp(($2::double precision-$3::double precision)/1000)
      AND actor.disabled_at IS NULL AND usr.status='ACTIVE'
      AND actor.role='owner'
      AND EXISTS (SELECT 1 FROM platform_admin_grants grant_row
        WHERE grant_row.staff_id=actor.id AND grant_row.scope='platform.admin.security')
    FOR SHARE OF session,actor
-  `,[actorHash,now]);
+  `,[actorHash,now,RECENT_MFA_MS]);
   if(!authority||!Array.isArray(authority.rows)||authority.rows.length>1)
    throw new Error('admin_totp_revocation_authority_unavailable');
   if(authority.rows.length!==1){
