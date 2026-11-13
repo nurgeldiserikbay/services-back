@@ -14,6 +14,7 @@ const digest=createHmac('sha1',secret).update(input).digest();
 const offset=digest[digest.length-1]!&15;
 const code=String((digest.readUInt32BE(offset)&0x7fffffff)%1000000).padStart(6,'0');
 const envelope=sealAdminTotpSecret(secret,staffId,key);
+const primary={staffId,authenticatedAt:now-1000};
 
 function fixture(locked=false){
  const events:string[]=[];
@@ -53,7 +54,7 @@ function fixture(locked=false){
 test('valid enrollment proof commits replay watermark, activation and reset',async()=>{
  const f=fixture();
  assert.equal(await activateAdminTotpInTransaction(
-  f.pool,staffId,code,async()=>key,now,
+  f.pool,primary,code,async()=>key,now,
  ),true);
  assert.deepEqual(f.events,[
   'BEGIN','serialize','lockout','factor','consume','activate','reset','COMMIT','release',
@@ -62,7 +63,7 @@ test('valid enrollment proof commits replay watermark, activation and reset',asy
 test('bad enrollment code commits a failure without activating',async()=>{
  const f=fixture();
  assert.equal(await activateAdminTotpInTransaction(
-  f.pool,staffId,code==='999999'?'000000':'999999',async()=>key,now,
+  f.pool,primary,code==='999999'?'000000':'999999',async()=>key,now,
  ),false);
  assert.deepEqual(f.events,[
   'BEGIN','serialize','lockout','factor','failure','COMMIT','release',
@@ -71,7 +72,7 @@ test('bad enrollment code commits a failure without activating',async()=>{
 test('locked enrollment is rejected before reading factor',async()=>{
  const f=fixture(true);
  assert.equal(await activateAdminTotpInTransaction(
-  f.pool,staffId,code,async()=>key,now,
+  f.pool,primary,code,async()=>key,now,
  ),false);
  assert.deepEqual(f.events,[
   'BEGIN','serialize','lockout','ROLLBACK','release',
@@ -81,7 +82,16 @@ test('invalid staff identifier never opens a database connection',async()=>{
  let connections=0;
  const pool={connect:async()=>{connections++;throw Error('should not connect');}} as never;
  assert.equal(await activateAdminTotpInTransaction(
-  pool,'not-a-uuid',code,async()=>key,now,
+  pool,{staffId:'not-a-uuid',authenticatedAt:now-1000},code,async()=>key,now,
+ ),false);
+ assert.equal(connections,0);
+});
+
+test('stale primary authentication is rejected before database access',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('should not connect');}} as never;
+ assert.equal(await activateAdminTotpInTransaction(
+  pool,{staffId,authenticatedAt:now-300001},code,async()=>key,now,
  ),false);
  assert.equal(connections,0);
 });
