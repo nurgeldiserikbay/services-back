@@ -1,6 +1,7 @@
 import type {PoolClient} from 'pg';
 import {openAdminTotpSecret} from './admin-totp-secret.js';
 import {verifyAdminTotp} from './admin-totp.js';
+import {consumeAdminTotpCounter} from './admin-totp-replay.js';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VERSION=/^[A-Za-z0-9_-]{1,64}$/;
@@ -29,6 +30,8 @@ export async function activateAdminTotpFactor(
   WHERE factor.staff_id=$1::uuid AND factor.activated_at IS NULL
     AND factor.disabled_at IS NULL AND staff.disabled_at IS NULL
     AND usr.status='ACTIVE'
+    AND EXISTS (SELECT 1 FROM platform_admin_grants grant_row
+                WHERE grant_row.staff_id=staff.id)
   FOR UPDATE OF factor
  `,[staffId]);
  if(!result||!Array.isArray(result.rows)||result.rows.length>1)
@@ -46,6 +49,9 @@ export async function activateAdminTotpFactor(
  try{counter=verifyAdminTotp(secret,code,now,-1);}
  finally{secret.fill(0);}
  if(counter===null)return false;
+ // Consume the enrollment proof before activation. The caller MUST commit
+ // both changes together; otherwise the same OTP could issue a session.
+ if(!await consumeAdminTotpCounter(db,staffId,counter))return false;
  const updated=await db.query<{staff_id:string}>(`
   UPDATE platform_admin_totp_factors
   SET activated_at=to_timestamp($2::double precision/1000)
