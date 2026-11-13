@@ -894,6 +894,8 @@ model PlatformAdminStaff {
   totpFactor PlatformAdminTotpFactor?
   totpReplay PlatformAdminTotpReplay?
   mfaAttempts PlatformAdminMfaAttempts?
+  securityEventsAsActor PlatformAdminSecurityEvent[] @relation("SecurityEventActor")
+  securityEventsAsTarget PlatformAdminSecurityEvent[] @relation("SecurityEventTarget")
   @@map("platform_admin_staff")
 }
 
@@ -961,4 +963,17 @@ model PlatformAdminMfaAttempts {
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(3)
   staff PlatformAdminStaff @relation(fields: [staffId], references: [id], onDelete: Cascade)
   @@map("platform_admin_mfa_attempts")
+}
+
+/** Append-only privileged security event metadata; never store tokens or OTPs. */
+model PlatformAdminSecurityEvent {
+  id String @id @default(uuid()) @db.Uuid
+  actorStaffId String @map("actor_staff_id") @db.Uuid
+  targetStaffId String @map("target_staff_id") @db.Uuid
+  action String @db.VarChar(64)
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  actor PlatformAdminStaff @relation("SecurityEventActor",fields:[actorStaffId],references:[id],onDelete:Restrict)
+  target PlatformAdminStaff @relation("SecurityEventTarget",fields:[targetStaffId],references:[id],onDelete:Restrict)
+  @@index([targetStaffId,occurredAt],map:"platform_admin_security_events_target_occurred_idx")
+  @@map("platform_admin_security_events")
 }
