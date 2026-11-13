@@ -61,6 +61,7 @@ export async function loadActiveAdminTotpFactor(
     AND usr.status='ACTIVE'
     AND EXISTS (SELECT 1 FROM platform_admin_grants grants
       WHERE grants.staff_id=staff.id)
+  FOR SHARE OF factor
  `,[staffId]);
  if(!result||!Array.isArray(result.rows)||result.rows.length>1)
   throw new Error('admin_totp_factor_unavailable');
