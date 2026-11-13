@@ -66,7 +66,7 @@ test('missing factor does not revoke sessions',async()=>{
  const f=fixture('no-factor');
  assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),false);
  assert.deepEqual(f.events,[
-  'BEGIN','authorize-actor','target-lock','disable-factor','ROLLBACK','release',
+  'BEGIN','target-lock','authorize-actor','disable-factor','ROLLBACK','release',
  ]);
 });
 test('audit failure rolls back factor and session revocation',async()=>{
@@ -74,7 +74,7 @@ test('audit failure rolls back factor and session revocation',async()=>{
  await assert.rejects(revokeAdminTotpFactor(f.pool,token,target,pepper),
   /admin_totp_revocation_audit_unavailable/);
  assert.deepEqual(f.events,[
-  'BEGIN','authorize-actor','target-lock','disable-factor','revoke-sessions',
+  'BEGIN','target-lock','authorize-actor','disable-factor','revoke-sessions',
   'audit','ROLLBACK','release',
  ]);
 });
