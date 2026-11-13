@@ -71,7 +71,7 @@ test('missing or disabled factor cannot be activated',async()=>{
  assert.deepEqual(f.events,['BEGIN','staff-lock','lockout','factor-lock','ROLLBACK','release']);
 });
 
-test('invalid code cannot activate or consume replay watermark',async()=>{
+test('invalid code commits a failure without activating the factor',async()=>{
  const f=fixture('ok');
  const bad=code==='999999'?'000000':'999999';
  assert.equal(await activateProvisionedAdminTotp(f.pool,staffId,bad,async()=>key,now),false);
