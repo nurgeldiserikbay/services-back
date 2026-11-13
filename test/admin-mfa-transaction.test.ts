@@ -25,6 +25,10 @@ function poolFor(mode:'success'|'replay'|'denied'|'commit-failure'|'locked'){
     if(sql==='COMMIT'&&mode==='commit-failure')throw Error('commit failed');
     return {rows:[]};
    }
+   if(sql.includes('INSERT INTO platform_admin_security_events')){
+    events.push('audit');
+    return {rows:[{id:randomUUID()}]};
+   }
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('staff-lock');
     return {rows:[{}]};
@@ -64,7 +68,7 @@ test('admin session is returned only after successful commit',async()=>{
  );
  assert.ok(result);
  assert.equal(result.token.length,43);
- assert.deepEqual(fixture.events,['BEGIN','staff-lock','lockout-check','consume','issue','clear-failures','COMMIT','release']);
+ assert.deepEqual(fixture.events,['BEGIN','staff-lock','lockout-check','consume','issue','clear-failures','audit','COMMIT','release']);
  assert.equal(fixture.released,true);
 });
 test('replayed code rolls back without issuing a session',async()=>{
@@ -72,7 +76,7 @@ test('replayed code rolls back without issuing a session',async()=>{
  assert.equal(await issueAdminSessionInTransaction(
   fixture.pool,primary,secret,code,pepper,now,
  ),null);
- assert.deepEqual(fixture.events,['BEGIN','staff-lock','lockout-check','consume','record-failure','COMMIT','release']);
+ assert.deepEqual(fixture.events,['BEGIN','staff-lock','lockout-check','consume','record-failure','audit','COMMIT','release']);
 });
 test('failed issuance rolls back consumed TOTP watermark',async()=>{
  const fixture=poolFor('denied');
@@ -86,7 +90,7 @@ test('failed commit never returns the generated bearer',async()=>{
  await assert.rejects(issueAdminSessionInTransaction(
   fixture.pool,primary,secret,code,pepper,now,
  ),/commit failed/);
- assert.deepEqual(fixture.events,['BEGIN','staff-lock','lockout-check','consume','issue','clear-failures','COMMIT','ROLLBACK','release']);
+ assert.deepEqual(fixture.events,['BEGIN','staff-lock','lockout-check','consume','issue','clear-failures','audit','COMMIT','ROLLBACK','release']);
 });
 
 test('locked MFA account never verifies or issues a privileged session',async()=>{
