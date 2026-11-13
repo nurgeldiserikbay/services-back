@@ -17,7 +17,7 @@ export async function createVerifiedPlatformAdminSession(
  now=Date.now(),
 ):Promise<{token:string;expiresAt:number}|null>{
  if(!verified||typeof verified.staffId!=='string'||!UUID.test(verified.staffId)||
-    !Number.isSafeInteger(verified.mfaVerifiedAt)||
+    !Number.isSafeInteger(verified.mfaVerifiedAt)||verified.mfaVerifiedAt<0||
     !Number.isSafeInteger(now)||now<0||
     verified.mfaVerifiedAt>now||now-verified.mfaVerifiedAt>SESSION_MS||
     now>Number.MAX_SAFE_INTEGER-SESSION_MS||
