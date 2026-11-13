@@ -3,6 +3,7 @@ import {openAdminTotpSecret} from './admin-totp-secret.js';
 import {verifyAdminTotp} from './admin-totp.js';
 import {consumeAdminTotpCounter} from './admin-totp-replay.js';
 import {isAdminMfaLocked,recordAdminMfaFailure} from './admin-mfa-attempts.js';
+import {recordAdminMfaSecurityEvent} from './admin-mfa-security-audit.js';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VERSION=/^[A-Za-z0-9_-]{1,64}$/;
@@ -69,6 +70,7 @@ export async function activateProvisionedAdminTotp(
    // Failed enrollment codes must be committed to the same durable
    // lockout budget as login guesses, never rolled back.
    await recordAdminMfaFailure(client,staffId,now);
+   await recordAdminMfaSecurityEvent(client,staffId,'totp_activation_failed');
    await client.query('COMMIT');began=false;return false;
   }
   if(!await consumeAdminTotpCounter(client,staffId,counter)){
@@ -88,6 +90,7 @@ export async function activateProvisionedAdminTotp(
    'DELETE FROM platform_admin_mfa_attempts WHERE staff_id=$1::uuid',
    [staffId],
   );
+  await recordAdminMfaSecurityEvent(client,staffId,'totp_factor_activated');
   await client.query('COMMIT');
   began=false;
   return true;
