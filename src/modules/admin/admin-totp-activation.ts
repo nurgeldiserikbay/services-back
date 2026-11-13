@@ -74,7 +74,12 @@ export async function activateProvisionedAdminTotp(
    await client.query('COMMIT');began=false;return false;
   }
   if(!await consumeAdminTotpCounter(client,staffId,counter)){
-   await client.query('ROLLBACK');began=false;return false;
+   // Replayed enrollment codes are rejected and charged to the same
+   // persistent failure budget as invalid codes. Rolling back here would
+   // allow unlimited repeated attempts without triggering lockout.
+   await recordAdminMfaFailure(client,staffId,now);
+   await recordAdminMfaSecurityEvent(client,staffId,'totp_activation_failed');
+   await client.query('COMMIT');began=false;return false;
   }
   const activated=await client.query<{staff_id:string}>(`
    UPDATE platform_admin_totp_factors
