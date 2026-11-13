@@ -22,7 +22,8 @@ export async function readSellerInbox(
   authenticatedUserId:string,
   filter:SellerInboxFilter,
 ):Promise<SellerInboxPage>{
-  if(typeof authenticatedUserId!=='string'||!UUID.test(authenticatedUserId))
+  if(typeof authenticatedUserId!=='string'||!UUID.test(authenticatedUserId)||
+     authenticatedUserId.toLowerCase()==='00000000-0000-0000-0000-000000000000')
     throw new Error('invalid_identity');
   // Defensive boundary for non-HTTP callers that bypass parseSellerInboxFilter.
   if(!filter||typeof filter!=='object'||
