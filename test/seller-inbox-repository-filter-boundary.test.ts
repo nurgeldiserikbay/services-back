@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {readSellerInbox} from '../src/modules/requests/seller-inbox.repository.js';
+import {parseSellerInboxFilter} from '../src/modules/requests/seller-inbox.contract.js';
 
 test('direct repository callers cannot omit normalized state or cursor fields',async()=>{
  const userId=randomUUID();
@@ -46,4 +47,14 @@ test('repository rejects malformed authenticated identity without querying Postg
   );
  }
  assert.equal(queries,0);
+});
+
+test('seller inbox parser returns 400 for malformed filter containers',()=>{
+ for(const value of [null,undefined,[],42,'limit=20']){
+  assert.throws(
+   ()=>parseSellerInboxFilter(value as never),
+   (error:unknown)=>Boolean(error&&typeof error==='object'&&
+     'getStatus' in error&&typeof error.getStatus==='function'&&error.getStatus()===400),
+  );
+ }
 });
