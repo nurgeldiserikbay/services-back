@@ -4,10 +4,11 @@ import {randomBytes,randomUUID} from 'node:crypto';
 import {revokeAdminTotpFactorAndSessions} from '../src/modules/admin/admin-totp-factor-revocation.js';
 
 const staffId=randomUUID();
+const auditId=randomUUID();
 const now=1763000000000;
 const pepper=randomBytes(32);
 const token=randomBytes(32).toString('base64url');
-function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'unauthorized'='active'){
+function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'audit-missing'|'revoke-unconfirmed'|'unauthorized'='active'){
  const events:string[]=[];
  const client={
   query:async(sql:string,params?:unknown[])=>{
@@ -27,7 +28,7 @@ function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'
     events.push('audit');
     assert.deepEqual(params,[staffId,staffId,now]);
     if(mode==='audit-fails')throw Error('audit unavailable');
-    return {rows:[],rowCount:1};
+    return {rows:mode==='audit-missing'?[]:[{id:auditId}],rowCount:1};
    }
    assert.deepEqual(params,[staffId,now]);
    if(sql.includes('UPDATE platform_admin_totp_factors')){
@@ -37,7 +38,7 @@ function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'
    if(sql.includes('UPDATE platform_admin_sessions')){
     events.push('revoke-sessions');
     if(mode==='revoke-fails')throw Error('session revoke failed');
-    return {rows:[],rowCount:1};
+    return mode==='revoke-unconfirmed'?{rows:[],rowCount:null}:{rows:[],rowCount:1};
    }
    throw Error('unexpected query');
   },
@@ -86,5 +87,24 @@ test('audit failure rolls back factor and session revocation',async()=>{
  ),/audit unavailable/);
  assert.deepEqual(f.events,[
   'BEGIN','lock','authorize','disable','revoke-sessions','audit','ROLLBACK','release',
+ ]);
+});
+
+test('missing audit confirmation rolls back security operation',async()=>{
+ const f=fixture('audit-missing');
+ await assert.rejects(revokeAdminTotpFactorAndSessions(
+  f.pool,staffId,token,pepper,now,
+ ),/admin_totp_revocation_audit_unavailable/);
+ assert.deepEqual(f.events,[
+  'BEGIN','lock','authorize','disable','revoke-sessions','audit','ROLLBACK','release',
+ ]);
+});
+test('unconfirmed session revocation prevents audit and commit',async()=>{
+ const f=fixture('revoke-unconfirmed');
+ await assert.rejects(revokeAdminTotpFactorAndSessions(
+  f.pool,staffId,token,pepper,now,
+ ),/admin_totp_session_revocation_unavailable/);
+ assert.deepEqual(f.events,[
+  'BEGIN','lock','authorize','disable','revoke-sessions','ROLLBACK','release',
  ]);
 });
