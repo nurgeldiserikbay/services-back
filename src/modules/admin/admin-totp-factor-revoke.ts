@@ -40,8 +40,13 @@ export async function revokeAdminTotpFactor(
      AND session.revoked_at IS NULL
      AND session.expires_at>to_timestamp($2::double precision/1000)
      AND session.mfa_verified_at IS NOT NULL
+     AND session.mfa_verified_at<=to_timestamp($2::double precision/1000)
      AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
      AND staff.role='owner'
+     AND EXISTS (SELECT 1 FROM platform_admin_totp_factors actor_factor
+       WHERE actor_factor.staff_id=staff.id
+         AND actor_factor.activated_at IS NOT NULL
+         AND actor_factor.disabled_at IS NULL)
      AND EXISTS (SELECT 1 FROM platform_admin_grants grants
        WHERE grants.staff_id=staff.id AND grants.scope='admin.security.revoke')
    FOR SHARE OF staff,session
