@@ -1,20 +1,27 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import {randomBytes,randomUUID} from 'node:crypto';
 import {revokeAdminTotpFactorAndSessions} from '../src/modules/admin/admin-totp-factor-revocation.js';
 
 const staffId=randomUUID();
 const now=1763000000000;
-function fixture(mode:'active'|'already-disabled'|'revoke-fails'='active'){
+const pepper=randomBytes(32);
+const token=randomBytes(32).toString('base64url');
+function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'unauthorized'='active'){
  const events:string[]=[];
  const client={
   query:async(sql:string,params?:unknown[])=>{
    if(['BEGIN','COMMIT','ROLLBACK'].includes(sql)){
     events.push(sql);return {rows:[]};
    }
-   assert.deepEqual(params?.[0],staffId);
    if(sql.includes('pg_advisory_xact_lock')){
+    assert.deepEqual(params?.[0],staffId);
     events.push('lock');return {rows:[{}]};
+   }
+   if(sql.includes('FROM platform_admin_sessions session')){
+    events.push('authorize');
+    assert.equal(params?.[1],now);
+    return {rows:mode==='unauthorized'?[]:[{staff_id:staffId}]};
    }
    assert.deepEqual(params,[staffId,now]);
    if(sql.includes('UPDATE platform_admin_totp_factors')){
@@ -34,22 +41,34 @@ function fixture(mode:'active'|'already-disabled'|'revoke-fails'='active'){
 }
 test('revocation disables factor and all sessions before commit',async()=>{
  const f=fixture();
- assert.equal(await revokeAdminTotpFactorAndSessions(f.pool,staffId,now),true);
- assert.deepEqual(f.events,['BEGIN','lock','disable','revoke-sessions','COMMIT','release']);
+ assert.equal(await revokeAdminTotpFactorAndSessions(f.pool,staffId,token,pepper,now),true);
+ assert.deepEqual(f.events,['BEGIN','lock','authorize','disable','revoke-sessions','COMMIT','release']);
 });
 test('already disabled factor still revokes remaining sessions',async()=>{
  const f=fixture('already-disabled');
- assert.equal(await revokeAdminTotpFactorAndSessions(f.pool,staffId,now),false);
- assert.deepEqual(f.events,['BEGIN','lock','disable','revoke-sessions','COMMIT','release']);
+ assert.equal(await revokeAdminTotpFactorAndSessions(f.pool,staffId,token,pepper,now),false);
+ assert.deepEqual(f.events,['BEGIN','lock','authorize','disable','revoke-sessions','COMMIT','release']);
 });
 test('session revocation failure rolls back factor disable',async()=>{
  const f=fixture('revoke-fails');
- await assert.rejects(revokeAdminTotpFactorAndSessions(f.pool,staffId,now),/session revoke failed/);
- assert.deepEqual(f.events,['BEGIN','lock','disable','revoke-sessions','ROLLBACK','release']);
+ await assert.rejects(revokeAdminTotpFactorAndSessions(f.pool,staffId,token,pepper,now),/session revoke failed/);
+ assert.deepEqual(f.events,['BEGIN','lock','authorize','disable','revoke-sessions','ROLLBACK','release']);
 });
 test('malformed identity does not connect to database',async()=>{
  let connected=false;
  const pool={connect:async()=>{connected=true;throw Error('unexpected connect');}} as never;
- assert.equal(await revokeAdminTotpFactorAndSessions(pool,'invalid',now),false);
+ assert.equal(await revokeAdminTotpFactorAndSessions(pool,'invalid',token,pepper,now),false);
  assert.equal(connected,false);
+});
+
+test('missing security grant or expired actor session rejects revocation',async()=>{
+ const f=fixture('unauthorized');
+ assert.equal(await revokeAdminTotpFactorAndSessions(f.pool,staffId,token,pepper,now),false);
+ assert.deepEqual(f.events,['BEGIN','lock','authorize','ROLLBACK','release']);
+});
+test('invalid actor bearer is rejected before connecting',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected');}} as never;
+ assert.equal(await revokeAdminTotpFactorAndSessions(pool,staffId,'invalid',pepper,now),false);
+ assert.equal(connections,0);
 });
