@@ -1,6 +1,6 @@
 import type {Pool,PoolClient} from 'pg';
 import {issueAdminSessionAfterTotp} from './admin-mfa-session.js';
-import {isAdminMfaLocked} from './admin-mfa-attempts.js';
+import {isAdminMfaLocked,recordAdminMfaFailure} from './admin-mfa-attempts.js';
 
 /**
  * Transaction boundary for a trusted MFA login service.
@@ -30,7 +30,12 @@ export async function issueAdminSessionInTransaction(
    client,primary,totpSecret,totpCode,pepper,now,
   );
   if(!session){
-   await client.query('ROLLBACK');
+   // Commit the failure independently of session issuance. Otherwise a
+   // ROLLBACK would discard the lockout counter and permit unlimited guesses.
+   // Invalid primary identities never produce a valid staff row in the upsert.
+   await recordAdminMfaFailure(client,primary?.staffId,now);
+   await client.query('COMMIT');
+   committed=true;
    began=false;
    return null;
   }
