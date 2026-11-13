@@ -21,7 +21,7 @@ function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'
    }
    if(sql.includes('FROM platform_admin_sessions session')){
     events.push('authorize');
-    assert.equal(params?.[1],now);
+    assert.deepEqual(params?.slice(1),[now,300000]);
     return {rows:mode==='unauthorized'?[]:[{staff_id:staffId}]};
    }
    if(sql.includes('INSERT INTO platform_admin_security_events')){
@@ -107,4 +107,17 @@ test('unconfirmed session revocation prevents audit and commit',async()=>{
  assert.deepEqual(f.events,[
   'BEGIN','lock','authorize','disable','revoke-sessions','ROLLBACK','release',
  ]);
+});
+
+test('revocation query requires MFA freshness in addition to session validity',async()=>{
+ const f=fixture();
+ assert.equal(await revokeAdminTotpFactorAndSessions(
+  f.pool,staffId,token,pepper,now,
+ ),true);
+ // The fixture checks the three authorization parameters; also assert
+ // the SQL's temporal guard to prevent a future refactor dropping it.
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync('src/modules/admin/admin-totp-factor-revocation.ts','utf8');
+ assert.match(source,/session\\.mfa_verified_at>to_timestamp/);
+ assert.match(source,/RECENT_MFA_MS=5\\*60\\*1000/);
 });
