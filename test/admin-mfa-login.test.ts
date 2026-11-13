@@ -26,6 +26,9 @@ function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'){
     if(sql==='COMMIT'&&mode==='commit-fails')throw Error('commit failed');
     return {rows:[]};
    }
+   if(sql.includes('INSERT INTO platform_admin_security_events')){
+    events.push('audit');return {rows:[{id:randomUUID()}]};
+   }
    if(sql.includes('pg_advisory_xact_lock')){events.push('staff-lock');return {rows:[{}]};}
    if(sql.includes('FROM platform_admin_mfa_attempts')){
     events.push('lockout');return {rows:[]};
@@ -66,7 +69,7 @@ test('admin login locks factor and commits before returning bearer',async()=>{
  assert.ok(result?.token);
  assert.deepEqual(f.events,[
   'BEGIN','staff-lock','lockout','factor-lock','load-factor',
-  'consume','session','clear-failures','COMMIT','release',
+  'consume','session','clear-failures','audit','COMMIT','release',
  ]);
 });
 test('disabled factor never loads secret or issues session',async()=>{
@@ -86,7 +89,7 @@ test('invalid TOTP commits a failure without creating a session',async()=>{
  ),null);
  assert.deepEqual(f.events,[
   'BEGIN','staff-lock','lockout','factor-lock','load-factor',
-  'failure','COMMIT','release',
+  'failure','audit','COMMIT','release',
  ]);
 });
 test('commit failure never releases a bearer',async()=>{
@@ -105,7 +108,7 @@ test('malformed MFA code is counted after a valid primary assertion',async()=>{
  ),null);
  assert.deepEqual(f.events,[
   'BEGIN','staff-lock','lockout','factor-lock','load-factor',
-  'failure','COMMIT','release',
+  'failure','audit','COMMIT','release',
  ]);
 });
 
