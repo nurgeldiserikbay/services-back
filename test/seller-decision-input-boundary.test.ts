@@ -11,6 +11,8 @@ test('seller decisions reject malformed identities and versions without SQL',asy
  const requestId=randomUUID(),sellerId=randomUUID();
  const seller={kind:'professional',sellerId} as const;
  const cases: Array<[unknown,unknown,unknown,unknown]>=[
+  ['00000000-0000-0000-0000-000000000000',seller,'accept',1],
+  [requestId,{kind:'professional',sellerId:'00000000-0000-0000-0000-000000000000'},'accept',1],
   [null,seller,'accept',1],
   [requestId,null,'accept',1],
   [requestId,undefined,'accept',1],
