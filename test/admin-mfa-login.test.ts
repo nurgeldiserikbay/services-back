@@ -107,3 +107,20 @@ test('malformed MFA code is counted after a valid primary assertion',async()=>{
   'failure','COMMIT','release',
  ]);
 });
+
+test('malformed primary attestation is rejected before database connection',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected database access');}} as never;
+ for(const malformed of [
+  null,
+  {staffId,authenticatedAt:now-1000,role:'owner'},
+  Object.assign(Object.create(null),{staffId,authenticatedAt:now-1000}),
+  {staffId,authenticatedAt:now+1},
+  {staffId,authenticatedAt:now-300001},
+ ]){
+  assert.equal(await loginAdminWithProvisionedTotp(
+   pool,malformed as never,code,async()=>key,pepper,now,
+  ),null);
+ }
+ assert.equal(connections,0);
+});
