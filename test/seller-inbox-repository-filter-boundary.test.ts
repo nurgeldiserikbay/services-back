@@ -29,3 +29,21 @@ test('direct repository callers cannot omit normalized state or cursor fields',a
  assert.deepEqual(page,{items:[],next_cursor:null});
  assert.equal(queries,1);
 });
+
+
+test('repository rejects malformed authenticated identity without querying PostgreSQL',async()=>{
+ let queries=0;
+ const db={query:async()=>{queries++;return {rows:[]};}};
+ const filter={limit:20,state:null,before:null};
+ for(const identity of [
+  '', 'not-a-uuid', '00000000-0000-0000-0000-000000000000',
+  '00000000-0000-0000-0000-000000000000;DROP TABLE users',
+  null, undefined, 42, {},
+ ]){
+  await assert.rejects(
+   readSellerInbox(db as never,identity as never,filter),
+   /invalid_identity/,
+  );
+ }
+ assert.equal(queries,0);
+});
