@@ -1,6 +1,7 @@
 import type {Pool,PoolClient} from 'pg';
 import {issueAdminSessionAfterTotp} from './admin-mfa-session.js';
 import {isAdminMfaLocked,recordAdminMfaFailure} from './admin-mfa-attempts.js';
+import {recordAdminMfaSecurityEvent} from './admin-mfa-security-audit.js';
 
 /**
  * Transaction boundary for a trusted MFA login service.
@@ -43,6 +44,11 @@ export async function issueAdminSessionInTransaction(
    // ROLLBACK would discard the lockout counter and permit unlimited guesses.
    // Invalid primary identities never produce a valid staff row in the upsert.
    await recordAdminMfaFailure(client,primary?.staffId,now);
+   // The primary attestation must be trusted by the caller. Audit only
+   // validated staff identifiers; never include the OTP or token.
+   if(typeof primary?.staffId==='string'&&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(primary.staffId))
+    await recordAdminMfaSecurityEvent(client,primary.staffId,'admin_mfa_login_failed');
    await client.query('COMMIT');
    committed=true;
    began=false;
@@ -54,6 +60,7 @@ export async function issueAdminSessionInTransaction(
    'DELETE FROM platform_admin_mfa_attempts WHERE staff_id=$1::uuid',
    [primary.staffId],
   );
+  await recordAdminMfaSecurityEvent(client,primary.staffId,'admin_mfa_login_succeeded');
   await client.query('COMMIT');
   committed=true;
   began=false;
