@@ -41,8 +41,10 @@ export async function revokeAdminTotpFactor(
      AND session.expires_at>to_timestamp($2::double precision/1000)
      AND session.mfa_verified_at IS NOT NULL
      AND session.mfa_verified_at<=to_timestamp($2::double precision/1000)
+     AND session.mfa_verified_at>to_timestamp(($2::double precision-900000)/1000)
      AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
      AND staff.role='owner'
+     AND session.expires_at>session.mfa_verified_at
      AND EXISTS (SELECT 1 FROM platform_admin_totp_factors actor_factor
        WHERE actor_factor.staff_id=staff.id
          AND actor_factor.activated_at IS NOT NULL
