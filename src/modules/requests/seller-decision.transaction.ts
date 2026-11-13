@@ -38,6 +38,8 @@ export async function decideSellerRequest(
   if(typeof requestId!=='string'||!UUID_STRICT.test(requestId)||
      !seller||typeof seller!=='object'||
      typeof seller.sellerId!=='string'||!UUID_STRICT.test(seller.sellerId) ||
+     requestId.toLowerCase()==='00000000-0000-0000-0000-000000000000'||
+     seller.sellerId.toLowerCase()==='00000000-0000-0000-0000-000000000000'||
      (seller.kind!=='professional'&&seller.kind!=='organization') ||
      (decision!=='accept'&&decision!=='decline') ||
      !Number.isSafeInteger(expectedVersion)||expectedVersion<1)
