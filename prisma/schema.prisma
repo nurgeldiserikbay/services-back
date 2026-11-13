@@ -891,6 +891,9 @@ model PlatformAdminStaff {
   user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
   sessions  PlatformAdminSession[]
   grants    PlatformAdminGrant[]
+  totpFactor PlatformAdminTotpFactor?
+  totpReplay PlatformAdminTotpReplay?
+  mfaAttempts PlatformAdminMfaAttempts?
   @@map("platform_admin_staff")
 }
 
@@ -926,4 +929,36 @@ model PlatformModerationCase {
  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
  @@index([resourceScope, createdAt])
  @@map("platform_moderation_cases")
+}
+
+/** Encrypted server-side privileged second factor; key lives outside database. */
+model PlatformAdminTotpFactor {
+  staffId String @id @map("staff_id") @db.Uuid
+  encryptedSecret String @map("encrypted_secret")
+  keyVersion String @map("key_version") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  activatedAt DateTime? @map("activated_at") @db.Timestamptz(3)
+  disabledAt DateTime? @map("disabled_at") @db.Timestamptz(3)
+  staff PlatformAdminStaff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  @@map("platform_admin_totp_factors")
+}
+
+/** Monotonic TOTP replay watermark for privileged login and enrollment. */
+model PlatformAdminTotpReplay {
+  staffId String @id @map("staff_id") @db.Uuid
+  lastConsumedCounter BigInt @default(-1) @map("last_consumed_counter")
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(3)
+  staff PlatformAdminStaff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  @@map("platform_admin_totp_replay")
+}
+
+/** Durable per-staff MFA lockout state. */
+model PlatformAdminMfaAttempts {
+  staffId String @id @map("staff_id") @db.Uuid
+  windowStartedAt DateTime @map("window_started_at") @db.Timestamptz(3)
+  failedAttempts Int @default(0) @map("failed_attempts")
+  lockedUntil DateTime? @map("locked_until") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(3)
+  staff PlatformAdminStaff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  @@map("platform_admin_mfa_attempts")
 }
