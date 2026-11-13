@@ -111,7 +111,9 @@ jobs:
               'cancellation_snapshots', 'domain_outbox_events',
               'notification_intents',
               'platform_admin_staff', 'platform_admin_sessions',
-              'platform_admin_grants', 'platform_moderation_cases'
+              'platform_admin_grants', 'platform_moderation_cases',
+              'platform_admin_totp_replay', 'platform_admin_mfa_attempts',
+              'platform_admin_totp_factors', 'platform_admin_security_events'
             ]) AS required(table_name)
             WHERE to_regclass(format('public.%I', required.table_name)) IS NULL;
             IF missing IS NOT NULL THEN
