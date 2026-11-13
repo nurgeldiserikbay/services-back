@@ -412,3 +412,29 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
   if(cleanupFailure)throw cleanupFailure;
  }
 });
+
+test('PostgreSQL stores canonical guest notification dedupe for uppercase request UUID',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();await db.query('BEGIN');
+ try{
+  const f=await fixture(db);
+  await db.query(`UPDATE guest_contacts SET verified_at=now()
+   WHERE id=(SELECT guest_contact_id FROM service_requests WHERE id=$1)`,[f.requestId]);
+  const authority=await resolveSellerDecisionAuthority(db,f.ownerId,f.requestId);
+  assert.equal(authority.authorized,true);
+  if(!authority.authorized)throw new Error('fixture authorization failed');
+  const result=await decideSellerRequest(db,f.requestId.toUpperCase(),
+   authority.seller,'accept',1);
+  assert.equal(result.id,f.requestId);
+  const intent=await db.query(`
+   SELECT n.dedupe_key,n.channel,o.subject_id,o.topic
+   FROM notification_intents n
+   JOIN domain_outbox_events o ON o.id=n.domain_event_id
+   WHERE o.subject_kind='ServiceRequest' AND o.subject_id=$1`,[f.requestId]);
+  assert.equal(intent.rows.length,1);
+  assert.equal(intent.rows[0].dedupe_key,'request-accept:guest:'+f.requestId);
+  assert.equal(intent.rows[0].channel,'EMAIL');
+  assert.equal(intent.rows[0].subject_id,f.requestId);
+  assert.equal(intent.rows[0].topic,'service_request.accepted');
+ }finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
+});
