@@ -1,7 +1,7 @@
 # Platform admin MFA incident response (server-only)
 
 ## Status
-The TOTP factor revocation primitive is **not** an HTTP endpoint. Do not expose it through a route or allow the browser to supply the acting staff identity. Full primary-factor login and Admin BFF integration remain pending.
+The TOTP factor revocation primitive is **not** an HTTP endpoint. Do not expose it through a route or allow the browser to supply the acting staff identity. Full primary-factor login and Admin BFF integration remain pending. The legacy `issueAdminSessionInTransaction` raw-secret entry point is now a fail-closed shim that always returns `null`; callers must migrate to `loginAdminWithProvisionedTotp` with a trusted primary-factor assertion and server-side key resolver.
 
 ## Authorization contract
 `revokeAdminTotpFactor(pool, actorBearer, targetStaffId, sessionPepper, now)` hashes the canonical bearer using the dedicated admin session HMAC domain. The transaction requires a non-revoked, unexpired MFA-verified session; active staff and user; role `owner`; explicit grant `admin.security.revoke`; and an activated, non-disabled actor TOTP factor. All failures deny access. Do not log bearer, OTP, factor ciphertext or session pepper.
@@ -17,6 +17,9 @@ The transaction acquires the target staff advisory lock, checks the actor, disab
 - Confirm that the audit event exists and the target's active admin sessions are revoked.
 - The current provisioning implementation uses `ON CONFLICT DO NOTHING`; **re-enrollment after revocation is not yet supported**. Do not manually clear disabled factors without a separately audited, authorized recovery design.
 - Treat missing migrations, failed audit writes and unexpected database errors as fail-closed. Do not claim success until COMMIT completes.
+
+## Legacy MFA migration check
+Search backend imports and any downstream callers for `issueAdminSessionInTransaction`. The function intentionally never issues a bearer; migrate those callers to the provisioned-factor login flow, then remove the compatibility shim. Do not re-enable the raw-secret path to make old tests pass. Verify migration and full CI before rollout.
 
 ## Required before production
 1. Trusted primary authentication and secure Admin BFF session issuance.
