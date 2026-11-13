@@ -163,8 +163,10 @@ jobs:
           # JSON rows include all columns; order by UUID to make the digest deterministic.
           source_geo_digest="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY id), '')) FROM (SELECT * FROM public.cities) t")"
           source_migration_digest="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY migration_name), '')) FROM (SELECT * FROM public._prisma_migrations) t")"
-          createdb "$restore_db"
+          # Mark ownership before creation so an interrupted createdb cannot leave
+          # an untracked temporary database behind.
           restore_created=1
+          createdb "$restore_db"
           pg_restore --dbname="$restore_db" --no-owner --no-acl --single-transaction --exit-on-error "$backup"
           psql --dbname="$restore_db" -v ON_ERROR_STOP=1 <<'SQL'
           DO $verify$
