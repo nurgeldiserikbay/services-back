@@ -138,9 +138,13 @@ jobs:
           }
           trap cleanup_restore EXIT
           # Refuse to touch an existing database, including one left by another run.
-          if psql --dbname=postgres -At -v ON_ERROR_STOP=1 \
-              -v target="$restore_db" \
-              -c "SELECT 1 FROM pg_database WHERE datname = :'target'" | grep -qx 1; then
+          # Feed SQL on stdin: psql -c does not expand psql :variables.
+          existing_restore="$(psql --dbname=postgres -At -v ON_ERROR_STOP=1 \
+            -v target="$restore_db" <<'SQL'
+          SELECT 1 FROM pg_database WHERE datname = :'target';
+          SQL
+          )"
+          if [ "$existing_restore" = 1 ]; then
             echo 'Recovery database already exists; refusing destructive cleanup'
             exit 1
           fi
