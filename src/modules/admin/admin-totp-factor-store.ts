@@ -32,9 +32,12 @@ export async function provisionAdminTotpFactor(
   ON CONFLICT (staff_id) DO NOTHING
   RETURNING staff_id::text
  `,[staffId,envelope,keyVersion]);
- if(!result||!Array.isArray(result.rows)||result.rows.length>1)
+ if(!result||!Array.isArray(result.rows)||result.rows.length>1||
+    (result.rows.length===1&&
+     (typeof result.rows[0]?.staff_id!=='string'||
+      result.rows[0].staff_id.toLowerCase()!==staffId.toLowerCase())))
   throw new Error('admin_totp_provision_unavailable');
- return result.rows.length===1&&result.rows[0]?.staff_id?.toLowerCase()===staffId.toLowerCase();
+ return result.rows.length===1;
 }
 
 /**
