@@ -40,6 +40,10 @@ export async function createVerifiedPlatformAdminSession(
   WHERE staff.id=$1 AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
     AND EXISTS (SELECT 1 FROM platform_admin_grants grants
                 WHERE grants.staff_id=staff.id)
+    AND EXISTS (SELECT 1 FROM platform_admin_totp_factors factor
+                WHERE factor.staff_id=staff.id
+                  AND factor.activated_at IS NOT NULL
+                  AND factor.disabled_at IS NULL)
   RETURNING id::text
  `,[verified.staffId,tokenHash,verified.mfaVerifiedAt,expiresAt,now]);
  if(!result||!Array.isArray(result.rows)||result.rows.length>1||
