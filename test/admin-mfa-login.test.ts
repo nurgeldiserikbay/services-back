@@ -45,6 +45,9 @@ function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'){
    if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
     events.push('failure');return {rows:[{failed_attempts:1,locked_until:null}]};
    }
+   if(sql.includes('DELETE FROM platform_admin_mfa_attempts')){
+    events.push('clear-failures');return {rows:[]};
+   }
    if(sql.includes('INSERT INTO platform_admin_sessions')){
     events.push('session');return {rows:[{id:randomUUID()}]};
    }
@@ -62,7 +65,7 @@ test('admin login locks factor and commits before returning bearer',async()=>{
  assert.ok(result?.token);
  assert.deepEqual(f.events,[
   'BEGIN','staff-lock','lockout','factor-lock','load-factor',
-  'consume','session','COMMIT','release',
+  'consume','session','clear-failures','COMMIT','release',
  ]);
 });
 test('disabled factor never loads secret or issues session',async()=>{
@@ -92,4 +95,15 @@ test('commit failure never releases a bearer',async()=>{
  ),/commit failed/);
  assert.equal(f.events.at(-1),'release');
  assert.ok(f.events.includes('ROLLBACK'));
+});
+
+test('malformed MFA code is counted after a valid primary assertion',async()=>{
+ const f=fixture('bad-code');
+ assert.equal(await loginAdminWithProvisionedTotp(
+  f.pool,primary,'12x',async()=>key,pepper,now,
+ ),null);
+ assert.deepEqual(f.events,[
+  'BEGIN','staff-lock','lockout','factor-lock','load-factor',
+  'failure','COMMIT','release',
+ ]);
 });
