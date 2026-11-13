@@ -44,12 +44,13 @@ export async function decideSellerRequest(
     throw new SellerDecisionRejected('not_found');
 
   // Row lock serializes accept/decline and prevents simultaneous approvals.
+  const canonicalRequestId=requestId.toLowerCase();
   const selection=await client.query<RequestRow>(`
     SELECT id::text,status,version,seller_professional_id::text,
            seller_organization_id::text,customer_person_id::text,
            guest_contact_id::text
     FROM service_requests WHERE id=$1::uuid FOR UPDATE
-  `,[requestId]);
+  `,[canonicalRequestId]);
   const request=selection.rows[0];
   if(!request)throw new SellerDecisionRejected('not_found');
   // PostgreSQL renders uuid::text in lowercase. Compare canonical UUID values,
@@ -87,7 +88,7 @@ export async function decideSellerRequest(
         accepted_at=CASE WHEN $2='ACCEPTED' THEN now() ELSE accepted_at END
     WHERE id=$1::uuid AND status='PENDING' AND version=$3
     RETURNING version
-  `,[requestId,state,expectedVersion]);
+  `,[canonicalRequestId,state,expectedVersion]);
   if(!transitioned.rows[0])throw new SellerDecisionRejected('conflict');
 
   // Acceptance does not invent a calendar reservation or confirmed time.
@@ -97,11 +98,11 @@ export async function decideSellerRequest(
   await client.query(`
     INSERT INTO service_request_events(id,request_id,kind,detail)
     VALUES($1::uuid,$2::uuid,$3,'{}'::jsonb)
-  `,[randomUUID(),requestId,decision==='accept'?'ACCEPTED':'DECLINED']);
+  `,[randomUUID(),canonicalRequestId,decision==='accept'?'ACCEPTED':'DECLINED']);
   await client.query(`
     INSERT INTO domain_outbox_events(id,topic,subject_kind,subject_id,safe_payload)
     VALUES($1::uuid,$2,'ServiceRequest',$3::uuid,'{}'::jsonb)
-  `,[eventId,topic,requestId]);
+  `,[eventId,topic,canonicalRequestId]);
 
   // Both registered customers and verified guests get a durable logical
   // notification intent. Guest providers are a future, separately gated worker.
@@ -111,19 +112,19 @@ export async function decideSellerRequest(
         (id,domain_event_id,recipient_person_id,audience,channel,dedupe_key)
       VALUES($1::uuid,$2::uuid,$3::uuid,'CLIENT','IN_APP',$4)
     `,[randomUUID(),eventId,request.customer_person_id,
-      'request-'+decision+':client:'+requestId]);
+      'request-'+decision+':client:'+canonicalRequestId]);
   } else if(request.guest_contact_id) {
     await client.query(`
       INSERT INTO notification_intents
         (id,domain_event_id,guest_contact_id,audience,channel,dedupe_key)
       VALUES($1::uuid,$2::uuid,$3::uuid,'CLIENT',$4,$5)
     `,[randomUUID(),eventId,request.guest_contact_id,verifiedGuestChannel!.toUpperCase(),
-      'request-'+decision+':guest:'+requestId]);
+      'request-'+decision+':guest:'+canonicalRequestId]);
   }else{
     throw new SellerDecisionRejected('conflict');
   }
   return {
-    id:requestId,
+    id:canonicalRequestId,
     state:decision==='accept'?'accepted':'declined',
     version:transitioned.rows[0].version,
     replayed:false,
