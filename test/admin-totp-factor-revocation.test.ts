@@ -118,6 +118,6 @@ test('revocation query requires MFA freshness in addition to session validity',a
  // the SQL's temporal guard to prevent a future refactor dropping it.
  const {readFileSync}=await import('node:fs');
  const source=readFileSync('src/modules/admin/admin-totp-factor-revocation.ts','utf8');
- assert.match(source,/session\\.mfa_verified_at>to_timestamp/);
- assert.match(source,/RECENT_MFA_MS=5\\*60\\*1000/);
+ assert.ok(source.includes('session.mfa_verified_at>to_timestamp('));
+ assert.ok(source.includes('RECENT_MFA_MS=5*60*1000'));
 });
