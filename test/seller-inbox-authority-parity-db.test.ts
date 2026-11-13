@@ -373,6 +373,7 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
   // The fixture is committed so both independent PostgreSQL sessions can see it.
   // Delete dependent records before their parents, even after a failed assertion.
   if(!fixtureCommitted)await setup.query('ROLLBACK').catch(()=>{});
+  let cleanupFailure:unknown;
   if(ids&&fixtureCommitted){
    await setup.query('BEGIN');
    try{
@@ -404,9 +405,10 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
     await setup.query('COMMIT');
    }catch(error){
     await setup.query('ROLLBACK').catch(()=>{});
-    throw error;
+    cleanupFailure=error;
    }
   }
   await Promise.all([setup.end(),first.end(),second.end()]);
+  if(cleanupFailure)throw cleanupFailure;
  }
 });
