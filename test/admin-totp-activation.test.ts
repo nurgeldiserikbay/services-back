@@ -107,7 +107,7 @@ test('replayed enrollment rolls back failure counter when audit write fails',asy
  const bad=code==='999999'?'000000':'999999';
  await assert.rejects(
   activateProvisionedAdminTotp(f.pool,staffId,bad,async()=>key,now),
-  /admin_mfa_security_audit_unavailable/,
+  /admin_mfa_audit_unavailable/,
  );
  assert.deepEqual(f.events,[
   'BEGIN','staff-lock','lockout','factor-lock','failure','audit','ROLLBACK','release',
