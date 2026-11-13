@@ -48,6 +48,12 @@ export async function issueAdminSessionInTransaction(
    began=false;
    return null;
   }
+  // A verified login starts a fresh failure window, consistently with the
+  // provisioned-factor login path. Keep reset atomic with session issuance.
+  await client.query(
+   'DELETE FROM platform_admin_mfa_attempts WHERE staff_id=$1::uuid',
+   [primary.staffId],
+  );
   await client.query('COMMIT');
   committed=true;
   began=false;
