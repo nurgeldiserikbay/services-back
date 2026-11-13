@@ -63,3 +63,30 @@ export async function recordAdminMfaFailure(
  return {failedAttempts:row.failed_attempts,
   lockedUntil:row.locked_until?.getTime()??null};
 }
+
+/**
+ * Check the durable MFA lockout inside the same transaction used for issuance.
+ * Missing state means no failures have been recorded yet. Database errors
+ * must propagate, never be interpreted as permission to log in.
+ */
+export async function isAdminMfaLocked(
+ db:Pick<PoolClient,'query'>,
+ staffId:unknown,
+ now=Date.now(),
+):Promise<boolean>{
+ if(typeof staffId!=='string'||!UUID.test(staffId)||
+    !Number.isSafeInteger(now)||now<0)
+  return true;
+ const result=await db.query<{locked_until:Date|null}>(`
+  SELECT locked_until FROM platform_admin_mfa_attempts
+  WHERE staff_id=$1::uuid FOR UPDATE
+ `,[staffId]);
+ if(!result||!Array.isArray(result.rows)||result.rows.length>1)
+  throw new Error('admin_mfa_lockout_unavailable');
+ if(result.rows.length===0)return false;
+ const value=result.rows[0]?.locked_until;
+ if(value===null)return false;
+ if(!(value instanceof Date)||!Number.isFinite(value.getTime()))
+  throw new Error('admin_mfa_lockout_unavailable');
+ return value.getTime()>now;
+}
