@@ -25,6 +25,9 @@ function fixture(mode:'ok'|'missing'|'replayed'|'commit-fails'|'locked'){
     if(sql==='COMMIT'&&mode==='commit-fails')throw Error('commit failed');
     return {rows:[]};
    }
+   if(sql.includes('INSERT INTO platform_admin_security_events')){
+    events.push('audit');return {rows:[{id:randomUUID()}]};
+   }
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('staff-lock');return {rows:[{}]};
    }
@@ -61,7 +64,7 @@ test('verified enrollment activates factor only after replay watermark and commi
  const f=fixture('ok');
  assert.equal(await activateProvisionedAdminTotp(f.pool,staffId,code,async()=>key,now),true);
  assert.deepEqual(f.events,[
-  'BEGIN','staff-lock','lockout','factor-lock','consume','activate','clear-failures','COMMIT','release',
+  'BEGIN','staff-lock','lockout','factor-lock','consume','activate','clear-failures','audit','COMMIT','release',
  ]);
 });
 
