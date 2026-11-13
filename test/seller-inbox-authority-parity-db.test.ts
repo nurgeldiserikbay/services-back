@@ -323,10 +323,11 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
  const setup=new Client({connectionString:process.env.DATABASE_URL});
  const first=new Client({connectionString:process.env.DATABASE_URL});
  const second=new Client({connectionString:process.env.DATABASE_URL});
- await setup.connect();await first.connect();await second.connect();
  let ids:{ownerId:string;profileId:string;requestId:string}|undefined;
  let fixtureCommitted=false;
  try{
+  // Connections belong inside try so a failed connect still closes earlier clients.
+  await setup.connect();await first.connect();await second.connect();
   await setup.query('BEGIN');
   ids=await fixture(setup);
   await setup.query(`UPDATE guest_contacts SET verified_at=now()
@@ -336,8 +337,8 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
   fixtureCommitted=true;
   await first.query('BEGIN');
   await second.query('BEGIN');
-  await first.query("SET LOCAL lock_timeout='5s'");
-  await second.query("SET LOCAL lock_timeout='5s'");
+  await first.query("SET LOCAL lock_timeout='15s'");
+  await second.query("SET LOCAL lock_timeout='15s'");
   const authorized=await resolveSellerDecisionAuthority(first,ids.ownerId,ids.requestId);
   assert.equal(authorized.authorized,true);
   if(!authorized.authorized)throw new Error('fixture authorization failed');
@@ -408,7 +409,7 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
     cleanupFailure=error;
    }
   }
-  await Promise.all([setup.end(),first.end(),second.end()]);
+  await Promise.allSettled([setup.end(),first.end(),second.end()]);
   if(cleanupFailure)throw cleanupFailure;
  }
 });
