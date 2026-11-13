@@ -17,7 +17,8 @@ export async function revokeAdminTotpFactor(
  now=Date.now(),
 ):Promise<boolean>{
  if(typeof targetStaffId!=='string'||!UUID.test(targetStaffId)||
-    !Number.isSafeInteger(now)||now<0)return false;
+    !Number.isSafeInteger(now)||now<0||
+    now>8640000000000000)return false;
  let tokenHash:string;
  try{tokenHash=hashAdminSessionToken(actorToken,sessionPepper);}
  catch{return false;}
@@ -41,7 +42,7 @@ export async function revokeAdminTotpFactor(
      AND session.expires_at>to_timestamp($2::double precision/1000)
      AND session.mfa_verified_at IS NOT NULL
      AND session.mfa_verified_at<=to_timestamp($2::double precision/1000)
-     AND session.mfa_verified_at>to_timestamp(($2::double precision-900000)/1000)
+     AND session.mfa_verified_at>=to_timestamp(($2::double precision-900000)/1000)
      AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
      AND staff.role='owner'
      AND session.expires_at>session.mfa_verified_at
