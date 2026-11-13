@@ -188,10 +188,10 @@ jobs:
           source_users_digest="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY id), '')) FROM (SELECT * FROM public.users) t")"
           source_geo_digest="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY id), '')) FROM (SELECT * FROM public.cities) t")"
           source_migration_digest="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY migration_name), '')) FROM (SELECT * FROM public._prisma_migrations) t")"
-          # Mark ownership before creation so an interrupted createdb cannot leave
-          # an untracked temporary database behind.
-          restore_created=1
+          # Only mark the database as ours after creation succeeds. Otherwise
+          # a failed createdb (e.g. a name collision) could delete another DB.
           createdb "$restore_db"
+          restore_created=1
           # Confirm the recovery target is a fresh empty database before writing.
           existing_relations="$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S','f')")"
           if [ "$existing_relations" != 0 ]; then
