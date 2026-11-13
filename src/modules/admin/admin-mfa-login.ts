@@ -23,7 +23,6 @@ export async function loginAdminWithProvisionedTotp(
     !Number.isSafeInteger(primary.authenticatedAt)||primary.authenticatedAt<0||
     !Number.isSafeInteger(now)||now<0||primary.authenticatedAt>now||
     now-primary.authenticatedAt>300000||
-    typeof code!=='string'||!/^[0-9]{6}$/.test(code)||
     !Buffer.isBuffer(sessionPepper)||sessionPepper.length!==32)return null;
  const client:PoolClient=await pool.connect();
  let began=false;
@@ -73,6 +72,11 @@ export async function loginAdminWithProvisionedTotp(
    began=false;
    return null;
   }
+  // Clear failures after a verified second factor, in the same transaction.
+  // A later failure must begin a fresh lockout window.
+  await client.query(`
+   DELETE FROM platform_admin_mfa_attempts WHERE staff_id=$1::uuid
+  `,[primary.staffId]);
   await client.query('COMMIT');
   began=false;
   return session;
