@@ -27,6 +27,8 @@ export async function provisionAdminTotpFactor(
   JOIN users usr ON usr.id=staff.user_id
   WHERE staff.id=$1::uuid AND staff.disabled_at IS NULL
     AND usr.status='ACTIVE'
+    AND EXISTS (SELECT 1 FROM platform_admin_grants grants
+      WHERE grants.staff_id=staff.id)
   ON CONFLICT (staff_id) DO NOTHING
   RETURNING staff_id::text
  `,[staffId,envelope,keyVersion]);
