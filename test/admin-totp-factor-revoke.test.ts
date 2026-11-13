@@ -18,7 +18,9 @@ function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'|'commit-fails'){
    }
    if(sql.includes('FOR SHARE OF staff')){
     events.push('authorize-actor');
-    assert.deepEqual(params,[tokenHash,params?.[1]]);
+    assert.equal(params?.[0],tokenHash);
+    assert.equal(typeof params?.[1],'number');
+    assert.ok(Number.isSafeInteger(params?.[1] as number));
     assert.match(sql,/session.token_hash=\$1/);
     assert.match(sql,/staff.role='owner'/);
     assert.match(sql,/grants.scope='admin.security.revoke'/);
@@ -86,6 +88,8 @@ test('invalid identities fail before connecting to database',async()=>{
  assert.equal(await revokeAdminTotpFactor(pool,'invalid',target,pepper),false);
  assert.equal(await revokeAdminTotpFactor(pool,token,'invalid',pepper),false);
  assert.equal(await revokeAdminTotpFactor(pool,token,target,Buffer.alloc(4)),false);
+ assert.equal(await revokeAdminTotpFactor(pool,token,target,pepper,NaN),false);
+ assert.equal(await revokeAdminTotpFactor(pool,token,target,pepper,-1),false);
  assert.equal(calls,0);
 });
 
