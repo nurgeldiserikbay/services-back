@@ -8,6 +8,10 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 /**
  * Transaction boundary for a trusted MFA login service.
  * Only return the privileged bearer after PostgreSQL confirms COMMIT.
+ * DEPRECATED compatibility path: the supplied raw TOTP secret is not
+ * authenticated against the encrypted factor stored in PostgreSQL.
+ * Do not use for new integrations. Use loginAdminWithProvisionedTotp,
+ * which decrypts the provisioned factor from the trusted key resolver.
  * This is deliberately NOT an HTTP endpoint or primary-factor verifier.
  */
 export async function issueAdminSessionInTransaction(
