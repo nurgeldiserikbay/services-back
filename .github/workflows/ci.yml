@@ -129,7 +129,21 @@ jobs:
           umask 077
           backup="$RUNNER_TEMP/services-ci-backup.dump"
           restore_db="services_restore_ci"
-          trap 'dropdb --if-exists "$restore_db" >/dev/null 2>&1 || true; rm -f "$backup"' EXIT
+          restore_created=0
+          cleanup_restore() {
+            if [ "$restore_created" -eq 1 ]; then
+              dropdb --if-exists "$restore_db" >/dev/null 2>&1 || true
+            fi
+            rm -f "$backup"
+          }
+          trap cleanup_restore EXIT
+          # Refuse to touch an existing database, including one left by another run.
+          if psql --dbname=postgres -At -v ON_ERROR_STOP=1 \
+              -v target="$restore_db" \
+              -c "SELECT 1 FROM pg_database WHERE datname = :'target'" | grep -qx 1; then
+            echo 'Recovery database already exists; refusing destructive cleanup'
+            exit 1
+          fi
           # A fresh recovery database is essential; never restore into services_test.
           pg_dump --dbname=services_test --format=custom --no-owner --no-acl --file="$backup"
           test -s "$backup"
@@ -139,6 +153,7 @@ jobs:
           source_cities="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public.cities')"
           source_migrations="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public._prisma_migrations')"
           createdb "$restore_db"
+          restore_created=1
           pg_restore --dbname="$restore_db" --no-owner --no-acl --single-transaction --exit-on-error "$backup"
           psql --dbname="$restore_db" -v ON_ERROR_STOP=1 <<'SQL'
           DO $verify$
