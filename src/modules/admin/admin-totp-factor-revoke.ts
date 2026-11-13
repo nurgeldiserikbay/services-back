@@ -1,23 +1,26 @@
 import type {Pool,PoolClient} from 'pg';
+import {hashAdminSessionToken} from './admin-session-token.js';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Trusted server-only incident response. Caller must authorize actor to
- * revoke target; actor session ID must be obtained from a verified bearer.
+ * revoke target; the actor is derived from the server-verified bearer,
+ * never from a browser-supplied staff or session identifier.
  * Disabling the factor, revoking sessions and auditing are one transaction.
  */
 export async function revokeAdminTotpFactor(
  pool:Pick<Pool,'connect'>,
- actorStaffId:string,
+ actorToken:unknown,
  targetStaffId:string,
- actorSessionId:string,
+ sessionPepper:Buffer,
  now=Date.now(),
 ):Promise<boolean>{
- if(typeof actorStaffId!=='string'||!UUID.test(actorStaffId)||
-    typeof targetStaffId!=='string'||!UUID.test(targetStaffId)||
-    typeof actorSessionId!=='string'||!UUID.test(actorSessionId)||
+ if(typeof targetStaffId!=='string'||!UUID.test(targetStaffId)||
     !Number.isSafeInteger(now)||now<0)return false;
+ let tokenHash:string;
+ try{tokenHash=hashAdminSessionToken(actorToken,sessionPepper);}
+ catch{return false;}
  const client:PoolClient=await pool.connect();
  let began=false;
  try{
@@ -27,20 +30,21 @@ export async function revokeAdminTotpFactor(
    SELECT staff.id::text AS id FROM platform_admin_staff staff
    JOIN users usr ON usr.id=staff.user_id
    JOIN platform_admin_sessions session ON session.staff_id=staff.id
-   WHERE staff.id=$1::uuid AND session.id=$2::uuid
+   WHERE session.token_hash=$1
      AND session.revoked_at IS NULL
-     AND session.expires_at>to_timestamp($3::double precision/1000)
+     AND session.expires_at>to_timestamp($2::double precision/1000)
      AND session.mfa_verified_at IS NOT NULL
      AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
      AND staff.role='owner'
      AND EXISTS (SELECT 1 FROM platform_admin_grants grants
        WHERE grants.staff_id=staff.id AND grants.scope='admin.security.revoke')
    FOR SHARE OF staff,session
-  `,[actorStaffId,actorSessionId,now]);
+  `,[tokenHash,now]);
   if(!actor||!Array.isArray(actor.rows)||actor.rows.length!==1||
-     actor.rows[0]?.id?.toLowerCase()!==actorStaffId.toLowerCase()){
+     typeof actor.rows[0]?.id!=='string'||!UUID.test(actor.rows[0].id)){
    await client.query('ROLLBACK');began=false;return false;
   }
+  const actorStaffId=actor.rows[0]!.id;
   const factor=await client.query<{staff_id:string}>(`
    UPDATE platform_admin_totp_factors
    SET disabled_at=to_timestamp($2::double precision/1000)
