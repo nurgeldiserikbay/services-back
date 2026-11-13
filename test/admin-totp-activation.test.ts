@@ -78,7 +78,7 @@ test('invalid code commits a failure without activating the factor',async()=>{
  const f=fixture('ok');
  const bad=code==='999999'?'000000':'999999';
  assert.equal(await activateProvisionedAdminTotp(f.pool,staffId,bad,async()=>key,now),false);
- assert.deepEqual(f.events,['BEGIN','staff-lock','lockout','factor-lock','ROLLBACK','release']);
+ assert.deepEqual(f.events,['BEGIN','staff-lock','lockout','factor-lock','failure','audit','COMMIT','release']);
 });
 
 test('replayed enrollment code cannot activate',async()=>{
