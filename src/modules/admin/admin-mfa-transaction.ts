@@ -21,6 +21,15 @@ export async function issueAdminSessionInTransaction(
  try{
   await client.query('BEGIN');
   began=true;
+  // Serialize concurrent attempts for this staff identity, including the
+  // first attempt before a lockout row exists. The lock is transaction-scoped.
+  if(typeof primary?.staffId==='string' &&
+     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(primary.staffId)){
+   await client.query(
+    "SELECT pg_advisory_xact_lock(hashtextextended($1::text, 104729))",
+    [primary.staffId],
+   );
+  }
   if(await isAdminMfaLocked(client,primary?.staffId,now)){
    await client.query('ROLLBACK');
    began=false;
