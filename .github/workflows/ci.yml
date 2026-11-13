@@ -128,7 +128,8 @@ jobs:
           set -euo pipefail
           umask 077
           backup="$RUNNER_TEMP/services-ci-backup.dump"
-          restore_db="services_restore_ci"
+          # Unique per workflow attempt, avoiding cross-run cleanup collisions.
+          restore_db="services_restore_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
           restore_created=0
           cleanup_restore() {
             if [ "$restore_created" -eq 1 ]; then
