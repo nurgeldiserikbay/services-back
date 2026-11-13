@@ -33,6 +33,7 @@ test('only activated factors can be loaded and decrypted',async()=>{
  const read={query:async(sql:string)=>{
   assert.match(sql,/factor.activated_at IS NOT NULL/);
   assert.match(sql,/factor.disabled_at IS NULL/);
+  assert.match(sql,/FOR SHARE OF factor/);
   assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants grants/);
   return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
  }} as never;
