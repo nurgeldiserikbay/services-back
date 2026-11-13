@@ -9,6 +9,7 @@ const now=Date.now();
 test('MFA failures use atomic upsert and bounded five-attempt lockout',async()=>{
  const db={query:async(sql:string,params:unknown[])=>{
   assert.match(sql,/ON CONFLICT \(staff_id\) DO UPDATE/);
+  assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants grants/);
   assert.match(sql,/LEAST\(attempts.failed_attempts\+1,5\)/);
   assert.match(sql,/attempts.failed_attempts\+1>=5/);
   assert.deepEqual(params,[staffId,now,now-900000,now+900000]);
