@@ -23,7 +23,8 @@ export async function activateProvisionedAdminTotp(
 ):Promise<boolean>{
  if(typeof staffId!=='string'||!UUID.test(staffId)||
     typeof code!=='string'||!/^[0-9]{6}$/.test(code)||
-    typeof resolveKey!=='function'||!Number.isSafeInteger(now)||now<0)
+    typeof resolveKey!=='function'||!Number.isSafeInteger(now)||now<0||
+    now>8640000000000000)
   return false;
  const client:PoolClient=await pool.connect();
  let began=false;
