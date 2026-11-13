@@ -47,6 +47,9 @@ test('admin issuance stores a hash and requires active staff, user and grants',a
   assert.match(sql,/staff.disabled_at IS NULL/);
   assert.match(sql,/usr.status='ACTIVE'/);
   assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants/);
+  assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_totp_factors factor/);
+  assert.match(sql,/factor.activated_at IS NOT NULL/);
+  assert.match(sql,/factor.disabled_at IS NULL/);
   assert.equal(params[0],staffId);
   assert.match(params[1] as string,/^[0-9a-f]{64}$/);
   assert.equal(params[2],now);
@@ -60,7 +63,7 @@ test('admin issuance stores a hash and requires active staff, user and grants',a
  assert.notEqual(result.token,hashAdminSessionToken(result.token,pepper));
 });
 
-test('admin issuance does not issue a bearer when staff lacks grants',async()=>{
+test('admin issuance does not issue a bearer when staff lacks grants or active factor',async()=>{
  const db={query:async()=>({rows:[]})} as never;
  assert.equal(await createVerifiedPlatformAdminSession(db,{staffId,mfaVerifiedAt:now},pepper,now),null);
 });
