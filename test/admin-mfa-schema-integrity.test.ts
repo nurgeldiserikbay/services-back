@@ -23,3 +23,17 @@ test('Prisma declares every privileged MFA table created by migrations',()=>{
    table+' missing staff foreign key');
  }
 });
+
+test('privileged security audit model and migration stay aligned',()=>{
+ const model=schema.match(/model PlatformAdminSecurityEvent \\{([\\s\\S]*?)\\n\\}/)?.[1];
+ assert.ok(model,'security audit model missing');
+ assert.ok(model.includes('@@map("platform_admin_security_events")'));
+ assert.ok(model.includes('SecurityEventActor'));
+ assert.ok(model.includes('SecurityEventTarget'));
+ const sql=readFileSync(
+  'prisma/migrations/20261113170000_platform_admin_security_events/migration.sql','utf8',
+ );
+ assert.ok(sql.includes('CREATE TABLE "platform_admin_security_events"'));
+ assert.ok(sql.includes("'totp_factor_revoked'"));
+ assert.ok(sql.includes('ON DELETE RESTRICT'));
+});
