@@ -33,6 +33,7 @@ export async function loginAdminWithProvisionedTotp(
     !Buffer.isBuffer(sessionPepper)||sessionPepper.length!==32)return null;
  const client:PoolClient=await pool.connect();
  let began=false;
+ let discardConnection=false;
  let secret:Buffer|null=null;
  try{
   await client.query('BEGIN');
@@ -93,11 +94,13 @@ export async function loginAdminWithProvisionedTotp(
   return session;
  }catch(error){
   if(began){
-   try{await client.query('ROLLBACK');}catch{/* preserve original error */}
+   try{await client.query('ROLLBACK');}
+   catch{discardConnection=true;}
   }
   throw error;
  }finally{
   secret?.fill(0);
-  client.release();
+  if(discardConnection)client.release(new Error('Admin MFA transaction rollback failed'));
+  else client.release();
  }
 }
