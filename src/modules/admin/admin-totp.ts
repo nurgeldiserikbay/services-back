@@ -15,7 +15,7 @@ export function verifyAdminTotp(
 ):number|null{
  if(!Buffer.isBuffer(secret)||secret.length<20||secret.length>128||
     typeof code!=='string'||!/^[0-9]{6}$/.test(code)||
-    !Number.isSafeInteger(now)||now<0||
+    !Number.isSafeInteger(now)||now<0||now>8_640_000_000_000_000||
     !Number.isSafeInteger(lastConsumedCounter)||lastConsumedCounter< -1)
   return null;
  const current=Math.floor(now/30_000);
