@@ -120,3 +120,11 @@ test('admin issuance fails closed when database insertion fails',async()=>{
   /database unavailable/,
  );
 });
+
+test('missing session issuance database client fails closed',async()=>{
+ for(const db of [null,undefined,{}, {query:null}, {query:'invalid'}]){
+  assert.equal(await createVerifiedPlatformAdminSession(
+   db as never,{staffId,mfaVerifiedAt:now},pepper,now,
+  ),null);
+ }
+});
