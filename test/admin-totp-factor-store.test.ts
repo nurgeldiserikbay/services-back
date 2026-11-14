@@ -135,3 +135,19 @@ test('wrong vault encryption key cannot unlock a provisioned factor',async()=>{
   read,staffId,async()=>randomBytes(32),
  ),null);
 });
+
+test('invalid provisioning key and secret never reach database or encryption',async()=>{
+ let queries=0;
+ const db={query:async()=>{queries++;throw Error('unexpected SQL');}} as never;
+ for(const invalidSecret of [Buffer.alloc(0),Buffer.alloc(19),Buffer.alloc(129)]){
+  assert.equal(await provisionAdminTotpFactor(
+   db,staffId,invalidSecret,'key-1',key,
+  ),false);
+ }
+ for(const invalidKey of [Buffer.alloc(0),Buffer.alloc(31),Buffer.alloc(33)]){
+  assert.equal(await provisionAdminTotpFactor(
+   db,staffId,secret,'key-1',invalidKey,
+  ),false);
+ }
+ assert.equal(queries,0);
+});
