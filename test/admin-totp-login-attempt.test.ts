@@ -242,3 +242,31 @@ test('replay database outage rolls back and never creates admin session',async()
  ),/replay database unavailable/);
  assert.deepEqual(steps,['lockout','replay-error','ROLLBACK']);
 });
+
+test('malformed session insert result rolls back the consumed TOTP counter',async()=>{
+ const steps:string[]=[];
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
+  try{
+   const result=await work({query:async(sql:string)=>{
+    if(sql.includes('SELECT locked_until')){
+     steps.push('lockout');return {rows:[]};
+    }
+    if(sql.includes('INSERT INTO platform_admin_totp_replay')){
+     steps.push('replay');return {rows:[{last_consumed_counter:'1'}]};
+    }
+    if(sql.includes('INSERT INTO platform_admin_sessions')){
+     steps.push('malformed-session');
+     return {rows:[{id:'not-a-uuid'}]};
+    }
+    throw Error('unexpected SQL');
+   }} as Db);
+   steps.push('COMMIT');return result;
+  }catch(error){
+   steps.push('ROLLBACK');throw error;
+  }
+ };
+ await assert.rejects(attemptAdminTotpLogin(
+  transaction,authenticated,'287082',pepper,now,
+ ),/admin_session_creation_unavailable/);
+ assert.deepEqual(steps,['lockout','replay','malformed-session','ROLLBACK']);
+});
