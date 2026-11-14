@@ -577,6 +577,8 @@ test('fifth failed MFA attempt locks the next login before factor access',async(
      locked_until:lockedUntil===null?null:new Date(lockedUntil),
      failed_attempts:failures,window_started_at:new Date(now-1000),
     }]};
+   if(sql.includes('SELECT factor.staff_id::text')&&sql.includes('FOR SHARE OF factor'))
+    return {rows:[{staff_id:primary.staffId}]};
    if(sql.includes('factor.encrypted_secret')&&sql.includes('FOR SHARE OF factor')){
     factorReads++;
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
