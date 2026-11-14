@@ -16,7 +16,8 @@ export async function createVerifiedPlatformAdminSession(
  pepper:Buffer,
  now=Date.now(),
 ):Promise<{token:string;expiresAt:number}|null>{
- if(!verified||typeof verified!=='object'||Array.isArray(verified)||
+ if(!db||typeof db.query!=='function'||
+    !verified||typeof verified!=='object'||Array.isArray(verified)||
     Object.getPrototypeOf(verified)!==Object.prototype||
     Object.keys(verified).length!==2||
     !Object.hasOwn(verified,'staffId')||!Object.hasOwn(verified,'mfaVerifiedAt')||
