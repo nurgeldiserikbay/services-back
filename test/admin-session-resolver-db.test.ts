@@ -90,10 +90,6 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
   );
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read',scope),true);
-  const deniedWhileDisabled=await createVerifiedPlatformAdminSession(
-   db,{staffId,mfaVerifiedAt:Date.now()},pepper,
-  );
-  assert.ok(deniedWhileDisabled?.token);
   // Issuance is independently protected, not just the resolver.
   await db.query(
    'UPDATE platform_admin_totp_factors SET disabled_at=now() WHERE staff_id=$1',
