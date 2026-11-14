@@ -44,6 +44,7 @@ export async function resolvePlatformAdminSession(
  LEFT JOIN platform_admin_grants grants ON grants.staff_id=staff.id
  WHERE session.token_hash=$1
   AND session.revoked_at IS NULL
+  AND session.created_at<=to_timestamp($2::double precision/1000.0)
   AND session.expires_at>to_timestamp($2::double precision/1000.0)
   AND session.mfa_verified_at<=to_timestamp($2::double precision/1000.0)
   AND session.mfa_verified_at>=to_timestamp(($2::double precision-900000)/1000.0)
