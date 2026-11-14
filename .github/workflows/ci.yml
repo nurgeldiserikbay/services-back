@@ -102,6 +102,7 @@ jobs:
             test/admin-mfa-attempts.test.ts \
             test/admin-totp-verify.test.ts \
             test/admin-totp-login-attempt.test.ts \
+            test/admin-totp-commit-failure.test.ts \
             test/admin-totp-session-flow.test.ts \
             test/admin-session-replay-issuance.test.ts
       - name: Admin HTTP authentication boundary regression tests (fail fast)
