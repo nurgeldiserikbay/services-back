@@ -36,3 +36,13 @@ test('TOTP envelope validates secret and encryption key lengths',()=>{
   /invalid_admin_totp_secret_envelope/);
  assert.equal(openAdminTotpSecret('v1.x.y.z',staffId,Buffer.alloc(16)),null);
 });
+
+test('TOTP envelope rejects object identities without coercing them',()=>{
+ let coerced=0;
+ const fakeId={toString(){coerced++;return staffId;}};
+ assert.throws(()=>sealAdminTotpSecret(secret,fakeId as never,key),
+  /invalid_admin_totp_secret_envelope/);
+ const envelope=sealAdminTotpSecret(secret,staffId,key);
+ assert.equal(openAdminTotpSecret(envelope,fakeId as never,key),null);
+ assert.equal(coerced,0);
+});
