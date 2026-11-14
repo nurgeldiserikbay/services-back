@@ -143,7 +143,7 @@ test('active MFA lockout prevents replay consumption and session issuance',async
    return await work({query:async(sql:string)=>{
     statements.push(sql.includes('SELECT locked_until')?'lockout':'write');
     if(sql.includes('SELECT locked_until'))
-     return {rows:[{locked_until:new Date(now+60_000)}]};
+     return {rows:[{locked_until:new Date(now+60_000),failed_attempts:5,window_started_at:new Date(now-1000)}]};
     throw Error('unexpected write');
    }} as never);
   }catch(error){statements.push('ROLLBACK');throw error;}
