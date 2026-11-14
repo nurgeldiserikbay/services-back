@@ -159,3 +159,22 @@ test('MFA audit writer rejects malformed identifiers and actions before SQL',asy
  }
  assert.equal(queries,0);
 });
+
+
+test('MFA audit writer fails closed when INSERT does not confirm exactly one event',async()=>{
+ const staffId=randomUUID();
+ for(const rows of [
+  [],
+  [{}],
+  [{id:'not-a-uuid'}],
+  [{id:randomUUID()},{id:randomUUID()}],
+ ]){
+  let queries=0;
+  const db={query:async()=>{queries++;return {rows};}} as never;
+  await assert.rejects(
+   recordAdminMfaSecurityEvent(db,staffId,'admin_mfa_login_failed'),
+   /admin_mfa_audit_unavailable/,
+  );
+  assert.equal(queries,1);
+ }
+});
