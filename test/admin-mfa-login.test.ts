@@ -37,15 +37,15 @@ function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'){
    if(sql.includes('FROM platform_admin_mfa_attempts')){
     events.push('lockout');return {rows:[]};
    }
+   if(sql.includes('factor.encrypted_secret')){
+    events.push('load-factor');
+    return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   }
    if(sql.includes('FOR SHARE OF factor')){
     assert.match(sql,/staff\.role IN \('owner','admin','operator','auditor'\)/);
     assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants grants/);
     events.push('factor-lock');
     return {rows:mode==='disabled'?[]:[{staff_id:staffId}]};
-   }
-   if(sql.includes('factor.encrypted_secret')){
-    events.push('load-factor');
-    return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
    }
    if(sql.includes('platform_admin_totp_replay')){
     events.push('consume');
