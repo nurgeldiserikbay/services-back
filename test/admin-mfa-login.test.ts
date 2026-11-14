@@ -249,3 +249,34 @@ test('uncertain MFA commit discards the database connection even if rollback suc
  assert.equal(releases.length,1);
  assert.ok(releases[0] instanceof Error);
 });
+
+
+test('failed-MFA attempt commit error discards connection without returning success',async()=>{
+ const released:unknown[]=[];
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql==='ROLLBACK'){events.push(sql);return {rows:[]};}
+   if(sql==='COMMIT'){events.push(sql);throw Error('attempt commit uncertain');}
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
+   if(sql.includes('factor.encrypted_secret'))
+    return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('INSERT INTO platform_admin_mfa_attempts'))
+    return {rows:[{failed_attempts:1,locked_until:null}]};
+   if(sql.includes('INSERT INTO platform_admin_security_events'))
+    return {rows:[{id:randomUUID()}]};
+   throw Error('unexpected SQL');
+  },
+  release:(error?:unknown)=>released.push(error),
+ };
+ const bad=code==='999999'?'000000':'999999';
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,bad,async()=>key,pepper,now,
+ ),/attempt commit uncertain/);
+ assert.ok(events.includes('COMMIT'));
+ assert.ok(events.includes('ROLLBACK'));
+ assert.equal(released.length,1);
+ assert.ok(released[0] instanceof Error);
+});
