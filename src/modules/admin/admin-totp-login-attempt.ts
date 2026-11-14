@@ -39,9 +39,10 @@ export async function attemptAdminTotpLogin(
  if(counter===null){
   // Persist a failure in a standalone committed transaction; never combine
   // it with a deliberately rolled-back session issuance transaction.
-  const recorded=await transaction(db=>recordAdminMfaFailure(
-   db,authenticated.staffId,now));
-  if(recorded===null)throw new Error('admin_mfa_failure_record_missing');
+  await transaction(async db=>{
+   const recorded=await recordAdminMfaFailure(db,authenticated.staffId,now);
+   if(recorded===null)throw new Error('admin_mfa_failure_record_missing');
+  });
   return null;
  }
  return issueReplayProtectedAdminSession(transaction,{
