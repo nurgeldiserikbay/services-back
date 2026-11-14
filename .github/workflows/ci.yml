@@ -407,6 +407,25 @@ jobs:
           )"
           if [ "$restored_structure_digest" != "$source_structure_digest" ]; then
             echo 'Restored PostgreSQL constraints or indexes differ from source' >&2
+            # Report only schema object identifiers and definition hashes.
+            # Do not expose database rows, credentials, or full DDL in CI logs.
+            for target in services_test "$restore_db"; do
+              psql --dbname="$target" -At -v ON_ERROR_STOP=1 <<'SQL' > "$RUNNER_TEMP/structure-$target.txt"
+          WITH definitions AS (
+            SELECT 'constraint:' || c.conrelid::regclass::text || ':' || c.conname AS key,
+                   pg_get_constraintdef(c.oid) AS definition
+            FROM pg_constraint c
+            JOIN pg_namespace n ON n.oid = c.connamespace
+            WHERE n.nspname = 'public'
+            UNION ALL
+            SELECT 'index:' || tablename || ':' || indexname, indexdef
+            FROM pg_indexes WHERE schemaname = 'public'
+          )
+          SELECT key || '=' || md5(definition) FROM definitions ORDER BY key;
+          SQL
+            done
+            diff -u "$RUNNER_TEMP/structure-services_test.txt" "$RUNNER_TEMP/structure-$restore_db.txt" || true
+            rm -f "$RUNNER_TEMP/structure-services_test.txt" "$RUNNER_TEMP/structure-$restore_db.txt"
             exit 1
           fi
           restored_users_digest="$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 -c "SELECT md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY id), '')) FROM (SELECT * FROM public.users) t")"
