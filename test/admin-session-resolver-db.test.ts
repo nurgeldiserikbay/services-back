@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {Client} from 'pg';
 import {issueAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
+import {createVerifiedPlatformAdminSession} from '../src/modules/admin/admin-session-issuance.js';
 import {
  canAccessPlatformAdminResource,resolvePlatformAdminSession,
 } from '../src/modules/admin/admin-session-resolver.js';
@@ -41,6 +42,12 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
     staff_id,encrypted_secret,key_version,created_at,activated_at
    ) VALUES($1,$2,$3,now()-interval '2 minutes',now()-interval '1 minute')
   `,[staffId,'integration-test-placeholder-encrypted-envelope','test-v1']);
+  // Real issuance must enforce the same factor activation rule as resolution.
+  const verified={staffId,mfaVerifiedAt:Date.now()};
+  const issued=await createVerifiedPlatformAdminSession(db,verified,pepper);
+  assert.ok(issued?.token);
+  assert.equal(await canAccessPlatformAdminResource(
+   db,issued.token,pepper,'audit.read',scope),true);
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read',scope),true);
   assert.equal(await canAccessPlatformAdminResource(
