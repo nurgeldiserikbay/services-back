@@ -17,6 +17,7 @@ const fakeDb=(items:ReturnType<typeof row>[])=>({
  query:async(sql:string,values:unknown[])=>{
   assert.match(sql,/platform_admin_sessions/);
   assert.match(sql,/revoked_at IS NULL/);
+  assert.match(sql,/session\.created_at<=to_timestamp\(\$2::double precision\/1000\.0\)/);
   assert.match(sql,/staff.disabled_at IS NULL/);
   assert.match(sql,/usr.status='ACTIVE'/);
   assert.match(sql,/EXISTS \(\s*SELECT 1 FROM platform_admin_totp_factors factor/);
