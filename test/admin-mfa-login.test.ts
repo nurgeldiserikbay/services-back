@@ -561,3 +561,57 @@ test('lockout database outage cannot be treated as successful MFA',async()=>{
  ),/lockout storage offline/);
  assert.equal(factorAccess,0);
 });
+
+
+test('fifth failed MFA attempt locks the next login before factor access',async()=>{
+ let failures=0;
+ let lockedUntil:number|null=null;
+ let factorReads=0;
+ let sessionWrites=0;
+ const client={
+  query:async(sql:string)=>{
+   if(['BEGIN','COMMIT','ROLLBACK'].includes(sql)||sql.startsWith('SET LOCAL '))return {rows:[]};
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))
+    return {rows:failures===0?[]:[{
+     locked_until:lockedUntil===null?null:new Date(lockedUntil),
+     failed_attempts:failures,window_started_at:new Date(now-1000),
+    }]};
+   if(sql.includes('FOR SHARE OF factor')){
+    factorReads++;return {rows:[{staff_id:staffId}]};
+   }
+   if(sql.includes('factor.encrypted_secret'))
+    return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
+    failures++;
+    if(failures===5)lockedUntil=now+900000;
+    return {rows:[{
+     failed_attempts:failures,
+     locked_until:lockedUntil===null?null:new Date(lockedUntil),
+    }]};
+   }
+   if(sql.includes('INSERT INTO platform_admin_security_events'))
+    return {rows:[{id:randomUUID()}]};
+   if(sql.includes('INSERT INTO platform_admin_sessions')){
+    sessionWrites++;return {rows:[{id:randomUUID()}]};
+   }
+   throw Error('unexpected SQL in lockout sequence');
+  },
+  release:()=>{},
+ };
+ const pool={connect:async()=>client} as never;
+ const bad=code==='999999'?'000000':'999999';
+ for(let attempt=1;attempt<=5;attempt++){
+  assert.equal(await loginAdminWithProvisionedTotp(
+   pool,primary,bad,async()=>key,pepper,now,
+  ),null);
+  assert.equal(failures,attempt);
+ }
+ assert.equal(lockedUntil,now+900000);
+ const readsBeforeLockout=factorReads;
+ assert.equal(await loginAdminWithProvisionedTotp(
+  pool,primary,code,async()=>key,pepper,now,
+ ),null);
+ assert.equal(factorReads,readsBeforeLockout);
+ assert.equal(sessionWrites,0);
+});
