@@ -59,6 +59,19 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read',scope),true);
 
+  // A provisioned but not yet activated factor cannot back an admin session.
+  await db.query(
+   'UPDATE platform_admin_totp_factors SET activated_at=NULL WHERE staff_id=$1',
+   [staffId],
+  );
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper),null);
+  await db.query(
+   "UPDATE platform_admin_totp_factors SET activated_at=now()-interval '1 minute' WHERE staff_id=$1",
+   [staffId],
+  );
+  assert.equal(await canAccessPlatformAdminResource(
+   db,token,pepper,'audit.read',scope),true);
+
   await db.query(
    'UPDATE platform_admin_totp_factors SET disabled_at=now() WHERE staff_id=$1',
    [staffId],
