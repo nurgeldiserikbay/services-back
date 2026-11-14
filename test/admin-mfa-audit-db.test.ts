@@ -140,3 +140,22 @@ test('PostgreSQL rejects orphaned privileged audit events without creating rows'
   await db.end();
  }
 });
+
+
+test('MFA audit writer rejects malformed identifiers and actions before SQL',async()=>{
+ let queries=0;
+ const db={query:async()=>{queries++;throw new Error('unexpected SQL');}} as never;
+ const validStaffId=randomUUID();
+ for(const [staffId,action] of [
+  ['not-a-uuid','admin_mfa_login_failed'],
+  [validStaffId,'unexpected_admin_mfa_action'],
+  [validStaffId,'totp_factor_revoked'],
+  ['', 'admin_mfa_login_succeeded'],
+ ]){
+  await assert.rejects(
+   recordAdminMfaSecurityEvent(db,staffId,action),
+   /invalid_admin_mfa_audit_event/,
+  );
+ }
+ assert.equal(queries,0);
+});
