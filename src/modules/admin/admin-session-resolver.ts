@@ -31,7 +31,7 @@ export async function resolvePlatformAdminSession(
 ):Promise<VerifiedAdminPrincipal|null>{
  if(typeof bearer!=='string'||!TOKEN.test(bearer)||
   !Buffer.isBuffer(pepper)||pepper.length!==32||
-  !Number.isSafeInteger(now))return null;
+  !Number.isSafeInteger(now)||now<0||now>8_640_000_000_000_000)return null;
  const hash=hashAdminSessionToken(bearer,pepper);
  const result=await db.query<AdminRow>(`
  SELECT usr.id::text AS user_id, staff.role,
