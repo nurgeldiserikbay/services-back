@@ -145,3 +145,15 @@ test('factor revocation rejects malformed acquired connections before BEGIN',asy
   );
  }
 });
+
+test('malformed checked-out revocation client is released as broken',async()=>{
+ const releases:unknown[]=[];
+ const client={query:null,release:(broken?:boolean)=>{releases.push(broken);}};
+ await assert.rejects(
+  revokeAdminTotpFactorAndSessions(
+   {connect:async()=>client} as never,staffId,token,pepper,now,
+  ),
+  /admin_totp_revocation_connection_unavailable/,
+ );
+ assert.deepEqual(releases,[true]);
+});
