@@ -27,7 +27,7 @@ test('successful TOTP cannot issue bearer if mandatory security audit fails',asy
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
    if(sql.includes('DELETE FROM platform_admin_mfa_attempts'))return {rows:[]};
    if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))return {rows:[]};
-   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
+   if(sql.includes('FOR SHARE OF factor')&&sql.includes('SELECT factor.staff_id::text'))return {rows:[{staff_id:staffId}]};
    if(sql.includes('factor.encrypted_secret'))
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
    if(sql.includes('platform_admin_totp_replay'))
@@ -69,7 +69,7 @@ test('failed TOTP cannot commit its lockout counter without a durable audit even
    }
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
    if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))return {rows:[]};
-   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
+   if(sql.includes('FOR SHARE OF factor')&&sql.includes('SELECT factor.staff_id::text'))return {rows:[{staff_id:staffId}]};
    if(sql.includes('factor.encrypted_secret'))
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
    if(sql.includes('INSERT INTO platform_admin_sessions'))
