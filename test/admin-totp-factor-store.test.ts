@@ -151,3 +151,16 @@ test('invalid provisioning key and secret never reach database or encryption',as
  }
  assert.equal(queries,0);
 });
+
+test('TOTP factor store rejects missing database clients before encryption or lookup',async()=>{
+ let keyLookups=0;
+ for(const db of [null,undefined,{}, {query:null}, {query:'invalid'}]){
+  assert.equal(await provisionAdminTotpFactor(
+   db as never,staffId,secret,'v1',key,
+  ),false);
+  assert.equal(await loadActiveAdminTotpFactor(
+   db as never,staffId,async()=>{keyLookups++;return key;},
+  ),null);
+ }
+ assert.equal(keyLookups,0);
+});
