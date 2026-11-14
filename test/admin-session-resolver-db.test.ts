@@ -60,9 +60,6 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
   await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read',scope),false);
-  assert.equal(await createVerifiedPlatformAdminSession(
-   db,{staffId,mfaVerifiedAt:Date.now()},pepper,
-  ),null);
   // A revoked grant must prevent both authorization and new issuance.
   assert.equal(await createVerifiedPlatformAdminSession(
    db,{staffId,mfaVerifiedAt:Date.now()},pepper,
