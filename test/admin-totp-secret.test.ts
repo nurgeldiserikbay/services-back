@@ -46,3 +46,15 @@ test('TOTP envelope rejects object identities without coercing them',()=>{
  assert.equal(openAdminTotpSecret(envelope,fakeId as never,key),null);
  assert.equal(coerced,0);
 });
+
+test('TOTP envelope supports minimum and maximum secret lengths',()=>{
+ for(const size of [20,128]){
+  const value=randomBytes(size);
+  const envelope=sealAdminTotpSecret(value,staffId,key);
+  assert.deepEqual(openAdminTotpSecret(envelope,staffId,key),value);
+ }
+ assert.throws(()=>sealAdminTotpSecret(Buffer.alloc(129),staffId,key),
+  /invalid_admin_totp_secret_envelope/);
+ assert.throws(()=>sealAdminTotpSecret(Buffer.alloc(0),staffId,key),
+  /invalid_admin_totp_secret_envelope/);
+});
