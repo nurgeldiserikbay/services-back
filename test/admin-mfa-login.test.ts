@@ -21,6 +21,7 @@ function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'){
  const events:string[]=[];
  const client={
   query:async(sql:string)=>{
+   if(sql.startsWith('SET LOCAL ')){events.push(sql);return {rows:[]};}
    if(['BEGIN','COMMIT','ROLLBACK'].includes(sql)){
     events.push(sql);
     if(sql==='COMMIT'&&mode==='commit-fails')throw Error('commit failed');
@@ -68,7 +69,7 @@ test('admin login locks factor and commits before returning bearer',async()=>{
  );
  assert.ok(result?.token);
  assert.deepEqual(f.events,[
-  'BEGIN','staff-lock','lockout','factor-lock','load-factor',
+  'BEGIN',"SET LOCAL lock_timeout = '3s'","SET LOCAL statement_timeout = '8s'",'staff-lock','lockout','factor-lock','load-factor',
   'consume','session','clear-failures','audit','COMMIT','release',
  ]);
 });
@@ -78,7 +79,7 @@ test('disabled factor never loads secret or issues session',async()=>{
   f.pool,primary,code,async()=>key,pepper,now,
  ),null);
  assert.deepEqual(f.events,[
-  'BEGIN','staff-lock','lockout','factor-lock','ROLLBACK','release',
+  'BEGIN',"SET LOCAL lock_timeout = '3s'","SET LOCAL statement_timeout = '8s'",'staff-lock','lockout','factor-lock','ROLLBACK','release',
  ]);
 });
 test('invalid TOTP commits a failure without creating a session',async()=>{
@@ -88,7 +89,7 @@ test('invalid TOTP commits a failure without creating a session',async()=>{
   f.pool,primary,bad,async()=>key,pepper,now,
  ),null);
  assert.deepEqual(f.events,[
-  'BEGIN','staff-lock','lockout','factor-lock','load-factor',
+  'BEGIN',"SET LOCAL lock_timeout = '3s'","SET LOCAL statement_timeout = '8s'",'staff-lock','lockout','factor-lock','load-factor',
   'failure','audit','COMMIT','release',
  ]);
 });
@@ -107,7 +108,7 @@ test('malformed MFA code is counted after a valid primary assertion',async()=>{
   f.pool,primary,'12x',async()=>key,pepper,now,
  ),null);
  assert.deepEqual(f.events,[
-  'BEGIN','staff-lock','lockout','factor-lock','load-factor',
+  'BEGIN',"SET LOCAL lock_timeout = '3s'","SET LOCAL statement_timeout = '8s'",'staff-lock','lockout','factor-lock','load-factor',
   'failure','audit','COMMIT','release',
  ]);
 });
@@ -184,7 +185,7 @@ test('failed rollback discards an uncertain admin MFA database connection',async
  const released:unknown[]=[];
  const client={
   query:async(sql:string)=>{
-   if(sql==='BEGIN')return {rows:[]};
+   if(sql==='BEGIN'||sql.startsWith('SET LOCAL '))return {rows:[]};
    if(sql.includes('pg_advisory_xact_lock'))throw Error('transaction failed');
    if(sql==='ROLLBACK')throw Error('rollback failed');
    throw Error('unexpected SQL');
@@ -204,7 +205,7 @@ test('successful rollback returns admin MFA database connection normally',async(
  const released:unknown[]=[];
  const client={
   query:async(sql:string)=>{
-   if(sql==='BEGIN'||sql==='ROLLBACK')return {rows:[]};
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL '))return {rows:[]};
    if(sql.includes('pg_advisory_xact_lock'))throw Error('transaction failed');
    throw Error('unexpected SQL');
   },
@@ -223,7 +224,7 @@ test('uncertain MFA commit discards the database connection even if rollback suc
  const client={
   query:async(sql:string)=>{
    events.push(sql);
-   if(sql==='BEGIN'||sql==='ROLLBACK')return {rows:[]};
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL '))return {rows:[]};
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
    if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
    if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
@@ -256,7 +257,7 @@ test('failed-MFA attempt commit error discards connection without returning succ
  const events:string[]=[];
  const client={
   query:async(sql:string)=>{
-   if(sql==='BEGIN'||sql==='ROLLBACK'){events.push(sql);return {rows:[]};}
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL ')){events.push(sql);return {rows:[]};}
    if(sql==='COMMIT'){events.push(sql);throw Error('attempt commit uncertain');}
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
    if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
