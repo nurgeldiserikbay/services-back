@@ -45,6 +45,16 @@ test('admin logout HTTP validates bearer and revokes the matching session in a t
   assert.match(denied.headers.get('cache-control')??'',/no-store/);
   assert.equal(denied.headers.get('x-robots-tag'),'noindex, nofollow');
   assert.equal(transactions,0);
+  for(const authorization of ['Basic abc','Bearer invalid',`Bearer ${token}, Bearer ${token}`]){
+   const rejected=await fetch(url,{method:'POST',headers:{authorization}});
+   assert.equal(rejected.status,401);
+   assert.equal(transactions,0);
+  }
+  process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP='disabled';
+  const disabled=await fetch(url,{method:'POST',headers:{authorization:`Bearer ${token}`}});
+  assert.equal(disabled.status,401);
+  assert.equal(transactions,0);
+  process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP='enabled';
   const allowed=await fetch(url,{method:'POST',headers:{authorization:`Bearer ${token}`}});
   assert.equal(allowed.status,200);
   assert.deepEqual(await allowed.json(),{status:'revoked'});
