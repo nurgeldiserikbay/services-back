@@ -112,3 +112,18 @@ test('malformed joined rows never create partial authorization',async()=>{
    fakeDb([good,invalid] as never),token,pepper,now),null);
  }
 });
+
+
+test('invalid authorization clock is rejected before database access',async()=>{
+ let calls=0;
+ const db={query:async()=>{calls++;throw new Error('unexpected SQL');}} as never;
+ for(const invalidNow of [
+  -1,NaN,Infinity,-Infinity,1.5,
+  8_640_000_000_000_001,Number.MAX_SAFE_INTEGER,
+ ]){
+  assert.equal(await resolvePlatformAdminSession(
+   db,token,pepper,invalidNow,
+  ),null);
+ }
+ assert.equal(calls,0);
+});
