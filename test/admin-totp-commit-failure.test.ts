@@ -34,3 +34,21 @@ test('successful MFA session cannot be returned if commit fails',async()=>{
  ),/commit failed/);
  assert.deepEqual(steps,['lockout','consume','session','commit-error']);
 });
+
+test('MFA commit failure after a failed code never reports successful authentication',async()=>{
+ const steps:string[]=[];
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
+  const result=await work({query:async(sql:string)=>{
+   assert.match(sql,/INSERT INTO platform_admin_mfa_attempts/);
+   steps.push('failure-recorded');
+   return {rows:[{failed_attempts:1,locked_until:null}]};
+  }} as Db);
+  assert.equal(result?.failedAttempts,1);
+  steps.push('commit-error');
+  throw Error('failure audit commit failed');
+ };
+ await assert.rejects(attemptAdminTotpLogin(
+  transaction,{staffId,secret},'000000',pepper,now,
+ ),/failure audit commit failed/);
+ assert.deepEqual(steps,['failure-recorded','commit-error']);
+});
