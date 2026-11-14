@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {recordAdminMfaFailure} from '../src/modules/admin/admin-mfa-attempts.js';
+import {recordAdminMfaFailure,isAdminMfaLocked} from '../src/modules/admin/admin-mfa-attempts.js';
 
 const staffId=randomUUID();
 const now=Date.now();
@@ -45,5 +45,53 @@ test('unexpected lockout database results fail closed',async()=>{
   const db={query:async()=>({rows})} as never;
   await assert.rejects(recordAdminMfaFailure(db,staffId,now),
    /admin_mfa_attempt_record_unavailable/);
+ }
+});
+
+
+test('MFA lockout check reads the durable row under a database lock',async()=>{
+ const db={query:async(sql:string,params:unknown[])=>{
+  assert.match(sql,/FROM platform_admin_mfa_attempts/);
+  assert.match(sql,/FOR UPDATE/);
+  assert.deepEqual(params,[staffId]);
+  return {rows:[{locked_until:new Date(now+60000)}]};
+ }} as never;
+ assert.equal(await isAdminMfaLocked(db,staffId,now),true);
+});
+
+test('MFA lockout check allows absent, cleared and expired locks',async()=>{
+ for(const [rows,expected] of [
+  [[],false],
+  [[{locked_until:null}],false],
+  [[{locked_until:new Date(now)}],false],
+  [[{locked_until:new Date(now-1)}],false],
+ ] as const){
+  const db={query:async()=>({rows})} as never;
+  assert.equal(await isAdminMfaLocked(db,staffId,now),expected);
+ }
+});
+
+test('MFA lockout check rejects invalid identities without SQL',async()=>{
+ let calls=0;
+ const db={query:async()=>{calls++;throw Error('unexpected SQL');}} as never;
+ for(const [id,time] of [
+  ['invalid',now],[staffId,-1],[staffId,NaN],
+  [staffId,Infinity],[staffId,1.5],
+ ] as const){
+  assert.equal(await isAdminMfaLocked(db,id,time),true);
+ }
+ assert.equal(calls,0);
+});
+
+test('MFA lockout check fails closed on corrupt database responses',async()=>{
+ for(const rows of [
+  null,[{locked_until:'invalid'}],
+  [{locked_until:new Date(NaN)}],
+  [{locked_until:null},{locked_until:null}],
+  [{}],
+ ]){
+  const db={query:async()=>({rows})} as never;
+  await assert.rejects(isAdminMfaLocked(db,staffId,now),
+   /admin_mfa_lockout_unavailable/);
  }
 });
