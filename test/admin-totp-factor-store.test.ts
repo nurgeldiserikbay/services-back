@@ -101,3 +101,37 @@ test('factor loader fails closed on corrupt database rows',async()=>{
   ),/admin_totp_factor_unavailable/);
  }
 });
+
+test('factor ciphertext cannot be decrypted for a different staff identity',async()=>{
+ const otherStaffId=randomUUID();
+ let envelope='';
+ const write={query:async(_sql:string,params:unknown[])=>{
+  envelope=params[1] as string;
+  return {rows:[{staff_id:staffId}]};
+ }} as never;
+ assert.equal(await provisionAdminTotpFactor(
+  write,staffId,secret,'key-1',key,
+ ),true);
+ const read={query:async(_sql:string,params:unknown[])=>{
+  assert.equal(params[0],otherStaffId);
+  return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+ }} as never;
+ assert.equal(await loadActiveAdminTotpFactor(
+  read,otherStaffId,async()=>key,
+ ),null);
+});
+
+test('wrong vault encryption key cannot unlock a provisioned factor',async()=>{
+ let envelope='';
+ const write={query:async(_sql:string,params:unknown[])=>{
+  envelope=params[1] as string;
+  return {rows:[{staff_id:staffId}]};
+ }} as never;
+ await provisionAdminTotpFactor(write,staffId,secret,'key-1',key);
+ const read={query:async()=>({
+  rows:[{encrypted_secret:envelope,key_version:'key-1'}],
+ })} as never;
+ assert.equal(await loadActiveAdminTotpFactor(
+  read,staffId,async()=>randomBytes(32),
+ ),null);
+});
