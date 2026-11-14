@@ -77,3 +77,33 @@ test('untrusted principal and invalid clock never reach the database',async()=>{
   authenticated,'000000',Buffer.alloc(1),now),null);
  assert.equal(calls,0);
 });
+
+test('malformed TOTP inputs count as failed attempts, not free guesses',async()=>{
+ const codes:unknown[]=['28708','287082 ','287O82',287082,null,undefined];
+ const recorded:unknown[]=[];
+ const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>work({
+  query:async(sql:string,params:unknown[])=>{
+   assert.match(sql,/INSERT INTO platform_admin_mfa_attempts/);
+   recorded.push(params[0]);
+   return {rows:[{failed_attempts:1,locked_until:null}]};
+  },
+ } as never);
+ for(const code of codes)
+  assert.equal(await attemptAdminTotpLogin(
+   transaction,authenticated,code,pepper,now),null);
+ assert.equal(recorded.length,codes.length);
+ assert.ok(recorded.every(id=>id===staffId));
+});
+
+test('failed MFA transaction commit error never becomes successful login',async()=>{
+ const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>{
+  await work({query:async()=>({
+   rows:[{failed_attempts:1,locked_until:null}],
+  })} as never);
+  throw Error('commit failed');
+ };
+ await assert.rejects(
+  attemptAdminTotpLogin(transaction,authenticated,'000000',pepper,now),
+  /commit failed/,
+ );
+});
