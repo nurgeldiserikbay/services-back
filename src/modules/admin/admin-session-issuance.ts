@@ -43,6 +43,11 @@ export async function createVerifiedPlatformAdminSession(
                 WHERE grants.staff_id=staff.id)
     AND NOT EXISTS (SELECT 1 FROM platform_admin_mfa_attempts attempts
                     WHERE attempts.staff_id=staff.id
+                      AND attempts.failed_attempts>=5
+                      AND attempts.window_started_at>to_timestamp(($5::double precision-900000)/1000.0)
+                      AND attempts.locked_until IS NULL)
+    AND NOT EXISTS (SELECT 1 FROM platform_admin_mfa_attempts attempts
+                    WHERE attempts.staff_id=staff.id
                       AND attempts.locked_until>to_timestamp($5::double precision/1000.0))
     AND EXISTS (SELECT 1 FROM platform_admin_totp_factors factor
                 WHERE factor.staff_id=staff.id
