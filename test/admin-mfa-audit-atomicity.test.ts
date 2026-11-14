@@ -32,8 +32,10 @@ test('successful TOTP cannot issue bearer if mandatory security audit fails',asy
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
    if(sql.includes('platform_admin_totp_replay'))
     return {rows:[{last_consumed_counter:String(now/30000)}]};
-   if(sql.includes('INSERT INTO platform_admin_sessions'))
+   if(sql.includes('INSERT INTO platform_admin_sessions')){
+    statements.push('session-insert');
     return {rows:[{id:randomUUID()}]};
+   }
    if(sql.includes('INSERT INTO platform_admin_security_events')){
     statements.push('audit-failed');
     throw Error('audit database unavailable');
@@ -48,6 +50,8 @@ test('successful TOTP cannot issue bearer if mandatory security audit fails',asy
   {staffId,authenticatedAt:now-1000},
   code,async()=>key,pepper,now,
  ),/audit database unavailable/);
+ assert.ok(statements.includes('session-insert'));
+ assert.ok(statements.indexOf('session-insert')<statements.indexOf('audit-failed'));
  assert.ok(statements.includes('audit-failed'));
  assert.ok(statements.includes('ROLLBACK'));
  assert.ok(!statements.includes('COMMIT'));
