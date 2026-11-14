@@ -80,6 +80,7 @@ test('invalid or browser-shaped assertions do not enter a transaction',async()=>
   {...verified,totpCounter:-1},
   {...verified,totpCounter:1.5},
   {...verified,mfaVerifiedAt:now+1},
+  {...verified,mfaVerifiedAt:-1},
   {...verified,mfaVerifiedAt:now-900001},
   {...verified,otp:'123456'},
   Object.assign(Object.create(null),verified),
@@ -99,4 +100,34 @@ test('database failures propagate instead of issuing a bearer',async()=>{
   issueReplayProtectedAdminSession(transaction,verified,pepper,now),
   /database unavailable/,
  );
+});
+
+
+test('commit failure never releases an admin bearer',async()=>{
+ const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>{
+  await work({query:async(sql:string)=>{
+   if(sql.includes('platform_admin_totp_replay'))
+    return {rows:[{last_consumed_counter:'12345'}]};
+   if(sql.includes('platform_admin_sessions'))
+    return {rows:[{id:randomUUID()}]};
+   throw Error('unexpected query');
+  }} as never);
+  throw Error('commit failed');
+ };
+ await assert.rejects(
+  issueReplayProtectedAdminSession(transaction,verified,pepper,now),
+  /commit failed/,
+ );
+});
+
+test('out-of-range clock rejects before opening a transaction',async()=>{
+ let calls=0;
+ const transaction=async <T>(_work:(db:never)=>Promise<T>):Promise<T>=>{
+  calls++;
+  throw Error('unexpected transaction');
+ };
+ const late=8_640_000_000_000_000-1000;
+ assert.equal(await issueReplayProtectedAdminSession(
+  transaction,{...verified,mfaVerifiedAt:late},pepper,late),null);
+ assert.equal(calls,0);
 });
