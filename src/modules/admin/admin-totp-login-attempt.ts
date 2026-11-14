@@ -40,7 +40,7 @@ export async function attemptAdminTotpLogin(
   // it with a deliberately rolled-back session issuance transaction.
   const recorded=await transaction(db=>recordAdminMfaFailure(
    db,authenticated.staffId,now));
-  if(recorded===null)return null;
+  if(recorded===null)throw new Error('admin_mfa_failure_record_missing');
   return null;
  }
  return issueReplayProtectedAdminSession(transaction,{
