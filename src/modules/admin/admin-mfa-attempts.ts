@@ -99,7 +99,8 @@ export async function isAdminMfaLocked(
  if(!row||!Number.isInteger(row.failed_attempts)||
     row.failed_attempts<1||row.failed_attempts>5||
     !(row.window_started_at instanceof Date)||
-    !Number.isFinite(row.window_started_at.getTime()))
+    !Number.isFinite(row.window_started_at.getTime())||
+    row.window_started_at.getTime()>now)
   throw new Error('admin_mfa_lockout_unavailable');
  const value=row.locked_until;
  if(value!==null&&(!(value instanceof Date)||
