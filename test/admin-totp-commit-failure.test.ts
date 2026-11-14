@@ -52,3 +52,25 @@ test('MFA commit failure after a failed code never reports successful authentica
  ),/failure audit commit failed/);
  assert.deepEqual(steps,['failure-recorded','commit-error']);
 });
+
+test('malformed persisted MFA attempt response fails closed before commit',async()=>{
+ const steps:string[]=[];
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
+  try{
+   const result=await work({query:async(sql:string)=>{
+    assert.match(sql,/INSERT INTO platform_admin_mfa_attempts/);
+    steps.push('invalid-attempt-row');
+    return {rows:[{failed_attempts:'1',locked_until:null}]};
+   }} as Db);
+   steps.push('COMMIT');
+   return result;
+  }catch(error){
+   steps.push('ROLLBACK');
+   throw error;
+  }
+ };
+ await assert.rejects(attemptAdminTotpLogin(
+  transaction,{staffId,secret},'000000',pepper,now,
+ ),/admin_mfa_attempt_record_unavailable/);
+ assert.deepEqual(steps,['invalid-attempt-row','ROLLBACK']);
+});
