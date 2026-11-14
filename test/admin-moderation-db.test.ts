@@ -37,7 +37,7 @@ test('moderation queue only returns redacted cases from currently granted scopes
   await db.query(`
    INSERT INTO platform_admin_totp_factors(
     staff_id,encrypted_secret,key_version,created_at,activated_at
-   ) VALUES($1,$2,$3,now()-interval '2 minutes',now()-interval '1 minute')
+   ) VALUES($1,$2,$3,now()-interval '4 minutes',now()-interval '3 minutes')
   `,[staffId,'integration-test-placeholder-encrypted-envelope','test-v1']);
   process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
   process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=pepper.toString('base64');
