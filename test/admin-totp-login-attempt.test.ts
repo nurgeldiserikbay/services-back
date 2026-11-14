@@ -135,3 +135,32 @@ test('replayed valid TOTP never issues a privileged session',async()=>{
  ),null);
  assert.deepEqual(steps,['lockout','replay-denied','ROLLBACK']);
 });
+
+test('session issuance denial rolls back consumed replay watermark',async()=>{
+ const steps:string[]=[];
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
+  try{
+   const result=await work({query:async(sql:string)=>{
+    if(sql.includes('SELECT locked_until')){
+     steps.push('lockout');return {rows:[]};
+    }
+    if(sql.includes('INSERT INTO platform_admin_totp_replay')){
+     steps.push('replay');return {rows:[{last_consumed_counter:'1'}]};
+    }
+    if(sql.includes('INSERT INTO platform_admin_sessions')){
+     steps.push('session-denied');return {rows:[]};
+    }
+    throw Error('unexpected query');
+   }} as Db);
+   steps.push('COMMIT');return result;
+  }catch(error){
+   steps.push('ROLLBACK');throw error;
+  }
+ };
+ assert.equal(await attemptAdminTotpLogin(
+  transaction,authenticated,'287082',pepper,now,
+ ),null);
+ assert.deepEqual(steps,[
+  'lockout','replay','session-denied','ROLLBACK',
+ ]);
+});
