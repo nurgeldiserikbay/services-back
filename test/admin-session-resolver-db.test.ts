@@ -59,6 +59,9 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
   await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read',scope),false);
+  assert.equal(await createVerifiedPlatformAdminSession(
+   db,{staffId,mfaVerifiedAt:Date.now()},pepper,
+  ),null);
   await db.query(
    'INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [grantId,staffId,scope],
