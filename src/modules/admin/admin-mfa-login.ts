@@ -68,7 +68,8 @@ export async function loginAdminWithProvisionedTotp(
   `,[primary.staffId]);
   if(!factorLock||!Array.isArray(factorLock.rows)||
      factorLock.rows.length!==1||
-     factorLock.rows[0]?.staff_id?.toLowerCase()!==primary.staffId.toLowerCase()){
+     typeof factorLock.rows[0]?.staff_id!=='string'||
+     factorLock.rows[0].staff_id.toLowerCase()!==primary.staffId.toLowerCase()){
    try{await client.query('ROLLBACK');}
    catch(error){discardConnection=true;throw error;}
    began=false;
