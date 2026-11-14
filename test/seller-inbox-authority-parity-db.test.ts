@@ -30,8 +30,8 @@ async function fixture(db:Client,customerPersonId?:string){
     VALUES($1,'email','encrypted',$2,now()+interval '1 day')`,
    [guestId,'inbox-guest-'+randomUUID()]);
  await db.query(`INSERT INTO service_requests(
-   id,offer_id,guest_contact_id,source_context,seller_professional_id,status,note)
-   VALUES($1,$2,$3,'PERSONAL',$4,'PENDING','private note')`,
+   id,offer_id,guest_contact_id,customer_person_id,source_context,seller_professional_id,status,note)
+   VALUES($1,$2,$3,$4,'PERSONAL',$5,'PENDING','private note')`,
   [requestId,offerId,customerPersonId?null:guestId,customerPersonId??null,profileId]);
  return {ownerId,profileId,requestId};
 }
