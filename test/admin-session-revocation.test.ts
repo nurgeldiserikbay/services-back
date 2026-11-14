@@ -97,3 +97,21 @@ test('self-logout query is guarded against future-created and already revoked se
  }} as never;
  assert.equal(await revokeOwnPlatformAdminSession(db,token,pepper,now),false);
 });
+
+
+test('both admin revocation paths reject out-of-range clocks without SQL',async()=>{
+ let calls=0;
+ const db={query:async()=>{calls++;throw Error('unexpected SQL');}} as never;
+ for(const invalidNow of [
+  -1,NaN,Infinity,-Infinity,1.5,
+  8_640_000_000_000_001,Number.MAX_SAFE_INTEGER,
+ ]){
+  assert.equal(await revokePlatformAdminSession(
+   db,token,pepper,staffId,invalidNow,
+  ),false);
+  assert.equal(await revokeOwnPlatformAdminSession(
+   db,token,pepper,invalidNow,
+  ),false);
+ }
+ assert.equal(calls,0);
+});
