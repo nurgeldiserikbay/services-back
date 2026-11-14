@@ -33,6 +33,8 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
    'INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [grantId,staffId,scope],
   );
+  // Even a valid token and grant cannot bypass MFA enrollment.
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper),null);
   // A live admin session must be backed by a currently activated TOTP factor.
   await db.query(`
    INSERT INTO platform_admin_totp_factors(
