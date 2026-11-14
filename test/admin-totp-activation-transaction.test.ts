@@ -26,8 +26,8 @@ function fixture(locked=false){
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('serialize');return {rows:[{}]};
    }
-   if(sql.includes('FROM platform_admin_mfa_attempts')){
-    events.push('lockout');return {rows:locked?[{locked_until:new Date(now+60000)}]:[]};
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at')&&sql.includes('FROM platform_admin_mfa_attempts')){
+    events.push('lockout');return {rows:locked?[{locked_until:new Date(now+60000),failed_attempts:5,window_started_at:new Date(now-1000)}]:[]};
    }
    if(sql.includes('FOR UPDATE OF factor')){
     events.push('factor');return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
