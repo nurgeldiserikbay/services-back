@@ -12,6 +12,10 @@ test('replay watermark advances using a conditional atomic upsert',async()=>{
   assert.match(sql,/last_consumed_counter\s*< EXCLUDED\.last_consumed_counter/);
   assert.match(sql,/staff\.disabled_at IS NULL/);
   assert.match(sql,/usr\.status='ACTIVE'/);
+  assert.match(sql,/staff\.role IN \('owner','admin','operator','auditor'\)/);
+  assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_totp_factors factor/);
+  assert.match(sql,/factor\.activated_at IS NOT NULL/);
+  assert.match(sql,/factor\.disabled_at IS NULL/);
   assert.deepEqual(params,[staffId,123]);
   return {rows:[{last_consumed_counter:'123'}]};
  }} as never;
