@@ -23,6 +23,9 @@ function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'
     events.push('authorize');
     assert.deepEqual(params?.slice(1),[now,300000]);
     assert.ok(sql.includes('JOIN platform_admin_grants security_grant'));
+    assert.match(sql,/session\.created_at<=to_timestamp/);
+    assert.match(sql,/actor_factor\.activated_at<=session\.mfa_verified_at/);
+    assert.match(sql,/actor_factor\.disabled_at IS NULL/);
     assert.ok(sql.includes('FOR SHARE OF session,actor,security_grant'));
     return {rows:mode==='unauthorized'?[]:[{staff_id:staffId}]};
    }
@@ -122,4 +125,12 @@ test('revocation query requires MFA freshness in addition to session validity',a
  const source=readFileSync('src/modules/admin/admin-totp-factor-revocation.ts','utf8');
  assert.ok(source.includes('session.mfa_verified_at>to_timestamp('));
  assert.ok(source.includes('RECENT_MFA_MS=5*60*1000'));
+});
+
+test('factor revocation rejects invalid pool before opening a connection',async()=>{
+ for(const pool of [null,undefined,{}, {connect:null}, {connect:'invalid'}]){
+  assert.equal(await revokeAdminTotpFactorAndSessions(
+   pool as never,staffId,token,pepper,now,
+  ),false);
+ }
 });
