@@ -128,3 +128,16 @@ test('MFA lockout rejects inconsistent recent five-failure row',async()=>{
  }]})} as never;
  assert.equal(await isAdminMfaLocked(db,staffId,now),true);
 });
+
+
+test('MFA lockout rejects future-dated windows rather than treating them as clear',async()=>{
+ for(const failedAttempts of [1,4,5]){
+  const db={query:async()=>({rows:[{
+   locked_until:null,
+   failed_attempts:failedAttempts,
+   window_started_at:new Date(now+60_000),
+  }]})} as never;
+  await assert.rejects(isAdminMfaLocked(db,staffId,now),
+   /admin_mfa_lockout_unavailable/);
+ }
+});
