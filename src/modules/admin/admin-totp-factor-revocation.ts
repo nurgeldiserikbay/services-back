@@ -75,7 +75,7 @@ export async function revokeAdminTotpFactorAndSessions(
    SET revoked_at=to_timestamp($2::double precision/1000)
    WHERE staff_id=$1::uuid AND revoked_at IS NULL
   `,[staffId,now]);
-  if(!revoked||!Number.isSafeInteger(revoked.rowCount)||revoked.rowCount<0)
+  if(!revoked||revoked.rowCount===null||!Number.isSafeInteger(revoked.rowCount)||revoked.rowCount<0)
    throw new Error('admin_totp_session_revocation_unavailable');
   // Audit record is committed atomically with factor and session revocation.
   const audited=await client.query<{id:string}>(`
