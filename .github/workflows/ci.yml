@@ -141,12 +141,6 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
           # Ubuntu's default client may be newer than our PostgreSQL 16 server.
           # Run dump/restore with the same postgres:16 image as the CI service.
-          pg_dump() { docker run --rm --network host \
-            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
-            -v "$RUNNER_TEMP:$RUNNER_TEMP" postgres:16 pg_dump "$@"; }
-          pg_restore() { docker run --rm --network host \
-            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
-            -v "$RUNNER_TEMP:$RUNNER_TEMP" postgres:16 pg_restore "$@"; }
           pg_dump --version
           pg_restore --version
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT current_database(), current_schema();"
@@ -278,6 +272,12 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
+          pg_dump() { docker run --rm --network host \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
+            -v "$RUNNER_TEMP:$RUNNER_TEMP" postgres:16 pg_dump "$@"; }
+          pg_restore() { docker run --rm --network host \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
+            -v "$RUNNER_TEMP:$RUNNER_TEMP" postgres:16 pg_restore "$@"; }
           backup="$RUNNER_TEMP/services-ci-backup.dump"
           # Unique per workflow attempt, avoiding cross-run cleanup collisions.
           restore_db="services_restore_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
