@@ -47,6 +47,10 @@ Backend owns all authorization, policies, write transactions, SQL migrations, ou
 Next backend vertical slices: country/city/taxonomy, public published catalog, then identity and request workflows. Use real database migrations and transactional tests, not in-memory fake persistence. Do not merge this PR without reviewer approval.
 
 
+## Privileged staff role allowlist (2026-11-14)
+
+The server-side session issuance primitive rejects staff records whose role is not one of `owner`, `admin`, `operator`, or `auditor`. This is an additional issuance guard, **not** an authorization grant: resource scope, active grants, MFA freshness, and revocation must still be enforced by the backend on each privileged request. The login/MFA HTTP flow remains unimplemented and must not be exposed based on this change alone.
+
 ## Privileged admin session issuance foundation (2026-11-11)
 
 `src/modules/admin/admin-session-issuance.ts` provides
