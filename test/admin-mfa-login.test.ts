@@ -228,9 +228,9 @@ test('uncertain MFA commit discards the database connection even if rollback suc
    if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL '))return {rows:[]};
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
    if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
-   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
    if(sql.includes('factor.encrypted_secret'))
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
    if(sql.includes('platform_admin_totp_replay'))
     return {rows:[{last_consumed_counter:String(now/30000)}]};
    if(sql.includes('INSERT INTO platform_admin_sessions'))
