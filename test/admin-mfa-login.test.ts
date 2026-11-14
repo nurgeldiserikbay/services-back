@@ -316,3 +316,22 @@ test('admin MFA transaction setup failure rolls back without issuing a session',
  ]);
  assert.deepEqual(releases,[undefined]);
 });
+
+
+test('failed BEGIN discards admin MFA connection and never attempts further SQL',async()=>{
+ const statements:string[]=[];
+ const released:unknown[]=[];
+ const client={
+  query:async(sql:string)=>{
+   statements.push(sql);
+   throw Error('begin outcome uncertain');
+  },
+  release:(error?:unknown)=>released.push(error),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),/begin outcome uncertain/);
+ assert.deepEqual(statements,['BEGIN']);
+ assert.equal(released.length,1);
+ assert.ok(released[0] instanceof Error);
+});
