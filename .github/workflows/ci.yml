@@ -138,12 +138,17 @@ jobs:
           npm run db:seed:geo
       - name: Validate geographic seed and PostgreSQL constraint smoke
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-16
-          # Match pg_dump/pg_restore major version to the PostgreSQL 16 CI server.
-          # Newer clients emit transaction_timeout, which PostgreSQL 16 rejects.
-          echo '/usr/lib/postgresql/16/bin' >> "$GITHUB_PATH"
-          /usr/lib/postgresql/16/bin/pg_dump --version
-          /usr/lib/postgresql/16/bin/pg_restore --version
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          # Ubuntu's default client may be newer than our PostgreSQL 16 server.
+          # Run dump/restore with the same postgres:16 image as the CI service.
+          pg_dump() { docker run --rm --network host \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
+            -v "$RUNNER_TEMP:$RUNNER_TEMP" postgres:16 pg_dump "$@"; }
+          pg_restore() { docker run --rm --network host \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
+            -v "$RUNNER_TEMP:$RUNNER_TEMP" postgres:16 pg_restore "$@"; }
+          pg_dump --version
+          pg_restore --version
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT current_database(), current_schema();"
           test "$(psql "$DATABASE_URL" -Atc 'SELECT current_database()')" = services_test
           test "$(psql "$DATABASE_URL" -Atc 'SELECT current_schema()')" = public
