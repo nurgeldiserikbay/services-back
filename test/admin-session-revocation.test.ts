@@ -115,3 +115,14 @@ test('both admin revocation paths reject out-of-range clocks without SQL',async(
  }
  assert.equal(calls,0);
 });
+
+test('session revocation denies malformed database clients before SQL',async()=>{
+ for(const db of [null,undefined,{}, {query:null}, {query:'invalid'}]){
+  assert.equal(await revokePlatformAdminSession(
+   db as never,token,pepper,staffId,now,
+  ),false);
+  assert.equal(await revokeOwnPlatformAdminSession(
+   db as never,token,pepper,now,
+  ),false);
+ }
+});
