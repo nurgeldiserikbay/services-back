@@ -43,3 +43,31 @@ test('unexpected database output is rejected',async()=>{
    /admin_totp_replay_unavailable/);
  }
 });
+
+
+test('TOTP replay watermark rejects all noncanonical counter inputs before SQL',async()=>{
+ let calls=0;
+ const db={query:async()=>{calls++;throw Error('unexpected SQL');}} as never;
+ for(const counter of [
+  '123',123n,null,undefined,Infinity,-Infinity,1.5,NaN,
+  Number.MAX_SAFE_INTEGER+1,{},[],
+ ]){
+  assert.equal(await consumeAdminTotpCounter(db,staffId,counter),false);
+ }
+ assert.equal(calls,0);
+});
+
+test('TOTP replay accepts zero and maximum safe counter as exact SQL parameters',async()=>{
+ for(const counter of [0,Number.MAX_SAFE_INTEGER]){
+  const db={query:async(_sql:string,params:unknown[])=>{
+   assert.deepEqual(params,[staffId,counter]);
+   return {rows:[{last_consumed_counter:String(counter)}]};
+  }} as never;
+  assert.equal(await consumeAdminTotpCounter(db,staffId,counter),true);
+ }
+});
+
+test('TOTP replay propagates database errors instead of allowing a session',async()=>{
+ const db={query:async()=>{throw Error('database unavailable');}} as never;
+ await assert.rejects(consumeAdminTotpCounter(db,staffId,123),/database unavailable/);
+});
