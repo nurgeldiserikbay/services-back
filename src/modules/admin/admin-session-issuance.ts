@@ -52,6 +52,7 @@ export async function createVerifiedPlatformAdminSession(
     AND EXISTS (SELECT 1 FROM platform_admin_totp_factors factor
                 WHERE factor.staff_id=staff.id
                   AND factor.activated_at IS NOT NULL
+                  AND factor.activated_at<=to_timestamp($3::double precision/1000.0)
                   AND factor.disabled_at IS NULL)
   RETURNING id::text
  `,[verified.staffId,tokenHash,verified.mfaVerifiedAt,expiresAt,now]);
