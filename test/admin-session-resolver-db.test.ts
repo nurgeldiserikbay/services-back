@@ -40,7 +40,7 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
    INSERT INTO platform_admin_totp_factors(
     staff_id,encrypted_secret,key_version,created_at,activated_at
    ) VALUES($1,$2,$3,now()-interval '2 minutes',now()-interval '1 minute')
-  `,[staffId,'integration-test-placeholder','test-v1']);
+  `,[staffId,'integration-test-placeholder-encrypted-envelope','test-v1']);
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read',scope),true);
   assert.equal(await canAccessPlatformAdminResource(
