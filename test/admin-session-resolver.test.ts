@@ -21,6 +21,7 @@ const fakeDb=(items:ReturnType<typeof row>[])=>({
   assert.match(sql,/usr.status='ACTIVE'/);
   assert.match(sql,/EXISTS \(\s*SELECT 1 FROM platform_admin_totp_factors factor/);
   assert.match(sql,/factor\.activated_at IS NOT NULL/);
+  assert.match(sql,/factor\.activated_at<=session\.mfa_verified_at/);
   assert.match(sql,/factor\.disabled_at IS NULL/);
   assert.match(String(values[0]),/^[a-f0-9]{64}$/);
   return {rows:items};
