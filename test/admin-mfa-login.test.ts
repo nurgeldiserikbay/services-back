@@ -577,11 +577,10 @@ test('fifth failed MFA attempt locks the next login before factor access',async(
      locked_until:lockedUntil===null?null:new Date(lockedUntil),
      failed_attempts:failures,window_started_at:new Date(now-1000),
     }]};
-   if(sql.includes('FOR SHARE OF factor')){
-    factorReads++;return {rows:[{staff_id:staffId}]};
-   }
-   if(sql.includes('factor.encrypted_secret'))
+   if(sql.includes('factor.encrypted_secret')&&sql.includes('FOR SHARE OF factor')){
+    factorReads++;
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   }
    if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
     failures++;
     if(failures===5)lockedUntil=now+900000;
