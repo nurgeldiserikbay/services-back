@@ -15,7 +15,8 @@ export async function provisionAdminTotpFactor(
  keyVersion:string,
  encryptionKey:Buffer,
 ):Promise<boolean>{
- if(typeof staffId!=='string'||!UUID.test(staffId)||
+ if(!db||typeof db.query!=='function'||
+    typeof staffId!=='string'||!UUID.test(staffId)||
     typeof keyVersion!=='string'||!VERSION.test(keyVersion))
   return false;
  if(!Buffer.isBuffer(secret)||secret.length<20||secret.length>128||
@@ -54,7 +55,8 @@ export async function loadActiveAdminTotpFactor(
  staffId:string,
  resolveKey:(version:string)=>Promise<Buffer|null>,
 ):Promise<Buffer|null>{
- if(typeof staffId!=='string'||!UUID.test(staffId)||
+ if(!db||typeof db.query!=='function'||
+    typeof staffId!=='string'||!UUID.test(staffId)||
     typeof resolveKey!=='function')return null;
  const result=await db.query<{encrypted_secret:string;key_version:string}>(`
   SELECT factor.encrypted_secret,factor.key_version
