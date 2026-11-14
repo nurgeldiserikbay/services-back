@@ -146,6 +146,10 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
   // Account suspension must revoke authorization even if staff and bearer remain valid.
   await db.query("UPDATE users SET status='SUSPENDED' WHERE id=$1",[userId]);
   assert.equal(await resolvePlatformAdminSession(db,token,pepper),null);
+  // Suspension must also block creation of a fresh privileged bearer.
+  assert.equal(await createVerifiedPlatformAdminSession(
+   db,{staffId,mfaVerifiedAt:Date.now()},pepper,
+  ),null);
   await db.query("UPDATE users SET status='ACTIVE' WHERE id=$1",[userId]);
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read',scope),true);
