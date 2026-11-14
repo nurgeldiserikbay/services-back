@@ -11,7 +11,8 @@ test('factor provisioning stores encrypted secret and key version',async()=>{
  let encrypted='';
  const db={query:async(sql:string,params:unknown[])=>{
   assert.match(sql,/ON CONFLICT \(staff_id\) DO NOTHING/);
-  assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants grants/);
+  assert.match(sql,/staff\.role IN \('owner','admin','operator','auditor'\)/);
+    assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants grants/);
   assert.equal(params[0],staffId);
   encrypted=params[1] as string;
   assert.notEqual(encrypted,secret.toString('hex'));
@@ -34,7 +35,8 @@ test('only activated factors can be loaded and decrypted',async()=>{
   assert.match(sql,/factor.activated_at IS NOT NULL/);
   assert.match(sql,/factor.disabled_at IS NULL/);
   assert.match(sql,/FOR SHARE OF factor/);
-  assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants grants/);
+  assert.match(sql,/staff\.role IN \('owner','admin','operator','auditor'\)/);
+    assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants grants/);
   return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
  }} as never;
  assert.deepEqual(await loadActiveAdminTotpFactor(
