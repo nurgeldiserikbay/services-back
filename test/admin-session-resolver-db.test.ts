@@ -102,6 +102,18 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
    'UPDATE platform_admin_totp_factors SET disabled_at=NULL WHERE staff_id=$1',
    [staffId],
   );
+  // A factor activated after the trusted MFA timestamp cannot issue a bearer.
+  await db.query(
+   "UPDATE platform_admin_totp_factors SET activated_at=now()+interval '1 minute' WHERE staff_id=$1",
+   [staffId],
+  );
+  assert.equal(await createVerifiedPlatformAdminSession(
+   db,{staffId,mfaVerifiedAt:Date.now()},pepper,
+  ),null);
+  await db.query(
+   "UPDATE platform_admin_totp_factors SET activated_at=now()-interval '1 minute' WHERE staff_id=$1",
+   [staffId],
+  );
   // Reprovisioning after MFA verification must invalidate the older bearer.
   await db.query(
    "UPDATE platform_admin_totp_factors SET activated_at=now()+interval '1 second' WHERE staff_id=$1",
