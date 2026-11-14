@@ -169,21 +169,28 @@ test('session issuance denial rolls back consumed replay watermark',async()=>{
  ]);
 });
 
-test('missing failed-attempt row is rejected rather than silently accepted',async()=>{
- let commits=0;
+test('missing failed-attempt row rolls back the MFA transaction',async()=>{
+ const steps:string[]=[];
  const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
-  const result=await work({query:async(sql:string)=>{
-   assert.match(sql,/INSERT INTO platform_admin_mfa_attempts/);
-   return {rows:[]};
-  }} as Db);
-  commits++;
-  return result;
+  steps.push('BEGIN');
+  try{
+   const result=await work({query:async(sql:string)=>{
+    assert.match(sql,/INSERT INTO platform_admin_mfa_attempts/);
+    steps.push('failure-row-missing');
+    return {rows:[]};
+   }} as Db);
+   steps.push('COMMIT');
+   return result;
+  }catch(error){
+   steps.push('ROLLBACK');
+   throw error;
+  }
  };
  await assert.rejects(
   attemptAdminTotpLogin(transaction,authenticated,'000000',pepper,now),
   /admin_mfa_failure_record_missing/,
  );
- assert.equal(commits,1);
+ assert.deepEqual(steps,['BEGIN','failure-row-missing','ROLLBACK']);
 });
 
 test('locked MFA account rejects valid code before replay or session SQL',async()=>{
