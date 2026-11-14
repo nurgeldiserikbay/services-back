@@ -3,6 +3,8 @@ import type {PoolClient} from 'pg';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const WINDOW_MS=15*60*1000;
 const LOCK_MS=15*60*1000;
+// PostgreSQL timestamps and JavaScript Date must both remain representable.
+const MAX_DATE_MS=8_640_000_000_000_000;
 
 /**
  * Atomic per-staff failed-MFA attempt recording.
@@ -16,7 +18,7 @@ export async function recordAdminMfaFailure(
  now=Date.now(),
 ):Promise<{failedAttempts:number;lockedUntil:number|null}|null>{
  if(typeof staffId!=='string'||!UUID.test(staffId)||
-    !Number.isSafeInteger(now)||now<0||now>Number.MAX_SAFE_INTEGER-LOCK_MS)
+    !Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS-LOCK_MS)
   return null;
  const result=await db.query<{
   failed_attempts:number;locked_until:Date|null;
@@ -77,7 +79,7 @@ export async function isAdminMfaLocked(
  now=Date.now(),
 ):Promise<boolean>{
  if(typeof staffId!=='string'||!UUID.test(staffId)||
-    !Number.isSafeInteger(now)||now<0)
+    !Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS)
   return true;
  const result=await db.query<{locked_until:Date|null}>(`
   SELECT locked_until FROM platform_admin_mfa_attempts
