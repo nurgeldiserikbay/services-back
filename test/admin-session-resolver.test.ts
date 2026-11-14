@@ -141,3 +141,23 @@ test('admin session SQL enforces MFA freshness before returning grants',async()=
  assert.ok(await resolvePlatformAdminSession(db,token,pepper,now));
  assert.equal(calls,1);
 });
+
+
+test('malformed admin session driver responses fail closed',async()=>{
+ for(const response of [
+  null,undefined,{}, {rows:null},{rows:{}},
+  {rows:[null]},{rows:[undefined]},{rows:[{}]},
+ ]){
+  const db={query:async()=>response} as never;
+  assert.equal(await resolvePlatformAdminSession(
+   db,token,pepper,now,
+  ),null);
+ }
+});
+
+test('database errors never become admin authorization grants',async()=>{
+ const db={query:async()=>{throw new Error('database unavailable');}} as never;
+ await assert.rejects(canAccessPlatformAdminResource(
+  db,token,pepper,'audit.read',org,now,
+ ),/database unavailable/);
+});
