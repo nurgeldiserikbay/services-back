@@ -422,3 +422,27 @@ test('locked MFA account never loads factor or attempts session issuance',async(
   'staff-lock','lockout','ROLLBACK','release',
  ]);
 });
+
+test('failed factor lookup rollback discards connection if rollback itself fails',async()=>{
+ const released:unknown[]=[];
+ const statements:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   statements.push(sql);
+   if(sql==='BEGIN'||sql.startsWith('SET LOCAL '))return {rows:[]};
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.includes('FOR SHARE OF factor'))return {rows:[]};
+   if(sql==='ROLLBACK')throw Error('rollback failed');
+   throw Error('unexpected SQL');
+  },
+  release:(error?:unknown)=>released.push(error),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),/rollback failed/);
+ assert.ok(statements.includes('ROLLBACK'));
+ assert.ok(!statements.includes('COMMIT'));
+ assert.equal(released.length,1);
+ assert.ok(released[0] instanceof Error);
+});
