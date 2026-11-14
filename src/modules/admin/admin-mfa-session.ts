@@ -5,6 +5,8 @@ import {createVerifiedPlatformAdminSession} from './admin-session-issuance.js';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_PRIMARY_AGE_MS=5*60*1000;
+const SESSION_MS=15*60*1000;
+const MAX_DATE_MS=8_640_000_000_000_000;
 
 /**
  * Trusted server-only orchestration primitive. Caller MUST:
@@ -30,7 +32,7 @@ export async function issueAdminSessionAfterTotp(
     !Object.hasOwn(primary,'authenticatedAt')||
     typeof primary.staffId!=='string'||!UUID.test(primary.staffId)||
     !Number.isSafeInteger(primary.authenticatedAt)||
-    !Number.isSafeInteger(now)||now<0||
+    !Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS-SESSION_MS||
     primary.authenticatedAt<0||primary.authenticatedAt>now||
     now-primary.authenticatedAt>MAX_PRIMARY_AGE_MS||
     !Buffer.isBuffer(totpSecret)||totpSecret.length<20||totpSecret.length>128||
