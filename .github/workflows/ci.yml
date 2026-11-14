@@ -21,7 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
+      - name: Install locked backend dependencies
+        run: npm ci --no-audit --no-fund
       - name: Audit production dependencies for high-severity vulnerabilities
         run: |
           # Keep the audit exit code so high/critical advisories fail this job.
@@ -60,7 +61,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
+      - name: Install locked backend dependencies
+        run: npm ci --no-audit --no-fund
       - name: TypeScript typecheck (fail fast)
         run: npm run typecheck
       - name: Compile backend (fail fast)
