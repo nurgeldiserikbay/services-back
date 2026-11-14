@@ -75,3 +75,9 @@ test('TOTP replay propagates database errors instead of allowing a session',asyn
  const db={query:async()=>{throw Error('database unavailable');}} as never;
  await assert.rejects(consumeAdminTotpCounter(db,staffId,123),/database unavailable/);
 });
+
+test('TOTP replay watermark rejects invalid database clients before SQL',async()=>{
+ for(const db of [null,undefined,{}, {query:null}, {query:'invalid'}]){
+  assert.equal(await consumeAdminTotpCounter(db as never,staffId,1),false);
+ }
+});
