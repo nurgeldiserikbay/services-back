@@ -37,3 +37,39 @@ test('PostgreSQL rolls back privileged MFA audit and related writes together',as
   await db.end();
  }
 });
+
+
+test('PostgreSQL refuses mutation of committed-style privileged audit rows',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ const userId=randomUUID(),staffId=randomUUID();
+ try{
+  await db.query('BEGIN');
+  await db.query('INSERT INTO users(id) VALUES($1)',[userId]);
+  await db.query(
+   "INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'auditor')",
+   [staffId,userId],
+  );
+  await recordAdminMfaSecurityEvent(db,staffId,'admin_mfa_login_failed');
+  for(const sql of [
+   'DELETE FROM platform_admin_security_events WHERE actor_staff_id=$1',
+   "UPDATE platform_admin_security_events SET action='admin_mfa_login_succeeded' WHERE actor_staff_id=$1",
+  ]){
+   await db.query('SAVEPOINT immutable_audit');
+   try{
+    await assert.rejects(db.query(sql,[staffId]),{code:'23514'});
+   }finally{
+    await db.query('ROLLBACK TO SAVEPOINT immutable_audit');
+    await db.query('RELEASE SAVEPOINT immutable_audit');
+   }
+  }
+  const result=await db.query(
+   'SELECT action FROM platform_admin_security_events WHERE actor_staff_id=$1',
+   [staffId],
+  );
+  assert.deepEqual(result.rows.map(row=>row.action),['admin_mfa_login_failed']);
+ }finally{
+  await db.query('ROLLBACK').catch(()=>{});
+  await db.end();
+ }
+});
