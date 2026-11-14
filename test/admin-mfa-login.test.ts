@@ -446,3 +446,31 @@ test('failed factor lookup rollback discards connection if rollback itself fails
  assert.equal(released.length,1);
  assert.ok(released[0] instanceof Error);
 });
+
+test('vault key resolver outage rolls back and never issues an admin bearer',async()=>{
+ const events:string[]=[];
+ const releases:unknown[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL ')){
+    events.push(sql);return {rows:[]};
+   }
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))
+    return {rows:[]};
+   if(sql.includes('factor.encrypted_secret'))
+    return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('FOR SHARE OF factor'))
+    return {rows:[{staff_id:staffId}]};
+   throw Error('session SQL must not execute after vault outage');
+  },
+  release:(error?:unknown)=>releases.push(error),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,
+  async()=>{throw Error('vault unavailable');},pepper,now,
+ ),/vault unavailable/);
+ assert.ok(events.includes('ROLLBACK'));
+ assert.ok(!events.includes('COMMIT'));
+ assert.deepEqual(releases,[undefined]);
+});
