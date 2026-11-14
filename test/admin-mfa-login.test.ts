@@ -156,3 +156,25 @@ test('timestamps beyond supported Date range fail before database connection',as
  ),null);
  assert.equal(connections,0);
 });
+
+
+test('invalid privileged session secrets and primary timestamps never open database',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected database access');}} as never;
+ for(const invalidPepper of [Buffer.alloc(0),Buffer.alloc(31),Buffer.alloc(33),null,'secret']){
+  assert.equal(await loginAdminWithProvisionedTotp(
+   pool,primary,code,async()=>key,invalidPepper as Buffer,now,
+  ),null);
+ }
+ for(const invalidNow of [NaN,Infinity,-1,1.5,Number.MAX_SAFE_INTEGER+1]){
+  assert.equal(await loginAdminWithProvisionedTotp(
+   pool,primary,code,async()=>key,pepper,invalidNow,
+  ),null);
+ }
+ for(const invalidTime of [NaN,Infinity,-1,1.5,Number.MAX_SAFE_INTEGER+1]){
+  assert.equal(await loginAdminWithProvisionedTotp(
+   pool,{staffId,authenticatedAt:invalidTime},code,async()=>key,pepper,now,
+  ),null);
+ }
+ assert.equal(connections,0);
+});
