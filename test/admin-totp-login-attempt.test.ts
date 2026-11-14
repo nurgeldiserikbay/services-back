@@ -77,6 +77,10 @@ test('untrusted principal and invalid clock never reach the database',async()=>{
   authenticated,'000000',pepper,-1),null);
  assert.equal(await attemptAdminTotpLogin(transaction,
   authenticated,'000000',Buffer.alloc(1),now),null);
+ assert.equal(await attemptAdminTotpLogin(transaction,
+  {...authenticated,secret:Buffer.alloc(19)},'000000',pepper,now),null);
+ assert.equal(await attemptAdminTotpLogin(transaction,
+  {...authenticated,secret:Buffer.alloc(129)},'000000',pepper,now),null);
  assert.equal(calls,0);
 });
 
