@@ -73,3 +73,29 @@ test('duplicate provision attempt does not replace an existing factor',async()=>
   db,staffId,secret,'key-1',key,
  ),false);
 });
+
+
+test('invalid factor key resolver is rejected before querying database',async()=>{
+ let calls=0;
+ const db={query:async()=>{calls++;throw Error('unexpected database access');}} as never;
+ for(const resolver of [null,undefined,'vault-key',{},42]){
+  assert.equal(await loadActiveAdminTotpFactor(
+   db,staffId,resolver as never,
+  ),null);
+ }
+ assert.equal(calls,0);
+});
+
+test('factor loader fails closed on corrupt database rows',async()=>{
+ for(const rows of [
+  null,
+  [{encrypted_secret:'invalid',key_version:'invalid version'}],
+  [{encrypted_secret:42,key_version:'key-1'}],
+  [{encrypted_secret:'v1.fake',key_version:'key-1'},{encrypted_secret:'v1.fake',key_version:'key-1'}],
+ ]){
+  const db={query:async()=>({rows})} as never;
+  await assert.rejects(loadActiveAdminTotpFactor(
+   db,staffId,async()=>key,
+  ),/admin_totp_factor_unavailable/);
+ }
+});
