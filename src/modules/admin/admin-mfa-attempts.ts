@@ -81,16 +81,27 @@ export async function isAdminMfaLocked(
  if(typeof staffId!=='string'||!UUID.test(staffId)||
     !Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS)
   return true;
- const result=await db.query<{locked_until:Date|null}>(`
-  SELECT locked_until FROM platform_admin_mfa_attempts
+ const result=await db.query<{
+  locked_until:Date|null;failed_attempts:number;window_started_at:Date;
+ }>(`
+  SELECT locked_until,failed_attempts,window_started_at
+  FROM platform_admin_mfa_attempts
   WHERE staff_id=$1::uuid FOR UPDATE
  `,[staffId]);
  if(!result||!Array.isArray(result.rows)||result.rows.length>1)
   throw new Error('admin_mfa_lockout_unavailable');
  if(result.rows.length===0)return false;
- const value=result.rows[0]?.locked_until;
- if(value===null)return false;
- if(!(value instanceof Date)||!Number.isFinite(value.getTime()))
+ const row=result.rows[0];
+ if(!row||!Number.isInteger(row.failed_attempts)||
+    row.failed_attempts<1||row.failed_attempts>5||
+    !(row.window_started_at instanceof Date)||
+    !Number.isFinite(row.window_started_at.getTime()))
   throw new Error('admin_mfa_lockout_unavailable');
- return value.getTime()>now;
+ const value=row.locked_until;
+ if(value!==null&&(!(value instanceof Date)||
+    !Number.isFinite(value.getTime())))
+  throw new Error('admin_mfa_lockout_unavailable');
+ if(value!==null&&value.getTime()>now)return true;
+ // Fail closed on an inconsistent lockout row, even if locked_until is null.
+ return row.failed_attempts>=5&&row.window_started_at.getTime()>now-WINDOW_MS;
 }
