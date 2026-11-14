@@ -26,6 +26,8 @@ export async function revokeAdminTotpFactorAndSessions(
  try{actorHash=hashAdminSessionToken(actorToken,sessionPepper);}
  catch{return false;}
  const client:PoolClient=await pool.connect();
+ if(!client||typeof client.query!=='function'||typeof client.release!=='function')
+  throw new Error('admin_totp_revocation_connection_unavailable');
  let began=false;
  try{
   await client.query('BEGIN');
