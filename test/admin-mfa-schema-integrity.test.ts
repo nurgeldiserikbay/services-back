@@ -69,3 +69,17 @@ test('MFA audit action migration matches the server-side event allowlist',()=>{
  assert.ok(sql.includes('DROP CONSTRAINT "platform_admin_security_events_action_allowed"'));
  assert.ok(sql.includes('ADD CONSTRAINT "platform_admin_security_events_action_allowed"'));
 });
+
+
+test('MFA failure and audit remain in one database transaction',()=>{
+ const source=readFileSync('src/modules/admin/admin-mfa-login.ts','utf8');
+ const failed=source.indexOf('const failure=await recordAdminMfaFailure(');
+ const audit=source.indexOf("await recordAdminMfaSecurityEvent(client,primary.staffId,'admin_mfa_login_failed')");
+ const commit=source.indexOf("await client.query('COMMIT')",audit);
+ assert.ok(failed>=0,'MFA failure counter update missing');
+ assert.ok(audit>failed,'failed-login audit must follow failure counter');
+ assert.ok(commit>audit,'failed-login transaction must commit after audit');
+ const between=source.slice(failed,commit);
+ assert.ok(!between.includes("await client.query('ROLLBACK')"),
+  'failed login must not discard the failure counter before audit commit');
+});
