@@ -16,11 +16,13 @@ test('admin logout HTTP validates bearer and revokes the matching session in a t
  const {token}=issueAdminSessionToken(pepper);
  const statements:{sql:string;params:unknown[]}[]=[];
  let transactions=0;
+ let failQuery=false;
  const database={
   transaction:async<T>(work:(client:{query:(sql:string,params:unknown[])=>Promise<unknown>})=>Promise<T>):Promise<T>=>{
    transactions++;
    return work({query:async(sql:string,params:unknown[])=>{
     statements.push({sql,params});
+    if(failQuery)throw new Error('private database credentials must not leak');
     return {rows:statements.length===1?[{id:randomUUID()}]:[]};
    }});
   },
@@ -71,6 +73,13 @@ test('admin logout HTTP validates bearer and revokes the matching session in a t
   assert.equal(statements[1]!.params[0],statements[0]!.params[0]);
   assert.equal(statements[1]!.params.length,2);
   assert.match(statements[1]!.sql,/revoked_at IS NULL/);
+  failQuery=true;
+  const unavailable=await fetch(url,{method:'POST',headers:{authorization:`Bearer ${token}`}});
+  assert.equal(unavailable.status,401);
+  const errorBody=await unavailable.text();
+  assert.doesNotMatch(errorBody,/private database credentials|token_hash|platform_admin_sessions/i);
+  assert.match(unavailable.headers.get('cache-control')??'',/no-store/);
+  assert.equal(transactions,3);
  }finally{
   await app?.close();
   if(previousFlag===undefined)delete process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP;
