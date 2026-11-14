@@ -44,6 +44,8 @@ export async function resolvePlatformAdminSession(
  WHERE session.token_hash=$1
   AND session.revoked_at IS NULL
   AND session.expires_at>to_timestamp($2::double precision/1000.0)
+  AND session.mfa_verified_at<=to_timestamp($2::double precision/1000.0)
+  AND session.mfa_verified_at>=to_timestamp(($2::double precision-900000)/1000.0)
   AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
  ORDER BY grants.scope ASC NULLS LAST
  LIMIT 101
