@@ -11,12 +11,6 @@ test('moderation read endpoint stays disabled without approved rollout',async()=
  const current=process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP;
  delete process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP;
  try{
-  // An admin bearer is valid only with an activated, non-disabled TOTP factor.
-  await db.query(`
-   INSERT INTO platform_admin_totp_factors(
-    staff_id,encrypted_secret,key_version,created_at,activated_at
-   ) VALUES($1,$2,$3,now()-interval '4 minutes',now()-interval '3 minutes')
-  `,[staffId,'integration-test-placeholder-encrypted-envelope','test-v1']);
   const service=new PlatformModerationReadService({transaction:async()=>{throw Error('unexpected DB');}} as never);
   await assert.rejects(service.list('Bearer '+randomBytes(32).toString('base64url')),UnauthorizedException);
  }finally{
@@ -55,6 +49,12 @@ test('privileged read returns only redacted cases in live authorized scopes',asy
   } as never);
   // Isolate the PostgreSQL auth lookup from the subsequent moderation query.
   // These assertions expose the failing boundary without logging bearer secrets.
+  // An admin bearer is valid only with an activated, non-disabled TOTP factor.
+  await db.query(`
+   INSERT INTO platform_admin_totp_factors(
+    staff_id,encrypted_secret,key_version,created_at,activated_at
+   ) VALUES($1,$2,$3,now()-interval '4 minutes',now()-interval '3 minutes')
+  `,[staffId,'integration-test-placeholder-encrypted-envelope','test-v1']);
   const principal=await resolvePlatformAdminSession(db,token,key);
   assert.ok(principal,'PostgreSQL admin session lookup must return a principal');
   assert.deepEqual(principal.resourceScopes,[allowedScope]);
