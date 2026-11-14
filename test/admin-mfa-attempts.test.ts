@@ -141,3 +141,10 @@ test('MFA lockout rejects future-dated windows rather than treating them as clea
    /admin_mfa_lockout_unavailable/);
  }
 });
+
+test('MFA lockout and failure recording deny invalid database clients',async()=>{
+ for(const db of [null,undefined,{}, {query:null}, {query:'invalid'}]){
+  assert.equal(await recordAdminMfaFailure(db as never,staffId,now),null);
+  assert.equal(await isAdminMfaLocked(db as never,staffId,now),true);
+ }
+});
