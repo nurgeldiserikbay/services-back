@@ -46,6 +46,9 @@ test('admin issuance stores a hash and requires active staff, user and grants',a
   assert.match(sql,/INSERT INTO platform_admin_sessions/);
   assert.match(sql,/staff.disabled_at IS NULL/);
   assert.match(sql,/usr.status='ACTIVE'/);
+  assert.match(sql,/staff.role IN \('owner','admin','operator','auditor'\)/);
+  assert.match(sql,/NOT EXISTS \(SELECT 1 FROM platform_admin_mfa_attempts attempts/);
+  assert.match(sql,/attempts.locked_until>to_timestamp\(\$5::double precision\/1000\.0\)/);
   assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants/);
   assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_totp_factors factor/);
   assert.match(sql,/factor.activated_at IS NOT NULL/);
