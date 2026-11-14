@@ -35,6 +35,7 @@ function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'){
     events.push('lockout');return {rows:[]};
    }
    if(sql.includes('FOR SHARE OF factor')){
+    assert.match(sql,/staff\.role IN \('owner','admin','operator','auditor'\)/);
     assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants grants/);
     events.push('factor-lock');
     return {rows:mode==='disabled'?[]:[{staff_id:staffId}]};
