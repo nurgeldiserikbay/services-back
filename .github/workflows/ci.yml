@@ -322,12 +322,15 @@ jobs:
           source_migrations="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM public._prisma_migrations')"
           source_constraints="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE n.nspname = 'public'")"
           source_indexes="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_indexes WHERE schemaname = 'public'")"
-          # Compare actual index and constraint definitions, not just totals.
+          # Compare index and non-CHECK constraint definitions, plus CHECK identities/validation.
+          # pg_dump/pg_restore may normalize CHECK expression formatting and casts;
+          # the recovered database runs the same behavioral constraint smoke suite.
           # Schema-qualified keys avoid collisions across relations.
           source_structure_digest="$(psql --dbname=services_test -At -v ON_ERROR_STOP=1 <<'SQL'
           WITH definitions AS (
             SELECT 'constraint:' || c.conrelid::regclass::text || ':' || c.conname AS key,
-                   pg_get_constraintdef(c.oid) AS definition
+                   CASE WHEN c.contype = 'c' THEN 'CHECK validated=' || c.convalidated::text
+                   ELSE pg_get_constraintdef(c.oid) END AS definition
             FROM pg_constraint c
             JOIN pg_namespace n ON n.oid = c.connamespace
             WHERE n.nspname = 'public'
@@ -394,7 +397,8 @@ jobs:
           restored_structure_digest="$(psql --dbname="$restore_db" -At -v ON_ERROR_STOP=1 <<'SQL'
           WITH definitions AS (
             SELECT 'constraint:' || c.conrelid::regclass::text || ':' || c.conname AS key,
-                   pg_get_constraintdef(c.oid) AS definition
+                   CASE WHEN c.contype = 'c' THEN 'CHECK validated=' || c.convalidated::text
+                   ELSE pg_get_constraintdef(c.oid) END AS definition
             FROM pg_constraint c
             JOIN pg_namespace n ON n.oid = c.connamespace
             WHERE n.nspname = 'public'
@@ -414,7 +418,8 @@ jobs:
               psql --dbname="$target" -At -v ON_ERROR_STOP=1 <<'SQL' > "$RUNNER_TEMP/structure-$target.txt"
           WITH definitions AS (
             SELECT 'constraint:' || c.conrelid::regclass::text || ':' || c.conname AS key,
-                   pg_get_constraintdef(c.oid) AS definition
+                   CASE WHEN c.contype = 'c' THEN 'CHECK validated=' || c.convalidated::text
+                   ELSE pg_get_constraintdef(c.oid) END AS definition
             FROM pg_constraint c
             JOIN pg_namespace n ON n.oid = c.connamespace
             WHERE n.nspname = 'public'
