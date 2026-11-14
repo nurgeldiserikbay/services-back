@@ -202,6 +202,12 @@ test('PostgreSQL rolls back MFA lockout state when audit insertion fails',async(
    ),
    {code:'23514'},
   );
+  // PostgreSQL must refuse further statements until the whole failed
+  // transaction is rolled back (SQLSTATE 25P02).
+  await assert.rejects(
+   db.query('SELECT failed_attempts FROM platform_admin_mfa_attempts WHERE staff_id=$1',[staffId]),
+   {code:'25P02'},
+  );
   // A failed audit INSERT aborts the entire transaction; do not recover
   // through a savepoint and accidentally commit the failure counter.
   await db.query('ROLLBACK');
