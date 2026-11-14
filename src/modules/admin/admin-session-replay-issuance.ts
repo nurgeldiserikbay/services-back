@@ -28,6 +28,8 @@ export async function issueReplayProtectedAdminSession(
     !Number.isSafeInteger(verified.totpCounter)||verified.totpCounter<0||
     !Number.isSafeInteger(verified.mfaVerifiedAt)||
     !Number.isSafeInteger(now)||now<0||
+    now>8_640_000_000_000_000-15*60*1000||
+    verified.mfaVerifiedAt<0||
     verified.mfaVerifiedAt>now||now-verified.mfaVerifiedAt>15*60*1000||
     !Buffer.isBuffer(pepper)||pepper.length!==32)return null;
  try{
