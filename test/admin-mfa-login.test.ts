@@ -34,7 +34,7 @@ function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'){
    if(sql.includes('DELETE FROM platform_admin_mfa_attempts')){
     events.push('clear-failures');return {rows:[]};
    }
-   if(sql.includes('FROM platform_admin_mfa_attempts')){
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at')){
     events.push('lockout');return {rows:[]};
    }
    if(sql.includes('factor.encrypted_secret')){
@@ -227,7 +227,7 @@ test('uncertain MFA commit discards the database connection even if rollback suc
    events.push(sql);
    if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL '))return {rows:[]};
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
-   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))return {rows:[]};
    if(sql.includes('factor.encrypted_secret'))
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
    if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
@@ -261,7 +261,7 @@ test('failed-MFA attempt commit error discards connection without returning succ
    if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL ')){events.push(sql);return {rows:[]};}
    if(sql==='COMMIT'){events.push(sql);throw Error('attempt commit uncertain');}
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
-   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))return {rows:[]};
    if(sql.includes('factor.encrypted_secret'))
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
    if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
@@ -344,7 +344,7 @@ test('missing durable MFA failure row rolls back and never commits',async()=>{
     events.push(sql);return {rows:[]};
    }
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
-   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))return {rows:[]};
    if(sql.includes('factor.encrypted_secret'))
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
    if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
@@ -372,7 +372,7 @@ test('failed explicit rollback discards uncertain MFA connection',async()=>{
   query:async(sql:string)=>{
    if(sql==='BEGIN'||sql.startsWith('SET LOCAL '))return {rows:[]};
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
-   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))return {rows:[]};
    if(sql.includes('FOR SHARE OF factor'))return {rows:[]};
    if(sql==='ROLLBACK'){
     rollbackCalls++;
@@ -401,7 +401,7 @@ test('locked MFA account never loads factor or attempts session issuance',async(
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('staff-lock');return {rows:[{}]};
    }
-   if(sql.includes('FROM platform_admin_mfa_attempts')){
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at')){
     events.push('lockout');
     return {rows:[{
      locked_until:new Date(now+60_000),
@@ -431,7 +431,7 @@ test('failed factor lookup rollback discards connection if rollback itself fails
    statements.push(sql);
    if(sql==='BEGIN'||sql.startsWith('SET LOCAL '))return {rows:[]};
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
-   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))return {rows:[]};
    if(sql.includes('FOR SHARE OF factor'))return {rows:[]};
    if(sql==='ROLLBACK')throw Error('rollback failed');
    throw Error('unexpected SQL');
