@@ -19,6 +19,7 @@ export function verifyAdminTotp(
     !Number.isSafeInteger(lastConsumedCounter)||lastConsumedCounter< -1)
   return null;
  const current=Math.floor(now/30_000);
+ let matched:number|null=null;
  if(!Number.isSafeInteger(current)||current>Number.MAX_SAFE_INTEGER-1)return null;
  // One adjacent step tolerates modest clock skew, but never accepts replay.
  for(const counter of [current-1,current,current+1]){
@@ -29,7 +30,9 @@ export function verifyAdminTotp(
   const offset=digest[digest.length-1]!&0x0f;
   const binary=(digest.readUInt32BE(offset)&0x7fffffff)%1_000_000;
   const expected=Buffer.from(String(binary).padStart(6,'0'),'ascii');
-  if(timingSafeEqual(expected,Buffer.from(code,'ascii')))return counter;
+  // Compare every eligible step to avoid leaking the matching time offset.
+  // Prefer the latest eligible counter if adjacent steps share a code.
+  if(timingSafeEqual(expected,Buffer.from(code,'ascii')))matched=counter;
  }
- return null;
+ return matched;
 }
