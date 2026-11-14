@@ -53,3 +53,43 @@ test('successful TOTP cannot issue bearer if mandatory security audit fails',asy
  assert.ok(!statements.includes('COMMIT'));
  assert.deepEqual(releases,[undefined]);
 });
+
+
+test('failed TOTP cannot commit its lockout counter without a durable audit event',async()=>{
+ const statements:string[]=[];
+ const releases:unknown[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL ')){
+    statements.push(sql);return {rows:[]};
+   }
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
+   if(sql.includes('factor.encrypted_secret'))
+    return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
+    statements.push('failure-counter');
+    return {rows:[{failed_attempts:1,locked_until:null}]};
+   }
+   if(sql.includes('INSERT INTO platform_admin_security_events')){
+    statements.push('audit-failed');
+    return {rows:[]};
+   }
+   if(sql==='COMMIT'){statements.push('COMMIT');return {rows:[]};}
+   throw Error('unexpected SQL');
+  },
+  release:(error?:unknown)=>releases.push(error),
+ };
+ const invalidCode=code==='999999'?'000000':'999999';
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,
+  {staffId,authenticatedAt:now-1000},
+  invalidCode,async()=>key,pepper,now,
+ ),/admin_mfa_audit_unavailable/);
+ assert.ok(statements.includes('failure-counter'));
+ assert.ok(statements.includes('audit-failed'));
+ assert.ok(statements.includes('ROLLBACK'));
+ assert.ok(!statements.includes('COMMIT'));
+ assert.deepEqual(releases,[undefined]);
+});
