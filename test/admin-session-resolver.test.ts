@@ -161,3 +161,17 @@ test('database errors never become admin authorization grants',async()=>{
   db,token,pepper,'audit.read',org,now,
  ),/database unavailable/);
 });
+
+test('admin session rejects object-coercible database principal fields',async()=>{
+ let coerced=0;
+ const fakeIdentity={toString(){coerced++;return uid;}};
+ const fakeRole={toString(){coerced++;return 'auditor';}};
+ for(const invalid of [
+  {...row(),user_id:fakeIdentity},
+  {...row(),role:fakeRole},
+ ]){
+  const db={query:async()=>({rows:[invalid]})} as never;
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
+ }
+ assert.equal(coerced,0);
+});
