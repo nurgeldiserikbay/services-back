@@ -79,7 +79,8 @@ export async function loginAdminWithProvisionedTotp(
   if(!session){
    await recordAdminMfaFailure(client,primary.staffId,now);
    await recordAdminMfaSecurityEvent(client,primary.staffId,'admin_mfa_login_failed');
-   await client.query('COMMIT');
+   try{await client.query('COMMIT');}
+   catch(error){discardConnection=true;throw error;}
    began=false;
    return null;
   }
@@ -101,7 +102,7 @@ export async function loginAdminWithProvisionedTotp(
   throw error;
  }finally{
   secret?.fill(0);
-  if(discardConnection)client.release(new Error('Admin MFA transaction rollback failed'));
+  if(discardConnection)client.release(new Error('Admin MFA transaction outcome uncertain'));
   else client.release();
  }
 }
