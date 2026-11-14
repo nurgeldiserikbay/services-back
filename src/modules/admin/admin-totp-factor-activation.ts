@@ -19,7 +19,9 @@ export async function activateAdminTotpFactor(
  resolveKey:(version:string)=>Promise<Buffer|null>,
  now=Date.now(),
 ):Promise<boolean>{
- if(typeof staffId!=='string'||!UUID.test(staffId)||
+ if(!db||typeof db.query!=='function'||
+    typeof resolveKey!=='function'||
+    typeof staffId!=='string'||!UUID.test(staffId)||
     typeof code!=='string'||!/^[0-9]{6}$/.test(code)||
     !Number.isSafeInteger(now)||now<0)return false;
  const result=await db.query<{encrypted_secret:string;key_version:string}>(`
