@@ -504,3 +504,11 @@ test('malformed factor-lock identifiers are rejected without coercion or session
  }
  assert.equal(coerced,0);
 });
+
+test('missing or malformed MFA database pool is denied before attempting login',async()=>{
+ for(const pool of [null,undefined,{}, {connect:null}, {connect:'invalid'}]){
+  assert.equal(await loginAdminWithProvisionedTotp(
+   pool as never,primary,code,async()=>key,pepper,now,
+  ),null);
+ }
+});
