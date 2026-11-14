@@ -474,3 +474,33 @@ test('vault key resolver outage rolls back and never issues an admin bearer',asy
  assert.ok(!events.includes('COMMIT'));
  assert.deepEqual(releases,[undefined]);
 });
+
+test('malformed factor-lock identifiers are rejected without coercion or session issuance',async()=>{
+ let coerced=0;
+ const malformed={toLowerCase(){coerced++;return staffId;}};
+ for(const value of [malformed,null,123]){
+  const events:string[]=[];
+  const client={
+   query:async(sql:string)=>{
+    if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL ')){
+     events.push(sql);return {rows:[]};
+    }
+    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+    if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))
+     return {rows:[]};
+    if(sql.includes('FOR SHARE OF factor')){
+     events.push('factor-lock');return {rows:[{staff_id:value}]};
+    }
+    throw Error('unexpected SQL after malformed factor lock');
+   },
+   release:()=>events.push('release'),
+  };
+  assert.equal(await loginAdminWithProvisionedTotp(
+   {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+  ),null);
+  assert.ok(events.includes('ROLLBACK'));
+  assert.ok(!events.includes('COMMIT'));
+  assert.equal(events.at(-1),'release');
+ }
+ assert.equal(coerced,0);
+});
