@@ -22,11 +22,24 @@ jobs:
         with:
           node-version: '22'
       - name: Install locked backend dependencies
+        id: install
         run: npm ci --no-audit --no-fund
       - name: Audit production dependencies for high-severity vulnerabilities
+        id: audit
         run: |
           # Keep the audit exit code so high/critical advisories fail this job.
           npm audit --omit=dev --audit-level=high --json > npm-audit.json
+      - name: Summarize dependency audit gate
+        if: always()
+        env:
+          INSTALL: ${{ steps.install.outcome }}
+          AUDIT: ${{ steps.audit.outcome }}
+        run: |
+          {
+            echo '### Backend dependency security'
+            echo "| Locked install | $INSTALL |"
+            echo "| Production audit | $AUDIT |"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Archive dependency audit evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -62,10 +75,13 @@ jobs:
         with:
           node-version: '22'
       - name: Install locked backend dependencies
+        id: install
         run: npm ci --no-audit --no-fund
       - name: TypeScript typecheck (fail fast)
+        id: typecheck
         run: npm run typecheck
       - name: Compile backend (fail fast)
+        id: build
         run: npm run build
       - name: Account and admin session proof regression tests (fail fast)
         run: |
@@ -100,6 +116,7 @@ jobs:
           npm run db:baseline:generate
           git diff --exit-code -- prisma/migrations/20261103_initial_platform/migration.sql prisma/migrations/migration_lock.toml
       - name: Apply committed baseline using Prisma Migrate deploy
+        id: migrate
         run: npm run db:migrate
       - name: Verify migration idempotency and status
         run: |
@@ -118,6 +135,7 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF (SELECT count(*) FROM countries WHERE iso2='KZ') <> 1 OR (SELECT count(*) FROM cities WHERE name IN ('Astana','Almaty','Shymkent')) <> 3 THEN RAISE EXCEPTION 'Geography seed is not idempotent'; END IF; END \$\$;"
           npm run db:smoke
       - name: Verify migrated application tables before integration tests
+        id: schema_check
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           DO $verify$
@@ -530,3 +548,22 @@ jobs:
           fi
           echo '=== Prisma migration status ==='
           npx prisma migrate status --schema prisma/schema.prisma || true
+      - name: Summarize backend build and migration gates
+        if: always()
+        env:
+          INSTALL: ${{ steps.install.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          MIGRATE: ${{ steps.migrate.outcome }}
+          SCHEMA_CHECK: ${{ steps.schema_check.outcome }}
+        run: |
+          {
+            echo '### Backend validation gates'
+            echo '| Gate | Outcome |'
+            echo '| --- | --- |'
+            echo "| Locked dependency install | $INSTALL |"
+            echo "| TypeScript typecheck | $TYPECHECK |"
+            echo "| Backend compilation | $BUILD |"
+            echo "| PostgreSQL migration | $MIGRATE |"
+            echo "| Required database tables | $SCHEMA_CHECK |"
+          } >> "$GITHUB_STEP_SUMMARY"
