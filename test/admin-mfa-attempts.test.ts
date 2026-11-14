@@ -30,6 +30,7 @@ test('malformed MFA attempt requests never access SQL',async()=>{
  for(const [id,time] of [
   ['invalid',now],[staffId,-1],[staffId,NaN],
   [staffId,Number.MAX_SAFE_INTEGER],
+  [staffId,8_640_000_000_000_000],
  ] as const){
   assert.equal(await recordAdminMfaFailure(db,id,time),null);
  }
@@ -77,6 +78,7 @@ test('MFA lockout check rejects invalid identities without SQL',async()=>{
  for(const [id,time] of [
   ['invalid',now],[staffId,-1],[staffId,NaN],
   [staffId,Infinity],[staffId,1.5],
+  [staffId,8_640_000_000_000_001],
  ] as const){
   assert.equal(await isAdminMfaLocked(db,id,time),true);
  }
