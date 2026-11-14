@@ -83,6 +83,11 @@ jobs:
             test/admin-totp-login-attempt.test.ts \
             test/admin-totp-session-flow.test.ts \
             test/admin-session-replay-issuance.test.ts
+      - name: Admin HTTP authentication boundary regression tests (fail fast)
+        run: |
+          node --import tsx --test \
+            test/admin-logout-http-integration.test.ts \
+            test/admin-session-resolver.test.ts
       - name: Validate pinned Prisma model
         run: npm run db:validate
       - name: Recompute migration and reject schema/SQL drift
