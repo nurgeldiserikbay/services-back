@@ -96,6 +96,18 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
   assert.equal(await resolvePlatformAdminSession(db,token,pepper),null);
   await db.query('UPDATE platform_admin_staff SET disabled_at=NULL WHERE id=$1',[staffId]);
   await db.query(
+   "UPDATE platform_admin_staff SET role='operator' WHERE id=$1",
+   [staffId],
+  );
+  assert.equal(await canAccessPlatformAdminResource(
+   db,token,pepper,'audit.read',scope),false);
+  await db.query(
+   "UPDATE platform_admin_staff SET role='auditor' WHERE id=$1",
+   [staffId],
+  );
+  assert.equal(await canAccessPlatformAdminResource(
+   db,token,pepper,'audit.read',scope),true);
+  await db.query(
    "UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '20 minutes' WHERE id=$1",
    [sessionId],
   );
