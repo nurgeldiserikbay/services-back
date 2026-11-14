@@ -216,6 +216,7 @@ jobs:
       - name: PostgreSQL admin MFA audit transaction integration (fail fast)
         run: node --import tsx --test test/admin-mfa-audit-db.test.ts
       - name: Exercise isolated PostgreSQL logical backup and restore
+        id: backup_restore
         env:
           PGHOST: 127.0.0.1
           PGPORT: '5432'
@@ -510,6 +511,7 @@ jobs:
           END $verify$;
           SQL
       - name: Smoke-test default-off privileged logout HTTP endpoint
+        id: admin_http
         run: |
           npm run start > "$RUNNER_TEMP/services-back-smoke.log" 2>&1 &
           server_pid=$!
@@ -534,6 +536,7 @@ jobs:
           grep -Eiq '^x-content-type-options:.*nosniff' "$RUNNER_TEMP/admin-logout-headers.txt"
           grep -Eiq '^x-robots-tag:.*noindex' "$RUNNER_TEMP/admin-logout-headers.txt"
       - name: Unit and integration tests (after database migrations)
+        id: full_tests
         run: npm test
       - name: Diagnose database state after failed backend checks
         if: failure()
@@ -557,6 +560,9 @@ jobs:
           BUILD: ${{ steps.build.outcome }}
           MIGRATE: ${{ steps.migrate.outcome }}
           SCHEMA_CHECK: ${{ steps.schema_check.outcome }}
+          BACKUP_RESTORE: ${{ steps.backup_restore.outcome }}
+          ADMIN_HTTP: ${{ steps.admin_http.outcome }}
+          FULL_TESTS: ${{ steps.full_tests.outcome }}
         run: |
           {
             echo '### Backend validation gates'
@@ -567,4 +573,7 @@ jobs:
             echo "| Backend compilation | $BUILD |"
             echo "| PostgreSQL migration | $MIGRATE |"
             echo "| Required database tables | $SCHEMA_CHECK |"
+            echo "| Backup and restore | $BACKUP_RESTORE |"
+            echo "| Admin HTTP security smoke | $ADMIN_HTTP |"
+            echo "| Full unit and integration suite | $FULL_TESTS |"
           } >> "$GITHUB_STEP_SUMMARY"
