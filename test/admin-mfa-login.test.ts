@@ -390,3 +390,35 @@ test('failed explicit rollback discards uncertain MFA connection',async()=>{
  assert.ok(releases[0] instanceof Error);
  assert.match((releases[0] as Error).message,/outcome uncertain/);
 });
+
+test('locked MFA account never loads factor or attempts session issuance',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL ')){
+    events.push(sql);return {rows:[]};
+   }
+   if(sql.includes('pg_advisory_xact_lock')){
+    events.push('staff-lock');return {rows:[{}]};
+   }
+   if(sql.includes('FROM platform_admin_mfa_attempts')){
+    events.push('lockout');
+    return {rows:[{
+     locked_until:new Date(now+60_000),
+     failed_attempts:5,
+     window_started_at:new Date(now-1_000),
+    }]};
+   }
+   throw Error('factor or session queried for locked account');
+  },
+  release:()=>events.push('release'),
+ };
+ assert.equal(await loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),null);
+ assert.deepEqual(events,[
+  'BEGIN',"SET LOCAL lock_timeout = '3s'",
+  "SET LOCAL statement_timeout = '8s'",
+  'staff-lock','lockout','ROLLBACK','release',
+ ]);
+});
