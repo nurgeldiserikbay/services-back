@@ -225,3 +225,19 @@ test('PostgreSQL rolls back MFA lockout state when audit insertion fails',async(
   await db.end();
  }
 });
+
+
+test('MFA audit writer propagates PostgreSQL failures without retrying',async()=>{
+ const staffId=randomUUID();
+ const databaseError=Object.assign(new Error('database unavailable'),{code:'08006'});
+ let queries=0;
+ const db={query:async()=>{
+  queries++;
+  throw databaseError;
+ }} as never;
+ await assert.rejects(
+  recordAdminMfaSecurityEvent(db,staffId,'admin_mfa_login_failed'),
+  error=>error===databaseError,
+ );
+ assert.equal(queries,1);
+});
