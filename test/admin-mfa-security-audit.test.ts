@@ -31,3 +31,12 @@ test('audit persistence failure rejects the transaction',async()=>{
  await assert.rejects(recordAdminMfaSecurityEvent(db,staffId,'totp_activation_failed'),
   /admin_mfa_audit_unavailable/);
 });
+
+test('MFA audit rejects invalid database clients before SQL',async()=>{
+ for(const db of [null,undefined,{}, {query:null}, {query:'invalid'}]){
+  await assert.rejects(
+   recordAdminMfaSecurityEvent(db as never,staffId,'admin_mfa_login_failed'),
+   /invalid_admin_mfa_audit_event/,
+  );
+ }
+});
