@@ -87,3 +87,30 @@ test('session expiry outside supported Date range is rejected without SQL',async
  ),null);
  assert.equal(queries,0);
 });
+
+
+test('admin issuance rejects invalid secret material and timestamps before SQL',async()=>{
+ let queries=0;
+ const db={query:async()=>{queries++;throw Error('unexpected SQL');}} as never;
+ const verified={staffId,mfaVerifiedAt:now};
+ for(const secret of [Buffer.alloc(0),Buffer.alloc(16),Buffer.alloc(33),'not-a-key',null]){
+  assert.equal(await createVerifiedPlatformAdminSession(db,verified,secret as never,now),null);
+ }
+ for(const clock of [NaN,Infinity,-1,1.5,Number.MAX_SAFE_INTEGER+1]){
+  assert.equal(await createVerifiedPlatformAdminSession(db,verified,pepper,clock),null);
+ }
+ for(const timestamp of [Infinity,1.5,Number.MAX_SAFE_INTEGER+1]){
+  assert.equal(await createVerifiedPlatformAdminSession(
+   db,{staffId,mfaVerifiedAt:timestamp},pepper,now,
+  ),null);
+ }
+ assert.equal(queries,0);
+});
+
+test('admin issuance fails closed when database insertion fails',async()=>{
+ const db={query:async()=>{throw new Error('database unavailable');}} as never;
+ await assert.rejects(
+  createVerifiedPlatformAdminSession(db,{staffId,mfaVerifiedAt:now},pepper,now),
+  /database unavailable/,
+ );
+});
