@@ -14,7 +14,8 @@ export async function recordAdminMfaSecurityEvent(
  staffId:string,
  action:string,
 ):Promise<void>{
- if(typeof staffId!=='string'||!UUID.test(staffId)||
+ if(!db||typeof db.query!=='function'||
+    typeof staffId!=='string'||!UUID.test(staffId)||
     typeof action!=='string'||!ACTIONS.has(action))
   throw new Error('invalid_admin_mfa_audit_event');
  const result=await db.query<{id:string}>(`
