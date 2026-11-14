@@ -198,7 +198,7 @@ test('failed rollback discards an uncertain admin MFA database connection',async
  ),/transaction failed/);
  assert.equal(released.length,1);
  assert.ok(released[0] instanceof Error);
- assert.match((released[0] as Error).message,/rollback failed/i);
+ assert.match((released[0] as Error).message,/transaction outcome uncertain/i);
 });
 
 test('successful rollback returns admin MFA database connection normally',async()=>{
