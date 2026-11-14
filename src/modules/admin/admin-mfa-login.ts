@@ -47,7 +47,8 @@ export async function loginAdminWithProvisionedTotp(
    [primary.staffId],
   );
   if(await isAdminMfaLocked(client,primary.staffId,now)){
-   await client.query('ROLLBACK');
+   try{await client.query('ROLLBACK');}
+   catch(error){discardConnection=true;throw error;}
    began=false;
    return null;
   }
@@ -68,13 +69,15 @@ export async function loginAdminWithProvisionedTotp(
   if(!factorLock||!Array.isArray(factorLock.rows)||
      factorLock.rows.length!==1||
      factorLock.rows[0]?.staff_id?.toLowerCase()!==primary.staffId.toLowerCase()){
-   await client.query('ROLLBACK');
+   try{await client.query('ROLLBACK');}
+   catch(error){discardConnection=true;throw error;}
    began=false;
    return null;
   }
   secret=await loadActiveAdminTotpFactor(client,primary.staffId,resolveKey);
   if(!secret){
-   await client.query('ROLLBACK');
+   try{await client.query('ROLLBACK');}
+   catch(error){discardConnection=true;throw error;}
    began=false;
    return null;
   }
