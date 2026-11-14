@@ -31,3 +31,13 @@ test('TOTP verification rejects malformed codes, keys and clocks',()=>{
 test('TOTP verification does not accept previous step before epoch',()=>{
  assert.equal(verifyAdminTotp(secret,'287082',0),1);
 });
+
+test('TOTP verification matches additional RFC 6238 SHA-1 vectors',()=>{
+ assert.equal(verifyAdminTotp(secret,'081804',1_111_111_109_000),37_037_036);
+ assert.equal(verifyAdminTotp(secret,'050471',1_111_111_111_000),37_037_037);
+ assert.equal(verifyAdminTotp(secret,'005924',1_234_567_890_000),41_152_263);
+});
+
+test('TOTP verification rejects valid code outside the adjacent-step window',()=>{
+ assert.equal(verifyAdminTotp(secret,'287082',120_000),null);
+});
