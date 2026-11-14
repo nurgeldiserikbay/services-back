@@ -24,6 +24,12 @@ test('migrated admin session grants are checked against live DB revocation and M
    [sessionId,staffId,hash,new Date(now-60_000),new Date(now+3600_000)]);
   await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [grantId,staffId,scope]);
+  // An admin bearer is valid only with an activated, non-disabled TOTP factor.
+  await db.query(`
+   INSERT INTO platform_admin_totp_factors(
+    staff_id,encrypted_secret,key_version,created_at,activated_at
+   ) VALUES($1,$2,$3,now()-interval '2 minutes',now()-interval '1 minute')
+  `,[staffId,'integration-test-placeholder-encrypted-envelope','test-v1']);
   const principal=await resolvePlatformAdminSession(db,token,pepper,now);
   assert.equal(principal?.userId,userId);
   assert.deepEqual(principal?.resourceScopes,[scope]);
