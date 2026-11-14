@@ -345,9 +345,9 @@ test('missing durable MFA failure row rolls back and never commits',async()=>{
    }
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
    if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
-   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
    if(sql.includes('factor.encrypted_secret'))
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
    if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
     events.push('failure-no-row');return {rows:[]};
    }
