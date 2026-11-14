@@ -14,6 +14,7 @@ test('verified TOTP creates a session only after counter consumption and commit'
  const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>{
   steps.push('BEGIN');
   const result=await work({query:async(sql:string,params:unknown[])=>{
+   if(sql.includes('SELECT locked_until')){steps.push('lockout');return {rows:[]};}
    if(sql.includes('INSERT INTO platform_admin_totp_replay')){
     steps.push('consume');
     assert.deepEqual(params,[staffId,1]);
@@ -32,7 +33,7 @@ test('verified TOTP creates a session only after counter consumption and commit'
   transaction,authenticated,'287082',pepper,now);
  assert.ok(session);
  assert.equal(session.token.length,43);
- assert.deepEqual(steps,['BEGIN','consume','session','COMMIT']);
+ assert.deepEqual(steps,['BEGIN','lockout','consume','session','COMMIT']);
 });
 
 test('wrong code and untrusted identities never open a transaction',async()=>{
