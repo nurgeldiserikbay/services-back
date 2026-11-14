@@ -46,7 +46,7 @@ test('valid TOTP passes through lockout and replay checks before session issuanc
     return {rows:[{id:randomUUID()}]};
    }
    throw Error('unexpected query');
-  }} as Db);
+  }} as unknown as Db);
   steps.push('COMMIT');
   return result;
  };
@@ -59,7 +59,7 @@ test('valid TOTP passes through lockout and replay checks before session issuanc
 test('failure persistence outage fails closed',async()=>{
  const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>work({
   query:async()=>{throw Error('database unavailable');},
- } as Db);
+ } as unknown as Db);
  await assert.rejects(
   attemptAdminTotpLogin(transaction,authenticated,'000000',pepper,now),
   /database unavailable/,
@@ -93,7 +93,7 @@ test('malformed TOTP inputs count as failed attempts, not free guesses',async()=
    recorded.push(params[0]);
    return {rows:[{failed_attempts:1,locked_until:null}]};
   },
- } as Db);
+ } as unknown as Db);
  for(const code of codes)
   assert.equal(await attemptAdminTotpLogin(
    transaction,authenticated,code,pepper,now),null);
@@ -105,7 +105,7 @@ test('failed MFA transaction commit error never becomes successful login',async(
  const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
   await work({query:async()=>({
    rows:[{failed_attempts:1,locked_until:null}],
-  })} as Db);
+  })} as unknown as Db);
   throw Error('commit failed');
  };
  await assert.rejects(
@@ -126,7 +126,7 @@ test('replayed valid TOTP never issues a privileged session',async()=>{
      steps.push('replay-denied');return {rows:[]};
     }
     throw Error('unexpected session query after replay denial');
-   }} as Db);
+   }} as unknown as Db);
    steps.push('COMMIT');
    return result;
   }catch(error){
@@ -155,7 +155,7 @@ test('session issuance denial rolls back consumed replay watermark',async()=>{
      steps.push('session-denied');return {rows:[]};
     }
     throw Error('unexpected query');
-   }} as Db);
+   }} as unknown as Db);
    steps.push('COMMIT');return result;
   }catch(error){
    steps.push('ROLLBACK');throw error;
@@ -178,7 +178,7 @@ test('missing failed-attempt row rolls back the MFA transaction',async()=>{
     assert.match(sql,/INSERT INTO platform_admin_mfa_attempts/);
     steps.push('failure-row-missing');
     return {rows:[]};
-   }} as Db);
+   }} as unknown as Db);
    steps.push('COMMIT');
    return result;
   }catch(error){
@@ -207,7 +207,7 @@ test('locked MFA account rejects valid code before replay or session SQL',async(
      }]};
     }
     throw Error('replay or session query must not run during lockout');
-   }} as Db);
+   }} as unknown as Db);
    steps.push('COMMIT');return value;
   }catch(error){
    steps.push('ROLLBACK');throw error;
@@ -231,7 +231,7 @@ test('replay database outage rolls back and never creates admin session',async()
      steps.push('replay-error');throw Error('replay database unavailable');
     }
     throw Error('session must not be issued after replay failure');
-   }} as Db);
+   }} as unknown as Db);
    steps.push('COMMIT');return result;
   }catch(error){
    steps.push('ROLLBACK');throw error;
@@ -259,7 +259,7 @@ test('malformed session insert result rolls back the consumed TOTP counter',asyn
      return {rows:[{id:'not-a-uuid'}]};
     }
     throw Error('unexpected SQL');
-   }} as Db);
+   }} as unknown as Db);
    steps.push('COMMIT');return result;
   }catch(error){
    steps.push('ROLLBACK');throw error;
