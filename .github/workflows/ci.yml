@@ -194,6 +194,8 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: PostgreSQL admin MFA audit transaction integration (fail fast)
+        run: node --import tsx --test test/admin-mfa-audit-db.test.ts
       - name: Exercise isolated PostgreSQL logical backup and restore
         env:
           PGHOST: 127.0.0.1
