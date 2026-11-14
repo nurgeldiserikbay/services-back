@@ -20,7 +20,7 @@ test('invalid TOTP is durably recorded without issuing a session',async()=>{
    assert.equal(params[0],staffId);
    steps.push('failure');
    return {rows:[{failed_attempts:1,locked_until:null}]};
-  }} as Db);
+  }} as unknown as Db);
   steps.push('COMMIT');
   return value;
  };
