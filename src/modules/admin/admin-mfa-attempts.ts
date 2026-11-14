@@ -17,7 +17,8 @@ export async function recordAdminMfaFailure(
  staffId:unknown,
  now=Date.now(),
 ):Promise<{failedAttempts:number;lockedUntil:number|null}|null>{
- if(typeof staffId!=='string'||!UUID.test(staffId)||
+ if(!db||typeof db.query!=='function'||
+    typeof staffId!=='string'||!UUID.test(staffId)||
     !Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS-LOCK_MS)
   return null;
  const result=await db.query<{
@@ -82,7 +83,8 @@ export async function isAdminMfaLocked(
  staffId:unknown,
  now=Date.now(),
 ):Promise<boolean>{
- if(typeof staffId!=='string'||!UUID.test(staffId)||
+ if(!db||typeof db.query!=='function'||
+    typeof staffId!=='string'||!UUID.test(staffId)||
     !Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS)
   return true;
  const result=await db.query<{
