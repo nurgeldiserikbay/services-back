@@ -186,7 +186,7 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
    db,token,pepper,'audit.read',scope),true);
   // A session created in the future must not authorize, even with fresh MFA.
   await db.query(
-   "UPDATE platform_admin_sessions SET created_at=now()+interval '2 minutes' WHERE id=$1",
+   "UPDATE platform_admin_sessions SET created_at=now()+interval '2 minutes', mfa_verified_at=now()-interval '1 minute', expires_at=now()+interval '1 hour', revoked_at=NULL WHERE id=$1",
    [sessionId],
   );
   assert.equal(await resolvePlatformAdminSession(db,token,pepper),null);
