@@ -178,3 +178,40 @@ test('invalid privileged session secrets and primary timestamps never open datab
  }
  assert.equal(connections,0);
 });
+
+
+test('failed rollback discards an uncertain admin MFA database connection',async()=>{
+ const released:unknown[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN')return {rows:[]};
+   if(sql.includes('pg_advisory_xact_lock'))throw Error('transaction failed');
+   if(sql==='ROLLBACK')throw Error('rollback failed');
+   throw Error('unexpected SQL');
+  },
+  release:(error?:unknown)=>released.push(error),
+ };
+ const pool={connect:async()=>client} as never;
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  pool,primary,code,async()=>key,pepper,now,
+ ),/transaction failed/);
+ assert.equal(released.length,1);
+ assert.ok(released[0] instanceof Error);
+ assert.match((released[0] as Error).message,/rollback failed/i);
+});
+
+test('successful rollback returns admin MFA database connection normally',async()=>{
+ const released:unknown[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql==='ROLLBACK')return {rows:[]};
+   if(sql.includes('pg_advisory_xact_lock'))throw Error('transaction failed');
+   throw Error('unexpected SQL');
+  },
+  release:(error?:unknown)=>released.push(error),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),/transaction failed/);
+ assert.deepEqual(released,[undefined]);
+});
