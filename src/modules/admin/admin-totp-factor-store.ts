@@ -50,7 +50,8 @@ export async function loadActiveAdminTotpFactor(
  staffId:string,
  resolveKey:(version:string)=>Promise<Buffer|null>,
 ):Promise<Buffer|null>{
- if(typeof staffId!=='string'||!UUID.test(staffId))return null;
+ if(typeof staffId!=='string'||!UUID.test(staffId)||
+    typeof resolveKey!=='function')return null;
  const result=await db.query<{encrypted_secret:string;key_version:string}>(`
   SELECT factor.encrypted_secret,factor.key_version
   FROM platform_admin_totp_factors factor
