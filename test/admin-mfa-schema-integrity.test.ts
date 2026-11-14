@@ -48,3 +48,24 @@ test('security audit append-only migration blocks updates and deletes',()=>{
  assert.ok(sql.includes('CREATE TRIGGER "platform_admin_security_events_append_only"'));
  assert.match(sql,/ERRCODE\s*=\s*'55000'/);
 });
+
+
+test('MFA audit action migration matches the server-side event allowlist',()=>{
+ const sql=readFileSync(
+  'prisma/migrations/20261114163000_platform_admin_mfa_audit_actions/migration.sql','utf8',
+ );
+ const source=readFileSync('src/modules/admin/admin-mfa-security-audit.ts','utf8');
+ for(const action of [
+  'totp_factor_revoked',
+  'totp_factor_activated',
+  'totp_activation_failed',
+  'admin_mfa_login_succeeded',
+  'admin_mfa_login_failed',
+ ]){
+  assert.ok(sql.includes("'"+action+"'"),action+' missing from database constraint');
+  if(action!=='totp_factor_revoked')
+   assert.ok(source.includes("'"+action+"'"),action+' missing from audit writer');
+ }
+ assert.ok(sql.includes('DROP CONSTRAINT "platform_admin_security_events_action_allowed"'));
+ assert.ok(sql.includes('ADD CONSTRAINT "platform_admin_security_events_action_allowed"'));
+});
