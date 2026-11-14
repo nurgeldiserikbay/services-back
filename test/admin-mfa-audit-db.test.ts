@@ -178,3 +178,46 @@ test('MFA audit writer fails closed when INSERT does not confirm exactly one eve
   assert.equal(queries,1);
  }
 });
+
+
+test('PostgreSQL rolls back MFA lockout state when audit insertion fails',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ const userId=randomUUID(),staffId=randomUUID();
+ try{
+  await db.query('BEGIN');
+  await db.query('INSERT INTO users(id) VALUES($1)',[userId]);
+  await db.query(
+   "INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'auditor')",
+   [staffId,userId],
+  );
+  await db.query(
+   'INSERT INTO platform_admin_mfa_attempts (staff_id,failed_attempts,window_started_at) VALUES ($1,1,CURRENT_TIMESTAMP)',
+   [staffId],
+  );
+  await db.query('SAVEPOINT audit_failure');
+  await assert.rejects(
+   db.query(
+    'INSERT INTO platform_admin_security_events (actor_staff_id,target_staff_id,action) VALUES ($1,$1,$2)',
+    [staffId,'invalid_action'],
+   ),
+   {code:'23514'},
+  );
+  await db.query('ROLLBACK TO SAVEPOINT audit_failure');
+  await db.query('RELEASE SAVEPOINT audit_failure');
+  const inside=await db.query(
+   'SELECT failed_attempts FROM platform_admin_mfa_attempts WHERE staff_id=$1',
+   [staffId],
+  );
+  assert.equal(inside.rows[0]?.failed_attempts,1);
+  await db.query('ROLLBACK');
+  const outside=await db.query(
+   'SELECT count(*)::int AS count FROM platform_admin_mfa_attempts WHERE staff_id=$1',
+   [staffId],
+  );
+  assert.equal(outside.rows[0]?.count,0);
+ }finally{
+  await db.query('ROLLBACK').catch(()=>{});
+  await db.end();
+ }
+});
