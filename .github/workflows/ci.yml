@@ -77,7 +77,12 @@ jobs:
             test/admin-mfa-schema-integrity.test.ts \
             test/admin-totp-factor-revocation.test.ts \
             test/admin-totp-activation-transaction.test.ts \
-            test/admin-mfa-login.test.ts
+            test/admin-mfa-login.test.ts \
+            test/admin-mfa-attempts.test.ts \
+            test/admin-totp-verify.test.ts \
+            test/admin-totp-login-attempt.test.ts \
+            test/admin-totp-session-flow.test.ts \
+            test/admin-session-replay-issuance.test.ts
       - name: Validate pinned Prisma model
         run: npm run db:validate
       - name: Recompute migration and reject schema/SQL drift
