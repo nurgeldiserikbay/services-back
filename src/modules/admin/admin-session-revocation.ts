@@ -13,7 +13,8 @@ export async function revokePlatformAdminSession(
  db:Pick<PoolClient,'query'>,token:unknown,pepper:Buffer,
  staffId:unknown,now=Date.now(),
 ):Promise<boolean>{
- if(typeof staffId!=='string'||!UUID.test(staffId)||
+ if(!db||typeof db.query!=='function'||
+  typeof staffId!=='string'||!UUID.test(staffId)||
   !Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS)return false;
  let hash:string;
  try{hash=hashAdminSessionToken(token,pepper);}catch{return false;}
@@ -42,7 +43,8 @@ export async function revokePlatformAdminSession(
 export async function revokeOwnPlatformAdminSession(
  db:Pick<PoolClient,'query'>,token:unknown,pepper:Buffer,now=Date.now(),
 ):Promise<boolean>{
- if(!Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS)return false;
+ if(!db||typeof db.query!=='function'||
+  !Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS)return false;
  let hash:string;
  try{hash=hashAdminSessionToken(token,pepper);}catch{return false;}
  const result=await db.query<{id:string}>(`
