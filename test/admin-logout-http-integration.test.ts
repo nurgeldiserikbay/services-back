@@ -21,7 +21,7 @@ test('admin logout HTTP validates bearer and revokes the matching session in a t
    transactions++;
    return work({query:async(sql:string,params:unknown[])=>{
     statements.push({sql,params});
-    return {rows:[{id:randomUUID()}]};
+    return {rows:statements.length===1?[{id:randomUUID()}]:[]};
    }});
   },
  };
@@ -63,6 +63,14 @@ test('admin logout HTTP validates bearer and revokes the matching session in a t
   assert.match(statements[0]!.sql,/UPDATE platform_admin_sessions/);
   assert.equal(statements[0]!.params[0],hashAdminSessionToken(token,pepper));
   assert.notEqual(statements[0]!.params[0],token);
+  const repeated=await fetch(url,{method:'POST',headers:{authorization:`Bearer ${token}`}});
+  assert.equal(repeated.status,200);
+  assert.deepEqual(await repeated.json(),{status:'revoked'});
+  assert.equal(transactions,2);
+  assert.equal(statements.length,2);
+  assert.equal(statements[1]!.params[0],statements[0]!.params[0]);
+  assert.equal(statements[1]!.params.length,2);
+  assert.match(statements[1]!.sql,/revoked_at IS NULL/);
  }finally{
   await app?.close();
   if(previousFlag===undefined)delete process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP;
