@@ -7,7 +7,7 @@ import {parseSellerInboxFilter} from '../src/modules/requests/seller-inbox.contr
 import {resolveSellerDecisionAuthority} from '../src/modules/requests/seller-authority.js';
 import {decideSellerRequest,SellerDecisionRejected} from '../src/modules/requests/seller-decision.transaction.js';
 
-async function fixture(db:Client){
+async function fixture(db:Client,customerPersonId?:string){
  const ownerId=randomUUID(),personId=randomUUID(),profileId=randomUUID();
  const professionId=randomUUID(),definitionId=randomUUID(),offerId=randomUUID();
  const requestId=randomUUID(),guestId=randomUUID();
@@ -32,7 +32,7 @@ async function fixture(db:Client){
  await db.query(`INSERT INTO service_requests(
    id,offer_id,guest_contact_id,source_context,seller_professional_id,status,note)
    VALUES($1,$2,$3,'PERSONAL',$4,'PENDING','private note')`,
-  [requestId,offerId,guestId,profileId]);
+  [requestId,offerId,customerPersonId?null:guestId,customerPersonId??null,profileId]);
  return {ownerId,profileId,requestId};
 }
 
@@ -274,17 +274,15 @@ test('registered customer acceptance stores IN_APP notification without guest re
  const db=new Client({connectionString:process.env.DATABASE_URL});
  await db.connect();await db.query('BEGIN');
  try{
-  const f=await fixture(db);
-  const person=await db.query(
-   'SELECT person_id FROM professional_profiles WHERE id=$1',[f.profileId]);
   const customerUserId=randomUUID(),customerPersonId=randomUUID();
   await db.query('INSERT INTO users(id) VALUES($1)',[customerUserId]);
   await db.query('INSERT INTO persons(id,user_id) VALUES($1,$2)',
    [customerPersonId,customerUserId]);
+  // Request identity is immutable; create the registered customer at insertion.
+  const f=await fixture(db,customerPersonId);
+  const person=await db.query(
+   'SELECT person_id FROM professional_profiles WHERE id=$1',[f.profileId]);
   assert.notEqual(customerPersonId,person.rows[0].person_id);
-  await db.query(`UPDATE service_requests
-   SET guest_contact_id=NULL,customer_person_id=$2 WHERE id=$1`,
-   [f.requestId,customerPersonId]);
   const authority=await resolveSellerDecisionAuthority(db,f.ownerId,f.requestId);
   assert.equal(authority.authorized,true);
   if(!authority.authorized)throw new Error('fixture authorization failed');
