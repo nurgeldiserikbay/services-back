@@ -89,7 +89,8 @@ export async function loginAdminWithProvisionedTotp(
    DELETE FROM platform_admin_mfa_attempts WHERE staff_id=$1::uuid
   `,[primary.staffId]);
   await recordAdminMfaSecurityEvent(client,primary.staffId,'admin_mfa_login_succeeded');
-  await client.query('COMMIT');
+  try{await client.query('COMMIT');}
+  catch(error){discardConnection=true;throw error;}
   began=false;
   return session;
  }catch(error){
