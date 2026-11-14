@@ -1,6 +1,7 @@
 import type {PoolClient} from 'pg';
 import {hashAdminSessionToken} from './admin-session-token.js';
 
+const MAX_DATE_MS=8_640_000_000_000_000;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
@@ -13,7 +14,7 @@ export async function revokePlatformAdminSession(
  staffId:unknown,now=Date.now(),
 ):Promise<boolean>{
  if(typeof staffId!=='string'||!UUID.test(staffId)||
-  !Number.isSafeInteger(now)||now<0)return false;
+  !Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS)return false;
  let hash:string;
  try{hash=hashAdminSessionToken(token,pepper);}catch{return false;}
  const result=await db.query<{id:string}>(`
@@ -41,7 +42,7 @@ export async function revokePlatformAdminSession(
 export async function revokeOwnPlatformAdminSession(
  db:Pick<PoolClient,'query'>,token:unknown,pepper:Buffer,now=Date.now(),
 ):Promise<boolean>{
- if(!Number.isSafeInteger(now)||now<0)return false;
+ if(!Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS)return false;
  let hash:string;
  try{hash=hashAdminSessionToken(token,pepper);}catch{return false;}
  const result=await db.query<{id:string}>(`
