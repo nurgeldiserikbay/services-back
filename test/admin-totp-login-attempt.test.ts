@@ -109,3 +109,29 @@ test('failed MFA transaction commit error never becomes successful login',async(
   /commit failed/,
  );
 });
+
+test('replayed valid TOTP never issues a privileged session',async()=>{
+ const steps:string[]=[];
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
+  try{
+   const result=await work({query:async(sql:string)=>{
+    if(sql.includes('SELECT locked_until')){
+     steps.push('lockout');return {rows:[]};
+    }
+    if(sql.includes('INSERT INTO platform_admin_totp_replay')){
+     steps.push('replay-denied');return {rows:[]};
+    }
+    throw Error('unexpected session query after replay denial');
+   }} as Db);
+   steps.push('COMMIT');
+   return result;
+  }catch(error){
+   steps.push('ROLLBACK');
+   throw error;
+  }
+ };
+ assert.equal(await attemptAdminTotpLogin(
+  transaction,authenticated,'287082',pepper,now,
+ ),null);
+ assert.deepEqual(steps,['lockout','replay-denied','ROLLBACK']);
+});
