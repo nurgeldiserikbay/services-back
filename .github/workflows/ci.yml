@@ -3,6 +3,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  # A lockfile commit made by GITHUB_TOKEN does not trigger push workflows.
+  # Validate the generated lockfile after its trusted generator completes.
+  workflow_run:
+    workflows: ['Generate and commit verified backend lockfile']
+    types: [completed]
 permissions:
   contents: read
 concurrency:
@@ -12,6 +17,7 @@ jobs:
   # Keep the security gate independent so an advisory cannot hide build, migration, or DB regressions.
   # Both jobs are required for a green workflow; a failing audit still fails CI.
   dependency-audit:
+    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -49,6 +55,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   build-and-test:
+    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
