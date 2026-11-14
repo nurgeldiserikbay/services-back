@@ -32,3 +32,11 @@ test('admin TOTP rejects invalid inputs before cryptographic verification',()=>{
  assert.equal(verifyAdminTotp(secret,codeAt(123456),-1,-1),null);
  assert.equal(verifyAdminTotp(secret,codeAt(123456),now,-2),null);
 });
+
+test('production TOTP rejects out-of-range clocks and future replay watermarks',()=>{
+ const counter=123456;
+ const now=counter*30000;
+ assert.equal(verifyAdminTotp(secret,codeAt(counter),
+  8_640_000_000_000_001,-1),null);
+ assert.equal(verifyAdminTotp(secret,codeAt(counter),now,counter+1),null);
+});
