@@ -247,3 +247,38 @@ test('MFA audit writer propagates PostgreSQL failures without retrying',async()=
  );
  assert.equal(queries,1);
 });
+
+
+test('PostgreSQL audit records contain only the intended staff and action metadata',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ const userId=randomUUID(),staffId=randomUUID();
+ try{
+  await db.query('BEGIN');
+  await db.query('INSERT INTO users(id) VALUES($1)',[userId]);
+  await db.query(
+   "INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'auditor')",
+   [staffId,userId],
+  );
+  await recordAdminMfaSecurityEvent(db,staffId,'admin_mfa_login_succeeded');
+  const result=await db.query(
+   'SELECT actor_staff_id::text,target_staff_id::text,action,occurred_at FROM platform_admin_security_events WHERE actor_staff_id=$1',
+   [staffId],
+  );
+  assert.equal(result.rows.length,1);
+  assert.equal(result.rows[0]?.actor_staff_id,staffId);
+  assert.equal(result.rows[0]?.target_staff_id,staffId);
+  assert.equal(result.rows[0]?.action,'admin_mfa_login_succeeded');
+  assert.ok(result.rows[0]?.occurred_at instanceof Date);
+  const columns=await db.query(
+   "SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='platform_admin_security_events'",
+  );
+  const names=columns.rows.map(row=>row.column_name).sort();
+  assert.deepEqual(names,[
+   'action','actor_staff_id','id','occurred_at','target_staff_id',
+  ]);
+ }finally{
+  await db.query('ROLLBACK').catch(()=>{});
+  await db.end();
+ }
+});
