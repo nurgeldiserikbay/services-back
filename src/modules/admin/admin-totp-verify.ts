@@ -19,6 +19,7 @@ export function verifyAdminTotp(
     !Number.isSafeInteger(now)||now<0||now>MAX_DATE_MS)
   return null;
  const current=Math.floor(now/STEP_MS);
+ let matched:number|null=null;
  for(const drift of [-1,0,1]){
   const counter=current+drift;
   if(counter<0||!Number.isSafeInteger(counter))continue;
@@ -28,8 +29,10 @@ export function verifyAdminTotp(
   const offset=digest[digest.length-1]&15;
   const value=(digest.readUInt32BE(offset)&0x7fffffff)%1_000_000;
   const expected=Buffer.from(String(value).padStart(6,'0'),'ascii');
+  // Always evaluate the entire window to avoid revealing which step matched.
+  // Prefer the highest matching counter if two steps happen to share a code.
   if(timingSafeEqual(expected,Buffer.from(code,'ascii')))
-   return counter;
+   matched=counter;
  }
- return null;
+ return matched;
 }
