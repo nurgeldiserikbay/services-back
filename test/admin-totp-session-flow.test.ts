@@ -157,3 +157,26 @@ test('valid OTP still consumes counter and creates a session atomically',async()
  assert.ok(session);
  assert.deepEqual(steps,['BEGIN','lockout','consume','session','COMMIT']);
 });
+
+
+test('missing or disabled staff cannot create a session on wrong OTP',async()=>{
+ let sessionWrites=0;
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>work({
+  query:async(sql:string)=>{
+   if(sql.includes('INSERT INTO platform_admin_sessions'))sessionWrites++;
+   assert.match(sql,/INSERT INTO platform_admin_mfa_attempts/);
+   return {rows:[]};
+  },
+ } as Db);
+ assert.equal(await verifyTotpWithDurableFailureAccounting(
+  transaction,authenticated,'000000',pepper,now),null);
+ assert.equal(sessionWrites,0);
+});
+
+test('malformed failed-attempt result fails closed',async()=>{
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>work({
+  query:async()=>({rows:[{failed_attempts:0,locked_until:null}]}),
+ } as Db);
+ await assert.rejects(verifyTotpWithDurableFailureAccounting(
+  transaction,authenticated,'000000',pepper,now),/admin_mfa_attempt_record_unavailable/);
+});
