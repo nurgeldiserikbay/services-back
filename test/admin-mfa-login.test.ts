@@ -512,3 +512,52 @@ test('missing or malformed MFA database pool is denied before attempting login',
   ),null);
  }
 });
+
+
+test('corrupt MFA lockout row fails closed before factor decryption or session issuance',async()=>{
+ const statements:string[]=[];
+ const releases:unknown[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL ')){
+    statements.push(sql);return {rows:[]};
+   }
+   if(sql.includes('pg_advisory_xact_lock')){
+    statements.push('staff-lock');return {rows:[{}]};
+   }
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at')){
+    statements.push('lockout');
+    return {rows:[{locked_until:null,failed_attempts:5,window_started_at:'invalid'}]};
+   }
+   throw Error('unexpected factor or session access');
+  },
+  release:(error?:unknown)=>releases.push(error),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),/admin_mfa_lockout_unavailable/);
+ assert.deepEqual(statements,[
+  'BEGIN',"SET LOCAL lock_timeout = '3s'",
+  "SET LOCAL statement_timeout = '8s'",'staff-lock','lockout','ROLLBACK',
+ ]);
+ assert.deepEqual(releases,[undefined]);
+});
+
+test('lockout database outage cannot be treated as successful MFA',async()=>{
+ let factorAccess=0;
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL '))return {rows:[]};
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.trimStart().startsWith('SELECT locked_until,failed_attempts,window_started_at'))
+    throw Error('lockout storage offline');
+   factorAccess++;
+   throw Error('unexpected privileged query');
+  },
+  release:()=>{},
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),/lockout storage offline/);
+ assert.equal(factorAccess,0);
+});
