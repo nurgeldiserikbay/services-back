@@ -41,6 +41,9 @@ export async function createVerifiedPlatformAdminSession(
     AND staff.role IN ('owner','admin','operator','auditor')
     AND EXISTS (SELECT 1 FROM platform_admin_grants grants
                 WHERE grants.staff_id=staff.id)
+    AND NOT EXISTS (SELECT 1 FROM platform_admin_mfa_attempts attempts
+                    WHERE attempts.staff_id=staff.id
+                      AND attempts.locked_until>to_timestamp($5::double precision/1000.0))
     AND EXISTS (SELECT 1 FROM platform_admin_totp_factors factor
                 WHERE factor.staff_id=staff.id
                   AND factor.activated_at IS NOT NULL
