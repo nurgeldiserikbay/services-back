@@ -33,6 +33,12 @@ test('moderation queue only returns redacted cases from currently granted scopes
     (id,resource_scope,subject_kind,state) VALUES($1,$2,'review','triage')`,
     [id,scope]);
   }
+  // An admin bearer is valid only with an activated, non-disabled TOTP factor.
+  await db.query(`
+   INSERT INTO platform_admin_totp_factors(
+    staff_id,encrypted_secret,key_version,created_at,activated_at
+   ) VALUES($1,$2,$3,now()-interval '2 minutes',now()-interval '1 minute')
+  `,[staffId,'integration-test-placeholder-encrypted-envelope','test-v1']);
   process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
   process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=pepper.toString('base64');
   // Reuse the already-open transaction so fixture writes remain visible.
