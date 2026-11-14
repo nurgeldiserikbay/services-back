@@ -31,6 +31,9 @@ function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'){
     events.push('audit');return {rows:[{id:randomUUID()}]};
    }
    if(sql.includes('pg_advisory_xact_lock')){events.push('staff-lock');return {rows:[{}]};}
+   if(sql.includes('DELETE FROM platform_admin_mfa_attempts')){
+    events.push('clear-failures');return {rows:[]};
+   }
    if(sql.includes('FROM platform_admin_mfa_attempts')){
     events.push('lockout');return {rows:[]};
    }
@@ -50,9 +53,6 @@ function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'){
    }
    if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
     events.push('failure');return {rows:[{failed_attempts:1,locked_until:null}]};
-   }
-   if(sql.includes('DELETE FROM platform_admin_mfa_attempts')){
-    events.push('clear-failures');return {rows:[]};
    }
    if(sql.includes('INSERT INTO platform_admin_sessions')){
     events.push('session');return {rows:[{id:randomUUID()}]};
