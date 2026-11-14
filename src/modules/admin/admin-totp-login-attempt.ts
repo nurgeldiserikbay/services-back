@@ -30,6 +30,7 @@ export async function attemptAdminTotpLogin(
     typeof authenticated.staffId!=='string'||
     !UUID.test(authenticated.staffId)||
     !Buffer.isBuffer(authenticated.secret)||
+    authenticated.secret.length<20||authenticated.secret.length>128||
     !Number.isSafeInteger(now)||now<0||
     now>8_640_000_000_000_000-900_000||
     !Buffer.isBuffer(pepper)||pepper.length!==32)return null;
