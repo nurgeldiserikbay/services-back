@@ -97,3 +97,24 @@ test('MFA lockout check fails closed on corrupt database responses',async()=>{
    /admin_mfa_lockout_unavailable/);
  }
 });
+
+
+test('MFA lockout and failure recording propagate database outages',async()=>{
+ const db={query:async()=>{throw new Error('database unavailable');}} as never;
+ await assert.rejects(isAdminMfaLocked(db,staffId,now),/database unavailable/);
+ await assert.rejects(recordAdminMfaFailure(db,staffId,now),/database unavailable/);
+});
+
+test('MFA failure recording rejects noninteger counters and invalid dates',async()=>{
+ for(const rows of [
+  [{failed_attempts:1.5,locked_until:null}],
+  [{failed_attempts:0,locked_until:null}],
+  [{failed_attempts:1,locked_until:new Date(NaN)}],
+  [{failed_attempts:null,locked_until:null}],
+  [{}],
+ ]){
+  const db={query:async()=>({rows})} as never;
+  await assert.rejects(recordAdminMfaFailure(db,staffId,now),
+   /admin_mfa_attempt_record_unavailable/);
+ }
+});
