@@ -4,6 +4,7 @@ import {randomBytes,randomUUID} from 'node:crypto';
 import {Client} from 'pg';
 import {issueAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
 import {createVerifiedPlatformAdminSession} from '../src/modules/admin/admin-session-issuance.js';
+import {revokeOwnPlatformAdminSession} from '../src/modules/admin/admin-session-revocation.js';
 import {
  canAccessPlatformAdminResource,resolvePlatformAdminSession,
 } from '../src/modules/admin/admin-session-resolver.js';
@@ -171,6 +172,24 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
   );
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read',scope),true);
+  // A session created in the future must not authorize, even with fresh MFA.
+  await db.query(
+   "UPDATE platform_admin_sessions SET created_at=now()+interval '2 minutes' WHERE id=$1",
+   [sessionId],
+  );
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper),null);
+  await db.query(
+   "UPDATE platform_admin_sessions SET created_at=now()-interval '1 minute' WHERE id=$1",
+   [sessionId],
+  );
+  assert.equal(await canAccessPlatformAdminResource(
+   db,token,pepper,'audit.read',scope),true);
+  // Self-logout revokes only this bearer; an independently issued session remains valid.
+  assert.equal(await revokeOwnPlatformAdminSession(db,token,pepper),true);
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper),null);
+  assert.equal(await revokeOwnPlatformAdminSession(db,token,pepper),false);
+  assert.equal(await canAccessPlatformAdminResource(
+   db,issued.token,pepper,'audit.read',scope),true);
   await db.query(
    "UPDATE platform_admin_sessions SET created_at=now()-interval '20 minutes', mfa_verified_at=now()-interval '30 minutes' WHERE id=$1",
    [sessionId],
