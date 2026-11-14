@@ -51,6 +51,7 @@ export async function resolvePlatformAdminSession(
    SELECT 1 FROM platform_admin_totp_factors factor
    WHERE factor.staff_id=staff.id
      AND factor.activated_at IS NOT NULL
+     AND factor.activated_at<=session.mfa_verified_at
      AND factor.disabled_at IS NULL
   )
  ORDER BY grants.scope ASC NULLS LAST
