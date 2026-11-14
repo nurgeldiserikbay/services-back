@@ -335,3 +335,32 @@ test('failed BEGIN discards admin MFA connection and never attempts further SQL'
  assert.equal(released.length,1);
  assert.ok(released[0] instanceof Error);
 });
+
+test('missing durable MFA failure row rolls back and never commits',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL ')){
+    events.push(sql);return {rows:[]};
+   }
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
+   if(sql.includes('factor.encrypted_secret'))
+    return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
+    events.push('failure-no-row');return {rows:[]};
+   }
+   throw Error('unexpected SQL');
+  },
+  release:()=>events.push('release'),
+ };
+ const bad=code==='999999'?'000000':'999999';
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,bad,
+  async()=>key,pepper,now,
+ ),/admin_mfa_failure_record_missing/);
+ assert.ok(events.includes('ROLLBACK'));
+ assert.ok(!events.includes('COMMIT'));
+ assert.equal(events.at(-1),'release');
+});
