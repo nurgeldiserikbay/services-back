@@ -74,3 +74,14 @@ test('session denial after consuming MFA throws so transaction owner rolls back'
   db,primary,secret,codeAt(counter),pepper,now,
  ),/admin_mfa_session_issuance_denied/);
 });
+
+test('out-of-range MFA session expiry is rejected before replay SQL',async()=>{
+ let queries=0;
+ const db={query:async()=>{queries++;throw Error('unexpected SQL');}} as never;
+ const invalidNow=8_640_000_000_000_000-15*60*1000+1;
+ assert.equal(await issueAdminSessionAfterTotp(
+  db,{staffId,authenticatedAt:invalidNow-1000},
+  secret,codeAt(counter),pepper,invalidNow,
+ ),null);
+ assert.equal(queries,0);
+});
