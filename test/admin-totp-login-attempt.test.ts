@@ -181,3 +181,29 @@ test('missing failed-attempt row is rejected rather than silently accepted',asyn
  );
  assert.equal(commits,1);
 });
+
+test('locked MFA account rejects valid code before replay or session SQL',async()=>{
+ const steps:string[]=[];
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
+  try{
+   const value=await work({query:async(sql:string)=>{
+    if(sql.includes('SELECT locked_until')){
+     steps.push('lockout');
+     return {rows:[{
+      locked_until:new Date(now+60_000),
+      failed_attempts:5,
+      window_started_at:new Date(now-1_000),
+     }]};
+    }
+    throw Error('replay or session query must not run during lockout');
+   }} as Db);
+   steps.push('COMMIT');return value;
+  }catch(error){
+   steps.push('ROLLBACK');throw error;
+  }
+ };
+ assert.equal(await attemptAdminTotpLogin(
+  transaction,authenticated,'287082',pepper,now,
+ ),null);
+ assert.deepEqual(steps,['lockout','ROLLBACK']);
+});
