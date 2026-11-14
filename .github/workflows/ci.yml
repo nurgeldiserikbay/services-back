@@ -220,6 +220,41 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Verify migrated MFA audit action constraint (fail fast)
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $verify$
+          DECLARE
+            allowed text;
+            forbidden text;
+            definition text;
+          BEGIN
+            SELECT pg_get_constraintdef(c.oid)
+              INTO definition
+            FROM pg_constraint c
+            JOIN pg_class tbl ON tbl.oid=c.conrelid
+            JOIN pg_namespace ns ON ns.oid=tbl.relnamespace
+            WHERE ns.nspname='public'
+              AND tbl.relname='platform_admin_security_events'
+              AND c.conname='platform_admin_security_events_action_allowed'
+              AND c.contype='c'
+              AND c.convalidated;
+            IF definition IS NULL THEN
+              RAISE EXCEPTION 'MFA audit action CHECK constraint missing or unvalidated';
+            END IF;
+            FOREACH allowed IN ARRAY ARRAY[
+              'totp_factor_revoked',
+              'totp_factor_activated',
+              'totp_activation_failed',
+              'admin_mfa_login_succeeded',
+              'admin_mfa_login_failed'
+            ] LOOP
+              IF position(allowed IN definition)=0 THEN
+                RAISE EXCEPTION 'MFA audit action missing from CHECK constraint: %',allowed;
+              END IF;
+            END LOOP;
+          END $verify$;
+          SQL
       - name: PostgreSQL admin MFA audit transaction integration (fail fast)
         run: node --import tsx --test test/admin-mfa-audit-db.test.ts
       - name: Exercise isolated PostgreSQL logical backup and restore
