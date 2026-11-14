@@ -29,8 +29,12 @@ export async function recordAdminMfaFailure(
   FROM platform_admin_staff staff
   JOIN users usr ON usr.id=staff.user_id
   WHERE staff.id=$1::uuid AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
+    AND staff.role IN ('owner','admin','operator','auditor')
     AND EXISTS (SELECT 1 FROM platform_admin_grants grants
       WHERE grants.staff_id=staff.id)
+    AND EXISTS (SELECT 1 FROM platform_admin_totp_factors factor
+      WHERE factor.staff_id=staff.id
+        AND factor.activated_at IS NOT NULL AND factor.disabled_at IS NULL)
   ON CONFLICT (staff_id) DO UPDATE
   SET failed_attempts=CASE
     WHEN attempts.window_started_at<=to_timestamp($3::double precision/1000)
