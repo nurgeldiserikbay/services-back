@@ -164,3 +164,20 @@ test('session issuance denial rolls back consumed replay watermark',async()=>{
   'lockout','replay','session-denied','ROLLBACK',
  ]);
 });
+
+test('missing failed-attempt row is rejected rather than silently accepted',async()=>{
+ let commits=0;
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
+  const result=await work({query:async(sql:string)=>{
+   assert.match(sql,/INSERT INTO platform_admin_mfa_attempts/);
+   return {rows:[]};
+  }} as Db);
+  commits++;
+  return result;
+ };
+ await assert.rejects(
+  attemptAdminTotpLogin(transaction,authenticated,'000000',pepper,now),
+  /admin_mfa_failure_record_missing/,
+ );
+ assert.equal(commits,1);
+});
