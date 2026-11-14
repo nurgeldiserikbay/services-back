@@ -70,3 +70,18 @@ attempt limits, replay prevention, privileged identity provisioning and
 recovery controls, then end-to-end tests against migrated PostgreSQL.
 No public admin login or token-issuing HTTP endpoint is enabled by this
 change. The implementation is **not production-ready**.
+
+
+## Backend completion gates (release checklist)
+
+A successful unit-test run is necessary but not sufficient to declare the backend finished. Record a commit SHA, environment, operator and evidence link for each gate.
+
+- [ ] **Current commit CI:** confirm both `build-and-test` and `dependency-audit` pass on the exact release SHA, including the privileged-session issuance regressions.
+- [ ] **Persistent-database migration safety:** inspect `_prisma_migrations` and migration checksums in staging before `prisma migrate deploy`; never reset a database to resolve history drift.
+- [ ] **Identity and authorization:** verify account sessions, guest OTP ingress, seller ownership, privileged role/scope grants, MFA freshness, revocation and cross-account isolation against migrated PostgreSQL.
+- [ ] **Full request lifecycle:** execute guest request → seller accept/decline → status → notification, including cancellation windows, retries, concurrency and timezone boundaries.
+- [ ] **Admin release gate:** keep privileged login and browser session issuance disabled until trusted MFA challenge, replay prevention, recovery, throttling and end-to-end issuance are verified. A server-only issuance primitive is not a login endpoint.
+- [ ] **Operations:** staging HTTPS smoke tests, KZ residency and secrets review, redacted logging, alerting, backup/restore rehearsal, rollback and load testing.
+- [ ] **Cross-repository contract:** verify the frontend release SHA against the backend release SHA, not only the frontend CI's default pinned backend baseline.
+
+Only mark the backend production-ready after all applicable gates have evidence and a documented sign-off. This checklist does not itself certify any gate.
