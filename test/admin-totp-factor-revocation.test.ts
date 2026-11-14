@@ -134,3 +134,14 @@ test('factor revocation rejects invalid pool before opening a connection',async(
   ),false);
  }
 });
+
+test('factor revocation rejects malformed acquired connections before BEGIN',async()=>{
+ for(const client of [null,undefined,{}, {query:null,release:()=>{}}, {query:async()=>{},release:null}]){
+  await assert.rejects(
+   revokeAdminTotpFactorAndSessions(
+    {connect:async()=>client} as never,staffId,token,pepper,now,
+   ),
+   /admin_totp_revocation_connection_unavailable/,
+  );
+ }
+});
