@@ -57,7 +57,7 @@ test('PostgreSQL refuses mutation of committed-style privileged audit rows',asyn
   ]){
    await db.query('SAVEPOINT immutable_audit');
    try{
-    await assert.rejects(db.query(sql,[staffId]),{code:'23514'});
+    await assert.rejects(db.query(sql,[staffId]),{code:'55000'});
    }finally{
     await db.query('ROLLBACK TO SAVEPOINT immutable_audit');
     await db.query('RELEASE SAVEPOINT immutable_audit');
