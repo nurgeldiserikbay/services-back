@@ -33,6 +33,7 @@ export async function revokeAdminTotpFactorAndSessions(
   throw new Error('admin_totp_revocation_connection_unavailable');
  }
  let began=false;
+ let discard=false;
  try{
   await client.query('BEGIN');
   began=true;
@@ -108,10 +109,14 @@ export async function revokeAdminTotpFactorAndSessions(
   return disabled.rows.length===1;
  }catch(error){
   if(began){
-   try{await client.query('ROLLBACK');}catch{/* retain original failure */}
+   try{await client.query('ROLLBACK');}
+   catch{
+    // Never reuse a connection whose transaction state is unknown.
+    discard=true;
+   }
   }
   throw error;
  }finally{
-  client.release();
+  client.release(discard);
  }
 }
