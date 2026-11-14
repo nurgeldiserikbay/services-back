@@ -168,8 +168,8 @@ test('missing or disabled staff cannot create a session on wrong OTP',async()=>{
    return {rows:[]};
   },
  } as Db);
- assert.equal(await verifyTotpWithDurableFailureAccounting(
-  transaction,authenticated,'000000',pepper,now),null);
+ await assert.rejects(verifyTotpWithDurableFailureAccounting(
+  transaction,authenticated,'000000',pepper,now),/admin_mfa_failure_record_missing/);
  assert.equal(sessionWrites,0);
 });
 
