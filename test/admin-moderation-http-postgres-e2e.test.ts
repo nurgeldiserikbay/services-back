@@ -50,7 +50,7 @@ test('moderation HTTP enforces persisted admin grants MFA and revocation',async(
   await db.query(`
    INSERT INTO platform_admin_totp_factors(
     staff_id,encrypted_secret,key_version,created_at,activated_at
-   ) VALUES($1,$2,$3,now()-interval '2 minutes',now()-interval '1 minute')
+   ) VALUES($1,$2,$3,now()-interval '4 minutes',now()-interval '3 minutes')
   `,[staffId,'integration-test-placeholder-encrypted-envelope','test-v1']);
   app=await NestFactory.create(AppModule,{logger:false});
   // Route all app queries through the same rollback-only transaction so the
