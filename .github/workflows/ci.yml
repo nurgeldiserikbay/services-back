@@ -78,6 +78,7 @@ jobs:
             test/admin-totp-factor-revocation.test.ts \
             test/admin-totp-activation-transaction.test.ts \
             test/admin-mfa-login.test.ts \
+            test/admin-mfa-audit-atomicity.test.ts \
             test/admin-totp-factor-store.test.ts \
             test/admin-totp.test.ts \
             test/admin-mfa-attempts.test.ts \
