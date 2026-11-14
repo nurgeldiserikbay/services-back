@@ -47,6 +47,30 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
    db,token,pepper,'audit.read','organization:'+randomUUID()),false);
 
   await db.query(
+   'UPDATE platform_admin_totp_factors SET disabled_at=now() WHERE staff_id=$1',
+   [staffId],
+  );
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper),null);
+  await db.query(
+   'UPDATE platform_admin_totp_factors SET disabled_at=NULL WHERE staff_id=$1',
+   [staffId],
+  );
+  assert.equal(await canAccessPlatformAdminResource(
+   db,token,pepper,'audit.read',scope),true);
+  // Reprovisioning after MFA verification must invalidate the older bearer.
+  await db.query(
+   "UPDATE platform_admin_totp_factors SET activated_at=now()+interval '1 second' WHERE staff_id=$1",
+   [staffId],
+  );
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper),null);
+  await db.query(
+   "UPDATE platform_admin_totp_factors SET activated_at=now()-interval '1 minute' WHERE staff_id=$1",
+   [staffId],
+  );
+  assert.equal(await canAccessPlatformAdminResource(
+   db,token,pepper,'audit.read',scope),true);
+
+  await db.query(
    'UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',
    [sessionId],
   );
