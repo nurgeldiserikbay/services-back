@@ -20,7 +20,7 @@ export function sealAdminTotpSecret(
  key:Buffer,
 ):string{
  if(!Buffer.isBuffer(secret)||secret.length<SECRET_MIN||
-    secret.length>SECRET_MAX||!UUID.test(staffId)||
+    secret.length>SECRET_MAX||(typeof staffId!=='string'||!UUID.test(staffId))||
     !Buffer.isBuffer(key)||key.length!==KEY_BYTES)
   throw new Error('invalid_admin_totp_secret_envelope');
  const iv=randomBytes(IV_BYTES);
@@ -38,7 +38,7 @@ export function openAdminTotpSecret(
  key:Buffer,
 ):Buffer|null{
  if(typeof envelope!=='string'||envelope.length>512||
-    !UUID.test(staffId)||!Buffer.isBuffer(key)||key.length!==KEY_BYTES)
+    (typeof staffId!=='string'||!UUID.test(staffId))||!Buffer.isBuffer(key)||key.length!==KEY_BYTES)
   return null;
  const parts=envelope.split('.');
  if(parts.length!==4||parts[0]!==VERSION)return null;
