@@ -262,9 +262,9 @@ test('failed-MFA attempt commit error discards connection without returning succ
    if(sql==='COMMIT'){events.push(sql);throw Error('attempt commit uncertain');}
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
    if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
-   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
    if(sql.includes('factor.encrypted_secret'))
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
    if(sql.includes('INSERT INTO platform_admin_mfa_attempts'))
     return {rows:[{failed_attempts:1,locked_until:null}]};
    if(sql.includes('INSERT INTO platform_admin_security_events'))
@@ -363,4 +363,30 @@ test('missing durable MFA failure row rolls back and never commits',async()=>{
  assert.ok(events.includes('ROLLBACK'));
  assert.ok(!events.includes('COMMIT'));
  assert.equal(events.at(-1),'release');
+});
+
+test('failed explicit rollback discards uncertain MFA connection',async()=>{
+ const releases:unknown[]=[];
+ let rollbackCalls=0;
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql.startsWith('SET LOCAL '))return {rows:[]};
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.includes('FOR SHARE OF factor'))return {rows:[]};
+   if(sql==='ROLLBACK'){
+    rollbackCalls++;
+    if(rollbackCalls===1)throw Error('rollback connection lost');
+    return {rows:[]};
+   }
+   throw Error('unexpected SQL');
+  },
+  release:(error?:unknown)=>releases.push(error),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),/rollback connection lost/);
+ assert.equal(releases.length,1);
+ assert.ok(releases[0] instanceof Error);
+ assert.match((releases[0] as Error).message,/outcome uncertain/);
 });
