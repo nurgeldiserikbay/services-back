@@ -260,8 +260,11 @@ jobs:
             END LOOP;
           END $verify$;
           SQL
-      - name: PostgreSQL admin MFA audit transaction integration (fail fast)
-        run: node --import tsx --test test/admin-mfa-audit-db.test.ts
+      - name: PostgreSQL admin MFA and session authorization integration (fail fast)
+        run: |
+          node --import tsx --test \
+            test/admin-mfa-audit-db.test.ts \
+            test/admin-session-resolver-db.test.ts
       - name: Exercise isolated PostgreSQL logical backup and restore
         id: backup_restore
         env:
