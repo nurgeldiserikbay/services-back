@@ -32,6 +32,7 @@ export async function authorizeAdminReadFromDatabase(
       AND u.status='ACTIVE'
     LIMIT 1
   `,[tokenHash,now]);
-  if(result.rows.length!==1)return null;
+  if(!result||!Array.isArray(result.rows)||result.rows.length!==1||
+     !result.rows[0])return null;
   return authorizeAdminRead(token,result.rows[0],pepper,now,capability);
 }
