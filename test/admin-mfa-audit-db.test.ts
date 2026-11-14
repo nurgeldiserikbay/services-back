@@ -39,7 +39,7 @@ test('PostgreSQL rolls back privileged MFA audit and related writes together',as
 });
 
 
-test('PostgreSQL refuses mutation of committed-style privileged audit rows',async()=>{
+test('PostgreSQL refuses mutation of privileged audit rows within a transaction',async()=>{
  const db=new Client({connectionString:process.env.DATABASE_URL});
  await db.connect();
  const userId=randomUUID(),staffId=randomUUID();
@@ -68,6 +68,50 @@ test('PostgreSQL refuses mutation of committed-style privileged audit rows',asyn
    [staffId],
   );
   assert.deepEqual(result.rows.map(row=>row.action),['admin_mfa_login_failed']);
+ }finally{
+  await db.query('ROLLBACK').catch(()=>{});
+  await db.end();
+ }
+});
+
+test('PostgreSQL accepts every supported MFA audit action and rejects unknown actions',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ const userId=randomUUID(),staffId=randomUUID();
+ try{
+  await db.query('BEGIN');
+  await db.query('INSERT INTO users(id) VALUES($1)',[userId]);
+  await db.query(
+   "INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'auditor')",
+   [staffId,userId],
+  );
+  const actions=[
+   'totp_factor_activated',
+   'totp_activation_failed',
+   'admin_mfa_login_succeeded',
+   'admin_mfa_login_failed',
+  ];
+  for(const action of actions){
+   await recordAdminMfaSecurityEvent(db,staffId,action);
+  }
+  const result=await db.query(
+   'SELECT action FROM platform_admin_security_events WHERE actor_staff_id=$1 ORDER BY action',
+   [staffId],
+  );
+  assert.deepEqual(result.rows.map(row=>row.action),[...actions].sort());
+  await db.query('SAVEPOINT rejected_action');
+  try{
+   await assert.rejects(
+    db.query(
+     'INSERT INTO platform_admin_security_events (actor_staff_id,target_staff_id,action) VALUES ($1,$1,$2)',
+     [staffId,'unexpected_admin_mfa_action'],
+    ),
+    {code:'23514'},
+   );
+  }finally{
+   await db.query('ROLLBACK TO SAVEPOINT rejected_action');
+   await db.query('RELEASE SAVEPOINT rejected_action');
+  }
  }finally{
   await db.query('ROLLBACK').catch(()=>{});
   await db.end();
