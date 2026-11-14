@@ -112,6 +112,7 @@ jobs:
             test/admin-totp.test.ts \
             test/admin-mfa-attempts.test.ts \
             test/admin-totp-verify.test.ts \
+            test/admin-totp-replay.test.ts \
             test/admin-totp-login-attempt.test.ts \
             test/admin-totp-commit-failure.test.ts \
             test/admin-totp-session-flow.test.ts \
