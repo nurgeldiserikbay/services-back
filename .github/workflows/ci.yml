@@ -116,7 +116,8 @@ jobs:
             test/admin-totp-login-attempt.test.ts \
             test/admin-totp-commit-failure.test.ts \
             test/admin-totp-session-flow.test.ts \
-            test/admin-session-replay-issuance.test.ts
+            test/admin-session-replay-issuance.test.ts \
+            test/admin-session-issuance.test.ts
       - name: Admin HTTP authentication boundary regression tests (fail fast)
         id: admin_auth_tests
         run: |
