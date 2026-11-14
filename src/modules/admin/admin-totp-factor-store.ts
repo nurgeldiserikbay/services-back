@@ -27,6 +27,7 @@ export async function provisionAdminTotpFactor(
   JOIN users usr ON usr.id=staff.user_id
   WHERE staff.id=$1::uuid AND staff.disabled_at IS NULL
     AND usr.status='ACTIVE'
+    AND staff.role IN ('owner','admin','operator','auditor')
     AND EXISTS (SELECT 1 FROM platform_admin_grants grants
       WHERE grants.staff_id=staff.id)
   ON CONFLICT (staff_id) DO NOTHING
@@ -60,6 +61,7 @@ export async function loadActiveAdminTotpFactor(
   WHERE factor.staff_id=$1::uuid AND factor.activated_at IS NOT NULL
     AND factor.disabled_at IS NULL AND staff.disabled_at IS NULL
     AND usr.status='ACTIVE'
+    AND staff.role IN ('owner','admin','operator','auditor')
     AND EXISTS (SELECT 1 FROM platform_admin_grants grants
       WHERE grants.staff_id=staff.id)
   FOR SHARE OF factor
