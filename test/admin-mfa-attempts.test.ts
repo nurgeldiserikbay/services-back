@@ -55,7 +55,7 @@ test('MFA lockout check reads the durable row under a database lock',async()=>{
   assert.match(sql,/FROM platform_admin_mfa_attempts/);
   assert.match(sql,/FOR UPDATE/);
   assert.deepEqual(params,[staffId]);
-  return {rows:[{locked_until:new Date(now+60000)}]};
+  return {rows:[{locked_until:new Date(now+60000),failed_attempts:5,window_started_at:new Date(now-1000)}]};
  }} as never;
  assert.equal(await isAdminMfaLocked(db,staffId,now),true);
 });
@@ -63,9 +63,9 @@ test('MFA lockout check reads the durable row under a database lock',async()=>{
 test('MFA lockout check allows absent, cleared and expired locks',async()=>{
  for(const [rows,expected] of [
   [[],false],
-  [[{locked_until:null}],false],
-  [[{locked_until:new Date(now)}],false],
-  [[{locked_until:new Date(now-1)}],false],
+  [[{locked_until:null,failed_attempts:1,window_started_at:new Date(now)}],false],
+  [[{locked_until:new Date(now),failed_attempts:5,window_started_at:new Date(now-900001)}],false],
+  [[{locked_until:new Date(now-1),failed_attempts:5,window_started_at:new Date(now-900001)}],false],
  ] as const){
   const db={query:async()=>({rows})} as never;
   assert.equal(await isAdminMfaLocked(db,staffId,now),expected);
@@ -117,4 +117,11 @@ test('MFA failure recording rejects noninteger counters and invalid dates',async
   await assert.rejects(recordAdminMfaFailure(db,staffId,now),
    /admin_mfa_attempt_record_unavailable/);
  }
+});
+
+test('MFA lockout rejects inconsistent recent five-failure row',async()=>{
+ const db={query:async()=>({rows:[{
+  locked_until:null,failed_attempts:5,window_started_at:new Date(now-1000),
+ }]})} as never;
+ assert.equal(await isAdminMfaLocked(db,staffId,now),true);
 });
