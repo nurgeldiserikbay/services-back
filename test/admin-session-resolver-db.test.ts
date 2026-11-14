@@ -48,6 +48,17 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read','organization:'+randomUUID()),false);
 
+  // Revoking the only resource grant must immediately deny access.
+  await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
+  assert.equal(await canAccessPlatformAdminResource(
+   db,token,pepper,'audit.read',scope),false);
+  await db.query(
+   'INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [grantId,staffId,scope],
+  );
+  assert.equal(await canAccessPlatformAdminResource(
+   db,token,pepper,'audit.read',scope),true);
+
   await db.query(
    'UPDATE platform_admin_totp_factors SET disabled_at=now() WHERE staff_id=$1',
    [staffId],
