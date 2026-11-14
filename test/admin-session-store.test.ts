@@ -44,3 +44,23 @@ test('missing session, disallowed role and disabled staff deny access',async()=>
     assert.equal(result,null);
   }
 });
+
+
+test('malformed admin session database responses deny access',async()=>{
+ for(const response of [
+  null,undefined,{}, {rows:null},{rows:{}},{rows:[row,row]},
+  {rows:[null]},{rows:[undefined]},
+ ]){
+  const db={query:async()=>response} as unknown as Pool;
+  assert.equal(await authorizeAdminReadFromDatabase(
+   db,token,pepper,now,'audit.read',
+  ),null);
+ }
+});
+
+test('admin session database outages do not authorize requests',async()=>{
+ const db={query:async()=>{throw new Error('database unavailable');}} as unknown as Pool;
+ await assert.rejects(authorizeAdminReadFromDatabase(
+  db,token,pepper,now,'audit.read',
+ ),/database unavailable/);
+});
