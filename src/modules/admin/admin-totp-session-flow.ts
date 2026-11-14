@@ -18,14 +18,20 @@ export async function verifyTotpAndIssueAdminSession(
  pepper:Buffer,
  now=Date.now(),
 ):Promise<{token:string;expiresAt:number}|null>{
- if(!authenticated||typeof authenticated!=='object'||
+ if(typeof transaction!=='function'||
+    !Buffer.isBuffer(pepper)||pepper.length!==32||
+    !Number.isSafeInteger(now)||now<0||
+    now>8_640_000_000_000_000-900_000||
+    !authenticated||typeof authenticated!=='object'||
     Array.isArray(authenticated)||
     Object.getPrototypeOf(authenticated)!==Object.prototype||
     Object.keys(authenticated).length!==2||
     !Object.hasOwn(authenticated,'staffId')||
     !Object.hasOwn(authenticated,'secret')||
     typeof authenticated.staffId!=='string'||
-    !UUID.test(authenticated.staffId))return null;
+    !UUID.test(authenticated.staffId)||
+    !Buffer.isBuffer(authenticated.secret)||
+    authenticated.secret.length<20||authenticated.secret.length>128)return null;
  const counter=verifyAdminTotp(authenticated.secret,code,now);
  if(counter===null)return null;
  return issueReplayProtectedAdminSession(
