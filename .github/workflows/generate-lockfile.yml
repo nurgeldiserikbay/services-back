@@ -1,0 +1,45 @@
+name: Generate and commit verified backend lockfile
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - '.npmrc'
+      - '.github/workflows/generate-lockfile.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backend-lockfile-main
+  cancel-in-progress: false
+
+jobs:
+  lockfile:
+    if: github.ref == 'refs/heads/main' && github.repository == 'nurgeldiserikbay/services-back'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate dependency lockfile without running install scripts
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Verify reproducible clean install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Commit lockfile if changed
+        run: |
+          git add -- package-lock.json
+          if git diff --cached --quiet; then
+            echo 'Backend lockfile is current'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(back): commit verified npm dependency lockfile'
+          git push origin HEAD:main
