@@ -211,3 +211,27 @@ test('locked MFA account rejects valid code before replay or session SQL',async(
  ),null);
  assert.deepEqual(steps,['lockout','ROLLBACK']);
 });
+
+test('replay database outage rolls back and never creates admin session',async()=>{
+ const steps:string[]=[];
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
+  try{
+   const result=await work({query:async(sql:string)=>{
+    if(sql.includes('SELECT locked_until')){
+     steps.push('lockout');return {rows:[]};
+    }
+    if(sql.includes('INSERT INTO platform_admin_totp_replay')){
+     steps.push('replay-error');throw Error('replay database unavailable');
+    }
+    throw Error('session must not be issued after replay failure');
+   }} as Db);
+   steps.push('COMMIT');return result;
+  }catch(error){
+   steps.push('ROLLBACK');throw error;
+  }
+ };
+ await assert.rejects(attemptAdminTotpLogin(
+  transaction,authenticated,'287082',pepper,now,
+ ),/replay database unavailable/);
+ assert.deepEqual(steps,['lockout','replay-error','ROLLBACK']);
+});
