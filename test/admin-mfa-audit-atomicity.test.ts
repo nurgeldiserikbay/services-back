@@ -72,6 +72,8 @@ test('failed TOTP cannot commit its lockout counter without a durable audit even
    if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
    if(sql.includes('factor.encrypted_secret'))
     return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('INSERT INTO platform_admin_sessions'))
+    throw Error('invalid TOTP must not issue a session');
    if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
     statements.push('failure-counter');
     return {rows:[{failed_attempts:1,locked_until:null}]};
@@ -93,6 +95,7 @@ test('failed TOTP cannot commit its lockout counter without a durable audit even
  ),/admin_mfa_audit_unavailable/);
  assert.ok(statements.includes('failure-counter'));
  assert.ok(statements.includes('audit-failed'));
+ assert.ok(statements.indexOf('failure-counter')<statements.indexOf('audit-failed'));
  assert.ok(statements.includes('ROLLBACK'));
  assert.ok(!statements.includes('COMMIT'));
  assert.deepEqual(releases,[undefined]);
