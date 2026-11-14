@@ -1,29 +1,41 @@
+import 'reflect-metadata';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,randomUUID} from 'node:crypto';
 import {NestFactory} from '@nestjs/core';
 import {Module} from '@nestjs/common';
+import {DatabasePool} from '../src/platform/database/database.pool.js';
 import {PlatformAdminLogoutController} from '../src/modules/admin/admin-logout.controller.js';
 import {PlatformAdminLogoutService} from '../src/modules/admin/admin-logout.service.js';
-import {issueAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
+import {issueAdminSessionToken,hashAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
 
-test('admin logout HTTP route rejects missing bearer and does not cache responses',async()=>{
- let calls=0;
- class FakeLogoutService{
-  async logout(header:unknown){
-   calls++;
-   if(typeof header!=='string'||!header.startsWith('Bearer '))
-    throw new (await import('@nestjs/common')).UnauthorizedException('Authentication required');
-  }
- }
+test('admin logout HTTP validates bearer and revokes the matching session in a transaction',async()=>{
+ const previousFlag=process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP;
+ const previousKey=process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+ const pepper=randomBytes(32);
+ const {token}=issueAdminSessionToken(pepper);
+ const statements:{sql:string;params:unknown[]}[]=[];
+ let transactions=0;
+ const database={
+  transaction:async<T>(work:(client:{query:(sql:string,params:unknown[])=>Promise<unknown>})=>Promise<T>):Promise<T>=>{
+   transactions++;
+   return work({query:async(sql:string,params:unknown[])=>{
+    statements.push({sql,params});
+    return {rows:[{id:randomUUID()}]};
+   }});
+  },
+ };
  @Module({
   controllers:[PlatformAdminLogoutController],
-  providers:[{provide:PlatformAdminLogoutService,useClass:FakeLogoutService}],
+  providers:[PlatformAdminLogoutService,{provide:DatabasePool,useValue:database}],
  })
  class TestModule{}
- const app=await NestFactory.create(TestModule,{logger:false});
- app.setGlobalPrefix('v1');
+ process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP='enabled';
+ process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=pepper.toString('base64');
+ let app:Awaited<ReturnType<typeof NestFactory.create>>|undefined;
  try{
+  app=await NestFactory.create(TestModule,{logger:false});
+  app.setGlobalPrefix('v1');
   await app.listen(0,'127.0.0.1');
   const address=app.getHttpServer().address();
   assert.ok(address&&typeof address!=='string');
@@ -32,10 +44,20 @@ test('admin logout HTTP route rejects missing bearer and does not cache response
   assert.equal(denied.status,401);
   assert.match(denied.headers.get('cache-control')??'',/no-store/);
   assert.equal(denied.headers.get('x-robots-tag'),'noindex, nofollow');
-  const bearer=issueAdminSessionToken(randomBytes(32)).token;
-  const allowed=await fetch(url,{method:'POST',headers:{authorization:`Bearer ${bearer}`}});
+  assert.equal(transactions,0);
+  const allowed=await fetch(url,{method:'POST',headers:{authorization:`Bearer ${token}`}});
   assert.equal(allowed.status,200);
   assert.deepEqual(await allowed.json(),{status:'revoked'});
-  assert.equal(calls,2);
- }finally{await app.close();}
+  assert.equal(transactions,1);
+  assert.equal(statements.length,1);
+  assert.match(statements[0]!.sql,/UPDATE platform_admin_sessions/);
+  assert.equal(statements[0]!.params[0],hashAdminSessionToken(token,pepper));
+  assert.notEqual(statements[0]!.params[0],token);
+ }finally{
+  await app?.close();
+  if(previousFlag===undefined)delete process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP;
+  else process.env.SERVICES_ENABLE_PLATFORM_ADMIN_LOGOUT_HTTP=previousFlag;
+  if(previousKey===undefined)delete process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+  else process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=previousKey;
+ }
 });
