@@ -36,7 +36,8 @@ export async function loginAdminWithProvisionedTotp(
  let discardConnection=false;
  let secret:Buffer|null=null;
  try{
-  await client.query('BEGIN');
+  try{await client.query('BEGIN');}
+  catch(error){discardConnection=true;throw error;}
   began=true;
   // Bound waits and statements on this privileged transaction.
   await client.query("SET LOCAL lock_timeout = '3s'");
