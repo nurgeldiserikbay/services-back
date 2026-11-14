@@ -117,3 +117,26 @@ test('PostgreSQL accepts every supported MFA audit action and rejects unknown ac
   await db.end();
  }
 });
+
+
+test('PostgreSQL rejects orphaned privileged audit events without creating rows',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ const absentStaffId=randomUUID();
+ try{
+  await db.query('BEGIN');
+  await assert.rejects(
+   recordAdminMfaSecurityEvent(db,absentStaffId,'admin_mfa_login_failed'),
+   {code:'23503'},
+  );
+  await db.query('ROLLBACK');
+  const result=await db.query(
+   'SELECT count(*)::int AS count FROM platform_admin_security_events WHERE actor_staff_id=$1',
+   [absentStaffId],
+  );
+  assert.equal(result.rows[0]?.count,0);
+ }finally{
+  await db.query('ROLLBACK').catch(()=>{});
+  await db.end();
+ }
+});
