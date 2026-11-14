@@ -33,6 +33,12 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
    'INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [grantId,staffId,scope],
   );
+  // A live admin session must be backed by a currently activated TOTP factor.
+  await db.query(`
+   INSERT INTO platform_admin_totp_factors(
+    staff_id,encrypted_secret,key_version,activated_at
+   ) VALUES($1,$2,$3,now()-interval '1 minute')
+  `,[staffId,'integration-test-placeholder','test-v1']);
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read',scope),true);
   assert.equal(await canAccessPlatformAdminResource(
