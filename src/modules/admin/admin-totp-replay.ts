@@ -13,7 +13,8 @@ export async function consumeAdminTotpCounter(
  staffId:unknown,
  counter:unknown,
 ):Promise<boolean>{
- if(typeof staffId!=='string'||!UUID.test(staffId)||
+ if(!db||typeof db.query!=='function'||
+    typeof staffId!=='string'||!UUID.test(staffId)||
     typeof counter!=='number'||!Number.isSafeInteger(counter)||counter<0)
   return false;
  const result=await db.query<{last_consumed_counter:string}>(`
