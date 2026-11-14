@@ -91,12 +91,14 @@ jobs:
         id: build
         run: npm run build
       - name: Account and admin session proof regression tests (fail fast)
+        id: session_proofs
         run: |
           node --import tsx --test \
             test/session-proof-canonical.test.ts \
             test/admin-session-token.test.ts \
             test/admin-session-token-source-integrity.test.ts
       - name: Privileged MFA schema and transaction regression tests
+        id: mfa_regressions
         run: |
           node --import tsx --test \
             test/admin-mfa-schema-integrity.test.ts \
@@ -115,6 +117,7 @@ jobs:
             test/admin-totp-session-flow.test.ts \
             test/admin-session-replay-issuance.test.ts
       - name: Admin HTTP authentication boundary regression tests (fail fast)
+        id: admin_auth_tests
         run: |
           node --import tsx --test \
             test/admin-logout-http-integration.test.ts \
@@ -619,6 +622,9 @@ jobs:
           INSTALL: ${{ steps.install.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
           BUILD: ${{ steps.build.outcome }}
+          SESSION_PROOFS: ${{ steps.session_proofs.outcome }}
+          MFA_REGRESSIONS: ${{ steps.mfa_regressions.outcome }}
+          ADMIN_AUTH_TESTS: ${{ steps.admin_auth_tests.outcome }}
           MIGRATE: ${{ steps.migrate.outcome }}
           SCHEMA_CHECK: ${{ steps.schema_check.outcome }}
           BACKUP_RESTORE: ${{ steps.backup_restore.outcome }}
@@ -632,6 +638,9 @@ jobs:
             echo "| Locked dependency install | $INSTALL |"
             echo "| TypeScript typecheck | $TYPECHECK |"
             echo "| Backend compilation | $BUILD |"
+            echo "| Account and admin session proofs | $SESSION_PROOFS |"
+            echo "| Admin MFA regressions | $MFA_REGRESSIONS |"
+            echo "| Admin HTTP authentication tests | $ADMIN_AUTH_TESTS |"
             echo "| PostgreSQL migration | $MIGRATE |"
             echo "| Required database tables | $SCHEMA_CHECK |"
             echo "| Backup and restore | $BACKUP_RESTORE |"
