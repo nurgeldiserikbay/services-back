@@ -20,7 +20,8 @@ export async function loginAdminWithProvisionedTotp(
  sessionPepper:Buffer,
  now=Date.now(),
 ):Promise<{token:string;expiresAt:number}|null>{
- if(!primary||typeof primary!=='object'||Array.isArray(primary)||
+ if(!pool||typeof pool.connect!=='function'||
+    !primary||typeof primary!=='object'||Array.isArray(primary)||
     Object.getPrototypeOf(primary)!==Object.prototype||
     Object.keys(primary).length!==2||
     !Object.hasOwn(primary,'staffId')||!Object.hasOwn(primary,'authenticatedAt')||
