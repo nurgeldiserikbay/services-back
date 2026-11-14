@@ -176,7 +176,7 @@ test('missing or disabled staff cannot create a session on wrong OTP',async()=>{
 test('malformed failed-attempt result fails closed',async()=>{
  const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>work({
   query:async()=>({rows:[{failed_attempts:0,locked_until:null}]}),
- } as Db);
+ } as unknown as Db);
  await assert.rejects(verifyTotpWithDurableFailureAccounting(
   transaction,authenticated,'000000',pepper,now),/admin_mfa_attempt_record_unavailable/);
 });
