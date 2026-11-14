@@ -26,8 +26,12 @@ export async function revokeAdminTotpFactorAndSessions(
  try{actorHash=hashAdminSessionToken(actorToken,sessionPepper);}
  catch{return false;}
  const client:PoolClient=await pool.connect();
- if(!client||typeof client.query!=='function'||typeof client.release!=='function')
+ if(!client||typeof client.query!=='function'||typeof client.release!=='function'){
+  // A malformed client can still hold a checked-out connection. Release it
+  // when possible rather than exhausting the pool under repeated failures.
+  if(client&&typeof client.release==='function')client.release(true);
   throw new Error('admin_totp_revocation_connection_unavailable');
+ }
  let began=false;
  try{
   await client.query('BEGIN');
