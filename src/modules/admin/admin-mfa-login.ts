@@ -82,7 +82,10 @@ export async function loginAdminWithProvisionedTotp(
    client,primary,secret,code,sessionPepper,now,
   );
   if(!session){
-   await recordAdminMfaFailure(client,primary.staffId,now);
+   const failure=await recordAdminMfaFailure(client,primary.staffId,now);
+   // A verified active factor must have a durable attempt row. Never
+   // acknowledge a failed login if its lockout state was not persisted.
+   if(!failure)throw new Error('admin_mfa_failure_record_missing');
    await recordAdminMfaSecurityEvent(client,primary.staffId,'admin_mfa_login_failed');
    try{await client.query('COMMIT');}
    catch(error){discardConnection=true;throw error;}
