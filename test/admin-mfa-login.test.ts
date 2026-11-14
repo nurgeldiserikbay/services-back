@@ -215,3 +215,37 @@ test('successful rollback returns admin MFA database connection normally',async(
  ),/transaction failed/);
  assert.deepEqual(released,[undefined]);
 });
+
+
+test('uncertain MFA commit discards the database connection even if rollback succeeds',async()=>{
+ const releases:unknown[]=[];
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   events.push(sql);
+   if(sql==='BEGIN'||sql==='ROLLBACK')return {rows:[]};
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.includes('FOR SHARE OF factor'))return {rows:[{staff_id:staffId}]};
+   if(sql.includes('factor.encrypted_secret'))
+    return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('platform_admin_totp_replay'))
+    return {rows:[{last_consumed_counter:String(now/30000)}]};
+   if(sql.includes('INSERT INTO platform_admin_sessions'))
+    return {rows:[{id:randomUUID()}]};
+   if(sql.includes('DELETE FROM platform_admin_mfa_attempts'))
+    return {rows:[]};
+   if(sql.includes('INSERT INTO platform_admin_security_events'))
+    return {rows:[{id:randomUUID()}]};
+   if(sql==='COMMIT')throw Error('commit uncertain');
+   throw Error('unexpected SQL');
+  },
+  release:(error?:unknown)=>releases.push(error),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),/commit uncertain/);
+ assert.ok(events.includes('ROLLBACK'));
+ assert.equal(releases.length,1);
+ assert.ok(releases[0] instanceof Error);
+});
