@@ -357,8 +357,13 @@ jobs:
           SQL
           )" = 0
           # Prevent a stalled restore from consuming the entire CI job timeout.
+          # timeout executes an external command, not a Bash function; invoke the
+          # PostgreSQL 16 image directly rather than the runner PG 18 binary.
           timeout --signal=TERM --kill-after=15s 180s \
-            pg_restore --dbname="$restore_db" --no-owner --no-acl --single-transaction --exit-on-error "$backup"
+            docker run --rm --network host \
+              -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
+              -v "$RUNNER_TEMP:$RUNNER_TEMP" postgres:16 \
+              pg_restore --dbname="$restore_db" --no-owner --no-acl --single-transaction --exit-on-error "$backup"
           psql --dbname="$restore_db" -v ON_ERROR_STOP=1 <<'SQL'
           DO $verify$
           BEGIN
