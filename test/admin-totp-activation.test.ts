@@ -31,15 +31,19 @@ function fixture(mode:'ok'|'missing'|'replayed'|'commit-fails'|'locked'|'audit-f
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('staff-lock');return {rows:[{}]};
    }
+   if(sql.includes('DELETE FROM platform_admin_mfa_attempts')){
+    events.push('clear-failures');return {rows:[]};
+   }
    if(sql.includes('FROM platform_admin_mfa_attempts')){
     events.push('lockout');
-    return {rows:mode==='locked'?[{locked_until:new Date(now+60000)}]:[]};
+    return {rows:mode==='locked'?[{
+     locked_until:new Date(now+60000),
+     failed_attempts:5,
+     window_started_at:new Date(now-1000),
+    }]:[]};
    }
    if(sql.includes('INSERT INTO platform_admin_mfa_attempts')){
     events.push('failure');return {rows:[{failed_attempts:1,locked_until:null}]};
-   }
-   if(sql.includes('DELETE FROM platform_admin_mfa_attempts')){
-    events.push('clear-failures');return {rows:[]};
    }
    if(sql.includes('FOR UPDATE OF factor')){
     assert.match(sql,/platform_admin_grants/);
@@ -84,7 +88,7 @@ test('invalid code commits a failure without activating the factor',async()=>{
 test('replayed enrollment code cannot activate',async()=>{
  const f=fixture('replayed');
  assert.equal(await activateProvisionedAdminTotp(f.pool,staffId,code,async()=>key,now),false);
- assert.deepEqual(f.events,['BEGIN','staff-lock','lockout','factor-lock','consume','ROLLBACK','release']);
+ assert.deepEqual(f.events,['BEGIN','staff-lock','lockout','factor-lock','consume','failure','audit','COMMIT','release']);
 });
 
 test('commit failure never confirms activation',async()=>{
