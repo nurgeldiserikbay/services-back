@@ -57,7 +57,8 @@ export async function resolvePlatformAdminSession(
  // Exactly 100 explicit grants are valid; 101 rows indicate overflow.
  if(rows.length===0||rows.length>MAX_GRANTS)return null;
  const first=rows[0];
- if(!first||!UUID.test(first.user_id)||!ROLES.has(first.role)||
+ if(!first||typeof first.user_id!=='string'||!UUID.test(first.user_id)||
+  typeof first.role!=='string'||!ROLES.has(first.role)||
   !(first.expires_at instanceof Date)||
   !(first.mfa_verified_at instanceof Date))return null;
  const expiresAt=first.expires_at.getTime();
