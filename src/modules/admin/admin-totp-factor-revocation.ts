@@ -19,7 +19,8 @@ export async function revokeAdminTotpFactorAndSessions(
  sessionPepper:Buffer,
  now=Date.now(),
 ):Promise<boolean>{
- if(typeof staffId!=='string'||!STAFF_UUID.test(staffId)||
+ if(!pool||typeof pool.connect!=='function'||
+    typeof staffId!=='string'||!STAFF_UUID.test(staffId)||
     !Number.isSafeInteger(now)||now<0)return false;
  let actorHash:string;
  try{actorHash=hashAdminSessionToken(actorToken,sessionPepper);}
@@ -44,6 +45,14 @@ export async function revokeAdminTotpFactorAndSessions(
      ON security_grant.staff_id=actor.id
     AND security_grant.scope='platform.admin.security'
    WHERE session.token_hash=$1 AND session.revoked_at IS NULL
+     AND session.created_at<=to_timestamp($2::double precision/1000)
+     AND EXISTS (
+       SELECT 1 FROM platform_admin_totp_factors actor_factor
+       WHERE actor_factor.staff_id=actor.id
+         AND actor_factor.activated_at IS NOT NULL
+         AND actor_factor.activated_at<=session.mfa_verified_at
+         AND actor_factor.disabled_at IS NULL
+     )
      AND session.expires_at>to_timestamp($2::double precision/1000)
      AND session.mfa_verified_at IS NOT NULL
      AND session.mfa_verified_at<=to_timestamp($2::double precision/1000)
