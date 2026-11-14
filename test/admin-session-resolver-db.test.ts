@@ -191,7 +191,7 @@ test('dedicated platform admin session and grants are enforced in PostgreSQL',as
   );
   assert.equal(await resolvePlatformAdminSession(db,token,pepper),null);
   await db.query(
-   "UPDATE platform_admin_sessions SET created_at=now()-interval '1 minute' WHERE id=$1",
+   "UPDATE platform_admin_sessions SET created_at=now()-interval '1 minute', mfa_verified_at=now()-interval '1 minute' WHERE id=$1",
    [sessionId],
   );
   assert.equal(await canAccessPlatformAdminResource(
