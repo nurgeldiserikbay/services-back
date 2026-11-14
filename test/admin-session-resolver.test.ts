@@ -127,3 +127,17 @@ test('invalid authorization clock is rejected before database access',async()=>{
  }
  assert.equal(calls,0);
 });
+
+
+test('admin session SQL enforces MFA freshness before returning grants',async()=>{
+ let calls=0;
+ const db={query:async(sql:string,params:unknown[])=>{
+  calls++;
+  assert.match(sql,/session\.mfa_verified_at<=to_timestamp\(\$2::double precision\/1000\.0\)/);
+  assert.match(sql,/session\.mfa_verified_at>=to_timestamp\(\(\$2::double precision-900000\)\/1000\.0\)/);
+  assert.deepEqual(params.slice(1),[now]);
+  return {rows:[row()]};
+ }} as never;
+ assert.ok(await resolvePlatformAdminSession(db,token,pepper,now));
+ assert.equal(calls,1);
+});
