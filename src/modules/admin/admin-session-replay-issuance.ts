@@ -1,5 +1,6 @@
 import type {PoolClient} from 'pg';
 import {consumeAdminTotpCounter} from './admin-totp-replay.js';
+import {isAdminMfaLocked} from './admin-mfa-attempts.js';
 import {createVerifiedPlatformAdminSession} from './admin-session-issuance.js';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -34,6 +35,7 @@ export async function issueReplayProtectedAdminSession(
     !Buffer.isBuffer(pepper)||pepper.length!==32)return null;
  try{
   return await transaction(async db=>{
+   if(await isAdminMfaLocked(db,verified.staffId,now))throw DENIED;
    if(!await consumeAdminTotpCounter(db,verified.staffId,verified.totpCounter))
     throw DENIED;
    const session=await createVerifiedPlatformAdminSession(
