@@ -281,3 +281,37 @@ test('failed-MFA attempt commit error discards connection without returning succ
  assert.equal(released.length,1);
  assert.ok(released[0] instanceof Error);
 });
+
+
+test('admin MFA transaction applies bounded lock and statement timeouts before staff lock',async()=>{
+ const f=fixture('ok');
+ const result=await loginAdminWithProvisionedTotp(
+  f.pool,primary,code,async()=>key,pepper,now,
+ );
+ assert.ok(result);
+ assert.deepEqual(f.events.slice(0,4),[
+  'BEGIN',"SET LOCAL lock_timeout = '3s'",
+  "SET LOCAL statement_timeout = '8s'",'staff-lock',
+ ]);
+});
+
+test('admin MFA transaction setup failure rolls back without issuing a session',async()=>{
+ const statements:string[]=[];
+ const releases:unknown[]=[];
+ const client={
+  query:async(sql:string)=>{
+   statements.push(sql);
+   if(sql==="SET LOCAL statement_timeout = '8s'")throw Error('timeout setup unavailable');
+   return {rows:[]};
+  },
+  release:(error?:unknown)=>releases.push(error),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),/timeout setup unavailable/);
+ assert.deepEqual(statements,[
+  'BEGIN',"SET LOCAL lock_timeout = '3s'",
+  "SET LOCAL statement_timeout = '8s'",'ROLLBACK',
+ ]);
+ assert.deepEqual(releases,[undefined]);
+});
