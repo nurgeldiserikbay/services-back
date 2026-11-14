@@ -179,3 +179,14 @@ test('admin session rejects object-coercible database principal fields',async()=
  }
  assert.equal(coerced,0);
 });
+
+test('admin session resolution denies invalid database clients without throwing',async()=>{
+ for(const db of [null,undefined,{}, {query:null}, {query:'invalid'}]){
+  assert.equal(await resolvePlatformAdminSession(
+   db as never,token,pepper,now,
+  ),null);
+  assert.equal(await canAccessPlatformAdminResource(
+   db as never,token,pepper,'audit.read',org,now,
+  ),false);
+ }
+});
