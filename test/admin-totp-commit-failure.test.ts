@@ -43,7 +43,7 @@ test('MFA commit failure after a failed code never reports successful authentica
    steps.push('failure-recorded');
    return {rows:[{failed_attempts:1,locked_until:null}]};
   }} as Db);
-  assert.equal(result?.failedAttempts,1);
+  assert.deepEqual(result,{failedAttempts:1,lockedUntil:null});
   steps.push('commit-error');
   throw Error('failure audit commit failed');
  };
