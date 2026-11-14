@@ -54,7 +54,7 @@ test('admin issuance stores a hash and requires active staff, user and grants',a
   assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants/);
   assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_totp_factors factor/);
   assert.match(sql,/factor.activated_at IS NOT NULL/);
-  assert.match(sql,/factor\\.activated_at<=to_timestamp\\(\\$3::double precision\\/1000\\.0\\)/);
+  assert.match(sql,/factor\.activated_at<=to_timestamp\(\$3::double precision\/1000\.0\)/);
   assert.match(sql,/factor.disabled_at IS NULL/);
   assert.equal(params[0],staffId);
   assert.match(params[1] as string,/^[0-9a-f]{64}$/);
