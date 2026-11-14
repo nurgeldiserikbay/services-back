@@ -18,6 +18,9 @@ export async function provisionAdminTotpFactor(
  if(typeof staffId!=='string'||!UUID.test(staffId)||
     typeof keyVersion!=='string'||!VERSION.test(keyVersion))
   return false;
+ if(!Buffer.isBuffer(secret)||secret.length<20||secret.length>128||
+    !Buffer.isBuffer(encryptionKey)||encryptionKey.length!==32)
+  return false;
  const envelope=sealAdminTotpSecret(secret,staffId,encryptionKey);
  const result=await db.query<{staff_id:string}>(`
   INSERT INTO platform_admin_totp_factors
