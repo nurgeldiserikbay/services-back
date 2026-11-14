@@ -226,7 +226,6 @@ jobs:
           DO $verify$
           DECLARE
             allowed text;
-            forbidden text;
             definition text;
           BEGIN
             SELECT pg_get_constraintdef(c.oid)
