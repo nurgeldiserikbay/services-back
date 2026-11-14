@@ -1,4 +1,5 @@
 import {test} from 'node:test';
+import type {PoolClient} from 'pg';
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {attemptAdminTotpLogin} from '../src/modules/admin/admin-totp-login-attempt.js';
@@ -8,17 +9,18 @@ const secret=Buffer.from('12345678901234567890','ascii');
 const pepper=randomBytes(32);
 const now=59_000;
 const authenticated={staffId,secret};
+type Db=Pick<PoolClient,'query'>;
 
 test('invalid TOTP is durably recorded without issuing a session',async()=>{
  const steps:string[]=[];
- const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>{
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
   steps.push('BEGIN');
   const value=await work({query:async(sql:string,params:unknown[])=>{
    assert.match(sql,/INSERT INTO platform_admin_mfa_attempts/);
    assert.equal(params[0],staffId);
    steps.push('failure');
    return {rows:[{failed_attempts:1,locked_until:null}]};
-  }} as never);
+  }} as Db);
   steps.push('COMMIT');
   return value;
  };
@@ -29,7 +31,7 @@ test('invalid TOTP is durably recorded without issuing a session',async()=>{
 
 test('valid TOTP passes through lockout and replay checks before session issuance',async()=>{
  const steps:string[]=[];
- const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>{
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
   const result=await work({query:async(sql:string)=>{
    if(sql.includes('SELECT locked_until')){
     steps.push('lockout');
@@ -44,7 +46,7 @@ test('valid TOTP passes through lockout and replay checks before session issuanc
     return {rows:[{id:randomUUID()}]};
    }
    throw Error('unexpected query');
-  }} as never);
+  }} as Db);
   steps.push('COMMIT');
   return result;
  };
@@ -55,9 +57,9 @@ test('valid TOTP passes through lockout and replay checks before session issuanc
 });
 
 test('failure persistence outage fails closed',async()=>{
- const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>work({
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>work({
   query:async()=>{throw Error('database unavailable');},
- } as never);
+ } as Db);
  await assert.rejects(
   attemptAdminTotpLogin(transaction,authenticated,'000000',pepper,now),
   /database unavailable/,
@@ -66,7 +68,7 @@ test('failure persistence outage fails closed',async()=>{
 
 test('untrusted principal and invalid clock never reach the database',async()=>{
  let calls=0;
- const transaction=async <T>(_work:(db:never)=>Promise<T>):Promise<T>=>{
+ const transaction=async <T>(_work:(db:Db)=>Promise<T>):Promise<T>=>{
   calls++;throw Error('unexpected transaction');
  };
  assert.equal(await attemptAdminTotpLogin(transaction,
@@ -81,13 +83,13 @@ test('untrusted principal and invalid clock never reach the database',async()=>{
 test('malformed TOTP inputs count as failed attempts, not free guesses',async()=>{
  const codes:unknown[]=['28708','287082 ','287O82',287082,null,undefined];
  const recorded:unknown[]=[];
- const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>work({
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>work({
   query:async(sql:string,params:unknown[])=>{
    assert.match(sql,/INSERT INTO platform_admin_mfa_attempts/);
    recorded.push(params[0]);
    return {rows:[{failed_attempts:1,locked_until:null}]};
   },
- } as never);
+ } as Db);
  for(const code of codes)
   assert.equal(await attemptAdminTotpLogin(
    transaction,authenticated,code,pepper,now),null);
@@ -96,10 +98,10 @@ test('malformed TOTP inputs count as failed attempts, not free guesses',async()=
 });
 
 test('failed MFA transaction commit error never becomes successful login',async()=>{
- const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>{
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
   await work({query:async()=>({
    rows:[{failed_attempts:1,locked_until:null}],
-  })} as never);
+  })} as Db);
   throw Error('commit failed');
  };
  await assert.rejects(
