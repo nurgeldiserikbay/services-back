@@ -29,7 +29,8 @@ export async function resolvePlatformAdminSession(
  pepper:Buffer,
  now=Date.now(),
 ):Promise<VerifiedAdminPrincipal|null>{
- if(typeof bearer!=='string'||!TOKEN.test(bearer)||
+ if(!db||typeof db.query!=='function'||
+  typeof bearer!=='string'||!TOKEN.test(bearer)||
   !Buffer.isBuffer(pepper)||pepper.length!==32||
   !Number.isSafeInteger(now)||now<0||now>8_640_000_000_000_000)return null;
  const hash=hashAdminSessionToken(bearer,pepper);
