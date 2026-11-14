@@ -75,3 +75,21 @@ test('malformed activation input is rejected before database access',async()=>{
  ),false);
  assert.equal(queries,0);
 });
+
+test('factor activation rejects invalid dependencies without SQL or vault access',async()=>{
+ let queries=0,keyLookups=0;
+ const db={query:async()=>{queries++;throw Error('unexpected SQL');}} as never;
+ const resolveKey=async()=>{keyLookups++;return key;};
+ for(const invalidDb of [null,undefined,{}, {query:null}, {query:'invalid'}]){
+  assert.equal(await activateAdminTotpFactor(
+   invalidDb as never,staffId,'123456',resolveKey,now,
+  ),false);
+ }
+ for(const invalidResolver of [null,undefined,{},'invalid']){
+  assert.equal(await activateAdminTotpFactor(
+   db,staffId,'123456',invalidResolver as never,now,
+  ),false);
+ }
+ assert.equal(queries,0);
+ assert.equal(keyLookups,0);
+});
