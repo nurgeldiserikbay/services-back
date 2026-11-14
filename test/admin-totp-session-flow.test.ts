@@ -1,4 +1,5 @@
 import {test} from 'node:test';
+import type {PoolClient} from 'pg';
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {verifyTotpAndIssueAdminSession} from '../src/modules/admin/admin-totp-session-flow.js';
@@ -8,10 +9,11 @@ const secret=Buffer.from('12345678901234567890','ascii');
 const pepper=randomBytes(32);
 const now=59_000;
 const authenticated={staffId,secret};
+type Db=Pick<PoolClient,'query'>;
 
 test('verified TOTP creates a session only after counter consumption and commit',async()=>{
  const steps:string[]=[];
- const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>{
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>{
   steps.push('BEGIN');
   const result=await work({query:async(sql:string,params:unknown[])=>{
    if(sql.includes('SELECT locked_until')){steps.push('lockout');return {rows:[]};}
@@ -25,7 +27,7 @@ test('verified TOTP creates a session only after counter consumption and commit'
     return {rows:[{id:randomUUID()}]};
    }
    throw Error('unexpected query');
-  }} as never);
+  }} as Db);
   steps.push('COMMIT');
   return result;
  };
@@ -38,7 +40,7 @@ test('verified TOTP creates a session only after counter consumption and commit'
 
 test('wrong code and untrusted identities never open a transaction',async()=>{
  let calls=0;
- const transaction=async <T>(_work:(db:never)=>Promise<T>):Promise<T>=>{
+ const transaction=async <T>(_work:(db:Db)=>Promise<T>):Promise<T>=>{
   calls++;
   throw Error('unexpected transaction');
  };
@@ -57,23 +59,40 @@ test('wrong code and untrusted identities never open a transaction',async()=>{
 
 test('replayed TOTP cannot create a privileged session',async()=>{
  let sessionWrites=0;
- const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>work({
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>work({
   query:async(sql:string)=>{
    if(sql.includes('INSERT INTO platform_admin_sessions'))sessionWrites++;
    return {rows:[]};
   },
- } as never);
+ } as Db);
  assert.equal(await verifyTotpAndIssueAdminSession(
   transaction,authenticated,'287082',pepper,now),null);
  assert.equal(sessionWrites,0);
 });
 
 test('database failure is propagated instead of returning a session',async()=>{
- const transaction=async <T>(work:(db:never)=>Promise<T>):Promise<T>=>work({
+ const transaction=async <T>(work:(db:Db)=>Promise<T>):Promise<T>=>work({
   query:async()=>{throw Error('database unavailable');},
- } as never);
+ } as Db);
  await assert.rejects(
   verifyTotpAndIssueAdminSession(transaction,authenticated,'287082',pepper,now),
   /database unavailable/,
  );
+});
+
+test('invalid cryptographic inputs and clock never start a transaction',async()=>{
+ let calls=0;
+ const transaction=async <T>(_work:(db:Db)=>Promise<T>):Promise<T>=>{
+  calls++;throw Error('unexpected transaction');
+ };
+ assert.equal(await verifyTotpAndIssueAdminSession(
+  transaction,authenticated,'287082',Buffer.alloc(1),now),null);
+ assert.equal(await verifyTotpAndIssueAdminSession(
+  transaction,authenticated,'287082',pepper,-1),null);
+ assert.equal(await verifyTotpAndIssueAdminSession(
+  transaction,authenticated,'287082',pepper,Number.NaN),null);
+ assert.equal(await verifyTotpAndIssueAdminSession(
+  transaction,{...authenticated,secret:Buffer.alloc(129)},
+  '287082',pepper,now),null);
+ assert.equal(calls,0);
 });
