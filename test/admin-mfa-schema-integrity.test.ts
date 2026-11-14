@@ -46,5 +46,5 @@ test('security audit append-only migration blocks updates and deletes',()=>{
  assert.ok(sql.includes('BEFORE UPDATE OR DELETE ON "platform_admin_security_events"'));
  assert.ok(sql.includes('RAISE EXCEPTION'));
  assert.ok(sql.includes('CREATE TRIGGER "platform_admin_security_events_append_only"'));
- assert.match(sql,/ERRCODE\\s*=\\s*'55000'/);
+ assert.match(sql,/ERRCODE\s*=\s*'55000'/);
 });
