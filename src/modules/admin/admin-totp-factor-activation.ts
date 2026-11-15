@@ -59,6 +59,15 @@ export async function activateAdminTotpFactor(
   UPDATE platform_admin_totp_factors
   SET activated_at=to_timestamp($2::double precision/1000)
   WHERE staff_id=$1::uuid AND activated_at IS NULL AND disabled_at IS NULL
+    AND EXISTS (
+      SELECT 1 FROM platform_admin_staff staff
+      JOIN users usr ON usr.id=staff.user_id
+      WHERE staff.id=platform_admin_totp_factors.staff_id
+        AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
+        AND staff.role IN ('owner','admin','operator','auditor')
+        AND EXISTS (SELECT 1 FROM platform_admin_grants grant_row
+                    WHERE grant_row.staff_id=staff.id)
+    )
   RETURNING staff_id::text
  `,[staffId,now]);
  if(!updated||!Array.isArray(updated.rows)||updated.rows.length>1)
