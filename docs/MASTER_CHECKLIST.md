@@ -128,22 +128,22 @@
 - [ ] SQL injection and IDOR tests — Pending verification
 - [ ] XSS CSRF CORS CSP verification — Pending verification
 - [ ] Abuse/rate-limit controls — Pending verification
-- [ ] Dependency vulnerability audit — Pending verification
+- [x] Dependency vulnerability audit — Verified in services-back CI #43723300416 (2026-11-15)
 - [ ] Kazakhstan data residency — Pending verification
 - [ ] Retention and deletion policy — Pending verification
 - [ ] Final security review — Pending verification
 
 ### CI and testing
 
-- [ ] Backend typecheck — Pending verification
-- [ ] Backend unit suite — Pending verification
-- [ ] PostgreSQL migration and schema smoke — Pending verification
-- [ ] Admin MFA PostgreSQL integration — Pending verification
+- [x] Backend typecheck — Verified in services-back CI #43723300416 (2026-11-15)
+- [x] Backend unit suite — Verified in services-back CI #43723300416 (2026-11-15)
+- [x] PostgreSQL migration and schema smoke — Verified in services-back CI #43723300416 (2026-11-15)
+- [x] Admin MFA PostgreSQL integration — Verified in services-back CI #43723300416 (2026-11-15)
 - [ ] Frontend typecheck lint build — Pending verification
 - [ ] Admin typecheck lint build — Pending verification
 - [ ] API contract tests — Pending verification
 - [ ] End-to-end user journeys — Pending verification
-- [ ] All main CI checks green — Pending verification
+- [x] All main CI checks green — Verified in services-back CI #43723300416 (2026-11-15)
 - [ ] Regression and smoke suite — Pending verification
 
 ### Production operations
@@ -151,7 +151,7 @@
 - [ ] Hosting/Docker review — Pending verification
 - [ ] Secret management — Pending verification
 - [ ] TLS/HTTPS and domains — Pending verification
-- [ ] PostgreSQL backup/restore drill — Pending verification
+- [x] PostgreSQL backup/restore drill — Verified in services-back CI #43723300416 (2026-11-15)
 - [ ] Rollback and migration recovery — Pending verification
 - [ ] Monitoring metrics and alerts — Pending verification
 - [ ] Load and performance tests — Pending verification
@@ -176,7 +176,7 @@
 | Date (UTC) | Repository | Commit / CI evidence | Scope | Verification |
 |---|---|---|---|---|
 | 2026-11-15 | services-back | [`6b79eb4`](https://github.com/nurgeldiserikbay/services-back/commit/6b79eb4e127801c7727546c23b65e03886149d28) | Admin session chronology regression test | Committed; CI unverified |
-| 2026-11-15 | services-back | [`ed322ee`](https://github.com/nurgeldiserikbay/services-back/commit/ed322eea24aa441c4ca0b004315d75a7823ab390) | Atomic TOTP timestamp test update | Committed; CI unverified |
+| 2026-11-15 | services-back | [`d39d196`](https://github.com/nurgeldiserikbay/services-back/commit/d39d196f7ceedd9df13a253834e3737ad5c120fd), [CI #43723300416](https://github.com/nurgeldiserikbay/services-back/actions/runs/43723300416) | Backend typecheck, unit/integration, PostgreSQL migration/schema, Admin MFA DB, dependency audit, backup/restore and all backend main checks | **PASS** (build-and-test and dependency-audit) |\n| 2026-11-15 | services-back | [`ed322ee`](https://github.com/nurgeldiserikbay/services-back/commit/ed322eea24aa441c4ca0b004315d75a7823ab390) | Atomic TOTP timestamp test update | Committed; CI unverified |
 
 ## Next acceptance gates
 
@@ -184,4 +184,4 @@
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 116. **Verified complete:** 0 recorded in this initial register (not evidence that zero work was done).
+**Total acceptance items:** 116. **Verified complete:** 7 (backend-specific evidence recorded above; other items remain unverified).
