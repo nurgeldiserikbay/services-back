@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend offline fallback cache-miss regression (2026-11-15): [frontend `fa679e1`](https://github.com/nurgeldiserikbay/services-front/commit/fa679e13330d862075a8c2dc9c955cf33683eb0e) tests that when network and cached generic offline shell are both unavailable, the service worker returns a network error rather than cached private data. [CI #43739495740](https://github.com/nurgeldiserikbay/services-front/actions/runs/43739495740) pending; real-device PWA acceptance still open.
+
 Frontend offline HTTP security (2026-11-15): [frontend `98c6e9a`](https://github.com/nurgeldiserikbay/services-front/commit/98c6e9a6c140b5ddf501a65b023a53b8260ed8b2) adds route-scoped `X-Robots-Tag: noindex, nofollow, noarchive` and `X-Content-Type-Options: nosniff` to `/offline.html` while retaining no-store, plus source and production HTTP regression tests. [CI #43739386983](https://github.com/nurgeldiserikbay/services-front/actions/runs/43739386983) pending; [prior CI #43738267827](https://github.com/nurgeldiserikbay/services-front/actions/runs/43738267827) success. Device and assistive technology acceptance still open.
 
 Frontend PWA viewport metadata (2026-11-15): [frontend `76c811c`](https://github.com/nurgeldiserikbay/services-front/commit/76c811cf7690cc4f10a389d3a291264b258e528b) aligns root viewport theme color with manifest and adds source/production HTTP regression assertions. [CI #43738267827](https://github.com/nurgeldiserikbay/services-front/actions/runs/43738267827) pending. [Previous CI #43737940187](https://github.com/nurgeldiserikbay/services-front/actions/runs/43737940187) passed. Android installation and screen-reader sign-off remain open.
