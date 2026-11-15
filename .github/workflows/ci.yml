@@ -229,6 +229,12 @@ jobs:
           node --import tsx --test \
             test/account-bearer-session-http.test.ts \
             test/account-remote-session-revoke-http.test.ts
+      - name: Seller request inbox and decision PostgreSQL integration (fail fast)
+        run: |
+          node --import tsx --test \
+            test/seller-inbox-db.test.ts \
+            test/seller-decision-db.test.ts \
+            test/seller-decision-idempotent-db.test.ts
       - name: Guest request PostgreSQL transaction integration (fail fast)
         run: |
           node --import tsx --test \
