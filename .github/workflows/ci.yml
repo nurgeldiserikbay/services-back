@@ -238,6 +238,11 @@ jobs:
           node --import tsx --test \
             test/account-bearer-session-http.test.ts \
             test/account-remote-session-revoke-http.test.ts
+      - name: Notification pipeline and person inbox PostgreSQL integration (fail fast)
+        run: |
+          node --import tsx --test \
+            test/in-app-notification-pipeline-db.test.ts \
+            test/person-notification-inbox-http-db.test.ts
       - name: Schedule proposal transaction and notification PostgreSQL (fail fast)
         run: |
           node --import tsx --test \
