@@ -95,3 +95,36 @@ test('stale primary authentication is rejected before database access',async()=>
  ),false);
  assert.equal(connections,0);
 });
+
+test('failed enrollment COMMIT discards uncertain connection',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='COMMIT'){events.push('COMMIT');throw Error('commit failed');}
+   if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.includes('FOR UPDATE OF factor'))return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+   if(sql.includes('platform_admin_totp_replay'))return {rows:[{last_consumed_counter:String(now/30000)}]};
+   if(sql.includes('UPDATE platform_admin_totp_factors'))return {rows:[{staff_id:staffId}]};
+   if(sql.includes('DELETE FROM platform_admin_mfa_attempts'))return {rows:[]};
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(
+  activateAdminTotpInTransaction({connect:async()=>client} as never,primary,code,async()=>key,now),
+  /commit failed/,
+ );
+ assert.deepEqual(events,['BEGIN','COMMIT','release:true']);
+});
+
+test('invalid enrollment pool and resolver never connect',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected connection');}} as never;
+ for(const invalidPool of [null,undefined,{}, {connect:null}]){
+  assert.equal(await activateAdminTotpInTransaction(invalidPool as never,primary,code,async()=>key,now),false);
+ }
+ assert.equal(await activateAdminTotpInTransaction(pool,primary,code,null as never,now),false);
+ assert.equal(connections,0);
+});
