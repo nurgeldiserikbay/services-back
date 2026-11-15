@@ -204,6 +204,8 @@ jobs:
           node --import tsx --test \
             test/admin-moderation-read-service.test.ts \
             test/admin-moderation-read-db.test.ts
+      - name: Admin primary account proof PostgreSQL integration (fail fast)
+        run: node --import tsx --test test/admin-primary-account-proof-db.test.ts
       - name: Account OTP provider deadline and network retention PostgreSQL (fail fast)
         run: |
           node --import tsx --test \
