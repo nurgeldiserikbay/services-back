@@ -49,6 +49,16 @@ test('migrated admin session grants are checked against live DB revocation and M
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'moderation.decide',scope,now),false);
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read','organization:'+randomUUID(),now),false);
+  // Session expiry is exclusive: a token is valid just before expiry,
+  // but never at the expiry timestamp, regardless of its other grants.
+  // Keep MFA fresh at the boundary so the test isolates session expiry.
+  await db.query('UPDATE platform_admin_sessions SET expires_at=$2 WHERE id=$1',
+   [sessionId,new Date(now+120_000)]);
+  assert.equal(await canAccessPlatformAdminResource(
+   db,token,pepper,'audit.read',scope,now+119_999),true);
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper,now+120_000),null);
+  await db.query('UPDATE platform_admin_sessions SET expires_at=$2 WHERE id=$1',
+   [sessionId,new Date(now+3600_000)]);
   // Role changes must take effect immediately for an existing valid session.
   await db.query("UPDATE platform_admin_staff SET role='operator' WHERE id=$1",[staffId]);
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'audit.read',scope,now),false);
