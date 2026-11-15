@@ -64,7 +64,7 @@
 ### Requests & scheduling
 
 - [ ] Guest request creation — Prepared; verification pending
-- [ ] Guest capability token security — Prepared; verification pending
+- [x] Guest capability token security — Verified guest status ownership, expired/consumed/mismatched capability rejection and private-field allowlist in backend CI #43726538338 (2026-11-15)
 - [ ] Authenticated request flow — Pending verification
 - [ ] Seller accept/reject actions — Pending verification
 - [ ] Request state transitions — Pending verification
@@ -202,10 +202,10 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [CI #43724542793](https://github.com/nurgeldiserikbay/services-back/actions/runs/43724542793) | Guest request boundary regressions (verified OTP flow and cancellation policy) | **PASS**; full E2E remains pending |\n| 2026-11-15 | services-back | [`8f7b2a9`](https://github.com/nurgeldiserikbay/services-back/commit/8f7b2a9bc1e96d4c5576ef8a285b7bb4c4b29354) | Early PostgreSQL integration gate for guest OTP proof and atomic request transaction | **Pending** CI |\n\n| 2026-11-15 | services-back | [`4e18645`](https://github.com/nurgeldiserikbay/services-back/commit/4e186459b40c91e2d08c6160904146d5aaad5cc2) | PostgreSQL guest status read: capability expiry, consumption and contact ownership regression | **Pending** CI; guest capability security and full E2E unchecked |\n\n| 2026-11-15 | services-admin | [`3fb160c`](https://github.com/nurgeldiserikbay/services-admin/commit/3fb160ccec163ba3cf33ed111076e7846add5d56) | Enabled admin BFF CI smoke checks denied moderation/logout responses for no-store, noindex and sanitized body | Committed; workflow execution unverified |
 
-## Next acceptance gates
+| 2026-11-15 | services-back | [CI #43726538338](https://github.com/nurgeldiserikbay/services-back/actions/runs/43726538338) | Guest PostgreSQL transaction and status ownership, expired/consumed capability and response allowlist; guest request boundary regressions | **PASS** (build-and-test + dependency-audit); guest capability token security verified, full request E2E pending |\n\n## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 9 (7 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 10 (8 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
