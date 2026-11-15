@@ -32,6 +32,7 @@ export async function activateAdminTotpFactor(
   WHERE factor.staff_id=$1::uuid AND factor.activated_at IS NULL
     AND factor.disabled_at IS NULL AND staff.disabled_at IS NULL
     AND usr.status='ACTIVE'
+    AND staff.role IN ('owner','admin','operator','auditor')
     AND EXISTS (SELECT 1 FROM platform_admin_grants grant_row
                 WHERE grant_row.staff_id=staff.id)
   FOR UPDATE OF factor
