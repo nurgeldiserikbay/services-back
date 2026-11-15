@@ -284,6 +284,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`31d9736`](https://github.com/nurgeldiserikbay/services-back/commit/31d9736026da887dca21698e9a4c76885359627f), [`95772df`](https://github.com/nurgeldiserikbay/services-back/commit/95772dfdca0b86e1ea9235bb0056621294a9830b) | Reject noncanonical account bearer before opening privileged MFA DB transaction; regression for malformed proof and HMAC key reuse | Committed; CI/typecheck unverified |
 
+| 2026-11-15 | services-back | [`5b2e519`](https://github.com/nurgeldiserikbay/services-back/commit/5b2e5191269c7314c670426c4b73643c26595f99) | Expanded PostgreSQL admin primary-factor acceptance regressions: missing/future issuance, expiry, staff disable, account suspension | Committed; CI execution pending |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
