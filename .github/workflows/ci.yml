@@ -135,6 +135,8 @@ jobs:
             test/public-profile-contract.test.ts \
             test/seller-http-contract-regression.test.ts \
             test/guest-request-status-http.test.ts
+      - name: Guest capability and OTP abuse boundary regressions (fail fast)
+        run: node --import tsx --test test/guest-request-security.test.ts
       - name: Guest request lifecycle boundary regressions (fail fast)
         run: |
           node --import tsx --test \
