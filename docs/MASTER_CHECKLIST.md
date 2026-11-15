@@ -173,6 +173,8 @@
 
 ## Evidence log
 
+Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.com/nurgeldiserikbay/services-front/actions/runs/43710794087) stopped at a test fixture that accepted `2026-11-05T11:00:00.123Z` for a `2026-11-04T11:00:00Z` request, exceeding the enforced 24-hour TTL by 123 ms. [Frontend commit `1fdd457`](https://github.com/nurgeldiserikbay/services-front/commit/1fdd457a08333f41e1a9af11df98832a346d79f3) corrected the test fixture to stay within TTL; [new CI run 43723522028](https://github.com/nurgeldiserikbay/services-front/actions/runs/43723522028) was in progress when recorded. Frontend CI/typecheck/build are **not verified green**.
+
 | Date (UTC) | Repository | Commit / CI evidence | Scope | Verification |
 |---|---|---|---|---|
 | 2026-11-15 | services-back | [`6b79eb4`](https://github.com/nurgeldiserikbay/services-back/commit/6b79eb4e127801c7727546c23b65e03886149d28) | Admin session chronology regression test | Committed; CI unverified |
