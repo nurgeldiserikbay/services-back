@@ -23,7 +23,7 @@ export async function activateAdminTotpFactor(
     typeof resolveKey!=='function'||
     typeof staffId!=='string'||!UUID.test(staffId)||
     typeof code!=='string'||!/^[0-9]{6}$/.test(code)||
-    !Number.isSafeInteger(now)||now<0)return false;
+    !Number.isSafeInteger(now)||now<0||now>8_640_000_000_000_000)return false;
  const result=await db.query<{encrypted_secret:string;key_version:string}>(`
   SELECT factor.encrypted_secret,factor.key_version
   FROM platform_admin_totp_factors factor
@@ -63,6 +63,9 @@ export async function activateAdminTotpFactor(
  `,[staffId,now]);
  if(!updated||!Array.isArray(updated.rows)||updated.rows.length>1)
   throw new Error('admin_totp_activation_unavailable');
- return updated.rows.length===1&&
-  updated.rows[0]?.staff_id?.toLowerCase()===staffId.toLowerCase();
+ if(updated.rows.length===0)return false;
+ if(typeof updated.rows[0]?.staff_id!=='string'||
+    updated.rows[0].staff_id.toLowerCase()!==staffId.toLowerCase())
+  throw new Error('admin_totp_activation_unavailable');
+ return true;
 }
