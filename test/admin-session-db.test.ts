@@ -50,6 +50,18 @@ test('migrated admin session grants are checked against live DB revocation and M
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'moderation.decide',scope,now),false);
   assert.equal(await canAccessPlatformAdminResource(
    db,token,pepper,'audit.read','organization:'+randomUUID(),now),false);
+  // MFA freshness has an inclusive 15-minute boundary.
+  // Move the factor activation earlier to keep the chronology valid.
+  await db.query('UPDATE platform_admin_totp_factors SET activated_at=$2 WHERE staff_id=$1',
+   [staffId,new Date(now-20*60_000)]);
+  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
+   [sessionId,new Date(now-15*60_000)]);
+  assert.equal((await resolvePlatformAdminSession(db,token,pepper,now))?.userId,userId);
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper,now+1),null);
+  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
+   [sessionId,new Date(now-60_000)]);
+  await db.query('UPDATE platform_admin_totp_factors SET activated_at=$2 WHERE staff_id=$1',
+   [staffId,new Date(now-180_000)]);
   // Session expiry is exclusive: a token is valid just before expiry,
   // but never at the expiry timestamp, regardless of its other grants.
   // Keep MFA fresh at the boundary so the test isolates session expiry.
