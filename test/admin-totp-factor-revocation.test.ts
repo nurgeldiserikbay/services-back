@@ -15,6 +15,11 @@ function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'
    if(['BEGIN','COMMIT','ROLLBACK'].includes(sql)){
     events.push(sql);return {rows:[]};
    }
+   if(sql.startsWith('SET LOCAL ')){
+    assert.ok(["SET LOCAL lock_timeout = '3s'","SET LOCAL statement_timeout = '8s'"].includes(sql));
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
    if(sql.includes('pg_advisory_xact_lock')){
     assert.deepEqual(params?.[0],staffId);
     events.push('lock');return {rows:[{}]};
@@ -54,17 +59,17 @@ function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'
 test('revocation disables factor and all sessions before commit',async()=>{
  const f=fixture();
  assert.equal(await revokeAdminTotpFactorAndSessions(f.pool,staffId,token,pepper,now),true);
- assert.deepEqual(f.events,['BEGIN','lock','authorize','disable','revoke-sessions','audit','COMMIT','release']);
+ assert.deepEqual(f.events,['BEGIN','lock-timeout','statement-timeout','lock','authorize','disable','revoke-sessions','audit','COMMIT','release']);
 });
 test('already disabled factor still revokes remaining sessions',async()=>{
  const f=fixture('already-disabled');
  assert.equal(await revokeAdminTotpFactorAndSessions(f.pool,staffId,token,pepper,now),false);
- assert.deepEqual(f.events,['BEGIN','lock','authorize','disable','revoke-sessions','audit','COMMIT','release']);
+ assert.deepEqual(f.events,['BEGIN','lock-timeout','statement-timeout','lock','authorize','disable','revoke-sessions','audit','COMMIT','release']);
 });
 test('session revocation failure rolls back factor disable',async()=>{
  const f=fixture('revoke-fails');
  await assert.rejects(revokeAdminTotpFactorAndSessions(f.pool,staffId,token,pepper,now),/session revoke failed/);
- assert.deepEqual(f.events,['BEGIN','lock','authorize','disable','revoke-sessions','ROLLBACK','release']);
+ assert.deepEqual(f.events,['BEGIN','lock-timeout','statement-timeout','lock','authorize','disable','revoke-sessions','ROLLBACK','release']);
 });
 test('malformed identity does not connect to database',async()=>{
  let connected=false;
@@ -76,7 +81,7 @@ test('malformed identity does not connect to database',async()=>{
 test('missing security grant or expired actor session rejects revocation',async()=>{
  const f=fixture('unauthorized');
  assert.equal(await revokeAdminTotpFactorAndSessions(f.pool,staffId,token,pepper,now),false);
- assert.deepEqual(f.events,['BEGIN','lock','authorize','ROLLBACK','release']);
+ assert.deepEqual(f.events,['BEGIN','lock-timeout','statement-timeout','lock','authorize','ROLLBACK','release']);
 });
 test('invalid actor bearer is rejected before connecting',async()=>{
  let connections=0;
@@ -91,7 +96,7 @@ test('audit failure rolls back factor and session revocation',async()=>{
   f.pool,staffId,token,pepper,now,
  ),/audit unavailable/);
  assert.deepEqual(f.events,[
-  'BEGIN','lock','authorize','disable','revoke-sessions','audit','ROLLBACK','release',
+  'BEGIN','lock-timeout','statement-timeout','lock','authorize','disable','revoke-sessions','audit','ROLLBACK','release',
  ]);
 });
 
@@ -101,7 +106,7 @@ test('missing audit confirmation rolls back security operation',async()=>{
   f.pool,staffId,token,pepper,now,
  ),/admin_totp_revocation_audit_unavailable/);
  assert.deepEqual(f.events,[
-  'BEGIN','lock','authorize','disable','revoke-sessions','audit','ROLLBACK','release',
+  'BEGIN','lock-timeout','statement-timeout','lock','authorize','disable','revoke-sessions','audit','ROLLBACK','release',
  ]);
 });
 test('unconfirmed session revocation prevents audit and commit',async()=>{
@@ -110,7 +115,7 @@ test('unconfirmed session revocation prevents audit and commit',async()=>{
   f.pool,staffId,token,pepper,now,
  ),/admin_totp_session_revocation_unavailable/);
  assert.deepEqual(f.events,[
-  'BEGIN','lock','authorize','disable','revoke-sessions','ROLLBACK','release',
+  'BEGIN','lock-timeout','statement-timeout','lock','authorize','disable','revoke-sessions','ROLLBACK','release',
  ]);
 });
 
@@ -177,7 +182,7 @@ test('failed rollback discards revocation connection and preserves original erro
   ),
   /lock failed/,
  );
- assert.deepEqual(events,['BEGIN','lock','ROLLBACK','release:true']);
+ assert.deepEqual(events,['BEGIN','lock-timeout','statement-timeout','lock','ROLLBACK','release:true']);
 });
 
 test('successful rollback returns revocation connection to pool normally',async()=>{
@@ -199,5 +204,5 @@ test('successful rollback returns revocation connection to pool normally',async(
   ),
   /lock failed/,
  );
- assert.deepEqual(events,['BEGIN','lock','ROLLBACK','release:false']);
+ assert.deepEqual(events,['BEGIN','lock-timeout','statement-timeout','lock','ROLLBACK','release:false']);
 });
