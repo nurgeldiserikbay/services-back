@@ -226,7 +226,7 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [CI #43731174397](https://github.com/nurgeldiserikbay/services-back/actions/runs/43731174397), [`58f9efb`](https://github.com/nurgeldiserikbay/services-back/commit/58f9efb53132b1b34e92b7eb8a26a913bdf11250) | Account HTTP bearer and remote revoke DB tests failed before migrations (missing users relation); relocated gate after schema verification | **Fix committed; CI pending**; authentication E2E unchecked |\n\n| 2026-11-15 | services-admin | [`9407f22`](https://github.com/nurgeldiserikbay/services-admin/commit/9407f2287dc15fe590944e9ef2ab858a63012cf8), [`4918454`](https://github.com/nurgeldiserikbay/services-admin/commit/4918454fb66a4b7df7da0be48caf1ef33867fb11) | Responsive moderation filters, keyboard focus-visible styles and h1 heading CSS fix | Committed; CI and visual/browser acceptance unverified |
 
-## Next acceptance gates
+| 2026-11-15 | services-back | [CI #43731746957](https://github.com/nurgeldiserikbay/services-back/actions/runs/43731746957) | PostgreSQL account OTP sign-in/private HTTP login and bearer session/remote revoke tests | **PASS**; full authentication E2E pending |\n| 2026-11-15 | services-back | [`74aba67`](https://github.com/nurgeldiserikbay/services-back/commit/74aba67093b1601dbd7a147e977b39087b966d62) | Account session ownership, activity throttle and revoked/suspended/expired session PostgreSQL gate | **Pending** CI |\n\n## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
