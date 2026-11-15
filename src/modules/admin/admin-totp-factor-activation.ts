@@ -63,7 +63,10 @@ export async function activateAdminTotpFactor(
  `,[staffId,now]);
  if(!updated||!Array.isArray(updated.rows)||updated.rows.length>1)
   throw new Error('admin_totp_activation_unavailable');
- if(updated.rows.length===0)return false;
+ // A consumed enrollment OTP must never be committed without activation.
+ // Throw so the owning transaction can roll back the replay watermark.
+ if(updated.rows.length===0)
+  throw new Error('admin_totp_activation_unavailable');
  if(typeof updated.rows[0]?.staff_id!=='string'||
     updated.rows[0].staff_id.toLowerCase()!==staffId.toLowerCase())
   throw new Error('admin_totp_activation_unavailable');
