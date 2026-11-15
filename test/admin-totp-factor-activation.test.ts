@@ -33,6 +33,9 @@ function fakeDb(mode:'valid'|'wrong'|'missing'='valid'){
   }
   if(sql.includes('UPDATE platform_admin_totp_factors')){
    events.push('activate');
+   assert.match(sql,/staff\.disabled_at IS NULL AND usr\.status='ACTIVE'/);
+   assert.match(sql,/staff\.role IN \('owner','admin','operator','auditor'\)/);
+   assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants grant_row/);
    assert.deepEqual(params,[staffId,now]);
    return {rows:[{staff_id:staffId}]};
   }
