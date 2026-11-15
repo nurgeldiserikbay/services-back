@@ -304,6 +304,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`2578286`](https://github.com/nurgeldiserikbay/services-back/commit/25782869caecd33178138abedff6fbc57d2a7fce), [`b876309`](https://github.com/nurgeldiserikbay/services-back/commit/b8763092d7bb36f5e10659751ba4c7dea4d296dd) | Fixed MFA test fixture query argument type mismatch; extended PostgreSQL primary account proof to reject unknown staff roles | Committed; typecheck/CI pending |
 
+| 2026-11-15 | services-back | [`24b9c52`](https://github.com/nurgeldiserikbay/services-back/commit/24b9c52c63c8967901490087a8c5d0d197aad509), [`7fd1d7c`](https://github.com/nurgeldiserikbay/services-back/commit/7fd1d7c6e6588c68789eb7faa0c552c206ab2728) | Backend admin logout acknowledges revocation only if a session row was actually revoked; repeated/unknown bearer now denied; HTTP regression updated | Committed; CI execution pending |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
