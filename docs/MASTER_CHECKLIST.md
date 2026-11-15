@@ -294,6 +294,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`6163f2c`](https://github.com/nurgeldiserikbay/services-back/commit/6163f2c22e4ce84b3c9adc9cc396988000c52a93), [`8a96064`](https://github.com/nurgeldiserikbay/services-back/commit/8a96064567cb3108e3fa3a004a0026bc02db394f) | Removed early TOTP format rejection from trusted account MFA wrapper so authenticated malformed codes reach the durable attempt/lockout path; added regression | Committed; CI execution and end-to-end HTTP acceptance pending |
 
+| 2026-11-15 | services-back | [`0a6c1dd`](https://github.com/nurgeldiserikbay/services-back/commit/0a6c1ddd0e3a1804965f99b0a5dfa450163f4600), [`714912e`](https://github.com/nurgeldiserikbay/services-back/commit/714912e130a3aac04902914d74d7cd3bacd36f01) | Admin MFA regression: malformed TOTP after valid primary must persist lockout/audit; invalid primary must not load factor key or perform privileged SQL | Committed; CI verification pending |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
