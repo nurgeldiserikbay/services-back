@@ -22,6 +22,7 @@ function fakeDb(mode:'valid'|'wrong'|'missing'='valid'){
   if(sql.includes('FOR UPDATE OF factor')){
    events.push('read');
    assert.deepEqual(params,[staffId]);
+   assert.match(sql,/staff\.role IN \('owner','admin','operator','auditor'\)/);
    return {rows:mode==='missing'?[]:[{
     encrypted_secret:mode==='wrong'?'v1.invalid':envelope,key_version:'key-1',
    }]};
