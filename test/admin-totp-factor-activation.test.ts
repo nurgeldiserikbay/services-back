@@ -124,3 +124,24 @@ test('activation rejects out-of-range timestamps before SQL',async()=>{
  }
  assert.equal(queries,0);
 });
+
+test('activation update race throws after consuming enrollment code',async()=>{
+ const events:string[]=[];
+ const db={query:async(sql:string)=>{
+  if(sql.includes('FOR UPDATE OF factor')){
+   events.push('read');return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+  }
+  if(sql.includes('platform_admin_totp_replay')){
+   events.push('consume');return {rows:[{last_consumed_counter:String(counter)}]};
+  }
+  if(sql.includes('UPDATE platform_admin_totp_factors')){
+   events.push('activate');return {rows:[]};
+  }
+  throw Error('unexpected SQL');
+ }} as never;
+ await assert.rejects(
+  activateAdminTotpFactor(db,staffId,code,async()=>key,now),
+  /admin_totp_activation_unavailable/,
+ );
+ assert.deepEqual(events,['read','consume','activate']);
+});
