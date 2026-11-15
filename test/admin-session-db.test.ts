@@ -53,10 +53,12 @@ test('migrated admin session grants are checked against live DB revocation and M
   // Change both timestamps in one statement to avoid an invalid intermediate row.
   await db.query('UPDATE platform_admin_sessions SET created_at=$2,mfa_verified_at=$3 WHERE id=$1',
    [sessionId,new Date(now-15*60_000),new Date(now-15*60_000)]);
-  await db.query('UPDATE platform_admin_totp_factors SET created_at=$2 WHERE staff_id=$1',
-   [staffId,new Date(now-25*60_000)]);
-  await db.query('UPDATE platform_admin_totp_factors SET activated_at=$2 WHERE staff_id=$1',
-   [staffId,new Date(now-20*60_000)]);
+  // Update factor chronology atomically: the old activation time must not
+  // temporarily precede the new creation time.
+  await db.query(
+   'UPDATE platform_admin_totp_factors SET created_at=$2,activated_at=$3 WHERE staff_id=$1',
+   [staffId,new Date(now-25*60_000),new Date(now-20*60_000)],
+  );
   assert.equal((await resolvePlatformAdminSession(db,token,pepper,now))?.userId,userId);
   assert.equal(await resolvePlatformAdminSession(db,token,pepper,now+1),null);
   await db.query('UPDATE platform_admin_sessions SET created_at=$2,mfa_verified_at=$3 WHERE id=$1',
