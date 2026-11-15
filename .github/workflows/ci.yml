@@ -198,6 +198,11 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Account OTP verification replay and delivery confirmation PostgreSQL (fail fast)
+        run: |
+          node --import tsx --test \
+            test/account-otp-verification-db.test.ts \
+            test/account-otp-delivery-confirmation-db.test.ts
       - name: Account OTP network and global issuance abuse budgets PostgreSQL (fail fast)
         run: |
           node --import tsx --test \
