@@ -24,6 +24,7 @@ export async function revokeAdminTotpFactor(
  catch{return false;}
  const client:PoolClient=await pool.connect();
  let began=false;
+ let discard=false;
  try{
   await client.query('BEGIN');
   began=true;
@@ -90,9 +91,15 @@ export async function revokeAdminTotpFactor(
   began=false;
   return true;
  }catch(error){
-  if(began){try{await client.query('ROLLBACK');}catch{/* retain original error */}}
+  if(began){
+   try{await client.query('ROLLBACK');}
+   catch{
+    // The transaction may still be open; do not reuse this connection.
+    discard=true;
+   }
+  }
   throw error;
  }finally{
-  client.release();
+  client.release(discard);
  }
 }
