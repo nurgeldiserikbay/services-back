@@ -59,6 +59,10 @@ test('PostgreSQL admin primary proof requires recent live account login and staf
   await db.query("UPDATE users SET status='ACTIVE' WHERE id=$1",[userId]);
   assert.equal((await verify())?.staffId,staffId);
 
+  await db.query("UPDATE platform_admin_staff SET role='viewer' WHERE id=$1",[staffId]);
+  assert.equal(await verify(),null,'unrecognized staff role cannot authenticate admin');
+  await db.query("UPDATE platform_admin_staff SET role='auditor' WHERE id=$1",[staffId]);
+  assert.equal((await verify())?.staffId,staffId);
   await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
   assert.equal(await verify(),null,'staff without live grants cannot authenticate admin');
  }finally{
