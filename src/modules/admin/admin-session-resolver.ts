@@ -46,6 +46,7 @@ export async function resolvePlatformAdminSession(
   AND session.revoked_at IS NULL
   AND session.created_at<=to_timestamp($2::double precision/1000.0)
   AND session.expires_at>to_timestamp($2::double precision/1000.0)
+  AND session.expires_at>session.mfa_verified_at
   AND session.mfa_verified_at<=to_timestamp($2::double precision/1000.0)
   AND session.mfa_verified_at>=to_timestamp(($2::double precision-900000)/1000.0)
   AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
@@ -73,7 +74,8 @@ export async function resolvePlatformAdminSession(
  const expiresAt=first.expires_at.getTime();
  const mfaVerifiedAt=first.mfa_verified_at.getTime();
  if(!Number.isSafeInteger(expiresAt)||!Number.isSafeInteger(mfaVerifiedAt)||
-  expiresAt<=now||mfaVerifiedAt>now||now-mfaVerifiedAt>MAX_MFA_AGE_MS)return null;
+  expiresAt<=now||expiresAt<=mfaVerifiedAt||
+  mfaVerifiedAt>now||now-mfaVerifiedAt>MAX_MFA_AGE_MS)return null;
  const scopes: string[]=[];
  const seenScopes=new Set<string>();
  let sawNullScope=false;
