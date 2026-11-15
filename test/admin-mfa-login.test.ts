@@ -633,7 +633,7 @@ test('recent account session proof is checked in the MFA transaction before fact
     f.events.push('account-primary');
     return {rows:[{staff_id:staffId,authenticated_at:new Date(now-1000)}]};
    }
-   return originalQuery(sql,params);
+   return originalQuery(sql);
   };
   return client;
  }};
@@ -656,7 +656,7 @@ test('invalid account primary proof denies MFA before factor and session issuanc
   const originalQuery=client.query.bind(client);
   client.query=async(sql:string,params?:unknown[])=>{
    if(sql.includes('FROM sessions session'))return {rows:[]};
-   return originalQuery(sql,params);
+   return originalQuery(sql);
   };
   return client;
  }};
@@ -736,7 +736,7 @@ test('malformed TOTP with valid recent account proof persists MFA failure and au
     f.events.push('account-primary');
     return {rows:[{staff_id:staffId,authenticated_at:new Date(now-1000)}]};
    }
-   return originalQuery(sql,params);
+   return originalQuery(sql);
   };
   return client;
  }};
