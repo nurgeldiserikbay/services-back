@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend search landmark accessibility (2026-11-15): [frontend `23bc320`](https://github.com/nurgeldiserikbay/services-front/commit/23bc3205549b10c6ef5aca2aa223e5ae1a1cfe10) exposes the marketplace search/filter form as `role=search` and adds source and rendered production HTTP assertions. [CI #43747632577](https://github.com/nurgeldiserikbay/services-front/actions/runs/43747632577) pending; [previous CI #43745157492](https://github.com/nurgeldiserikbay/services-front/actions/runs/43745157492) passed. Manual screen-reader and device acceptance still open.
+
 Frontend accessible search field and empty-state announcement (2026-11-15): [frontend `0f1d8a6`](https://github.com/nurgeldiserikbay/services-front/commit/0f1d8a6965958f068f5721828bff2d969fcbb6fc) sets native `type=search`, mobile search keyboard hint and `role=status` on empty search results, with source regression test. [CI #43745157492](https://github.com/nurgeldiserikbay/services-front/actions/runs/43745157492) pending; [previous CI #43744836807](https://github.com/nurgeldiserikbay/services-front/actions/runs/43744836807) passed. Real-device and screen-reader acceptance remain open.
 
 Frontend robots infrastructure exclusions (2026-11-15): [frontend `bcbaef1`](https://github.com/nurgeldiserikbay/services-front/commit/bcbaef194474b046808c3c3e6a5f9927f64c668b) excludes `/_next/` and `/manifest.webmanifest` from robots crawling while preserving public catalog allow rules, with source and production HTTP assertions. [CI #43744836807](https://github.com/nurgeldiserikbay/services-front/actions/runs/43744836807) pending; device and accessibility acceptance remain open.
