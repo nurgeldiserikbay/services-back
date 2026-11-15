@@ -21,7 +21,8 @@ export async function revokeAdminTotpFactorAndSessions(
 ):Promise<boolean>{
  if(!pool||typeof pool.connect!=='function'||
     typeof staffId!=='string'||!STAFF_UUID.test(staffId)||
-    !Number.isSafeInteger(now)||now<0)return false;
+    !Number.isSafeInteger(now)||now<0||
+    now>8_640_000_000_000_000)return false;
  let actorHash:string;
  try{actorHash=hashAdminSessionToken(actorToken,sessionPepper);}
  catch{return false;}
