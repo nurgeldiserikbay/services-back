@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend canonical offline URL matching (2026-11-15): [frontend `892b592`](https://github.com/nurgeldiserikbay/services-front/commit/892b592c17deeec1754af4b64b79e0dbea25e2e7) rejects percent-encoded path components and backslashes before applying public navigation fallback, with behavior tests for encoded profile identifiers. [CI #43741167094](https://github.com/nurgeldiserikbay/services-front/actions/runs/43741167094) pending; [previous CI #43740960577](https://github.com/nurgeldiserikbay/services-front/actions/runs/43740960577) passed. Device and accessibility acceptance remain open.
+
 Frontend encoded path separator protection (2026-11-15): [frontend `a67bfed`](https://github.com/nurgeldiserikbay/services-front/commit/a67bfedd774cda9d3c074159cf7419e3f3661ec7) prevents service worker public profile fallback for URLs containing percent-encoded slash/backslash and adds bypass regressions. [CI #43740960577](https://github.com/nurgeldiserikbay/services-front/actions/runs/43740960577) pending; [previous CI #43740777485](https://github.com/nurgeldiserikbay/services-front/actions/runs/43740777485) success. PWA device acceptance remains open.
 
 Frontend PWA unavailable Cache Storage (2026-11-15): [frontend `85abcd5`](https://github.com/nurgeldiserikbay/services-front/commit/85abcd591d292ff4b94aff5e2fada71055ba44ce) makes public navigation fallback return a network error when browser Cache Storage is unavailable, and adds worker behavior regressions for offline and 503 responses. [CI #43740777485](https://github.com/nurgeldiserikbay/services-front/actions/runs/43740777485) pending; [previous CI #43740545409](https://github.com/nurgeldiserikbay/services-front/actions/runs/43740545409) passed. Real-device PWA acceptance remains open.
