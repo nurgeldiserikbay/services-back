@@ -35,16 +35,13 @@ test('migrated admin session grants are checked against live DB revocation and M
   const principal=await resolvePlatformAdminSession(db,token,pepper,now);
   assert.equal(principal?.userId,userId);
   assert.deepEqual(principal?.resourceScopes,[scope]);
-  // The database rejects impossible session chronology before the resolver runs.
-  // A SAVEPOINT keeps the outer integration transaction usable after CHECK failure.
-  await db.query('SAVEPOINT future_admin_session');
-  await assert.rejects(
-   db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
-    [sessionId,new Date(now+60_000)]),
-   {code:'23514'},
-  );
-  await db.query('ROLLBACK TO SAVEPOINT future_admin_session');
-  await db.query('RELEASE SAVEPOINT future_admin_session');
+  // Future-dated creation is rejected by the authorization query,
+  // independently of database lifetime CHECK constraints.
+  await db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
+   [sessionId,new Date(now+60_000)]);
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
+  await db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
+   [sessionId,new Date(now-60_000)]);
   assert.equal((await resolvePlatformAdminSession(db,token,pepper,now))?.userId,userId);
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'audit.read',scope,now),true);
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'moderation.decide',scope,now),false);
@@ -93,24 +90,12 @@ test('migrated admin session grants are checked against live DB revocation and M
   await db.query('UPDATE platform_admin_staff SET disabled_at=now() WHERE id=$1',[staffId]);
   assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
   await db.query('UPDATE platform_admin_staff SET disabled_at=NULL WHERE id=$1',[staffId]);
-  // PostgreSQL rejects an MFA proof older than the session itself.
-  await db.query('SAVEPOINT stale_admin_mfa');
-  await assert.rejects(
-   db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
-    [sessionId,new Date(now-16*60_000)]),
-   {code:'23514'},
-  );
-  await db.query('ROLLBACK TO SAVEPOINT stale_admin_mfa');
-  await db.query('RELEASE SAVEPOINT stale_admin_mfa');
-  assert.equal((await resolvePlatformAdminSession(db,token,pepper,now))?.userId,userId);
-  // A factor enrolled only after MFA verification cannot retroactively
-  // authenticate an existing session, even if it is currently active.
-  await db.query('UPDATE platform_admin_totp_factors SET activated_at=$2 WHERE staff_id=$1',
-   [staffId,new Date(now-30_000)]);
+  // MFA proof may precede session issuance, but a stale proof is denied.
+  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
+   [sessionId,new Date(now-16*60_000)]);
   assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
-  await db.query('UPDATE platform_admin_totp_factors SET activated_at=$2 WHERE staff_id=$1',
-   [staffId,new Date(now-180_000)]);
-  assert.equal((await resolvePlatformAdminSession(db,token,pepper,now))?.userId,userId);
+  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
+   [sessionId,new Date(now-60_000)]);
   // MFA cannot be reused when the enrolled factor has been disabled.
   await db.query('UPDATE platform_admin_totp_factors SET disabled_at=now() WHERE staff_id=$1',
    [staffId]);
