@@ -298,6 +298,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`0a6c1dd`](https://github.com/nurgeldiserikbay/services-back/commit/0a6c1ddd0e3a1804965f99b0a5dfa450163f4600), [`714912e`](https://github.com/nurgeldiserikbay/services-back/commit/714912e130a3aac04902914d74d7cd3bacd36f01) | Admin MFA regression: malformed TOTP after valid primary must persist lockout/audit; invalid primary must not load factor key or perform privileged SQL | Committed; CI verification pending |
 
+| 2026-11-15 | services-back | [`2578286`](https://github.com/nurgeldiserikbay/services-back/commit/25782869caecd33178138abedff6fbc57d2a7fce), [`b876309`](https://github.com/nurgeldiserikbay/services-back/commit/b8763092d7bb36f5e10659751ba4c7dea4d296dd) | Fixed MFA test fixture query argument type mismatch; extended PostgreSQL primary account proof to reject unknown staff roles | Committed; typecheck/CI pending |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
