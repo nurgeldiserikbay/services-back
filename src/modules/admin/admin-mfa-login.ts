@@ -25,7 +25,7 @@ export async function loginAdminWithProvisionedTotp(
 ):Promise<{token:string;expiresAt:number}|null>{
  const fromAccount=primary!==null&&typeof primary==='object'&&
     !Array.isArray(primary)&&Object.getPrototypeOf(primary)===Object.prototype&&
-    Object.hasOwn(primary,'accountBearer')&&Object.hasOwn(primary,'accountPepper');
+    (Object.hasOwn(primary,'accountBearer')||Object.hasOwn(primary,'accountPepper'));
  const account=fromAccount?primary as AccountPrimaryInput:null;
  const attested=fromAccount?null:primary as {staffId:string;authenticatedAt:number};
  if(!pool||typeof pool.connect!=='function'||
@@ -63,7 +63,8 @@ export async function loginAdminWithProvisionedTotp(
    await resolveRecentAdminPrimaryAccountProof(
     client,account.accountBearer,account.accountPepper,now):attested;
   if(!verifiedPrimary){
-   await client.query('ROLLBACK');
+   try{await client.query('ROLLBACK');}
+   catch(error){discardConnection=true;throw error;}
    began=false;
    return null;
   }
