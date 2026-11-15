@@ -37,11 +37,17 @@ test('migrated admin session grants are checked against live DB revocation and M
   assert.deepEqual(principal?.resourceScopes,[scope]);
   // Future-dated creation is rejected by the authorization query,
   // independently of database lifetime CHECK constraints.
-  await db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
-   [sessionId,new Date(now+60_000)]);
+  // Move both timestamps together so database chronology checks remain valid.
+  // The resolver must still deny a session whose creation is in the future.
+  await db.query(
+   'UPDATE platform_admin_sessions SET created_at=$2,mfa_verified_at=$2 WHERE id=$1',
+   [sessionId,new Date(now+60_000)],
+  );
   assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
-  await db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
-   [sessionId,new Date(now-60_000)]);
+  await db.query(
+   'UPDATE platform_admin_sessions SET created_at=$2,mfa_verified_at=$2 WHERE id=$1',
+   [sessionId,new Date(now-60_000)],
+  );
   assert.equal((await resolvePlatformAdminSession(db,token,pepper,now))?.userId,userId);
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'audit.read',scope,now),true);
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'moderation.decide',scope,now),false);
