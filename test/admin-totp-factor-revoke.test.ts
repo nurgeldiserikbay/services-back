@@ -24,6 +24,7 @@ function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'|'commit-fails'){
     assert.match(sql,/session.token_hash=\$1/);
     assert.match(sql,/staff.role='owner'/);
     assert.match(sql,/actor_factor.activated_at IS NOT NULL/);
+    assert.match(sql,/actor_factor\.activated_at<=session\.mfa_verified_at/);
     assert.match(sql,/actor_factor.disabled_at IS NULL/);
     assert.match(sql,/session.mfa_verified_at<=to_timestamp/);
     assert.match(sql,/session.mfa_verified_at>=to_timestamp\(\(\$2::double precision-900000\)\/1000\)/);
