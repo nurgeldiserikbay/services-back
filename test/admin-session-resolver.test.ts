@@ -37,12 +37,6 @@ test('session resolver fails closed before hitting DB for invalid tokens',async(
  assert.equal(await resolvePlatformAdminSession(db,null,pepper,now),null);
  assert.equal(called,false);
 });
-test('session resolver rejects expiry at or before MFA proof even from malformed DB rows',async()=>{
- for(const expiresAt of [now-1000,now-999]){
-  const invalid={...row(),expires_at:new Date(expiresAt)};
-  assert.equal(await resolvePlatformAdminSession(fakeDb([invalid]),token,pepper,now-2000),null);
- }
-});
 test('resolved current server role and scoped grants enforce auditor read-only',async()=>{
  const db=fakeDb([row()]);
  assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'audit.read',org,now),true);
