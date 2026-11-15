@@ -220,7 +220,7 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`d090279`](https://github.com/nurgeldiserikbay/services-back/commit/d090279247035827ad7bc315695be87be02d17a9) | PostgreSQL OTP sign-in, session replay and private HTTP login integration added as early CI gate | **Pending** CI; complete authentication E2E acceptance remains unchecked |\n\n| 2026-11-15 | services-admin | [`ad6c04c`](https://github.com/nurgeldiserikbay/services-admin/commit/ad6c04c6caee6ed01511fb6c66cb5e11a8ec685e), [`2d8e0ce`](https://github.com/nurgeldiserikbay/services-admin/commit/2d8e0ce4ee1c1b03d439e3248eb229d9c6a9c645) | Moderation filter reset and accessible current-page result announcements with regression assertions | Committed; CI and browser acceptance unverified |
 
-## Next acceptance gates
+| 2026-11-15 | services-back | [CI #43731174397](https://github.com/nurgeldiserikbay/services-back/actions/runs/43731174397), [`58f9efb`](https://github.com/nurgeldiserikbay/services-back/commit/58f9efb53132b1b34e92b7eb8a26a913bdf11250) | Account HTTP bearer and remote revoke DB tests failed before migrations (missing users relation); relocated gate after schema verification | **Fix committed; CI pending**; authentication E2E unchecked |\n\n## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
