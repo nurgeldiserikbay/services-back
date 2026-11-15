@@ -128,6 +128,13 @@ jobs:
             test/admin-logout-live-http.test.ts \
             test/admin-session-resolver.test.ts \
             test/admin-session-revocation.test.ts
+      - name: Backend API contract regressions (fail fast)
+        run: |
+          node --import tsx --test \
+            test/search-contract-regression.test.ts \
+            test/public-profile-contract.test.ts \
+            test/seller-http-contract-regression.test.ts \
+            test/guest-request-status-http.test.ts
       - name: Validate pinned Prisma model
         run: npm run db:validate
       - name: Recompute migration and reject schema/SQL drift
