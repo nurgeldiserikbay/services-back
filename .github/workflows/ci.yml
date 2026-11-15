@@ -201,6 +201,8 @@ jobs:
           node --import tsx --test \
             test/guest-request-transaction-db.test.ts \
             test/guest-request-status-db.test.ts
+      - name: Guest OTP provider PostgreSQL E2E contract (fail fast)
+        run: node --import tsx --test test/guest-otp-provider-contract-e2e.test.ts
       - name: Verify privileged MFA and audit database constraints
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
