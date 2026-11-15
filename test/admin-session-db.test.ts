@@ -29,8 +29,9 @@ test('migrated admin session grants are checked against live DB revocation and M
   await db.query(`
    INSERT INTO platform_admin_totp_factors(
     staff_id,encrypted_secret,key_version,created_at,activated_at
-   ) VALUES($1,$2,$3,now()-interval '4 minutes',now()-interval '3 minutes')
-  `,[staffId,'integration-test-placeholder-encrypted-envelope','test-v1']);
+   ) VALUES($1,$2,$3,$4,$5)
+  `,[staffId,'integration-test-placeholder-encrypted-envelope','test-v1',
+   new Date(now-240_000),new Date(now-180_000)]);
   const principal=await resolvePlatformAdminSession(db,token,pepper,now);
   assert.equal(principal?.userId,userId);
   assert.deepEqual(principal?.resourceScopes,[scope]);
