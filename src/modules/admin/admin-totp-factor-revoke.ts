@@ -36,6 +36,9 @@ export async function revokeAdminTotpFactor(
   beginAttempted=true;
   await client.query('BEGIN');
   began=true;
+  // Bound lock waits and query execution within this privileged transaction.
+  await client.query("SET LOCAL lock_timeout = '3s'");
+  await client.query("SET LOCAL statement_timeout = '8s'");
   // Acquire the target lock BEFORE any row locks. MFA login and activation
   // take this advisory lock first; reversing the order risks deadlock.
   await client.query(
