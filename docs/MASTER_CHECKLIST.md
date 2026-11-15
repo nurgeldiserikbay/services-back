@@ -262,6 +262,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [CI #43737972089](https://github.com/nurgeldiserikbay/services-back/actions/runs/43737972089) | Seller inbox/accept/decline/idempotency and OTP-authenticated seller journey PostgreSQL integration | **PASS**; seller accept/reject verified, full request lifecycle E2E pending |\n\n| 2026-11-15 | services-back | [`e532cb9`](https://github.com/nurgeldiserikbay/services-back/commit/e532cb9aefb5e4fcf2bc7498c7e8c6190f04b88c) | Added PostgreSQL seller authority parity, outbox/notification rollback and competing-decision serialization gate | **Pending** CI; end-to-end request lifecycle remains unchecked |\n\n| 2026-11-15 | services-back | [`df8ff5f`](https://github.com/nurgeldiserikbay/services-back/commit/df8ff5f8fe09d3d733f4de30a8acff6673ff72d3), [`1ae33b9`](https://github.com/nurgeldiserikbay/services-back/commit/1ae33b95d64d2865662328dd647558bd4d2352d0) | Final moderation SQL grant gate also requires active, activated TOTP factor, with source regression assertion | Committed; CI and PostgreSQL E2E verification pending |
 
+| 2026-11-15 | services-back | [`a910f71`](https://github.com/nurgeldiserikbay/services-back/commit/a910f71be0f1a38102ce63c62ecc1f54f189db2d), [`c71d4d9`](https://github.com/nurgeldiserikbay/services-back/commit/c71d4d904a9269f37c35c282942e3c8056f46899) | PostgreSQL integration test now exercises immediate denial of an existing admin bearer after TOTP disable and after live moderation grant revocation, alongside session revocation | Committed; migrated PostgreSQL CI execution pending |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
