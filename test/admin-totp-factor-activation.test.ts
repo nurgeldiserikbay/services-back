@@ -139,7 +139,9 @@ test('activation update race throws after consuming enrollment code',async()=>{
    events.push('consume');return {rows:[{last_consumed_counter:String(counter)}]};
   }
   if(sql.includes('UPDATE platform_admin_totp_factors')){
-   events.push('activate');return {rows:[]};
+   events.push('activate');
+   assert.match(sql,/encrypted_secret=\$3 AND key_version=\$4/);
+   return {rows:[]};
   }
   throw Error('unexpected SQL');
  }} as never;
