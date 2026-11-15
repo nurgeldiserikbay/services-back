@@ -61,6 +61,13 @@ test('migrated admin session grants are checked against live DB revocation and M
   assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
   await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
    [sessionId,new Date(now-60_000)]);
+  // MFA cannot be reused when the enrolled factor has been disabled.
+  await db.query('UPDATE platform_admin_totp_factors SET disabled_at=now() WHERE staff_id=$1',
+   [staffId]);
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
+  await db.query('UPDATE platform_admin_totp_factors SET disabled_at=NULL WHERE staff_id=$1',
+   [staffId]);
+  assert.equal((await resolvePlatformAdminSession(db,token,pepper,now))?.userId,userId);
   await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'audit.read',scope,now),false);
   await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
