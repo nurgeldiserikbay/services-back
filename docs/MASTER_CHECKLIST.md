@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend PWA unavailable Cache Storage (2026-11-15): [frontend `85abcd5`](https://github.com/nurgeldiserikbay/services-front/commit/85abcd591d292ff4b94aff5e2fada71055ba44ce) makes public navigation fallback return a network error when browser Cache Storage is unavailable, and adds worker behavior regressions for offline and 503 responses. [CI #43740777485](https://github.com/nurgeldiserikbay/services-front/actions/runs/43740777485) pending; [previous CI #43740545409](https://github.com/nurgeldiserikbay/services-front/actions/runs/43740545409) passed. Real-device PWA acceptance remains open.
+
 Frontend offline route-isolation regressions (2026-11-15): [frontend `2f8a17f`](https://github.com/nurgeldiserikbay/services-front/commit/2f8a17f98059525adbc367a4b1b0fccb12579e2e) adds service worker behavior tests proving account/seller/API/nested private paths bypass interception, and public catalog query-string navigations receive only the generic fallback without response caching. [CI #43740545409](https://github.com/nurgeldiserikbay/services-front/actions/runs/43740545409) queued; [prior CI #43739495740](https://github.com/nurgeldiserikbay/services-front/actions/runs/43739495740) success. Device PWA and screen-reader acceptance still open.
 
 Frontend offline fallback cache-miss regression (2026-11-15): [frontend `fa679e1`](https://github.com/nurgeldiserikbay/services-front/commit/fa679e13330d862075a8c2dc9c955cf33683eb0e) tests that when network and cached generic offline shell are both unavailable, the service worker returns a network error rather than cached private data. [CI #43739495740](https://github.com/nurgeldiserikbay/services-front/actions/runs/43739495740) pending; real-device PWA acceptance still open.
