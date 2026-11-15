@@ -5,7 +5,7 @@ import {issueAdminSessionAfterTotp} from './admin-mfa-session.js';
 import {recordAdminMfaSecurityEvent} from './admin-mfa-security-audit.js';
 import {resolveRecentAdminPrimaryAccountProof} from './admin-primary-account-proof.js';
 
-type AccountPrimaryInput=Readonly<{accountBearer:unknown;accountPepper:Buffer}>;
+export type AccountPrimaryInput=Readonly<{accountBearer:unknown;accountPepper:Buffer}>;
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
