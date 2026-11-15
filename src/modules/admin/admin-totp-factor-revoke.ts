@@ -74,11 +74,14 @@ export async function revokeAdminTotpFactor(
   }
   if(factor.rows[0]?.staff_id?.toLowerCase()!==targetStaffId.toLowerCase())
    throw new Error('admin_totp_revocation_unavailable');
-  await client.query(`
+  const revoked=await client.query(`
    UPDATE platform_admin_sessions
    SET revoked_at=to_timestamp($2::double precision/1000)
    WHERE staff_id=$1::uuid AND revoked_at IS NULL
   `,[targetStaffId,now]);
+  if(!revoked||revoked.rowCount===null||
+     !Number.isSafeInteger(revoked.rowCount)||revoked.rowCount<0)
+   throw new Error('admin_totp_session_revocation_unavailable');
   const audit=await client.query<{id:string}>(`
    INSERT INTO platform_admin_security_events
      (actor_staff_id,target_staff_id,action)
