@@ -83,6 +83,20 @@ test('privileged read returns only redacted cases in live authorized scopes',asy
   assert.deepEqual(Object.keys(response.items[0]).sort(),
    ['createdAt','id','state','subjectKind']);
   assert.equal(response.items[0].id,allowedId);
+  // Disabling MFA must immediately deny the same bearer, even if its
+  // session row remains unrevoked. Restoring the test factor isolates
+  // session revocation as a separate acceptance gate below.
+  await db.query(
+   'UPDATE platform_admin_totp_factors SET disabled_at=now() WHERE staff_id=$1',
+   [staffId],
+  );
+  await assert.rejects(service.list('Bearer '+token),UnauthorizedException,
+   'Disabling the active TOTP factor must invalidate moderation reads');
+  await db.query(
+   'UPDATE platform_admin_totp_factors SET disabled_at=NULL WHERE staff_id=$1',
+   [staffId],
+  );
+  assert.equal((await service.list('Bearer '+token)).items.length,1);
   await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
   await assert.rejects(service.list('Bearer '+token),UnauthorizedException);
  }finally{
