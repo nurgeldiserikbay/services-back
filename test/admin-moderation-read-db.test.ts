@@ -97,6 +97,16 @@ test('privileged read returns only redacted cases in live authorized scopes',asy
    [staffId],
   );
   assert.equal((await service.list('Bearer '+token)).items.length,1);
+  // Revoking the last resource grant must deny the existing bearer without
+  // requiring the browser to log out or waiting for the session TTL.
+  await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
+  await assert.rejects(service.list('Bearer '+token),UnauthorizedException,
+   'Removing the live moderation grant must deny the existing session');
+  await db.query(
+   'INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [grantId,staffId,allowedScope],
+  );
+  assert.equal((await service.list('Bearer '+token)).items.length,1);
   await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
   await assert.rejects(service.list('Bearer '+token),UnauthorizedException);
  }finally{
