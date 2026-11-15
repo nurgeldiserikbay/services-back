@@ -21,7 +21,7 @@ test('migrated admin session grants are checked against live DB revocation and M
   await db.query(`INSERT INTO platform_admin_sessions
    (id,staff_id,token_hash,created_at,mfa_verified_at,expires_at)
    VALUES($1,$2,$3,$4,$5,$6)`,
-   [sessionId,staffId,hash,new Date(now-120_000),
+   [sessionId,staffId,hash,new Date(now-60_000),
     new Date(now-60_000),new Date(now+3600_000)]);
   await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [grantId,staffId,scope]);
@@ -84,11 +84,16 @@ test('migrated admin session grants are checked against live DB revocation and M
   await db.query('UPDATE platform_admin_staff SET disabled_at=now() WHERE id=$1',[staffId]);
   assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
   await db.query('UPDATE platform_admin_staff SET disabled_at=NULL WHERE id=$1',[staffId]);
-  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
-   [sessionId,new Date(now-16*60_000)]);
-  assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
-  await db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
-   [sessionId,new Date(now-60_000)]);
+  // PostgreSQL rejects an MFA proof older than the session itself.
+  await db.query('SAVEPOINT stale_admin_mfa');
+  await assert.rejects(
+   db.query('UPDATE platform_admin_sessions SET mfa_verified_at=$2 WHERE id=$1',
+    [sessionId,new Date(now-16*60_000)]),
+   {code:'23514'},
+  );
+  await db.query('ROLLBACK TO SAVEPOINT stale_admin_mfa');
+  await db.query('RELEASE SAVEPOINT stale_admin_mfa');
+  assert.equal((await resolvePlatformAdminSession(db,token,pepper,now))?.userId,userId);
   // A factor enrolled only after MFA verification cannot retroactively
   // authenticate an existing session, even if it is currently active.
   await db.query('UPDATE platform_admin_totp_factors SET activated_at=$2 WHERE staff_id=$1',
