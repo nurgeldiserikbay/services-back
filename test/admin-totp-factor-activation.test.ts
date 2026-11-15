@@ -94,3 +94,33 @@ test('factor activation rejects invalid dependencies without SQL or vault access
  assert.equal(queries,0);
  assert.equal(keyLookups,0);
 });
+
+test('activation rejects mismatched database confirmation after OTP consumption',async()=>{
+ const events:string[]=[];
+ const db={query:async(sql:string)=>{
+  if(sql.includes('FOR UPDATE OF factor')){
+   events.push('read');return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
+  }
+  if(sql.includes('platform_admin_totp_replay')){
+   events.push('consume');return {rows:[{last_consumed_counter:String(counter)}]};
+  }
+  if(sql.includes('UPDATE platform_admin_totp_factors')){
+   events.push('activate');return {rows:[{staff_id:randomUUID()}]};
+  }
+  throw Error('unexpected SQL');
+ }} as never;
+ await assert.rejects(
+  activateAdminTotpFactor(db,staffId,code,async()=>key,now),
+  /admin_totp_activation_unavailable/,
+ );
+ assert.deepEqual(events,['read','consume','activate']);
+});
+
+test('activation rejects out-of-range timestamps before SQL',async()=>{
+ let queries=0;
+ const db={query:async()=>{queries++;throw Error('unexpected SQL');}} as never;
+ for(const invalidNow of [-1,NaN,Infinity,8_640_000_000_000_001]){
+  assert.equal(await activateAdminTotpFactor(db,staffId,code,async()=>key,invalidNow),false);
+ }
+ assert.equal(queries,0);
+});
