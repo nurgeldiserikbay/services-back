@@ -229,6 +229,8 @@ jobs:
           node --import tsx --test \
             test/account-bearer-session-http.test.ts \
             test/account-remote-session-revoke-http.test.ts
+      - name: Seller authority parity outbox and competing decisions PostgreSQL (fail fast)
+        run: node --import tsx --test test/seller-inbox-authority-parity-db.test.ts
       - name: Authenticated seller OTP to decision PostgreSQL journey (fail fast)
         run: |
           node --import tsx --test \
