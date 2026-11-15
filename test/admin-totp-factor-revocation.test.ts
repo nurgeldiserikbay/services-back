@@ -8,7 +8,7 @@ const auditId=randomUUID();
 const now=1763000000000;
 const pepper=randomBytes(32);
 const token=randomBytes(32).toString('base64url');
-function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'audit-missing'|'revoke-unconfirmed'|'unauthorized'='active'){
+function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'audit-missing'|'revoke-unconfirmed'|'wrong-target'|'unauthorized'='active'){
  const events:string[]=[];
  const client={
   query:async(sql:string,params?:unknown[])=>{
@@ -43,7 +43,7 @@ function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'
    assert.deepEqual(params,[staffId,now]);
    if(sql.includes('UPDATE platform_admin_totp_factors')){
     events.push('disable');
-    return {rows:mode==='already-disabled'?[]:[{staff_id:staffId}]};
+    return {rows:mode==='already-disabled'?[]:[{staff_id:mode==='wrong-target'?randomUUID():staffId}]};
    }
    if(sql.includes('UPDATE platform_admin_sessions')){
     events.push('revoke-sessions');
@@ -258,5 +258,16 @@ test('failed COMMIT discards revocation connection without attempting rollback',
  assert.deepEqual(events,[
   'BEGIN',"SET LOCAL lock_timeout = '3s'","SET LOCAL statement_timeout = '8s'",
   'COMMIT','release:true',
+ ]);
+});
+
+test('revocation rejects mismatched factor target and rolls back',async()=>{
+ const f=fixture('wrong-target');
+ await assert.rejects(
+  revokeAdminTotpFactorAndSessions(f.pool,staffId,token,pepper,now),
+  /admin_totp_revocation_unavailable/,
+ );
+ assert.deepEqual(f.events,[
+  'BEGIN','lock-timeout','statement-timeout','lock','authorize','disable','ROLLBACK','release',
  ]);
 });
