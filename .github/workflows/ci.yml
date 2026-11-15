@@ -234,6 +234,12 @@ jobs:
           node --import tsx --test \
             test/account-bearer-session-http.test.ts \
             test/account-remote-session-revoke-http.test.ts
+      - name: Schedule proposal transaction and notification PostgreSQL (fail fast)
+        run: |
+          node --import tsx --test \
+            test/schedule-proposal-postgres-transaction-db.test.ts \
+            test/schedule-proposal-runtime-db.test.ts \
+            test/registered-account-notification-journey-db.test.ts
       - name: Request cancellation lifecycle PostgreSQL integration (fail fast)
         run: |
           node --import tsx --test \
