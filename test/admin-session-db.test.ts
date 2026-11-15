@@ -34,6 +34,12 @@ test('migrated admin session grants are checked against live DB revocation and M
   const principal=await resolvePlatformAdminSession(db,token,pepper,now);
   assert.equal(principal?.userId,userId);
   assert.deepEqual(principal?.resourceScopes,[scope]);
+  // The resolver must reject sessions whose creation time is in the future.
+  await db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
+   [sessionId,new Date(now+60_000)]);
+  assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
+  await db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
+   [sessionId,new Date(now-120_000)]);
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'audit.read',scope,now),true);
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'moderation.decide',scope,now),false);
   assert.equal(await canAccessPlatformAdminResource(
