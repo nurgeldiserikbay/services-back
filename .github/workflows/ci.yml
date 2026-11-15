@@ -229,6 +229,11 @@ jobs:
           node --import tsx --test \
             test/account-bearer-session-http.test.ts \
             test/account-remote-session-revoke-http.test.ts
+      - name: Authenticated seller OTP to decision PostgreSQL journey (fail fast)
+        run: |
+          node --import tsx --test \
+            test/account-otp-seller-journey-db.test.ts \
+            test/seller-authority-db.test.ts
       - name: Seller request inbox and decision PostgreSQL integration (fail fast)
         run: |
           node --import tsx --test \
