@@ -85,11 +85,11 @@
 
 ### Notifications
 
-- [ ] Outbox model — Prepared; verification pending
-- [ ] Notification intents — Prepared; verification pending
+- [x] Outbox model — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); outbox event staging and delivery linkage
+- [x] Notification intents — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); IN_APP and EMAIL intent staging
 - [ ] Email/SMS integration — Pending verification
 - [ ] Retry and dead-letter handling — Pending verification
-- [ ] Deduplication — Pending verification
+- [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
 - [ ] Delivery monitoring — Pending verification
 
@@ -308,4 +308,5 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 13 (11 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 16 (14 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
+| 2026-11-15 | services-back | [`8e4eeb7`](https://github.com/nurgeldiserikbay/services-back/commit/8e4eeb7b9ca88f315b98946ed72c766e4a5fb4f4), [CI #43745179540](https://github.com/nurgeldiserikbay/services-back/actions/runs/43745179540) | Notification outbox and intents staging, idempotent IN_APP materialization, authenticated per-person inbox isolation, revocation; admin primary account proof and schedule proposal PostgreSQL gates | **PASS** (build-and-test and dependency-audit); external email/SMS delivery and dead-letter remain pending |
