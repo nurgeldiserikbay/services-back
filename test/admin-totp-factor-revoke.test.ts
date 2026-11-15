@@ -7,7 +7,7 @@ import {revokeAdminTotpFactor} from '../src/modules/admin/admin-totp-factor-revo
 const actor=randomUUID(),target=randomUUID();
 const pepper=randomBytes(32);
 const {token,tokenHash}=issueAdminSessionToken(pepper);
-function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'|'commit-fails'){
+function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'|'commit-fails'|'revoke-unconfirmed'){
  const events:string[]=[];
  const client={
   query:async(sql:string,params?:unknown[])=>{
@@ -45,7 +45,8 @@ function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'|'commit-fails'){
     return {rows:mode==='no-factor'?[]:[{staff_id:target}]};
    }
    if(sql.includes('UPDATE platform_admin_sessions')){
-    events.push('revoke-sessions');return {rows:[]};
+    events.push('revoke-sessions');
+    return {rows:[],rowCount:mode==='revoke-unconfirmed'?null:1};
    }
    if(sql.includes('INSERT INTO platform_admin_security_events')){
     events.push('audit');
@@ -145,4 +146,16 @@ test('incident-response revocation retains connection after successful rollback'
   {connect:async()=>client} as never,token,target,pepper,
  ),/lock failed/);
  assert.deepEqual(events,['BEGIN','lock','ROLLBACK','release:false']);
+});
+
+test('unconfirmed session revocation aborts factor change before audit',async()=>{
+ const f=fixture('revoke-unconfirmed');
+ await assert.rejects(
+  revokeAdminTotpFactor(f.pool,token,target,pepper),
+  /admin_totp_session_revocation_unavailable/,
+ );
+ assert.deepEqual(f.events,[
+  'BEGIN','target-lock','authorize-actor','disable-factor','revoke-sessions',
+  'ROLLBACK','release',
+ ]);
 });
