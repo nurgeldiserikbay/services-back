@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend PWA activation cleanup failure regression (2026-11-15): [frontend `6be4f77`](https://github.com/nurgeldiserikbay/services-front/commit/6be4f7774e38cb29ccf0b292a9e69e8a78f4490b) adds executable service-worker test verifying `clients.claim()` does not run when obsolete offline cache deletion rejects. [CI #43741717440](https://github.com/nurgeldiserikbay/services-front/actions/runs/43741717440) pending; [previous CI #43741463786](https://github.com/nurgeldiserikbay/services-front/actions/runs/43741463786) passed. Device and accessibility sign-off remain open.
+
 Frontend offline canonical slash paths (2026-11-15): [frontend `f8609ff`](https://github.com/nurgeldiserikbay/services-front/commit/f8609ffe6f2338d52a05728a7cef5adf34668d02) limits generic offline navigation fallback to canonical paths without trailing or repeated slashes, with worker behavior tests. [CI #43741463786](https://github.com/nurgeldiserikbay/services-front/actions/runs/43741463786) queued; [previous CI #43741167094](https://github.com/nurgeldiserikbay/services-front/actions/runs/43741167094) success. Device and accessibility acceptance remain open.
 
 Frontend canonical offline URL matching (2026-11-15): [frontend `892b592`](https://github.com/nurgeldiserikbay/services-front/commit/892b592c17deeec1754af4b64b79e0dbea25e2e7) rejects percent-encoded path components and backslashes before applying public navigation fallback, with behavior tests for encoded profile identifiers. [CI #43741167094](https://github.com/nurgeldiserikbay/services-front/actions/runs/43741167094) pending; [previous CI #43740960577](https://github.com/nurgeldiserikbay/services-front/actions/runs/43740960577) passed. Device and accessibility acceptance remain open.
