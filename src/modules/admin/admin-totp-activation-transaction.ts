@@ -42,6 +42,8 @@ export async function activateAdminTotpInTransaction(
   beginAttempted=true;
   await client.query('BEGIN');
   began=true;
+  await client.query("SET LOCAL lock_timeout = '3s'");
+  await client.query("SET LOCAL statement_timeout = '8s'");
   // Serialize enrollment with MFA issuance and account lockout checks.
   await client.query(
    'SELECT pg_advisory_xact_lock(hashtextextended($1::text, 104729))',
