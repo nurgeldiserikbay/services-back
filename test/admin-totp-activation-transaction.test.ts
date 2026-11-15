@@ -20,6 +20,11 @@ function fixture(locked=false){
  const events:string[]=[];
  const client={
   query:async(sql:string)=>{
+   if(sql.startsWith('SET LOCAL ')){
+    assert.ok(["SET LOCAL lock_timeout = '3s'","SET LOCAL statement_timeout = '8s'"].includes(sql));
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
    if(['BEGIN','COMMIT','ROLLBACK'].includes(sql)){
     events.push(sql);return {rows:[]};
    }
@@ -57,7 +62,7 @@ test('valid enrollment proof commits replay watermark, activation and reset',asy
   f.pool,primary,code,async()=>key,now,
  ),true);
  assert.deepEqual(f.events,[
-  'BEGIN','serialize','lockout','factor','consume','activate','reset','COMMIT','release',
+  'BEGIN','lock-timeout','statement-timeout','serialize','lockout','factor','consume','activate','reset','COMMIT','release',
  ]);
 });
 test('bad enrollment code commits a failure without activating',async()=>{
@@ -66,7 +71,7 @@ test('bad enrollment code commits a failure without activating',async()=>{
   f.pool,primary,code==='999999'?'000000':'999999',async()=>key,now,
  ),false);
  assert.deepEqual(f.events,[
-  'BEGIN','serialize','lockout','factor','failure','COMMIT','release',
+  'BEGIN','lock-timeout','statement-timeout','serialize','lockout','factor','failure','COMMIT','release',
  ]);
 });
 test('locked enrollment is rejected before reading factor',async()=>{
@@ -75,7 +80,7 @@ test('locked enrollment is rejected before reading factor',async()=>{
   f.pool,primary,code,async()=>key,now,
  ),false);
  assert.deepEqual(f.events,[
-  'BEGIN','serialize','lockout','ROLLBACK','release',
+  'BEGIN','lock-timeout','statement-timeout','serialize','lockout','ROLLBACK','release',
  ]);
 });
 test('invalid staff identifier never opens a database connection',async()=>{
@@ -102,6 +107,10 @@ test('failed enrollment COMMIT discards uncertain connection',async()=>{
   query:async(sql:string)=>{
    if(sql==='COMMIT'){events.push('COMMIT');throw Error('commit failed');}
    if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql.startsWith('SET LOCAL ')){
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
    if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
    if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
    if(sql.includes('FOR UPDATE OF factor'))return {rows:[{encrypted_secret:envelope,key_version:'key-1'}]};
@@ -116,7 +125,7 @@ test('failed enrollment COMMIT discards uncertain connection',async()=>{
   activateAdminTotpInTransaction({connect:async()=>client} as never,primary,code,async()=>key,now),
   /commit failed/,
  );
- assert.deepEqual(events,['BEGIN','COMMIT','release:true']);
+ assert.deepEqual(events,['BEGIN','lock-timeout','statement-timeout','COMMIT','release:true']);
 });
 
 test('invalid enrollment pool and resolver never connect',async()=>{
@@ -134,6 +143,10 @@ test('locked enrollment rollback failure discards connection without retry',asyn
  const client={
   query:async(sql:string)=>{
    if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql.startsWith('SET LOCAL ')){
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
    if(sql.includes('pg_advisory_xact_lock')){events.push('lock');return {rows:[{}]};}
    if(sql.includes('FROM platform_admin_mfa_attempts')){
     events.push('lockout');
@@ -148,5 +161,5 @@ test('locked enrollment rollback failure discards connection without retry',asyn
   activateAdminTotpInTransaction({connect:async()=>client} as never,primary,code,async()=>key,now),
   /rollback unavailable/,
  );
- assert.deepEqual(events,['BEGIN','lock','lockout','ROLLBACK','release:true']);
+ assert.deepEqual(events,['BEGIN','lock-timeout','statement-timeout','lock','lockout','ROLLBACK','release:true']);
 });
