@@ -214,7 +214,9 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [CI #43728277877](https://github.com/nurgeldiserikbay/services-back/actions/runs/43728277877) | OTP abuse and capability fail-fast regression, guest PostgreSQL transaction and OTP provider send/verify/single-use E2E | **PASS** (build-and-test and dependency-audit); OTP abuse protection verified; full authentication and request journey E2E pending |\n\n| 2026-11-15 | services-admin | [`a40a11e`](https://github.com/nurgeldiserikbay/services-admin/commit/a40a11ec7bc63e91e5295ba7bb6440f0d6c4bd03), [`c142b46`](https://github.com/nurgeldiserikbay/services-admin/commit/c142b46237555d2b58bce340b922d86e6a64e24e) | Regression assertions for moderation loading/error accessibility and sensitive diagnostic redaction | Committed; test execution and CI unverified |
 
-| 2026-11-15 | services-back | [`fa367ac`](https://github.com/nurgeldiserikbay/services-back/commit/fa367ac248eeb273f70dacafa5f85780cbe3bf30) | Early HTTP authentication boundary and remote account-session revocation regressions | **Pending** CI; full authentication E2E acceptance remains unchecked |\n\n## Next acceptance gates
+| 2026-11-15 | services-back | [`fa367ac`](https://github.com/nurgeldiserikbay/services-back/commit/fa367ac248eeb273f70dacafa5f85780cbe3bf30) | Early HTTP authentication boundary and remote account-session revocation regressions | **Pending** CI; full authentication E2E acceptance remains unchecked |\n\n| 2026-11-15 | services-admin | [`f17f5a8`](https://github.com/nurgeldiserikbay/services-admin/commit/f17f5a874ed4c89fbb2fe8fe90121b96e6201871), [`90c1082`](https://github.com/nurgeldiserikbay/services-admin/commit/90c10822c622260dbfa789535f79770be2aa8d7c) | Client-side kind/state filters for already authorized moderation rows; source-level boundary regression | Committed; build/CI and E2E acceptance unverified |
+
+## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
