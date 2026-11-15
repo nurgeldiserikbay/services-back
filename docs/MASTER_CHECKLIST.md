@@ -252,7 +252,9 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-admin | [`fea40d4`](https://github.com/nurgeldiserikbay/services-admin/commit/fea40d4337151d696559166e00048ea0386daf87), [`5f75c00`](https://github.com/nurgeldiserikbay/services-admin/commit/5f75c00f25fe4159f881bb13f081c46de824c104) | Marked privileged admin backend transport server-only and added client import boundary regression | Committed; CI/build acceptance pending |
 
-| 2026-11-15 | services-back | [`da80829`](https://github.com/nurgeldiserikbay/services-back/commit/da808291821b381c88ca533d3145c0634b60a79a) | Added PostgreSQL seller inbox authorization, accept/decline transaction and idempotent audited decision CI gate | **Pending** CI; full request lifecycle E2E remains unchecked |\n\n## Next acceptance gates
+| 2026-11-15 | services-back | [`da80829`](https://github.com/nurgeldiserikbay/services-back/commit/da808291821b381c88ca533d3145c0634b60a79a) | Added PostgreSQL seller inbox authorization, accept/decline transaction and idempotent audited decision CI gate | **Pending** CI; full request lifecycle E2E remains unchecked |\n\n| 2026-11-15 | services-back | [`14d2010`](https://github.com/nurgeldiserikbay/services-back/commit/14d201012521d23894220de7aec6d52c71754a8f), [`f7ac8ee`](https://github.com/nurgeldiserikbay/services-back/commit/f7ac8ee64268c9804281a781e299327e019f716f) | Moderation response rechecks session and MFA expiry after SQL execution; added regression tests for both mid-query expiry paths | Committed; test/CI execution not independently verified |
+
+## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
