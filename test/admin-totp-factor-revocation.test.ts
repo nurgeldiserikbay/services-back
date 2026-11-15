@@ -214,3 +214,49 @@ test('successful rollback returns revocation connection to pool normally',async(
  );
  assert.deepEqual(events,['BEGIN','lock-timeout','statement-timeout','lock','ROLLBACK','release:false']);
 });
+
+test('failed BEGIN discards uncertain revocation connection',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   events.push(sql);
+   if(sql==='BEGIN')throw Error('begin failed');
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(
+  revokeAdminTotpFactorAndSessions(
+   {connect:async()=>client} as never,staffId,token,pepper,now,
+  ),/begin failed/,
+ );
+ assert.deepEqual(events,['BEGIN','release:true']);
+});
+
+test('failed COMMIT discards revocation connection without attempting rollback',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string,params?:unknown[])=>{
+   if(sql==='COMMIT'){events.push('COMMIT');throw Error('commit failed');}
+   if(sql==='BEGIN'||sql.startsWith('SET LOCAL ')){
+    events.push(sql);return {rows:[]};
+   }
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.includes('FROM platform_admin_sessions session'))return {rows:[{staff_id:staffId}]};
+   if(sql.includes('UPDATE platform_admin_totp_factors'))return {rows:[{staff_id:staffId}]};
+   if(sql.includes('UPDATE platform_admin_sessions'))return {rows:[],rowCount:1};
+   if(sql.includes('INSERT INTO platform_admin_security_events'))return {rows:[{id:auditId}]};
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(
+  revokeAdminTotpFactorAndSessions(
+   {connect:async()=>client} as never,staffId,token,pepper,now,
+  ),/commit failed/,
+ );
+ assert.deepEqual(events,[
+  'BEGIN',"SET LOCAL lock_timeout = '3s'","SET LOCAL statement_timeout = '8s'",
+  'COMMIT','release:true',
+ ]);
+});
