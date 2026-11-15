@@ -125,6 +125,7 @@ jobs:
         run: |
           node --import tsx --test \
             test/admin-logout-http-integration.test.ts \
+            test/admin-logout-live-http.test.ts \
             test/admin-session-resolver.test.ts \
             test/admin-session-revocation.test.ts
       - name: Validate pinned Prisma model
