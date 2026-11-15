@@ -109,7 +109,7 @@
 ### Frontend & PWA
 
 - [ ] Protected guest create BFF — Prepared; verification pending
-- [ ] HTTP payload/response limits — Prepared; verification pending
+- [x] HTTP payload/response limits — Verified: [Frontend CI #43724021062](https://github.com/nurgeldiserikbay/services-front/actions/runs/43724021062) passed unit/boundary tests, including 8 KiB streamed response limit and strict media-type checks
 - [ ] HttpOnly sealed guest capability — Prepared; verification pending
 - [ ] Navigation and core pages — Pending verification
 - [ ] Search/profile/request UX — Pending verification
@@ -139,7 +139,8 @@
 - [x] Backend unit suite — Verified in services-back CI #43723300416 (2026-11-15)
 - [x] PostgreSQL migration and schema smoke — Verified in services-back CI #43723300416 (2026-11-15)
 - [x] Admin MFA PostgreSQL integration — Verified in services-back CI #43723300416 (2026-11-15)
-- [ ] Frontend typecheck lint build — Pending verification
+- [x] Frontend typecheck and production build — Verified: [Frontend CI #43724021062](https://github.com/nurgeldiserikbay/services-front/actions/runs/43724021062), `pnpm typecheck` and `pnpm build` both passed on `680a91f`.
+- [ ] Frontend lint — Pending verification; frontend workspace has no lint script yet
 - [ ] Admin typecheck lint build — Pending verification
 - [ ] API contract tests — Pending verification
 - [ ] End-to-end user journeys — Pending verification
@@ -173,6 +174,8 @@
 
 ## Evidence log
 
+**2026-11-15 frontend green:** [Frontend CI #43724021062](https://github.com/nurgeldiserikbay/services-front/actions/runs/43724021062) completed **successfully** for frontend commit [`680a91f`](https://github.com/nurgeldiserikbay/services-front/commit/680a91fd2628454fd8faf0299f0142954749ef1f), pinned to backend [`d39d196`](https://github.com/nurgeldiserikbay/services-back/commit/d39d196f7ceedd9df13a253834e3737ad5c120fd). Passed security boundary pretests, dependency audit, unit suite, backend PostgreSQL migrations/database tests, HTTP negative auth boundaries, frontend TypeScript check, Next.js production build and live public search-to-profile E2E. **Not staging or full authenticated guest/seller E2E sign-off**. Frontend lint is not yet configured.
+
 Frontend integration pin refresh (2026-11-15): frontend [commit `680a91f`](https://github.com/nurgeldiserikbay/services-front/commit/680a91fd2628454fd8faf0299f0142954749ef1f) selects backend `d39d196f7ceedd9df13a253834e3737ad5c120fd`, independently verified by [backend CI #43723300416](https://github.com/nurgeldiserikbay/services-back/actions/runs/43723300416) (dependency-audit + build-and-test successful). The previous frontend [run #43723802467](https://github.com/nurgeldiserikbay/services-front/actions/runs/43723802467) passed frontend unit tests, failed on an older pinned backend PostgreSQL regression. New frontend [run #43724021062](https://github.com/nurgeldiserikbay/services-front/actions/runs/43724021062) pending; **do not check off complete frontend CI until full green**.
 
 Frontend workstream (2026-11-15): [frontend `4136456`](https://github.com/nurgeldiserikbay/services-front/commit/41364564118bc44dafd083ce8d1174515c0f2ea5) updates CI gate test order, seller fail-closed regression expectations, staging release status parser, and pinned backend baseline documentation. CI [run #43723802467](https://github.com/nurgeldiserikbay/services-front/actions/runs/43723802467) was triggered; **full verification remains pending**. Frontend checklist items remain unchecked until the corresponding test/build/integration gates pass.
@@ -195,4 +198,4 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 116. **Verified complete:** 6 (backend-specific evidence recorded above; other items remain unverified).
+**Total acceptance items:** 117. **Verified complete:** 8 (6 previously recorded backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate..
