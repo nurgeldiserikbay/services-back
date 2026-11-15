@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend search input accessible description (2026-11-15): [frontend `2773d04`](https://github.com/nurgeldiserikbay/services-front/commit/2773d041bd2273ca07801a30c9b22d66bae3d567) associates the search field with localized results heading via `aria-describedby=results-title`, alongside existing `aria-controls` and a source regression assertion. [CI #43747936589](https://github.com/nurgeldiserikbay/services-front/actions/runs/43747936589) queued. Real-device screen-reader acceptance remains open.
+
 Frontend search input/results accessibility relationship (2026-11-15): [frontend `da6f0bd`](https://github.com/nurgeldiserikbay/services-front/commit/da6f0bd1748dde7aca828bd955373ab15a625223) links the search input via `aria-controls=results-list` to the existing results section and adds a source regression test. [CI #43747795859](https://github.com/nurgeldiserikbay/services-front/actions/runs/43747795859) pending. Real-device and assistive technology acceptance remain open.
 
 Frontend search landmark accessibility (2026-11-15): [frontend `23bc320`](https://github.com/nurgeldiserikbay/services-front/commit/23bc3205549b10c6ef5aca2aa223e5ae1a1cfe10) exposes the marketplace search/filter form as `role=search` and adds source and rendered production HTTP assertions. [CI #43747632577](https://github.com/nurgeldiserikbay/services-front/actions/runs/43747632577) pending; [previous CI #43745157492](https://github.com/nurgeldiserikbay/services-front/actions/runs/43745157492) passed. Manual screen-reader and device acceptance still open.
