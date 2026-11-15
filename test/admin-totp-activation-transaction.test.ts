@@ -128,3 +128,25 @@ test('invalid enrollment pool and resolver never connect',async()=>{
  assert.equal(await activateAdminTotpInTransaction(pool,primary,code,null as never,now),false);
  assert.equal(connections,0);
 });
+
+test('locked enrollment rollback failure discards connection without retry',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql.includes('pg_advisory_xact_lock')){events.push('lock');return {rows:[{}]};}
+   if(sql.includes('FROM platform_admin_mfa_attempts')){
+    events.push('lockout');
+    return {rows:[{locked_until:new Date(now+60000),failed_attempts:5,window_started_at:new Date(now-1000)}]};
+   }
+   if(sql==='ROLLBACK'){events.push('ROLLBACK');throw Error('rollback unavailable');}
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(
+  activateAdminTotpInTransaction({connect:async()=>client} as never,primary,code,async()=>key,now),
+  /rollback unavailable/,
+ );
+ assert.deepEqual(events,['BEGIN','lock','lockout','ROLLBACK','release:true']);
+});
