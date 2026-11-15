@@ -19,9 +19,10 @@ test('migrated admin session grants are checked against live DB revocation and M
   await db.query('INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
    [staffId,userId,'auditor']);
   await db.query(`INSERT INTO platform_admin_sessions
-   (id,staff_id,token_hash,mfa_verified_at,expires_at)
-   VALUES($1,$2,$3,$4,$5)`,
-   [sessionId,staffId,hash,new Date(now-60_000),new Date(now+3600_000)]);
+   (id,staff_id,token_hash,created_at,mfa_verified_at,expires_at)
+   VALUES($1,$2,$3,$4,$5,$6)`,
+   [sessionId,staffId,hash,new Date(now-120_000),
+    new Date(now-60_000),new Date(now+3600_000)]);
   await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [grantId,staffId,scope]);
   // An admin bearer is valid only with an activated, non-disabled TOTP factor.
