@@ -240,6 +240,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-admin | [`b3cd381`](https://github.com/nurgeldiserikbay/services-admin/commit/b3cd3816f2e0cdfd76b50077a834bd326c4727d6), [`79f3ae2`](https://github.com/nurgeldiserikbay/services-admin/commit/79f3ae2e77aef2f0386e379ecf088022a83eefd1) | Bounded local case-ID search across already authorized moderation rows, with regression assertions | Committed; CI and E2E acceptance unverified |
 
+| 2026-11-15 | services-admin | [`4dcb710`](https://github.com/nurgeldiserikbay/services-admin/commit/4dcb7106ab44ec5f9f935c5881144367f921a954) | Production smoke assertions for unsupported admin BFF methods, malformed/duplicate cookies and no denied-session cookie mutation | Committed; CI run result pending |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
