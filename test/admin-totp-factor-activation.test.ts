@@ -36,7 +36,8 @@ function fakeDb(mode:'valid'|'wrong'|'missing'='valid'){
    assert.match(sql,/staff\.disabled_at IS NULL AND usr\.status='ACTIVE'/);
    assert.match(sql,/staff\.role IN \('owner','admin','operator','auditor'\)/);
    assert.match(sql,/EXISTS \(SELECT 1 FROM platform_admin_grants grant_row/);
-   assert.deepEqual(params,[staffId,now]);
+   assert.match(sql,/encrypted_secret=\$3 AND key_version=\$4/);
+   assert.deepEqual(params,[staffId,now,envelope,'key-1']);
    return {rows:[{staff_id:staffId}]};
   }
   throw Error('unexpected query');
