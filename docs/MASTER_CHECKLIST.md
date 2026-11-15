@@ -32,7 +32,7 @@
 - [ ] Registration and sign-in — Pending verification
 - [ ] Email/SMS verification — Pending verification
 - [ ] Session and token handling — Prepared; verification pending
-- [ ] OTP abuse protection — Pending verification
+- [x] OTP abuse protection — Verified OTP attempt limits, expiry, replay prevention, provider rejection and issuance throttling in backend CI #43728277877 (2026-11-15)
 - [ ] User profile lifecycle — Pending verification
 - [ ] Account suspension and recovery — Pending verification
 - [ ] RBAC authorization — Prepared; verification pending
@@ -210,10 +210,10 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`9e816d6`](https://github.com/nurgeldiserikbay/services-back/commit/9e816d61391b67096eb58d41c44fa62c75b1c7fd) | Added PostgreSQL OTP provider E2E gate for committed send, verification and single-use proof | **Pending** CI; authentication E2E and full request journey remain unchecked |\n\n| 2026-11-15 | services-back | [`e106705`](https://github.com/nurgeldiserikbay/services-back/commit/e106705440b31747d8401af778b9e4cd86969e9b) | Added fail-fast OTP abuse, contact normalization, challenge expiry and guest capability security regression gate | **Pending** new CI; OTP abuse protection acceptance remains unchecked |\n\n| 2026-11-15 | services-admin | [`787c78b`](https://github.com/nurgeldiserikbay/services-admin/commit/787c78b0572442c5c3c27ad623cb9572634c85d7), [`f7c7128`](https://github.com/nurgeldiserikbay/services-admin/commit/f7c71287f6d00ee47c8773d27f4a35b52f6d42b8) | Accessible moderation loading state and sanitized retryable error boundary | Committed; build/CI and browser acceptance unverified |
 
-## Next acceptance gates
+| 2026-11-15 | services-back | [CI #43728277877](https://github.com/nurgeldiserikbay/services-back/actions/runs/43728277877) | OTP abuse and capability fail-fast regression, guest PostgreSQL transaction and OTP provider send/verify/single-use E2E | **PASS** (build-and-test and dependency-audit); OTP abuse protection verified; full authentication and request journey E2E pending |\n\n## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 10 (8 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 11 (9 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
