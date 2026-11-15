@@ -35,7 +35,8 @@ export async function loginAdminWithProvisionedTotp(
     (account?(!Object.hasOwn(account,'accountBearer')||
       !Object.hasOwn(account,'accountPepper')||
       !Buffer.isBuffer(account.accountPepper)||account.accountPepper.length!==32||
-      typeof account.accountBearer!=='string'):
+      typeof account.accountBearer!=='string'||
+      !/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(account.accountBearer)):
      (!attested||!Object.hasOwn(attested,'staffId')||
       !Object.hasOwn(attested,'authenticatedAt')||
       typeof attested.staffId!=='string'||!UUID.test(attested.staffId)||
