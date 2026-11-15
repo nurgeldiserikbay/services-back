@@ -34,12 +34,17 @@ test('migrated admin session grants are checked against live DB revocation and M
   const principal=await resolvePlatformAdminSession(db,token,pepper,now);
   assert.equal(principal?.userId,userId);
   assert.deepEqual(principal?.resourceScopes,[scope]);
-  // The resolver must reject sessions whose creation time is in the future.
-  await db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
-   [sessionId,new Date(now+60_000)]);
-  assert.equal(await resolvePlatformAdminSession(db,token,pepper,now),null);
-  await db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
-   [sessionId,new Date(now-120_000)]);
+  // The database rejects impossible session chronology before the resolver runs.
+  // A SAVEPOINT keeps the outer integration transaction usable after CHECK failure.
+  await db.query('SAVEPOINT future_admin_session');
+  await assert.rejects(
+   db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
+    [sessionId,new Date(now+60_000)]),
+   {code:'23514'},
+  );
+  await db.query('ROLLBACK TO SAVEPOINT future_admin_session');
+  await db.query('RELEASE SAVEPOINT future_admin_session');
+  assert.equal((await resolvePlatformAdminSession(db,token,pepper,now))?.userId,userId);
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'audit.read',scope,now),true);
   assert.equal(await canAccessPlatformAdminResource(db,token,pepper,'moderation.decide',scope,now),false);
   assert.equal(await canAccessPlatformAdminResource(
