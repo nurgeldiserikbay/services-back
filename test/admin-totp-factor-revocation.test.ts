@@ -272,3 +272,24 @@ test('revocation rejects mismatched factor target and rolls back',async()=>{
   'BEGIN','lock-timeout','statement-timeout','lock','authorize','disable','ROLLBACK','release',
  ]);
 });
+
+test('failed transaction timeout setup rolls back and releases connection',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql==="SET LOCAL lock_timeout = '3s'"){
+    events.push('lock-timeout');throw Error('timeout setup failed');
+   }
+   if(sql==='ROLLBACK'){events.push('ROLLBACK');return {rows:[]};}
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(
+  revokeAdminTotpFactorAndSessions(
+   {connect:async()=>client} as never,staffId,token,pepper,now,
+  ),/timeout setup failed/,
+ );
+ assert.deepEqual(events,['BEGIN','lock-timeout','ROLLBACK','release:false']);
+});
