@@ -96,7 +96,8 @@ jobs:
           node --import tsx --test \
             test/session-proof-canonical.test.ts \
             test/admin-session-token.test.ts \
-            test/admin-session-token-source-integrity.test.ts
+            test/admin-session-token-source-integrity.test.ts \
+            test/database-pool-commit-outcome.test.ts
       - name: Privileged MFA schema and transaction regression tests
         id: mfa_regressions
         run: |
