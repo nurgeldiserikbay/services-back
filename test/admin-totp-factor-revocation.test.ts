@@ -168,6 +168,10 @@ test('failed rollback discards revocation connection and preserves original erro
  const client={
   query:async(sql:string)=>{
    if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql.startsWith('SET LOCAL ')){
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
    if(sql==='ROLLBACK'){events.push('ROLLBACK');throw Error('rollback failed');}
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('lock');throw Error('lock failed');
@@ -190,6 +194,10 @@ test('successful rollback returns revocation connection to pool normally',async(
  const client={
   query:async(sql:string)=>{
    if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql.startsWith('SET LOCAL ')){
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
    if(sql==='ROLLBACK'){events.push('ROLLBACK');return {rows:[]};}
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('lock');throw Error('lock failed');
