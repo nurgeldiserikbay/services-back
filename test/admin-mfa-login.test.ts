@@ -667,3 +667,39 @@ test('invalid account primary proof denies MFA before factor and session issuanc
  assert.equal(f.events.includes('session'),false);
  assert.ok(f.events.includes('ROLLBACK'));
 });
+
+test('partial account primary input cannot be mistaken for trusted staff attestation',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected connection');}} as never;
+ for(const malformed of [
+  {accountBearer:'invalid',staffId,authenticatedAt:now-1000},
+  {accountPepper:randomBytes(32),staffId,authenticatedAt:now-1000},
+  {accountBearer:'invalid',accountPepper:randomBytes(32),staffId},
+ ]){
+  assert.equal(await loginAdminWithProvisionedTotp(
+   pool,malformed as never,code,async()=>key,pepper,now),null);
+ }
+ assert.equal(connections,0);
+});
+
+test('failed account-primary rollback discards uncertain database connection',async()=>{
+ const releases:unknown[]=[];
+ const accountPepper=randomBytes(32);
+ const {issueSessionToken}=await import('../src/modules/identity/session-proof.js');
+ const accountToken=issueSessionToken(accountPepper).token;
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql.startsWith('SET LOCAL '))return {rows:[]};
+   if(sql.includes('FROM sessions session'))return {rows:[]};
+   if(sql==='ROLLBACK')throw Error('rollback failed');
+   throw Error('unexpected privileged query');
+  },
+  release:(error?:unknown)=>releases.push(error),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,
+  {accountBearer:accountToken,accountPepper},code,async()=>key,pepper,now,
+ ),/rollback failed/);
+ assert.equal(releases.length,1);
+ assert.ok(releases[0] instanceof Error);
+});
