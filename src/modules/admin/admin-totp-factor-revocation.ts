@@ -34,7 +34,10 @@ export async function revokeAdminTotpFactorAndSessions(
  }
  let began=false;
  let discard=false;
+ let beginAttempted=false;
+ let commitAttempted=false;
  try{
+  beginAttempted=true;
   await client.query('BEGIN');
   began=true;
   await client.query("SET LOCAL lock_timeout = '3s'");
@@ -106,11 +109,14 @@ export async function revokeAdminTotpFactorAndSessions(
   if(!audited||!Array.isArray(audited.rows)||audited.rows.length!==1||
      typeof audited.rows[0]?.id!=='string'||!STAFF_UUID.test(audited.rows[0].id))
    throw new Error('admin_totp_revocation_audit_unavailable');
+  commitAttempted=true;
   await client.query('COMMIT');
   began=false;
   return disabled.rows.length===1;
  }catch(error){
-  if(began){
+  // A failed BEGIN or COMMIT leaves the server transaction state uncertain.
+  if((beginAttempted&&!began)||commitAttempted)discard=true;
+  if(began&&!commitAttempted){
    try{await client.query('ROLLBACK');}
    catch{
     // Never reuse a connection whose transaction state is unknown.
