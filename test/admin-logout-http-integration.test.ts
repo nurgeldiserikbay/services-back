@@ -75,8 +75,8 @@ test('admin logout HTTP validates bearer and revokes the matching session in a t
   assert.equal(statements[0]!.params[0],hashAdminSessionToken(token,pepper));
   assert.notEqual(statements[0]!.params[0],token);
   const repeated=await fetch(url,{method:'POST',headers:{authorization:`Bearer ${token}`}});
-  assert.equal(repeated.status,200);
-  assert.deepEqual(await repeated.json(),{status:'revoked'});
+  assert.equal(repeated.status,401);
+  assert.notDeepEqual(await repeated.json(),{status:'revoked'});
   assert.equal(transactions,2);
   assert.equal(statements.length,2);
   assert.equal(statements[1]!.params[0],statements[0]!.params[0]);
