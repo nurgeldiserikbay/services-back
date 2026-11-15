@@ -178,10 +178,11 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 | Date (UTC) | Repository | Commit / CI evidence | Scope | Verification |
 |---|---|---|---|---|
 | 2026-11-15 | services-back | [`6b79eb4`](https://github.com/nurgeldiserikbay/services-back/commit/6b79eb4e127801c7727546c23b65e03886149d28) | Admin session chronology regression test | Committed; CI unverified |
-| 2026-11-15 | services-back | [`d39d196`](https://github.com/nurgeldiserikbay/services-back/commit/d39d196f7ceedd9df13a253834e3737ad5c120fd), [CI #43723300416](https://github.com/nurgeldiserikbay/services-back/actions/runs/43723300416) | Backend typecheck, unit/integration, PostgreSQL migration/schema, Admin MFA DB, dependency audit, backup/restore and backend main checks | **PASS** (build-and-test and dependency-audit) |\n| 2026-11-15 | services-back | [`ed322ee`](https://github.com/nurgeldiserikbay/services-back/commit/ed322eea24aa441c4ca0b004315d75a7823ab390) | Atomic TOTP timestamp test update | Committed; CI unverified |
+| 2026-11-15 | services-back | [`d39d196`](https://github.com/nurgeldiserikbay/services-back/commit/d39d196f7ceedd9df13a253834e3737ad5c120fd), [CI #43723300416](https://github.com/nurgeldiserikbay/services-back/actions/runs/43723300416) | Backend typecheck, unit/integration, PostgreSQL migration/schema, Admin MFA DB, dependency audit, backup/restore and backend main checks | **PASS** (build-and-test and dependency-audit) |
+| 2026-11-15 | services-back | [`ed322ee`](https://github.com/nurgeldiserikbay/services-back/commit/ed322eea24aa441c4ca0b004315d75a7823ab390) | Atomic TOTP timestamp test update | Committed; CI unverified |
 | 2026-11-15 | services-admin | [`ce1f961`](https://github.com/nurgeldiserikbay/services-admin/commit/ce1f961d772e2224c3e8fc2a39f3a7cd04407100) | Admin acceptance gates mapped to master checklist; restricted placeholder confirmed | Documentation committed; UI acceptance pending; CI unverified |
 
-## Next acceptance gates
+| 2026-11-15 | services-back | [`4d2d5cf`](https://github.com/nurgeldiserikbay/services-back/commit/4d2d5cfeb871d7ceb3db56da57daef2cbba68731) | Early CI gate for search, public profile, seller decision and guest status HTTP contracts | **Pending** new main CI result; API contract tests remain unchecked |\n\n## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
