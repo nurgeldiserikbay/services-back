@@ -59,6 +59,9 @@ test('moderation read returns only redacted cases within active grants',async()=
      assert.match(sql,/resource_scope=ANY/);
      assert.match(sql,/current_session\.revoked_at IS NULL/);
      assert.match(sql,/current_session\.mfa_verified_at/);
+     assert.match(sql,/FROM platform_admin_totp_factors AS current_factor/);
+     assert.match(sql,/current_factor\.disabled_at IS NULL/);
+     assert.match(sql,/current_factor\.activated_at<=current_session\.mfa_verified_at/);
      assert.match(sql,/account_row\.status='ACTIVE'/);
      assert.equal(params.length,4);
      assert.deepEqual(params[0],[scope]);
