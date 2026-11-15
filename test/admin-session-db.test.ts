@@ -63,11 +63,12 @@ test('migrated admin session grants are checked against live DB revocation and M
    [sessionId,new Date(now-60_000)]);
   await db.query('UPDATE platform_admin_sessions SET created_at=$2 WHERE id=$1',
    [sessionId,new Date(now-120_000)]);
-  // Restore creation before activation to satisfy factor chronology constraints.
-  await db.query('UPDATE platform_admin_totp_factors SET created_at=$2 WHERE staff_id=$1',
-   [staffId,new Date(now-240_000)]);
+  // Restore activation first: moving creation to four minutes ago while
+  // activation is still twenty minutes ago would violate chronology.
   await db.query('UPDATE platform_admin_totp_factors SET activated_at=$2 WHERE staff_id=$1',
    [staffId,new Date(now-180_000)]);
+  await db.query('UPDATE platform_admin_totp_factors SET created_at=$2 WHERE staff_id=$1',
+   [staffId,new Date(now-240_000)]);
   // Session expiry is exclusive: a token is valid just before expiry,
   // but never at the expiry timestamp, regardless of its other grants.
   // Keep MFA fresh at the boundary so the test isolates session expiry.
