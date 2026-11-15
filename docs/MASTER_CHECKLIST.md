@@ -266,6 +266,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`a910f71`](https://github.com/nurgeldiserikbay/services-back/commit/a910f71be0f1a38102ce63c62ecc1f54f189db2d), [`c71d4d9`](https://github.com/nurgeldiserikbay/services-back/commit/c71d4d904a9269f37c35c282942e3c8056f46899) | PostgreSQL integration test now exercises immediate denial of an existing admin bearer after TOTP disable and after live moderation grant revocation, alongside session revocation | Committed; migrated PostgreSQL CI execution pending |
 
+| 2026-11-15 | services-back | [`2d2271d`](https://github.com/nurgeldiserikbay/services-back/commit/2d2271dbdfa598410dc1c28cfecce92b49b6d393) | Wired admin moderation service and PostgreSQL integration tests into backend CI after migration and schema verification; exercises TOTP disable, grant removal and session revocation | CI configured; successful run still unverified |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
