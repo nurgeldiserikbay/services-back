@@ -203,6 +203,11 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Account OTP sign-in and private login PostgreSQL integration (fail fast)
+        run: |
+          node --import tsx --test \
+            test/account-otp-sign-in-db.test.ts \
+            test/account-login-private-http-db.test.ts
       - name: Guest request PostgreSQL transaction integration (fail fast)
         run: |
           node --import tsx --test \
