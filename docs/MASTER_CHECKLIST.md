@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend robots infrastructure exclusions (2026-11-15): [frontend `bcbaef1`](https://github.com/nurgeldiserikbay/services-front/commit/bcbaef194474b046808c3c3e6a5f9927f64c668b) excludes `/_next/` and `/manifest.webmanifest` from robots crawling while preserving public catalog allow rules, with source and production HTTP assertions. [CI #43744836807](https://github.com/nurgeldiserikbay/services-front/actions/runs/43744836807) pending; device and accessibility acceptance remain open.
+
 Frontend offline worker redirect/auth boundary regressions (2026-11-15): [frontend `455e8ad`](https://github.com/nurgeldiserikbay/services-front/commit/455e8ada2873cbe300bcc49bc2c880f4a5557718) adds executable tests that public navigation redirects (301/302/303/307/308), authentication challenges (401/407), non-GET methods and non-navigation fetch modes are not replaced with offline fallback. [CI #43744717961](https://github.com/nurgeldiserikbay/services-front/actions/runs/43744717961) pending. Device and screen-reader acceptance remain open.
 
 Frontend private workspace root HTTP coverage (2026-11-15): [frontend `668583b`](https://github.com/nurgeldiserikbay/services-front/commit/668583bfa80bf3bd8d3dc51053097f760ecb4f32) expands live production E2E checks to `/kk/account`, `/ru/account`, `/kk/seller`, `/ru/seller`, asserting no-store and noindex alongside nested private paths. [CI #43744592748](https://github.com/nurgeldiserikbay/services-front/actions/runs/43744592748) queued; [previous CI #43744435535](https://github.com/nurgeldiserikbay/services-front/actions/runs/43744435535) success. Real-device PWA and accessibility acceptance remain open.
