@@ -278,6 +278,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`31dc3f2`](https://github.com/nurgeldiserikbay/services-back/commit/31dc3f24f4f1d65094e1bab8cb65b479d0e126b3), [`bb28e0f`](https://github.com/nurgeldiserikbay/services-back/commit/bb28e0f981cc0d0999764605dd162abc816ae53f), [`c0fb964`](https://github.com/nurgeldiserikbay/services-back/commit/c0fb9641e9de37ea3a9e716ce38a8c784f01c2be) | Admin MFA login now resolves recent account proof in the privileged transaction; rejects partial proof objects and discards connections after failed rollback, with regressions | Committed; CI and HTTP acceptance pending |
 
+| 2026-11-15 | services-back | [`31d9736`](https://github.com/nurgeldiserikbay/services-back/commit/31d9736026da887dca21698e9a4c76885359627f), [`95772df`](https://github.com/nurgeldiserikbay/services-back/commit/95772dfdca0b86e1ea9235bb0056621294a9830b) | Reject noncanonical account bearer before opening privileged MFA DB transaction; regression for malformed proof and HMAC key reuse | Committed; CI/typecheck unverified |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
