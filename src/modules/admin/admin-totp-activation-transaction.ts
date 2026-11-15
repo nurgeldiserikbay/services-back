@@ -36,6 +36,7 @@ export async function activateAdminTotpInTransaction(
  let began=false;
  let beginAttempted=false;
  let commitAttempted=false;
+ let rollbackAttempted=false;
  let discard=false;
  try{
   beginAttempted=true;
@@ -47,6 +48,7 @@ export async function activateAdminTotpInTransaction(
    [staffId],
   );
   if(await isAdminMfaLocked(client,staffId,now)){
+   rollbackAttempted=true;
    await client.query('ROLLBACK');
    began=false;
    return false;
@@ -69,8 +71,8 @@ export async function activateAdminTotpInTransaction(
   began=false;
   return true;
  }catch(error){
-  if((beginAttempted&&!began)||commitAttempted)discard=true;
-  if(began&&!commitAttempted){
+  if((beginAttempted&&!began)||commitAttempted||rollbackAttempted)discard=true;
+  if(began&&!commitAttempted&&!rollbackAttempted){
    try{await client.query('ROLLBACK');}
    catch{discard=true;}
   }
