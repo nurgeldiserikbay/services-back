@@ -35,6 +35,30 @@ test('PostgreSQL admin primary proof requires recent live account login and staf
   await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
   assert.equal(await verify(),null,'revoked account session must not authenticate admin');
   await db.query('UPDATE sessions SET revoked_at=NULL WHERE id=$1',[sessionId]);
+  await db.query('UPDATE sessions SET created_at=NULL WHERE id=$1',[sessionId]);
+  assert.equal(await verify(),null,'missing issuance time is not primary authentication');
+  await db.query(
+   "UPDATE sessions SET created_at=now()+interval '1 minute' WHERE id=$1",
+   [sessionId]);
+  assert.equal(await verify(),null,'future issuance time is not primary authentication');
+  await db.query('UPDATE sessions SET created_at=now() WHERE id=$1',[sessionId]);
+  await db.query(
+   "UPDATE sessions SET expires_at=now()-interval '1 second' WHERE id=$1",
+   [sessionId]);
+  assert.equal(await verify(),null,'expired account session must not authenticate admin');
+  await db.query(
+   "UPDATE sessions SET expires_at=now()+interval '12 hours' WHERE id=$1",
+   [sessionId]);
+  await db.query(
+   'UPDATE platform_admin_staff SET disabled_at=now() WHERE id=$1',
+   [staffId]);
+  assert.equal(await verify(),null,'disabled staff must not authenticate admin');
+  await db.query('UPDATE platform_admin_staff SET disabled_at=NULL WHERE id=$1',[staffId]);
+  await db.query("UPDATE users SET status='SUSPENDED' WHERE id=$1",[userId]);
+  assert.equal(await verify(),null,'suspended account must not authenticate admin');
+  await db.query("UPDATE users SET status='ACTIVE' WHERE id=$1",[userId]);
+  assert.equal((await verify())?.staffId,staffId);
+
   await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
   assert.equal(await verify(),null,'staff without live grants cannot authenticate admin');
  }finally{
