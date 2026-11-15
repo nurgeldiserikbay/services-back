@@ -16,6 +16,8 @@ type LoginDeps=Readonly<{
  *
  * Secrets are injected from the deployment's secret manager, not the request.
  * Only the committed admin session bearer may be returned to a trusted BFF.
+ * TOTP format validation belongs to the transaction so malformed attempts
+ * count toward the durable MFA lockout rather than bypassing rate limits.
  */
 export async function loginAdminWithRecentAccountSession(
  deps:LoginDeps,
@@ -33,7 +35,6 @@ export async function loginAdminWithRecentAccountSession(
     typeof deps.resolveTotpKey!=='function'||
     typeof accountBearer!=='string'||
     !/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(accountBearer)||
-    typeof totpCode!=='string'||!/^[0-9]{6}$/.test(totpCode)||
     !Number.isSafeInteger(now)||now<0)return null;
  return loginAdminWithProvisionedTotp(
   deps.pool,
