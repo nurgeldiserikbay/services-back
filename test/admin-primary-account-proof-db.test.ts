@@ -59,9 +59,15 @@ test('PostgreSQL admin primary proof requires recent live account login and staf
   await db.query("UPDATE users SET status='ACTIVE' WHERE id=$1",[userId]);
   assert.equal((await verify())?.staffId,staffId);
 
-  await db.query("UPDATE platform_admin_staff SET role='viewer' WHERE id=$1",[staffId]);
-  assert.equal(await verify(),null,'unrecognized staff role cannot authenticate admin');
-  await db.query("UPDATE platform_admin_staff SET role='auditor' WHERE id=$1",[staffId]);
+  // Invalid roles are rejected by the database CHECK constraint itself.
+  // Use a savepoint so the expected SQL error does not abort the test transaction.
+  await db.query('SAVEPOINT invalid_staff_role');
+  await assert.rejects(
+   db.query("UPDATE platform_admin_staff SET role='viewer' WHERE id=$1",[staffId]),
+   (error:unknown)=>typeof error==='object'&&error!==null&&
+    'code' in error&&error.code==='23514',
+  );
+  await db.query('ROLLBACK TO SAVEPOINT invalid_staff_role');
   assert.equal((await verify())?.staffId,staffId);
   await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
   assert.equal(await verify(),null,'staff without live grants cannot authenticate admin');
