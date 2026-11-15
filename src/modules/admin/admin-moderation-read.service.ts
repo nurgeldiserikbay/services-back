@@ -86,6 +86,13 @@ export class PlatformModerationReadService{
            AND current_staff.disabled_at IS NULL
            AND current_staff.role IN ('owner','admin','operator','auditor')
            AND account_row.status='ACTIVE'
+           AND EXISTS (
+             SELECT 1 FROM platform_admin_totp_factors AS current_factor
+             WHERE current_factor.staff_id=current_staff.id
+               AND current_factor.activated_at IS NOT NULL
+               AND current_factor.activated_at<=current_session.mfa_verified_at
+               AND current_factor.disabled_at IS NULL
+           )
            AND current_session.token_hash=$3
            AND current_session.revoked_at IS NULL
            AND current_session.expires_at>to_timestamp($4::double precision/1000.0)
