@@ -128,7 +128,8 @@ jobs:
             test/admin-logout-live-http.test.ts \
             test/admin-session-resolver.test.ts \
             test/admin-session-revocation.test.ts \
-            test/admin-primary-account-proof.test.ts
+            test/admin-primary-account-proof.test.ts \
+            test/admin-mfa-account-login.test.ts
       - name: Backend API contract regressions (fail fast)
         run: |
           node --import tsx --test \
