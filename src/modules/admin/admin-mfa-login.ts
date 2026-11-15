@@ -3,6 +3,9 @@ import {loadActiveAdminTotpFactor} from './admin-totp-factor-store.js';
 import {isAdminMfaLocked,recordAdminMfaFailure} from './admin-mfa-attempts.js';
 import {issueAdminSessionAfterTotp} from './admin-mfa-session.js';
 import {recordAdminMfaSecurityEvent} from './admin-mfa-security-audit.js';
+import {resolveRecentAdminPrimaryAccountProof} from './admin-primary-account-proof.js';
+
+type AccountPrimaryInput=Readonly<{accountBearer:unknown;accountPepper:Buffer}>;
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -14,24 +17,35 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
  */
 export async function loginAdminWithProvisionedTotp(
  pool:Pick<Pool,'connect'>,
- primary:{staffId:string;authenticatedAt:number},
+ primary:{staffId:string;authenticatedAt:number}|AccountPrimaryInput,
  code:unknown,
  resolveKey:(version:string)=>Promise<Buffer|null>,
  sessionPepper:Buffer,
  now=Date.now(),
 ):Promise<{token:string;expiresAt:number}|null>{
+ const fromAccount=primary!==null&&typeof primary==='object'&&
+    !Array.isArray(primary)&&Object.getPrototypeOf(primary)===Object.prototype&&
+    Object.hasOwn(primary,'accountBearer')&&Object.hasOwn(primary,'accountPepper');
+ const account=fromAccount?primary as AccountPrimaryInput:null;
+ const attested=fromAccount?null:primary as {staffId:string;authenticatedAt:number};
  if(!pool||typeof pool.connect!=='function'||
     !primary||typeof primary!=='object'||Array.isArray(primary)||
     Object.getPrototypeOf(primary)!==Object.prototype||
     Object.keys(primary).length!==2||
-    !Object.hasOwn(primary,'staffId')||!Object.hasOwn(primary,'authenticatedAt')||
-    typeof primary.staffId!=='string'||!UUID.test(primary.staffId)||
-    !Number.isSafeInteger(primary.authenticatedAt)||primary.authenticatedAt<0||
-    !Number.isSafeInteger(now)||now<0||primary.authenticatedAt>now||
-    now-primary.authenticatedAt>300000||
+    (account?(!Object.hasOwn(account,'accountBearer')||
+      !Object.hasOwn(account,'accountPepper')||
+      !Buffer.isBuffer(account.accountPepper)||account.accountPepper.length!==32||
+      typeof account.accountBearer!=='string'):
+     (!attested||!Object.hasOwn(attested,'staffId')||
+      !Object.hasOwn(attested,'authenticatedAt')||
+      typeof attested.staffId!=='string'||!UUID.test(attested.staffId)||
+      !Number.isSafeInteger(attested.authenticatedAt)||attested.authenticatedAt<0||
+      attested.authenticatedAt>now||now-attested.authenticatedAt>300000))||
+    !Number.isSafeInteger(now)||now<0||
     now>8640000000000000-15*60*1000||
     typeof resolveKey!=='function'||
-    !Buffer.isBuffer(sessionPepper)||sessionPepper.length!==32)return null;
+    !Buffer.isBuffer(sessionPepper)||sessionPepper.length!==32||
+    (account&&sessionPepper.equals(account.accountPepper)))return null;
  const client:PoolClient=await pool.connect();
  let began=false;
  let discardConnection=false;
@@ -43,11 +57,21 @@ export async function loginAdminWithProvisionedTotp(
   // Bound waits and statements on this privileged transaction.
   await client.query("SET LOCAL lock_timeout = '3s'");
   await client.query("SET LOCAL statement_timeout = '8s'");
+  // Resolve account proof inside this SAME transaction, before MFA locks.
+  // No browser-selected staff identity or timestamp is accepted.
+  const verifiedPrimary=account?
+   await resolveRecentAdminPrimaryAccountProof(
+    client,account.accountBearer,account.accountPepper,now):attested;
+  if(!verifiedPrimary){
+   await client.query('ROLLBACK');
+   began=false;
+   return null;
+  }
   await client.query(
    'SELECT pg_advisory_xact_lock(hashtextextended($1::text, 104729))',
-   [primary.staffId],
+   [verifiedPrimary.staffId],
   );
-  if(await isAdminMfaLocked(client,primary.staffId,now)){
+  if(await isAdminMfaLocked(client,verifiedPrimary.staffId,now)){
    try{await client.query('ROLLBACK');}
    catch(error){discardConnection=true;throw error;}
    began=false;
@@ -66,17 +90,17 @@ export async function loginAdminWithProvisionedTotp(
      AND EXISTS (SELECT 1 FROM platform_admin_grants grants
        WHERE grants.staff_id=staff.id)
    FOR SHARE OF factor
-  `,[primary.staffId]);
+  `,[verifiedPrimary.staffId]);
   if(!factorLock||!Array.isArray(factorLock.rows)||
      factorLock.rows.length!==1||
      typeof factorLock.rows[0]?.staff_id!=='string'||
-     factorLock.rows[0].staff_id.toLowerCase()!==primary.staffId.toLowerCase()){
+     factorLock.rows[0].staff_id.toLowerCase()!==verifiedPrimary.staffId.toLowerCase()){
    try{await client.query('ROLLBACK');}
    catch(error){discardConnection=true;throw error;}
    began=false;
    return null;
   }
-  secret=await loadActiveAdminTotpFactor(client,primary.staffId,resolveKey);
+  secret=await loadActiveAdminTotpFactor(client,verifiedPrimary.staffId,resolveKey);
   if(!secret){
    try{await client.query('ROLLBACK');}
    catch(error){discardConnection=true;throw error;}
@@ -84,14 +108,14 @@ export async function loginAdminWithProvisionedTotp(
    return null;
   }
   const session=await issueAdminSessionAfterTotp(
-   client,primary,secret,code,sessionPepper,now,
+   client,verifiedPrimary,secret,code,sessionPepper,now,
   );
   if(!session){
-   const failure=await recordAdminMfaFailure(client,primary.staffId,now);
+   const failure=await recordAdminMfaFailure(client,verifiedPrimary.staffId,now);
    // A verified active factor must have a durable attempt row. Never
    // acknowledge a failed login if its lockout state was not persisted.
    if(!failure)throw new Error('admin_mfa_failure_record_missing');
-   await recordAdminMfaSecurityEvent(client,primary.staffId,'admin_mfa_login_failed');
+   await recordAdminMfaSecurityEvent(client,verifiedPrimary.staffId,'admin_mfa_login_failed');
    try{await client.query('COMMIT');}
    catch(error){discardConnection=true;throw error;}
    began=false;
@@ -101,8 +125,8 @@ export async function loginAdminWithProvisionedTotp(
   // A later failure must begin a fresh lockout window.
   await client.query(`
    DELETE FROM platform_admin_mfa_attempts WHERE staff_id=$1::uuid
-  `,[primary.staffId]);
-  await recordAdminMfaSecurityEvent(client,primary.staffId,'admin_mfa_login_succeeded');
+  `,[verifiedPrimary.staffId]);
+  await recordAdminMfaSecurityEvent(client,verifiedPrimary.staffId,'admin_mfa_login_succeeded');
   try{await client.query('COMMIT');}
   catch(error){discardConnection=true;throw error;}
   began=false;
