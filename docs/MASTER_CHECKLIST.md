@@ -238,6 +238,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [CI #43733427583](https://github.com/nurgeldiserikbay/services-back/actions/runs/43733427583) | Account OTP network and global quota PostgreSQL regressions | **PASS**; broader rate-limit acceptance still pending |\n| 2026-11-15 | services-back | [`c509168`](https://github.com/nurgeldiserikbay/services-back/commit/c5091684556b7175ebaf26ac8c1661a5048774b1) | Account OTP verification attempts, replay, expiry and unconfirmed delivery PostgreSQL CI gate | **Pending** CI |\n\n| 2026-11-15 | services-admin | [`334f862`](https://github.com/nurgeldiserikbay/services-admin/commit/334f8621f39915934938dd8e57fd75e1d3d17d2e), [`8807445`](https://github.com/nurgeldiserikbay/services-admin/commit/88074455f0c5496ef26330e454138b99847f1d61), [`bee660b`](https://github.com/nurgeldiserikbay/services-admin/commit/bee660beb460c06be3d0df1cb2f006a132cc0453) | Keyboard-focusable moderation table scroll region, visible focus ring and source regression assertion | Committed; CI and browser acceptance unverified |
 
+| 2026-11-15 | services-admin | [`b3cd381`](https://github.com/nurgeldiserikbay/services-admin/commit/b3cd3816f2e0cdfd76b50077a834bd326c4727d6), [`79f3ae2`](https://github.com/nurgeldiserikbay/services-admin/commit/79f3ae2e77aef2f0386e379ecf088022a83eefd1) | Bounded local case-ID search across already authorized moderation rows, with regression assertions | Committed; CI and E2E acceptance unverified |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
