@@ -32,6 +32,8 @@ export async function resolveRecentAdminPrimaryAccountProof(
     AND session.revoked_at IS NULL
     AND session.expires_at>to_timestamp($2::double precision/1000.0)
     AND session.created_at<=to_timestamp($2::double precision/1000.0)
+    AND session.expires_at>session.created_at
+    AND session.created_at IS NOT NULL
     AND session.created_at>=to_timestamp(($2::double precision-300000)/1000.0)
     AND usr.status='ACTIVE'
     AND staff.disabled_at IS NULL
