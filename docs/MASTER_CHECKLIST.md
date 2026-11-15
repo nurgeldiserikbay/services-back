@@ -288,6 +288,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`5b2e519`](https://github.com/nurgeldiserikbay/services-back/commit/5b2e5191269c7314c670426c4b73643c26595f99) | Expanded PostgreSQL admin primary-factor acceptance regressions: missing/future issuance, expiry, staff disable, account suspension | Committed; CI execution pending |
 
+| 2026-11-15 | services-back | [`6163f2c`](https://github.com/nurgeldiserikbay/services-back/commit/6163f2c22e4ce84b3c9adc9cc396988000c52a93), [`8a96064`](https://github.com/nurgeldiserikbay/services-back/commit/8a96064567cb3108e3fa3a004a0026bc02db394f) | Removed early TOTP format rejection from trusted account MFA wrapper so authenticated malformed codes reach the durable attempt/lockout path; added regression | Committed; CI execution and end-to-end HTTP acceptance pending |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
