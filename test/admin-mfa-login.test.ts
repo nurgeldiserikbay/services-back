@@ -721,3 +721,31 @@ test('invalid account bearer and shared account/admin keys fail before database 
   pool,{accountBearer:valid,accountPepper},code,async()=>key,accountPepper,now),null);
  assert.equal(connections,0);
 });
+
+test('malformed TOTP with valid recent account proof persists MFA failure and audit',async()=>{
+ const f=fixture('bad-code');
+ const accountPepper=randomBytes(32);
+ const {issueSessionToken}=await import('../src/modules/identity/session-proof.js');
+ const accountToken=issueSessionToken(accountPepper).token;
+ const originalConnect=(f.pool as {connect:()=>Promise<any>}).connect;
+ const pool={connect:async()=>{
+  const client=await originalConnect();
+  const originalQuery=client.query.bind(client);
+  client.query=async(sql:string,params?:unknown[])=>{
+   if(sql.includes('FROM sessions session')){
+    f.events.push('account-primary');
+    return {rows:[{staff_id:staffId,authenticated_at:new Date(now-1000)}]};
+   }
+   return originalQuery(sql,params);
+  };
+  return client;
+ }};
+ assert.equal(await loginAdminWithProvisionedTotp(
+  pool as never,{accountBearer:accountToken,accountPepper},
+  '12x',async()=>key,pepper,now),null);
+ assert.deepEqual(f.events,[
+  'BEGIN',"SET LOCAL lock_timeout = '3s'","SET LOCAL statement_timeout = '8s'",
+  'account-primary','staff-lock','lockout','factor-lock','load-factor',
+  'failure','audit','COMMIT','release',
+ ]);
+});
