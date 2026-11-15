@@ -66,7 +66,7 @@
 - [ ] Guest request creation — Prepared; verification pending
 - [x] Guest capability token security — Verified guest status ownership, expired/consumed/mismatched capability rejection and private-field allowlist in backend CI #43726538338 (2026-11-15)
 - [ ] Authenticated request flow — Pending verification
-- [ ] Seller accept/reject actions — Pending verification
+- [x] Seller accept/reject actions — Verified transactional accept/decline, scoped seller authorization, idempotent replay and notification integration in backend CI #43737972089 (2026-11-15)
 - [ ] Request state transitions — Pending verification
 - [ ] Idempotency and retries — Pending verification
 - [ ] IANA timezone support — Prepared; verification pending
@@ -256,10 +256,10 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`da80829`](https://github.com/nurgeldiserikbay/services-back/commit/da808291821b381c88ca533d3145c0634b60a79a) | Added PostgreSQL seller inbox authorization, accept/decline transaction and idempotent audited decision CI gate | **Pending** CI; full request lifecycle E2E remains unchecked |\n\n| 2026-11-15 | services-back | [`14d2010`](https://github.com/nurgeldiserikbay/services-back/commit/14d201012521d23894220de7aec6d52c71754a8f), [`f7ac8ee`](https://github.com/nurgeldiserikbay/services-back/commit/f7ac8ee64268c9804281a781e299327e019f716f) | Moderation response rechecks session and MFA expiry after SQL execution; added regression tests for both mid-query expiry paths | Committed; test/CI execution not independently verified |
 
-## Next acceptance gates
+| 2026-11-15 | services-back | [CI #43737972089](https://github.com/nurgeldiserikbay/services-back/actions/runs/43737972089) | Seller inbox/accept/decline/idempotency and OTP-authenticated seller journey PostgreSQL integration | **PASS**; seller accept/reject verified, full request lifecycle E2E pending |\n\n## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 12 (10 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 13 (11 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
