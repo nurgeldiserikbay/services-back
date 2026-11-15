@@ -248,6 +248,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [CI #43733951815](https://github.com/nurgeldiserikbay/services-back/actions/runs/43733951815) | Account OTP verification replay, confirmed delivery, network/global quotas and sign-in | **PASS** |\n| 2026-11-15 | services-back | [CI #43734828654](https://github.com/nurgeldiserikbay/services-back/actions/runs/43734828654) | OTP provider deadline, late-response rejection, network retention cleanup, verification and abuse quotas | **PASS**; general rate-limit and full authentication E2E acceptance remain pending |\n\n| 2026-11-15 | services-admin | [`72a25db`](https://github.com/nurgeldiserikbay/services-admin/commit/72a25db1866ae16ad8fbd2d9e4d610986af2ba6b) | Inspected registered admin backend HTTP module: MFA login function exists but trusted primary-factor HTTP login route is not registered; documented security dependency and rollout blockers | Contract gap confirmed by source; Admin UI login/E2E remains pending |
 
+| 2026-11-15 | services-admin | [`fea40d4`](https://github.com/nurgeldiserikbay/services-admin/commit/fea40d4337151d696559166e00048ea0386daf87), [`5f75c00`](https://github.com/nurgeldiserikbay/services-admin/commit/5f75c00f25fe4159f881bb13f081c46de824c104) | Marked privileged admin backend transport server-only and added client import boundary regression | Committed; CI/build acceptance pending |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
