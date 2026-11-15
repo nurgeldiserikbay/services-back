@@ -222,3 +222,13 @@ test('enrollment timeout setup failure rolls back before any factor access',asyn
  );
  assert.deepEqual(events,['BEGIN','lock-timeout','ROLLBACK','release:false']);
 });
+
+test('invalid enrollment connection is discarded before issuing BEGIN',async()=>{
+ const events:string[]=[];
+ const broken={query:null,release:(discard?:boolean)=>events.push('release:'+String(discard))};
+ await assert.rejects(
+  activateAdminTotpInTransaction({connect:async()=>broken} as never,primary,code,async()=>key,now),
+  /admin_totp_activation_connection_unavailable/,
+ );
+ assert.deepEqual(events,['release:true']);
+});
