@@ -199,7 +199,8 @@ jobs:
       - name: Guest request PostgreSQL transaction integration (fail fast)
         run: |
           node --import tsx --test \
-            test/guest-request-transaction-db.test.ts
+            test/guest-request-transaction-db.test.ts \
+            test/guest-request-status-db.test.ts
       - name: Verify privileged MFA and audit database constraints
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
