@@ -17,9 +17,9 @@ export class PlatformAdminLogoutService{
   try{pepper=requireSecret(process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY);}
   catch{throw new UnauthorizedException('Authentication required');}
   try{
-   await this.db.transaction(async client=>{
-    await revokeOwnPlatformAdminSession(client,token,pepper);
-   });
+   const revoked=await this.db.transaction(async client=>
+    revokeOwnPlatformAdminSession(client,token,pepper));
+   if(!revoked)throw new UnauthorizedException('Authentication required');
   }catch{throw new UnauthorizedException('Authentication required');}
  }
 }
