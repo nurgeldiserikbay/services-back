@@ -293,3 +293,14 @@ test('failed transaction timeout setup rolls back and releases connection',async
  );
  assert.deepEqual(events,['BEGIN','lock-timeout','ROLLBACK','release:false']);
 });
+
+test('out-of-range revocation timestamps are rejected before connecting',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected connect');}} as never;
+ for(const invalidNow of [-1,NaN,Infinity,8_640_000_000_000_001]){
+  assert.equal(await revokeAdminTotpFactorAndSessions(
+   pool,staffId,token,pepper,invalidNow,
+  ),false);
+ }
+ assert.equal(connections,0);
+});
