@@ -50,16 +50,25 @@ export class DatabasePool implements OnModuleDestroy {
 
     let begun = false;
     let released = false;
+    let commitAttempted = false;
     try {
       await client.query('BEGIN');
       begun = true;
       await client.query("SET LOCAL lock_timeout = '3s'");
       await client.query("SET LOCAL statement_timeout = '8s'");
       const result = await work(client);
+      // A failed COMMIT has an unknown outcome: PostgreSQL may have committed
+      // even if the acknowledgement was lost. Never reuse that connection.
+      commitAttempted = true;
       await client.query('COMMIT');
       begun = false;
       return result;
     } catch (error) {
+      if (commitAttempted) {
+        client.release(new Error('Transaction commit outcome uncertain'));
+        released = true;
+        throw new ServiceUnavailableException('Database operation unavailable');
+      }
       if (begun) {
         try {
           await client.query('ROLLBACK');
