@@ -198,6 +198,12 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Account OTP provider deadline and network retention PostgreSQL (fail fast)
+        run: |
+          node --import tsx --test \
+            test/account-otp-delivery-deadline.test.ts \
+            test/account-otp-network-cleanup-db.test.ts \
+            test/account-otp-network-delivery.test.ts
       - name: Account OTP verification replay and delivery confirmation PostgreSQL (fail fast)
         run: |
           node --import tsx --test \
