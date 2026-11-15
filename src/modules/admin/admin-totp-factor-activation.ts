@@ -59,6 +59,7 @@ export async function activateAdminTotpFactor(
   UPDATE platform_admin_totp_factors
   SET activated_at=to_timestamp($2::double precision/1000)
   WHERE staff_id=$1::uuid AND activated_at IS NULL AND disabled_at IS NULL
+    AND encrypted_secret=$3 AND key_version=$4
     AND EXISTS (
       SELECT 1 FROM platform_admin_staff staff
       JOIN users usr ON usr.id=staff.user_id
@@ -69,7 +70,7 @@ export async function activateAdminTotpFactor(
                     WHERE grant_row.staff_id=staff.id)
     )
   RETURNING staff_id::text
- `,[staffId,now]);
+ `,[staffId,now,factor.encrypted_secret,factor.key_version]);
  if(!updated||!Array.isArray(updated.rows)||updated.rows.length>1)
   throw new Error('admin_totp_activation_unavailable');
  // A consumed enrollment OTP must never be committed without activation.
