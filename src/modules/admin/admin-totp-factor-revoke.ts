@@ -44,6 +44,7 @@ export async function revokeAdminTotpFactor(
    JOIN users usr ON usr.id=staff.user_id
    JOIN platform_admin_sessions session ON session.staff_id=staff.id
    WHERE session.token_hash=$1
+     AND session.created_at<=to_timestamp($2::double precision/1000)
      AND session.revoked_at IS NULL
      AND session.expires_at>to_timestamp($2::double precision/1000)
      AND session.mfa_verified_at IS NOT NULL
