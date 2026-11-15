@@ -108,3 +108,40 @@ test('commit failure does not report successful revocation',async()=>{
   'audit','COMMIT','ROLLBACK','release',
  ]);
 });
+
+test('incident-response revocation discards connection when rollback fails',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql==='ROLLBACK'){events.push('ROLLBACK');throw Error('rollback failed');}
+   if(sql.includes('pg_advisory_xact_lock')){
+    events.push('lock');throw Error('lock failed');
+   }
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(revokeAdminTotpFactor(
+  {connect:async()=>client} as never,token,target,pepper,
+ ),/lock failed/);
+ assert.deepEqual(events,['BEGIN','lock','ROLLBACK','release:true']);
+});
+test('incident-response revocation retains connection after successful rollback',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql==='ROLLBACK'){events.push('ROLLBACK');return {rows:[]};}
+   if(sql.includes('pg_advisory_xact_lock')){
+    events.push('lock');throw Error('lock failed');
+   }
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(revokeAdminTotpFactor(
+  {connect:async()=>client} as never,token,target,pepper,
+ ),/lock failed/);
+ assert.deepEqual(events,['BEGIN','lock','ROLLBACK','release:false']);
+});
