@@ -135,6 +135,11 @@ jobs:
             test/public-profile-contract.test.ts \
             test/seller-http-contract-regression.test.ts \
             test/guest-request-status-http.test.ts
+      - name: Guest request lifecycle boundary regressions (fail fast)
+        run: |
+          node --import tsx --test \
+            test/guest-verified-request-flow.test.ts \
+            test/request-cancellation-policy.test.ts
       - name: Validate pinned Prisma model
         run: npm run db:validate
       - name: Recompute migration and reject schema/SQL drift
