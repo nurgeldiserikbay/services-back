@@ -703,3 +703,21 @@ test('failed account-primary rollback discards uncertain database connection',as
  assert.equal(releases.length,1);
  assert.ok(releases[0] instanceof Error);
 });
+
+test('invalid account bearer and shared account/admin keys fail before database access',async()=>{
+ let connections=0;
+ const pool={connect:async()=>{connections++;throw Error('unexpected database access');}} as never;
+ const accountPepper=randomBytes(32);
+ const {issueSessionToken}=await import('../src/modules/identity/session-proof.js');
+ const valid=issueSessionToken(accountPepper).token;
+ for(const invalid of ['invalid','Bearer '+valid,valid+'=',valid.slice(0,-1)+'B']){
+  // A noncanonical final character is invalid unless it coincidentally
+  // equals the original canonical final character.
+  if(invalid===valid)continue;
+  assert.equal(await loginAdminWithProvisionedTotp(
+   pool,{accountBearer:invalid,accountPepper},code,async()=>key,pepper,now),null);
+ }
+ assert.equal(await loginAdminWithProvisionedTotp(
+  pool,{accountBearer:valid,accountPepper},code,async()=>key,accountPepper,now),null);
+ assert.equal(connections,0);
+});
