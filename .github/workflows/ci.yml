@@ -198,6 +198,11 @@ jobs:
             END IF;
           END $verify$;
           SQL
+      - name: Account OTP network and global issuance abuse budgets PostgreSQL (fail fast)
+        run: |
+          node --import tsx --test \
+            test/account-otp-network-budget-db.test.ts \
+            test/account-otp-global-budget-db.test.ts
       - name: Account OTP sign-in and private login PostgreSQL integration (fail fast)
         run: |
           node --import tsx --test \
