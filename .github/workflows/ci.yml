@@ -203,6 +203,11 @@ jobs:
           node --import tsx --test \
             test/account-otp-sign-in-db.test.ts \
             test/account-login-private-http-db.test.ts
+      - name: Account session ownership activity and revocation PostgreSQL integration (fail fast)
+        run: |
+          node --import tsx --test \
+            test/account-session-management-db.test.ts \
+            test/account-session-activity-db.test.ts
       - name: Account authentication and remote session revoke HTTP boundaries (fail fast)
         run: |
           node --import tsx --test \
