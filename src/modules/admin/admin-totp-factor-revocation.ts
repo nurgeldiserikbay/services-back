@@ -58,6 +58,7 @@ export async function revokeAdminTotpFactorAndSessions(
     AND security_grant.scope='platform.admin.security'
    WHERE session.token_hash=$1 AND session.revoked_at IS NULL
      AND session.created_at<=to_timestamp($2::double precision/1000)
+     AND session.created_at<=session.mfa_verified_at
      AND EXISTS (
        SELECT 1 FROM platform_admin_totp_factors actor_factor
        WHERE actor_factor.staff_id=actor.id
