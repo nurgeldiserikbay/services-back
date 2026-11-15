@@ -187,3 +187,55 @@ test('incident-response discards malformed checked-out clients before BEGIN',asy
   assert.deepEqual(releases,client.release===null?[]:[true]);
  }
 });
+
+test('failed BEGIN discards uncertain incident-response connection',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   events.push(sql);
+   if(sql==='BEGIN')throw Error('begin failed');
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(revokeAdminTotpFactor(
+  {connect:async()=>client} as never,token,target,pepper,
+ ),/begin failed/);
+ assert.deepEqual(events,['BEGIN','release:true']);
+});
+
+test('failed COMMIT discards incident-response connection after rollback',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK'){
+    events.push(sql);
+    if(sql==='COMMIT')throw Error('commit failed');
+    return {rows:[]};
+   }
+   if(sql.includes('pg_advisory_xact_lock')){
+    events.push('lock');return {rows:[{}]};
+   }
+   if(sql.includes('FOR SHARE OF staff')){
+    events.push('actor');return {rows:[{id:actor}]};
+   }
+   if(sql.includes('UPDATE platform_admin_totp_factors')){
+    events.push('factor');return {rows:[{staff_id:target}]};
+   }
+   if(sql.includes('UPDATE platform_admin_sessions')){
+    events.push('sessions');return {rows:[],rowCount:1};
+   }
+   if(sql.includes('INSERT INTO platform_admin_security_events')){
+    events.push('audit');return {rows:[{id:randomUUID()}]};
+   }
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(revokeAdminTotpFactor(
+  {connect:async()=>client} as never,token,target,pepper,
+ ),/commit failed/);
+ assert.deepEqual(events,[
+  'BEGIN','lock','actor','factor','sessions','audit','COMMIT','ROLLBACK','release:true',
+ ]);
+});
