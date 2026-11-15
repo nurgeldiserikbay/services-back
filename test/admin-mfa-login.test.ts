@@ -622,8 +622,8 @@ test('recent account session proof is checked in the MFA transaction before fact
  const accountPepper=randomBytes(32);
  const {issueSessionToken,hashSessionToken}=await import('../src/modules/identity/session-proof.js');
  const accountToken=issueSessionToken(accountPepper).token;
- const originalConnect=f.pool.connect.bind(f.pool);
- f.pool.connect=async()=>{
+ const originalConnect=(f.pool as {connect:()=>Promise<any>}).connect;
+ const pool={connect:async()=>{
   const client=await originalConnect();
   const originalQuery=client.query.bind(client);
   client.query=async(sql:string,params?:unknown[])=>{
@@ -636,9 +636,9 @@ test('recent account session proof is checked in the MFA transaction before fact
    return originalQuery(sql,params);
   };
   return client;
- };
+ }};
  const result=await loginAdminWithProvisionedTotp(
-  f.pool,{accountBearer:accountToken,accountPepper},code,async()=>key,pepper,now);
+  pool as never,{accountBearer:accountToken,accountPepper},code,async()=>key,pepper,now);
  assert.ok(result?.token);
  assert.ok(f.events.indexOf('account-primary')<f.events.indexOf('staff-lock'));
  assert.ok(f.events.indexOf('account-primary')>f.events.indexOf('BEGIN'));
@@ -650,8 +650,8 @@ test('invalid account primary proof denies MFA before factor and session issuanc
  const accountPepper=randomBytes(32);
  const {issueSessionToken}=await import('../src/modules/identity/session-proof.js');
  const accountToken=issueSessionToken(accountPepper).token;
- const originalConnect=f.pool.connect.bind(f.pool);
- f.pool.connect=async()=>{
+ const originalConnect=(f.pool as {connect:()=>Promise<any>}).connect;
+ const pool={connect:async()=>{
   const client=await originalConnect();
   const originalQuery=client.query.bind(client);
   client.query=async(sql:string,params?:unknown[])=>{
@@ -659,9 +659,9 @@ test('invalid account primary proof denies MFA before factor and session issuanc
    return originalQuery(sql,params);
   };
   return client;
- };
+ }};
  assert.equal(await loginAdminWithProvisionedTotp(
-  f.pool,{accountBearer:accountToken,accountPepper},code,async()=>key,pepper,now),null);
+  pool as never,{accountBearer:accountToken,accountPepper},code,async()=>key,pepper,now),null);
  assert.equal(f.events.includes('staff-lock'),false);
  assert.equal(f.events.includes('factor-lock'),false);
  assert.equal(f.events.includes('session'),false);
