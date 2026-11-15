@@ -749,3 +749,34 @@ test('malformed TOTP with valid recent account proof persists MFA failure and au
   'failure','audit','COMMIT','release',
  ]);
 });
+
+test('failed primary lookup never loads TOTP key or records an admin session',async()=>{
+ const accountPepper=randomBytes(32);
+ const {issueSessionToken}=await import('../src/modules/identity/session-proof.js');
+ const token=issueSessionToken(accountPepper).token;
+ let keyReads=0,privilegedQueries=0;
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(['BEGIN','ROLLBACK'].includes(sql)||sql.startsWith('SET LOCAL ')){
+    events.push(sql);return {rows:[]};
+   }
+   if(sql.includes('FROM sessions session')){
+    events.push('primary-lookup');return {rows:[]};
+   }
+   privilegedQueries++;
+   throw Error('unexpected privileged query');
+  },
+  release:()=>events.push('release'),
+ };
+ assert.equal(await loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,
+  {accountBearer:token,accountPepper},
+  code,async()=>{keyReads++;return key;},pepper,now),null);
+ assert.equal(keyReads,0);
+ assert.equal(privilegedQueries,0);
+ assert.deepEqual(events,[
+  'BEGIN',"SET LOCAL lock_timeout = '3s'","SET LOCAL statement_timeout = '8s'",
+  'primary-lookup','ROLLBACK','release',
+ ]);
+});
