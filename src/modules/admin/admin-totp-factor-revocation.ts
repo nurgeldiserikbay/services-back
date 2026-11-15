@@ -87,7 +87,10 @@ export async function revokeAdminTotpFactorAndSessions(
    WHERE staff_id=$1::uuid AND disabled_at IS NULL
    RETURNING staff_id::text
   `,[staffId,now]);
-  if(!disabled||!Array.isArray(disabled.rows)||disabled.rows.length>1)
+  if(!disabled||!Array.isArray(disabled.rows)||disabled.rows.length>1||
+     (disabled.rows.length===1&&
+      (typeof disabled.rows[0]?.staff_id!=='string'||
+       disabled.rows[0].staff_id.toLowerCase()!==staffId.toLowerCase())))
    throw new Error('admin_totp_revocation_unavailable');
   // Revoke sessions even when factor was previously disabled: idempotent
   // security cleanup must not leave an existing privileged bearer usable.
