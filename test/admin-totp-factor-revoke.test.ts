@@ -16,6 +16,10 @@ function fixture(mode:'ok'|'no-actor'|'no-factor'|'audit-fails'|'commit-fails'|'
     if(sql==='COMMIT'&&mode==='commit-fails')throw Error('commit failed');
     return {rows:[]};
    }
+   if(sql.startsWith('SET LOCAL ')){
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
    if(sql.includes('FOR SHARE OF staff')){
     events.push('authorize-actor');
     assert.equal(params?.[0],tokenHash);
@@ -66,20 +70,20 @@ test('revocation disables factor, revokes sessions and audits before commit',asy
  const f=fixture('ok');
  assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),true);
  assert.deepEqual(f.events,[
-  'BEGIN','target-lock','authorize-actor','disable-factor','revoke-sessions',
+  'BEGIN','lock-timeout','statement-timeout','target-lock','authorize-actor','disable-factor','revoke-sessions',
   'audit','COMMIT','release',
  ]);
 });
 test('unknown actor cannot revoke factor',async()=>{
  const f=fixture('no-actor');
  assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),false);
- assert.deepEqual(f.events,['BEGIN','target-lock','authorize-actor','ROLLBACK','release']);
+ assert.deepEqual(f.events,['BEGIN','lock-timeout','statement-timeout','target-lock','authorize-actor','ROLLBACK','release']);
 });
 test('missing factor does not revoke sessions',async()=>{
  const f=fixture('no-factor');
  assert.equal(await revokeAdminTotpFactor(f.pool,token,target,pepper),false);
  assert.deepEqual(f.events,[
-  'BEGIN','target-lock','authorize-actor','disable-factor','ROLLBACK','release',
+  'BEGIN','lock-timeout','statement-timeout','target-lock','authorize-actor','disable-factor','ROLLBACK','release',
  ]);
 });
 test('audit failure rolls back factor and session revocation',async()=>{
@@ -87,7 +91,7 @@ test('audit failure rolls back factor and session revocation',async()=>{
  await assert.rejects(revokeAdminTotpFactor(f.pool,token,target,pepper),
   /admin_totp_revocation_audit_unavailable/);
  assert.deepEqual(f.events,[
-  'BEGIN','target-lock','authorize-actor','disable-factor','revoke-sessions',
+  'BEGIN','lock-timeout','statement-timeout','target-lock','authorize-actor','disable-factor','revoke-sessions',
   'audit','ROLLBACK','release',
  ]);
 });
@@ -108,7 +112,7 @@ test('commit failure does not report successful revocation',async()=>{
  const f=fixture('commit-fails');
  await assert.rejects(revokeAdminTotpFactor(f.pool,token,target,pepper),/commit failed/);
  assert.deepEqual(f.events,[
-  'BEGIN','target-lock','authorize-actor','disable-factor','revoke-sessions',
+  'BEGIN','lock-timeout','statement-timeout','target-lock','authorize-actor','disable-factor','revoke-sessions',
   'audit','COMMIT','ROLLBACK','release',
  ]);
 });
@@ -118,6 +122,10 @@ test('incident-response revocation discards connection when rollback fails',asyn
  const client={
   query:async(sql:string)=>{
    if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql.startsWith('SET LOCAL ')){
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
    if(sql==='ROLLBACK'){events.push('ROLLBACK');throw Error('rollback failed');}
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('lock');throw Error('lock failed');
@@ -129,13 +137,17 @@ test('incident-response revocation discards connection when rollback fails',asyn
  await assert.rejects(revokeAdminTotpFactor(
   {connect:async()=>client} as never,token,target,pepper,
  ),/lock failed/);
- assert.deepEqual(events,['BEGIN','lock','ROLLBACK','release:true']);
+ assert.deepEqual(events,['BEGIN','lock-timeout','statement-timeout','lock','ROLLBACK','release:true']);
 });
 test('incident-response revocation retains connection after successful rollback',async()=>{
  const events:string[]=[];
  const client={
   query:async(sql:string)=>{
    if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql.startsWith('SET LOCAL ')){
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
    if(sql==='ROLLBACK'){events.push('ROLLBACK');return {rows:[]};}
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('lock');throw Error('lock failed');
@@ -147,7 +159,7 @@ test('incident-response revocation retains connection after successful rollback'
  await assert.rejects(revokeAdminTotpFactor(
   {connect:async()=>client} as never,token,target,pepper,
  ),/lock failed/);
- assert.deepEqual(events,['BEGIN','lock','ROLLBACK','release:false']);
+ assert.deepEqual(events,['BEGIN','lock-timeout','statement-timeout','lock','ROLLBACK','release:false']);
 });
 
 test('unconfirmed session revocation aborts factor change before audit',async()=>{
@@ -157,7 +169,7 @@ test('unconfirmed session revocation aborts factor change before audit',async()=
   /admin_totp_session_revocation_unavailable/,
  );
  assert.deepEqual(f.events,[
-  'BEGIN','target-lock','authorize-actor','disable-factor','revoke-sessions',
+  'BEGIN','lock-timeout','statement-timeout','target-lock','authorize-actor','disable-factor','revoke-sessions',
   'ROLLBACK','release',
  ]);
 });
