@@ -173,6 +173,8 @@
 
 ## Evidence log
 
+Frontend workstream (2026-11-15): [frontend `4136456`](https://github.com/nurgeldiserikbay/services-front/commit/41364564118bc44dafd083ce8d1174515c0f2ea5) updates CI gate test order, seller fail-closed regression expectations, staging release status parser, and pinned backend baseline documentation. CI [run #43723802467](https://github.com/nurgeldiserikbay/services-front/actions/runs/43723802467) was triggered; **full verification remains pending**. Frontend checklist items remain unchecked until the corresponding test/build/integration gates pass.
+
 Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.com/nurgeldiserikbay/services-front/actions/runs/43710794087) stopped at a test fixture that accepted `2026-11-05T11:00:00.123Z` for a `2026-11-04T11:00:00Z` request, exceeding the enforced 24-hour TTL by 123 ms. [Frontend commit `1fdd457`](https://github.com/nurgeldiserikbay/services-front/commit/1fdd457a08333f41e1a9af11df98832a346d79f3) corrected the test fixture to stay within TTL; [new CI run 43723522028](https://github.com/nurgeldiserikbay/services-front/actions/runs/43723522028) was in progress when recorded. Frontend CI/typecheck/build are **not verified green**.
 
 | Date (UTC) | Repository | Commit / CI evidence | Scope | Verification |
