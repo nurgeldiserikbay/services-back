@@ -226,3 +226,34 @@ test('moderation read denies MFA expiry between authentication and case query',a
   assert.equal(caseQueries,0);
  }finally{Date.now=originalNow;restore();}
 });
+
+for(const scenario of ['session','mfa'] as const){
+ test(`moderation read rejects ${scenario} expiry during final database query`,async()=>{
+  const originalNow=Date.now;
+  try{
+   process.env.SERVICES_ENABLE_PLATFORM_MODERATION_HTTP='enabled';
+   process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=key.toString('base64');
+   const initial=1_800_000_000_000;
+   let current=initial;
+   Date.now=()=>current;
+   let caseQueries=0;
+   const db={transaction:async(work:(client:unknown)=>Promise<unknown>)=>work({
+    query:async(sql:string)=>{
+     if(sql.includes('FROM platform_admin_sessions'))
+      return {rows:[{user_id:userId,role:'auditor',
+       expires_at:new Date(initial+(scenario==='session'?1000:60000)),
+       mfa_verified_at:new Date(initial-(scenario==='mfa'?15*60*1000-1000:1000)),
+       scope}]};
+     caseQueries++;
+     current=initial+2000;
+     return {rows:[{id:randomUUID(),resource_scope:scope,subject_kind:'review',
+      state:'triage',created_at:new Date(initial)}]};
+    }
+   })};
+   await assert.rejects(
+    new PlatformModerationReadService(db as never).list('Bearer '+token),
+    UnauthorizedException);
+   assert.equal(caseQueries,1);
+  }finally{Date.now=originalNow;restore();}
+ });
+}
