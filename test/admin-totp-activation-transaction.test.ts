@@ -163,3 +163,42 @@ test('locked enrollment rollback failure discards connection without retry',asyn
  );
  assert.deepEqual(events,['BEGIN','lock-timeout','statement-timeout','lock','lockout','ROLLBACK','release:true']);
 });
+
+test('failed enrollment BEGIN discards uncertain database connection',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{events.push(sql);throw Error('begin failed');},
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(
+  activateAdminTotpInTransaction({connect:async()=>client} as never,primary,code,async()=>key,now),
+  /begin failed/,
+ );
+ assert.deepEqual(events,['BEGIN','release:true']);
+});
+
+test('enrollment failure with failed rollback discards connection and preserves original error',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql.startsWith('SET LOCAL ')){
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
+   if(sql.includes('pg_advisory_xact_lock')){
+    events.push('lock');throw Error('lock failed');
+   }
+   if(sql==='ROLLBACK'){events.push('ROLLBACK');throw Error('rollback failed');}
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(
+  activateAdminTotpInTransaction({connect:async()=>client} as never,primary,code,async()=>key,now),
+  /lock failed/,
+ );
+ assert.deepEqual(events,[
+  'BEGIN','lock-timeout','statement-timeout','lock','ROLLBACK','release:true',
+ ]);
+});
