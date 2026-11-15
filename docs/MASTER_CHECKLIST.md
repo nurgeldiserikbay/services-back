@@ -192,7 +192,9 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 | 2026-11-15 | services-back | [`4d2d5cf`](https://github.com/nurgeldiserikbay/services-back/commit/4d2d5cfeb871d7ceb3db56da57daef2cbba68731) | Early CI gate for search, public profile, seller decision and guest status HTTP contracts | **PASS** in backend CI #43724266432 |
 | 2026-11-15 | services-admin | [`e34f45a`](https://github.com/nurgeldiserikbay/services-admin/commit/e34f45a1e30ffcb48240f7729759f846d501b443) | Admin security headers and fail-closed UI regression assertions | Committed; test run and CI unverified |
 
-| 2026-11-15 | services-back | [CI #43724266432](https://github.com/nurgeldiserikbay/services-back/actions/runs/43724266432) | Backend API contract regression step (search, public profile, seller, guest HTTP) | **PASS**; API contract tests verified, cross-repo API parity pending |\n\n## Next acceptance gates
+| 2026-11-15 | services-back | [CI #43724266432](https://github.com/nurgeldiserikbay/services-back/actions/runs/43724266432) | Backend API contract regression step (search, public profile, seller, guest HTTP) | **PASS**; API contract tests verified, cross-repo API parity pending |\n\n| 2026-11-15 | services-admin | [`d0bb295`](https://github.com/nurgeldiserikbay/services-admin/commit/d0bb2954ab03a164549e58300b597d2f9519af47) | Corrected Admin UI inventory: feature-flagged server-authenticated `/moderation` route exists; landing page is placeholder | Code inspected; full UI acceptance and CI unverified |
+
+## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
