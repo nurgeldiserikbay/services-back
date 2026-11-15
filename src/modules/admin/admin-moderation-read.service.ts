@@ -100,6 +100,13 @@ export class PlatformModerationReadService{
    if(!result||!Array.isArray(result.rows))
     throw new UnauthorizedException('Authentication required');
    const items=validateModerationCaseRows(result.rows,new Set(scopes));
+   // Do not return a privileged snapshot if the session/MFA window expired
+   // while PostgreSQL was executing the final read.
+   const completedAt=Date.now();
+   if(!Number.isSafeInteger(completedAt)||completedAt<readAt||
+      principal.sessionExpiresAt<=completedAt||
+      completedAt-principal.mfaVerifiedAt>15*60*1000)
+    throw new UnauthorizedException('Authentication required');
    return {items};
   });}catch(error){
    if(error instanceof UnauthorizedException)throw error;
