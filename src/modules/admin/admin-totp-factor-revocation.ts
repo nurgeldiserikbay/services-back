@@ -37,6 +37,8 @@ export async function revokeAdminTotpFactorAndSessions(
  try{
   await client.query('BEGIN');
   began=true;
+  await client.query("SET LOCAL lock_timeout = '3s'");
+  await client.query("SET LOCAL statement_timeout = '8s'");
   await client.query(
    'SELECT pg_advisory_xact_lock(hashtextextended($1::text, 104729))',
    [staffId],
