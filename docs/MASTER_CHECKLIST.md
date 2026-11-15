@@ -182,7 +182,10 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 | 2026-11-15 | services-back | [`ed322ee`](https://github.com/nurgeldiserikbay/services-back/commit/ed322eea24aa441c4ca0b004315d75a7823ab390) | Atomic TOTP timestamp test update | Committed; CI unverified |
 | 2026-11-15 | services-admin | [`ce1f961`](https://github.com/nurgeldiserikbay/services-admin/commit/ce1f961d772e2224c3e8fc2a39f3a7cd04407100) | Admin acceptance gates mapped to master checklist; restricted placeholder confirmed | Documentation committed; UI acceptance pending; CI unverified |
 
-| 2026-11-15 | services-back | [`4d2d5cf`](https://github.com/nurgeldiserikbay/services-back/commit/4d2d5cfeb871d7ceb3db56da57daef2cbba68731) | Early CI gate for search, public profile, seller decision and guest status HTTP contracts | **Pending** new main CI result; API contract tests remain unchecked |\n\n## Next acceptance gates
+| 2026-11-15 | services-back | [`4d2d5cf`](https://github.com/nurgeldiserikbay/services-back/commit/4d2d5cfeb871d7ceb3db56da57daef2cbba68731) | Early CI gate for search, public profile, seller decision and guest status HTTP contracts | **Pending** new main CI result; API contract tests remain unchecked |\n\n
+| 2026-11-15 | services-admin | [`e34f45a`](https://github.com/nurgeldiserikbay/services-admin/commit/e34f45a1e30ffcb48240f7729759f846d501b443) | Admin security headers and fail-closed UI regression assertions | Committed; test run and CI unverified |
+
+## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
