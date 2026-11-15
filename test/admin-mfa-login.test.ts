@@ -616,3 +616,54 @@ test('fifth failed MFA attempt locks the next login before factor access',async(
  assert.equal(factorReads,readsBeforeLockout);
  assert.equal(sessionWrites,0);
 });
+
+test('recent account session proof is checked in the MFA transaction before factor locks',async()=>{
+ const f=fixture('ok');
+ const accountPepper=randomBytes(32);
+ const {issueSessionToken,hashSessionToken}=await import('../src/modules/identity/session-proof.js');
+ const accountToken=issueSessionToken(accountPepper).token;
+ const originalConnect=f.pool.connect.bind(f.pool);
+ f.pool.connect=async()=>{
+  const client=await originalConnect();
+  const originalQuery=client.query.bind(client);
+  client.query=async(sql:string,params?:unknown[])=>{
+   if(sql.includes('FROM sessions session')){
+    assert.match(sql,/JOIN platform_admin_staff staff/);
+    assert.deepEqual(params,[hashSessionToken(accountToken,accountPepper),now]);
+    f.events.push('account-primary');
+    return {rows:[{staff_id:staffId,authenticated_at:new Date(now-1000)}]};
+   }
+   return originalQuery(sql,params);
+  };
+  return client;
+ };
+ const result=await loginAdminWithProvisionedTotp(
+  f.pool,{accountBearer:accountToken,accountPepper},code,async()=>key,pepper,now);
+ assert.ok(result?.token);
+ assert.ok(f.events.indexOf('account-primary')<f.events.indexOf('staff-lock'));
+ assert.ok(f.events.indexOf('account-primary')>f.events.indexOf('BEGIN'));
+ assert.equal(f.events.at(-2),'COMMIT');
+});
+
+test('invalid account primary proof denies MFA before factor and session issuance',async()=>{
+ const f=fixture('ok');
+ const accountPepper=randomBytes(32);
+ const {issueSessionToken}=await import('../src/modules/identity/session-proof.js');
+ const accountToken=issueSessionToken(accountPepper).token;
+ const originalConnect=f.pool.connect.bind(f.pool);
+ f.pool.connect=async()=>{
+  const client=await originalConnect();
+  const originalQuery=client.query.bind(client);
+  client.query=async(sql:string,params?:unknown[])=>{
+   if(sql.includes('FROM sessions session'))return {rows:[]};
+   return originalQuery(sql,params);
+  };
+  return client;
+ };
+ assert.equal(await loginAdminWithProvisionedTotp(
+  f.pool,{accountBearer:accountToken,accountPepper},code,async()=>key,pepper,now),null);
+ assert.equal(f.events.includes('staff-lock'),false);
+ assert.equal(f.events.includes('factor-lock'),false);
+ assert.equal(f.events.includes('session'),false);
+ assert.ok(f.events.includes('ROLLBACK'));
+});
