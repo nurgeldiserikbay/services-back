@@ -225,6 +225,10 @@ test('failed COMMIT discards incident-response connection after rollback',async(
     if(sql==='COMMIT')throw Error('commit failed');
     return {rows:[]};
    }
+   if(sql.startsWith('SET LOCAL ')){
+    events.push(sql.includes('lock_timeout')?'lock-timeout':'statement-timeout');
+    return {rows:[]};
+   }
    if(sql.includes('pg_advisory_xact_lock')){
     events.push('lock');return {rows:[{}]};
    }
@@ -248,6 +252,6 @@ test('failed COMMIT discards incident-response connection after rollback',async(
   {connect:async()=>client} as never,token,target,pepper,
  ),/commit failed/);
  assert.deepEqual(events,[
-  'BEGIN','lock','actor','factor','sessions','audit','COMMIT','ROLLBACK','release:true',
+  'BEGIN','lock-timeout','statement-timeout','lock','actor','factor','sessions','audit','COMMIT','ROLLBACK','release:true',
  ]);
 });
