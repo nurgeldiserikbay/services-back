@@ -29,6 +29,7 @@ function fixture(mode:'active'|'already-disabled'|'revoke-fails'|'audit-fails'|'
     assert.deepEqual(params?.slice(1),[now,300000]);
     assert.ok(sql.includes('JOIN platform_admin_grants security_grant'));
     assert.match(sql,/session\.created_at<=to_timestamp/);
+    assert.match(sql,/session\.created_at<=session\.mfa_verified_at/);
     assert.match(sql,/actor_factor\.activated_at<=session\.mfa_verified_at/);
     assert.match(sql,/actor_factor\.disabled_at IS NULL/);
     assert.ok(sql.includes('FOR SHARE OF session,actor,security_grant'));
