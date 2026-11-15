@@ -246,7 +246,9 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-admin | [`4dcb710`](https://github.com/nurgeldiserikbay/services-admin/commit/4dcb7106ab44ec5f9f935c5881144367f921a954) | Production smoke assertions for unsupported admin BFF methods, malformed/duplicate cookies and no denied-session cookie mutation | Committed; CI run result pending |
 
-| 2026-11-15 | services-back | [CI #43733951815](https://github.com/nurgeldiserikbay/services-back/actions/runs/43733951815) | Account OTP verification replay, confirmed delivery, network/global quotas and sign-in | **PASS** |\n| 2026-11-15 | services-back | [CI #43734828654](https://github.com/nurgeldiserikbay/services-back/actions/runs/43734828654) | OTP provider deadline, late-response rejection, network retention cleanup, verification and abuse quotas | **PASS**; general rate-limit and full authentication E2E acceptance remain pending |\n\n## Next acceptance gates
+| 2026-11-15 | services-back | [CI #43733951815](https://github.com/nurgeldiserikbay/services-back/actions/runs/43733951815) | Account OTP verification replay, confirmed delivery, network/global quotas and sign-in | **PASS** |\n| 2026-11-15 | services-back | [CI #43734828654](https://github.com/nurgeldiserikbay/services-back/actions/runs/43734828654) | OTP provider deadline, late-response rejection, network retention cleanup, verification and abuse quotas | **PASS**; general rate-limit and full authentication E2E acceptance remain pending |\n\n| 2026-11-15 | services-admin | [`72a25db`](https://github.com/nurgeldiserikbay/services-admin/commit/72a25db1866ae16ad8fbd2d9e4d610986af2ba6b) | Inspected registered admin backend HTTP module: MFA login function exists but trusted primary-factor HTTP login route is not registered; documented security dependency and rollout blockers | Contract gap confirmed by source; Admin UI login/E2E remains pending |
+
+## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
