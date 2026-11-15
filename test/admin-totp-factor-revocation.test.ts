@@ -157,3 +157,47 @@ test('malformed checked-out revocation client is released as broken',async()=>{
  );
  assert.deepEqual(releases,[true]);
 });
+
+test('failed rollback discards revocation connection and preserves original error',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql==='ROLLBACK'){events.push('ROLLBACK');throw Error('rollback failed');}
+   if(sql.includes('pg_advisory_xact_lock')){
+    events.push('lock');throw Error('lock failed');
+   }
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(
+  revokeAdminTotpFactorAndSessions(
+   {connect:async()=>client} as never,staffId,token,pepper,now,
+  ),
+  /lock failed/,
+ );
+ assert.deepEqual(events,['BEGIN','lock','ROLLBACK','release:true']);
+});
+
+test('successful rollback returns revocation connection to pool normally',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql==='ROLLBACK'){events.push('ROLLBACK');return {rows:[]};}
+   if(sql.includes('pg_advisory_xact_lock')){
+    events.push('lock');throw Error('lock failed');
+   }
+   throw Error('unexpected SQL');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(
+  revokeAdminTotpFactorAndSessions(
+   {connect:async()=>client} as never,staffId,token,pepper,now,
+  ),
+  /lock failed/,
+ );
+ assert.deepEqual(events,['BEGIN','lock','ROLLBACK','release:false']);
+});
