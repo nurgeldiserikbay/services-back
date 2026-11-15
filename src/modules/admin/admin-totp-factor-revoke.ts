@@ -16,13 +16,18 @@ export async function revokeAdminTotpFactor(
  sessionPepper:Buffer,
  now=Date.now(),
 ):Promise<boolean>{
- if(typeof targetStaffId!=='string'||!UUID.test(targetStaffId)||
+ if(!pool||typeof pool.connect!=='function'||
+    typeof targetStaffId!=='string'||!UUID.test(targetStaffId)||
     !Number.isSafeInteger(now)||now<0||
     now>8640000000000000)return false;
  let tokenHash:string;
  try{tokenHash=hashAdminSessionToken(actorToken,sessionPepper);}
  catch{return false;}
  const client:PoolClient=await pool.connect();
+ if(!client||typeof client.query!=='function'||typeof client.release!=='function'){
+  if(client&&typeof client.release==='function')client.release(true);
+  throw new Error('admin_totp_revocation_connection_unavailable');
+ }
  let began=false;
  let discard=false;
  try{
