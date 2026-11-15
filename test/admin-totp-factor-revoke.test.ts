@@ -159,3 +159,29 @@ test('unconfirmed session revocation aborts factor change before audit',async()=
   'ROLLBACK','release',
  ]);
 });
+
+test('incident-response rejects invalid pool before attempting SQL',async()=>{
+ for(const pool of [null,undefined,{}, {connect:null}, {connect:'invalid'}]){
+  assert.equal(await revokeAdminTotpFactor(pool as never,token,target,pepper),false);
+ }
+});
+
+test('incident-response discards malformed checked-out clients before BEGIN',async()=>{
+ for(const client of [
+  {query:null,release:(_broken?:boolean)=>{}},
+  {query:async()=>{},release:null},
+ ]){
+  const releases:unknown[]=[];
+  const acquired={
+   ...client,
+   release:client.release===null?null:(broken?:boolean)=>{releases.push(broken);},
+  };
+  await assert.rejects(
+   revokeAdminTotpFactor(
+    {connect:async()=>acquired} as never,token,target,pepper,
+   ),
+   /admin_totp_revocation_connection_unavailable/,
+  );
+  assert.deepEqual(releases,client.release===null?[]:[true]);
+ }
+});
