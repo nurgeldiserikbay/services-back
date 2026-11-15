@@ -202,3 +202,23 @@ test('enrollment failure with failed rollback discards connection and preserves 
   'BEGIN','lock-timeout','statement-timeout','lock','ROLLBACK','release:true',
  ]);
 });
+
+test('enrollment timeout setup failure rolls back before any factor access',async()=>{
+ const events:string[]=[];
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'){events.push('BEGIN');return {rows:[]};}
+   if(sql==="SET LOCAL lock_timeout = '3s'"){
+    events.push('lock-timeout');throw Error('timeout setup failed');
+   }
+   if(sql==='ROLLBACK'){events.push('ROLLBACK');return {rows:[]};}
+   throw Error('unexpected SQL after failed timeout setup');
+  },
+  release:(broken?:boolean)=>events.push('release:'+String(broken)),
+ };
+ await assert.rejects(
+  activateAdminTotpInTransaction({connect:async()=>client} as never,primary,code,async()=>key,now),
+  /timeout setup failed/,
+ );
+ assert.deepEqual(events,['BEGIN','lock-timeout','ROLLBACK','release:false']);
+});
