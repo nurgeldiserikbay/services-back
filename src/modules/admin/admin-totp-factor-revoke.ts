@@ -50,6 +50,7 @@ export async function revokeAdminTotpFactor(
      AND EXISTS (SELECT 1 FROM platform_admin_totp_factors actor_factor
        WHERE actor_factor.staff_id=staff.id
          AND actor_factor.activated_at IS NOT NULL
+         AND actor_factor.activated_at<=session.mfa_verified_at
          AND actor_factor.disabled_at IS NULL)
      AND EXISTS (SELECT 1 FROM platform_admin_grants grants
        WHERE grants.staff_id=staff.id AND grants.scope='admin.security.revoke')
