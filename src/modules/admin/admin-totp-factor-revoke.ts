@@ -30,7 +30,10 @@ export async function revokeAdminTotpFactor(
  }
  let began=false;
  let discard=false;
+ let beginAttempted=false;
+ let commitAttempted=false;
  try{
+  beginAttempted=true;
   await client.query('BEGIN');
   began=true;
   // Acquire the target lock BEFORE any row locks. MFA login and activation
@@ -98,10 +101,12 @@ export async function revokeAdminTotpFactor(
   if(!audit||!Array.isArray(audit.rows)||audit.rows.length!==1||
      typeof audit.rows[0]?.id!=='string'||!UUID.test(audit.rows[0].id))
    throw new Error('admin_totp_revocation_audit_unavailable');
+  commitAttempted=true;
   await client.query('COMMIT');
   began=false;
   return true;
  }catch(error){
+  if((beginAttempted&&!began)||commitAttempted)discard=true;
   if(began){
    try{await client.query('ROLLBACK');}
    catch{
