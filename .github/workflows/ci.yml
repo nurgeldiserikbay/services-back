@@ -109,6 +109,7 @@ jobs:
             test/admin-mfa-security-audit.test.ts \
             test/admin-mfa-audit-session-rollback.test.ts \
             test/admin-totp-factor-store.test.ts \
+            test/admin-totp-factor-activation.test.ts \
             test/admin-totp-secret.test.ts \
             test/admin-totp.test.ts \
             test/admin-mfa-attempts.test.ts \
