@@ -45,7 +45,6 @@ export async function resolvePlatformAdminSession(
  WHERE session.token_hash=$1
   AND session.revoked_at IS NULL
   AND session.created_at<=to_timestamp($2::double precision/1000.0)
-  AND session.created_at<=session.mfa_verified_at
   AND session.expires_at>to_timestamp($2::double precision/1000.0)
   AND session.mfa_verified_at<=to_timestamp($2::double precision/1000.0)
   AND session.mfa_verified_at>=to_timestamp(($2::double precision-900000)/1000.0)
