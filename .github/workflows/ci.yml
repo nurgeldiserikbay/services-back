@@ -135,11 +135,6 @@ jobs:
             test/public-profile-contract.test.ts \
             test/seller-http-contract-regression.test.ts \
             test/guest-request-status-http.test.ts
-      - name: Account authentication and remote session revoke HTTP boundaries (fail fast)
-        run: |
-          node --import tsx --test \
-            test/account-bearer-session-http.test.ts \
-            test/account-remote-session-revoke-http.test.ts
       - name: Guest capability and OTP abuse boundary regressions (fail fast)
         run: node --import tsx --test test/guest-request-security.test.ts
       - name: Guest request lifecycle boundary regressions (fail fast)
@@ -208,6 +203,11 @@ jobs:
           node --import tsx --test \
             test/account-otp-sign-in-db.test.ts \
             test/account-login-private-http-db.test.ts
+      - name: Account authentication and remote session revoke HTTP boundaries (fail fast)
+        run: |
+          node --import tsx --test \
+            test/account-bearer-session-http.test.ts \
+            test/account-remote-session-revoke-http.test.ts
       - name: Guest request PostgreSQL transaction integration (fail fast)
         run: |
           node --import tsx --test \
