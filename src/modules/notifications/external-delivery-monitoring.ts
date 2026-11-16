@@ -98,6 +98,6 @@ export async function readExternalDeliveryQueueSnapshot(
  const count=values.slice(0,-1).reduce((sum,value)=>sum+value,0);
  if(!Number.isSafeInteger(count)||count!==values[7])
   throw new Error('invalid_notification_monitor_snapshot');
- return Object.fromEntries(METRICS.map((key,index)=>[key,values[index]]))
-   as ExternalDeliveryQueueSnapshot;
+ return Object.fromEntries(METRICS.map((key,index)=>[key,values[index]])) as
+  ExternalDeliveryQueueSnapshot;
 }
