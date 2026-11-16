@@ -271,6 +271,8 @@ jobs:
         run: node --import tsx --test test/dead-letter-inventory-db.test.ts
       - name: External notification queue alert thresholds and privacy (fail fast)
         run: node --import tsx --test test/external-delivery-alerts.test.ts
+      - name: External delivery alert publication control and privacy (fail fast)
+        run: node --import tsx --test test/external-delivery-observation.test.ts
       - name: External delivery monitoring PostgreSQL consistency and privacy (fail fast)
         run: node --import tsx --test test/external-delivery-monitoring-db.test.ts
       - name: Bounded batch external delivery PostgreSQL E2E (fail fast)
