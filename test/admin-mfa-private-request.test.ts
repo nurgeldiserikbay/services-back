@@ -51,3 +51,14 @@ test('private MFA parser rejects getters and hidden properties without invoking 
  };
  assert.equal(parsePrivateAdminMfaRequest(symbolic),null);
 });
+
+test('private MFA parser requires enumerable own data properties',()=>{
+ const token=randomBytes(32).toString('base64url');
+ for(const field of ['account_session_token','totp_code'] as const){
+  const payload={account_session_token:token,totp_code:'123456'};
+  Object.defineProperty(payload,field,{
+   value:payload[field],enumerable:false,configurable:true,
+  });
+  assert.equal(parsePrivateAdminMfaRequest(payload),null);
+ }
+});
