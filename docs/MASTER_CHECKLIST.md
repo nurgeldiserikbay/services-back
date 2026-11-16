@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+Admin encrypted-session envelope validation (2026-11-16): [`services-admin` commit `3f9c26f`](https://github.com/nurgeldiserikbay/services-admin/commit/3f9c26f25d2736e38141851d15e9df27bdd7623d) requires exact own session payload fields and adds tests for TTL boundary and malformed cookie envelope. [Admin CI #43832412603](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43832412603) **passed** typecheck, security lint, tests, build and production smoke. Authenticated MFA browser E2E and comprehensive ESLint/React checks remain open.
+
+
 Admin cache-directive conflict defense (2026-11-16): [`services-admin` commit `5b92a38`](https://github.com/nurgeldiserikbay/services-admin/commit/5b92a382bf7ea4400f1ce0c9fe45cebbe0deab81) rejects privileged moderation and logout upstream responses declaring `public` or `s-maxage` alongside `no-store`, with behavioral regression tests. [Admin CI #43831379161](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43831379161) **passed** typecheck, lint, tests, production build and smoke. Authenticated MFA browser E2E and full semantic lint remain open.
 
 
