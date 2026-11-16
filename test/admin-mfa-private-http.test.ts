@@ -81,6 +81,22 @@ test('isolated Nest HTTP boundary keeps private MFA hidden without deployment op
   });
   assert.equal(malformed.status,401);
   assert.equal(connects,0);
+  const unavailable=await fetch(`http://127.0.0.1:${address.port}/v1/admin/private/mfa/verify`,{
+   method:'POST',
+   headers:{
+    'content-type':'application/json',
+    'x-services-admin-mfa-key':process.env.ADMIN_MFA_BFF_KEY!,
+   },
+   body:JSON.stringify({
+    account_session_token:randomBytes(32).toString('base64url'),
+    totp_code:'123456',
+   }),
+  });
+  assert.equal(unavailable.status,503);
+  assert.equal(connects,1);
+  const errorBody=await unavailable.text();
+  assert.doesNotMatch(errorBody,/database should not be called|session_token|private database/i);
+  assert.match(unavailable.headers.get('cache-control')??'',/no-store/);
  }finally{
   await app.close();
   for(const [name,value] of Object.entries({
