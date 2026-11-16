@@ -28,7 +28,7 @@ function fixture(hasWork=true){
       if(sql.includes('SELECT d.intent_id::text')){
        log.push('ACK_LOCK');
        return {rows:[{
-        intent_id:intentId,channel:'EMAIL',attempt_count:0,intent_attempts:0,
+        intent_id:intentId,channel:'EMAIL',attempt_count:0,intent_attempts:0,next_attempt_at:null,intent_next_attempt_at:null,
        }]};
       }
       if(sql.includes('UPDATE notification_deliveries')){
