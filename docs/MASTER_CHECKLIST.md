@@ -88,7 +88,7 @@
 - [x] Outbox model — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); outbox event staging and delivery linkage
 - [x] Notification intents — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); IN_APP and EMAIL intent staging
 - [ ] Email/SMS integration — Pending verification
-- [ ] Retry and dead-letter handling — Prepared: fenced delivery retry/acknowledgement and provider reconciliation (PR #113–118), audited dead-letter requeue/replay (PR #119–120), PostgreSQL requeue E2E (PR #122), opt-in one-shot worker (PR #123), and privacy-minimal internal queue metrics snapshot with PostgreSQL regression (PR #124, branch CI #43821794412 PASS). Real provider adapter, scheduler, admin HTTP/CSRF, production metrics wiring/alerts and operational acceptance remain open
+- [ ] Retry and dead-letter handling — Prepared: fenced retry/acknowledgement and provider reconciliation (PR #113–118), audited requeue/replay (PR #119–120), PG E2E (PR #122), opt-in worker (PR #123), internal queue metrics (PR #124), and monitoring channel/terminal consistency hardening (PR #125, CI #43822624983 PASS). Real provider, scheduler, admin HTTP/CSRF, production alerts and operational acceptance remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
 - [ ] Delivery monitoring — Pending verification
@@ -439,6 +439,8 @@ Private MFA HTTP follow-up (2026-11-16): [`97547f9`](https://github.com/nurgeldi
 Private MFA HTTP follow-up (2026-11-16): [`4ba9b00`](https://github.com/nurgeldiserikbay/services-back/commit/4ba9b00248e1dad75275fe76111baba8a0de6888) adds isolated Nest HTTP assertions for wrong BFF credential (404) and caller-injected staffId (401), both without DB access. **Prepared; CI result unverified; real PostgreSQL E2E pending.** No acceptance checkbox changed.
 
 Private MFA HTTP database-outage follow-up (2026-11-16): [`0bf3569`](https://github.com/nurgeldiserikbay/services-back/commit/0bf35699197fd607830a989077adacab9fb8dffb) adds isolated HTTP 503/error-body sanitization regression for a valid BFF credential when the database connection fails. **Prepared; CI execution and real PostgreSQL E2E pending.** No top-level acceptance checkbox changed.
+
+| 2026-11-16 | services-back | [PR #125](https://github.com/nurgeldiserikbay/services-back/pull/125), [`385c0b0`](https://github.com/nurgeldiserikbay/services-back/commit/385c0b0613ba670c90a60b68102d6a1cc5c94f62), [branch CI #43822624983](https://github.com/nurgeldiserikbay/services-back/actions/runs/43822624983), [main CI #43822956062](https://github.com/nurgeldiserikbay/services-back/actions/runs/43822956062) | Monitoring counts EMAIL/SMS channel drift rather than silently dropping rows; invalid terminal retry and zero-attempt FAILED states classified inconsistent; PG regression | **PASS branch CI, merged main; post-merge CI pending**. Real provider and production alert wiring open |
 
 ## Next acceptance gates
 
