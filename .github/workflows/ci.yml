@@ -251,6 +251,8 @@ jobs:
         run: node --import tsx --test test/notification-delivery-retry-policy.test.ts
       - name: External delivery failure retry and terminal PostgreSQL integration (fail fast)
         run: node --import tsx --test test/external-delivery-failure-db.test.ts
+      - name: External provider acceptance PostgreSQL integration (fail fast)
+        run: node --import tsx --test test/external-delivery-ack-db.test.ts
       - name: External delivery fenced lease PostgreSQL integration (fail fast)
         run: node --import tsx --test test/external-delivery-lease-db.test.ts
       - name: Notification pipeline and person inbox PostgreSQL integration (fail fast)
