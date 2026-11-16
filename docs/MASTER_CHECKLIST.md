@@ -141,7 +141,7 @@
 - [x] Admin MFA PostgreSQL integration — Verified in services-back CI #43723300416 (2026-11-15)
 - [x] Frontend typecheck and production build — Verified: [Frontend CI #43724021062](https://github.com/nurgeldiserikbay/services-front/actions/runs/43724021062), `pnpm typecheck` and `pnpm build` both passed on `680a91f`.
 - [ ] Frontend lint — Prepared: security-focused `pnpm lint` gate and positive/negative regression fixtures verified in frontend CI #43816264053 (2026-11-16); full JS/React/Next.js semantic lint configuration and acceptance remain pending
-- [ ] Admin typecheck lint build — Pending verification
+- [ ] Admin typecheck lint build — Prepared: admin CI #43824955158 passed typecheck, 103 node tests, production build and default-off/flagged BFF smoke (2026-11-16); dedicated semantic lint gate still missing, so acceptance remains open
 - [x] API contract tests — Backend search, public profile, seller and guest HTTP contract regression gate passed in CI #43724266432 (2026-11-15); cross-repository parity remains separately pending
 - [ ] End-to-end user journeys — Pending verification
 - [ ] All main CI checks green — Backend main passed #43723300416; frontend/admin/docs main checks not yet verified
@@ -173,6 +173,9 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Admin CI recovery verified (2026-11-16): [`services-admin` commit `580c704`](https://github.com/nurgeldiserikbay/services-admin/commit/580c70497f09085805e5ed263500e9bbfaf301e6) passed [Admin foundation CI #43824955158](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43824955158), including `pnpm typecheck`, **103 passing Node tests**, `pnpm build`, dependency audit and unauthenticated/fake-session production HTTP smoke gates. The corrections include TypeScript narrowing (`d313762`), strict test harness/contract updates, and Next.js RSC `notFound()` smoke assertions that verify denied content even when its document response uses HTTP 200. The admin middleware and backend session authorization remain security-critical; this confirms only CI-covered negative paths, not authenticated browser E2E or staff UI acceptance. Since `pnpm lint` is not implemented, the combined `Admin typecheck lint build` acceptance item remains `[ ]`.
+
 
 Admin CI pending-stream regression (2026-11-16): [admin `c8b206e`](https://github.com/nurgeldiserikbay/services-admin/commit/c8b206ef00f7a421ebafe8e59ee50e12004f1895) closes finite test ReadableStream bodies explicitly so the moderation transport can reach EOF rather than leaving pending asynchronous Node tests. The previous [admin CI #43823446625](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43823446625) reported 101 passed, 0 asserted failures and 2 cancelled pending tests, so **failed overall**. [Replacement admin CI #43823538425](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43823538425) started; keep acceptance unchecked until final conclusion.
 
