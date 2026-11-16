@@ -15,7 +15,7 @@ function fixture(){
    query:async(sql:string)=>{
     statements.push(sql);
     if(sql.includes('SELECT d.intent_id::text'))return {rows:[{
-     intent_id:claim.intentId,channel:'EMAIL',attempt_count:0,intent_attempts:0,
+     intent_id:claim.intentId,channel:'EMAIL',attempt_count:0,intent_attempts:0,next_attempt_at:null,intent_next_attempt_at:null,
     }]};
     if(sql.includes('UPDATE notification_deliveries'))return {rows:[{id:claim.deliveryId}]};
     if(sql.includes('UPDATE notification_intents'))return {rows:[{id:claim.intentId}]};
