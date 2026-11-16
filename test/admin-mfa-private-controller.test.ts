@@ -102,3 +102,30 @@ test('private MFA controller sanitizes database failures and preserves genuine h
   }
  }
 });
+
+test('private MFA controller sanitizes driver errors with misleading names',async()=>{
+ const original=process.env.SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP;
+ const originalKey=process.env.ADMIN_MFA_BFF_KEY;
+ const credential=randomBytes(32).toString('base64');
+ const driverError=new Error('internal driver failure');
+ driverError.name='NotFoundException';
+ const controller=new PrivateAdminMfaController({
+  pool:{connect:async()=>{throw driverError;}} as never,
+  accountSessionPepper:randomBytes(32),
+  adminSessionPepper:randomBytes(32),
+  resolveTotpKey:async()=>null,
+ });
+ try{
+  process.env.SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP='enabled';
+  process.env.ADMIN_MFA_BFF_KEY=credential;
+  await assert.rejects(controller.verify(credential,{
+   account_session_token:randomBytes(32).toString('base64url'),
+   totp_code:'123456',
+  }),{name:'ServiceUnavailableException'});
+ }finally{
+  if(original===undefined)delete process.env.SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP;
+  else process.env.SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP=original;
+  if(originalKey===undefined)delete process.env.ADMIN_MFA_BFF_KEY;
+  else process.env.ADMIN_MFA_BFF_KEY=originalKey;
+ }
+});
