@@ -91,7 +91,7 @@
 - [ ] Retry and dead-letter handling — Prepared: fenced retry/acknowledgement, reconciliation, audited requeue, bounded worker and queue monitoring (PR #113–127); PostgreSQL lease E2E and schedule/COMMIT guards (PR #128–133); opt-in polling and staged delivery cycle (PR #134–136); two-connection PostgreSQL staging-to-SENT E2E (PR #137, branch CI #43848576260 PASS). Real provider, production scheduler, admin HTTP/CSRF, alert transport and operational acceptance remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
-- [ ] Delivery monitoring — Pending verification
+- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open
 
 ### Admin
 
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Backend alert input and shared-DB CI stabilization (2026-11-16): commits `30756bc`, `fd9a186`, `30115b6` on `main` add fail-closed rejection of inherited/getter-backed queue counts and alert thresholds, tests proving getters are not executed, and `--test-concurrency=1` for full shared-PostgreSQL `npm test`. Earlier equivalent PR #139 passed [CI #43853012123](https://github.com/nurgeldiserikbay/services-back/actions/runs/43853012123) and [branch CI #43852982172](https://github.com/nurgeldiserikbay/services-back/actions/runs/43852982172). Fresh main CI pending; do not mark delivery monitoring as operationally complete. PR #140 was superseded because concurrent main updates repeatedly caused merge conflicts.
 
 Frontend real Chrome service-worker offline E2E (2026-11-16): [frontend `d286118`](https://github.com/nurgeldiserikbay/services-front/commit/d286118ea39d868ade67ba0f47c01308f1a9a3bc) introduces headless real Chromium service-worker registration/control, Cache Storage inspection, CDP offline public navigation, rejection of private guest/account/seller API fetches while offline and online recovery against the actual Next.js production server; CI wiring and source contract tests included. [Frontend CI #43854504245](https://github.com/nurgeldiserikbay/services-front/actions/runs/43854504245) pending at record. Previous headless Chrome mobile keyboard smoke [CI #43853260947 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/43853260947). Actual physical Android PWA installability, screen-reader checks, and full authenticated browser E2E remain open; do not mark mobile release acceptance complete based on desktop headless Chrome.
 
