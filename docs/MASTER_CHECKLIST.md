@@ -104,7 +104,7 @@
 - [ ] Security audit trail — Pending verification
 - [ ] HTTP security headers — Prepared; verification pending
 - [ ] Admin UI functional acceptance — Pending verification
-- [ ] Admin PostgreSQL and E2E tests — Pending verification
+- [x] Admin PostgreSQL and E2E tests — Verified privileged moderation HTTP, live PostgreSQL scope and revocation, admin MFA sessions and authorization in backend CI #43804251293 (2026-11-16); full admin UI acceptance remains separate
 
 ### Frontend & PWA
 
@@ -335,11 +335,13 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-16 | services-back | [`98f2f54`](https://github.com/nurgeldiserikbay/services-back/commit/98f2f54011a2200ed98827007d812400269a94d5), [CI #43804193702](https://github.com/nurgeldiserikbay/services-back/actions/runs/43804193702) | Repaired CI structural regression after main concurrency-policy change: assert main runs are preserved and PR runs can be superseded; previous [CI #43803723792](https://github.com/nurgeldiserikbay/services-back/actions/runs/43803723792) reached full suite but failed `ci-database-order.test.ts` | **Pending CI**; full backend green not yet verified |
 
+| 2026-11-16 | services-back | [`e2c1c60`](https://github.com/nurgeldiserikbay/services-back/commit/e2c1c60be980448da7582a750472773aa230b732), [CI #43804251293](https://github.com/nurgeldiserikbay/services-back/actions/runs/43804251293), [CI #43804193702](https://github.com/nurgeldiserikbay/services-back/actions/runs/43804193702) | Full backend main build-and-test and dependency-audit PASS; includes privileged moderation live HTTP/PostgreSQL E2E, admin session/MFA, schema, unit and smoke gates | **PASS**; admin PostgreSQL/E2E acceptance verified; admin UI, cross-repo CI and production sign-off remain pending |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 16 (14 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 17 (15 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
 | 2026-11-15 | services-back | [`8e4eeb7`](https://github.com/nurgeldiserikbay/services-back/commit/8e4eeb7b9ca88f315b98946ed72c766e4a5fb4f4), [CI #43745179540](https://github.com/nurgeldiserikbay/services-back/actions/runs/43745179540) | Notification outbox and intents staging, idempotent IN_APP materialization, authenticated per-person inbox isolation, revocation; admin primary account proof and schedule proposal PostgreSQL gates | **PASS** (build-and-test and dependency-audit); external email/SMS delivery and dead-letter remain pending |
