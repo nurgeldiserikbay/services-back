@@ -88,7 +88,7 @@
 - [x] Outbox model — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); outbox event staging and delivery linkage
 - [x] Notification intents — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); IN_APP and EMAIL intent staging
 - [ ] Email/SMS integration — Pending verification
-- [ ] Retry and dead-letter handling — Prepared: retry, fenced lease, acknowledgement, provider reconciliation and FAILED inventory (PR #113–118); scoped/audited requeue (PR #119), including correctly recognizing replayed audit keys after state becomes PENDING (PR #120, branch CI #43816233852 PASS). Concrete provider, HTTP auth/CSRF, PostgreSQL operational requeue E2E and monitoring remain open
+- [ ] Retry and dead-letter handling — Prepared: retry, fenced lease, acknowledgement, provider reconciliation and FAILED inventory (PR #113–118); scoped/audited requeue and idempotent replay (PR #119–120); PostgreSQL audited requeue end-to-end regression is now gated in CI (PR #122, branch CI #43818206462 PASS). Concrete provider, HTTP auth/CSRF, operations deployment and production monitoring remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
 - [ ] Delivery monitoring — Pending verification
@@ -417,6 +417,8 @@ These are implementation tracking subitems, **not new top-level acceptance items
 Private MFA parser follow-up (2026-11-16): [`135cc88`](https://github.com/nurgeldiserikbay/services-back/commit/135cc887c50fdd1f56f95bc71ed8457e03c715d0) rejects non-enumerable mandatory fields; [`9cc2a14`](https://github.com/nurgeldiserikbay/services-back/commit/9cc2a14fdb094683ffa64da25d081544045088f4) adds regression coverage. **Prepared; CI and HTTP/PostgreSQL acceptance pending.** No top-level checkbox changed.
 
 Private MFA vault regression follow-up (2026-11-16): [`f59eb88`](https://github.com/nurgeldiserikbay/services-back/commit/f59eb88f3cb5b03054a64186a9bde09a3b0c2f4f) adds malformed vault response and independent key-copy tests. **Prepared; CI verification pending.** No acceptance checkbox changed.
+
+| 2026-11-16 | services-back | [PR #122](https://github.com/nurgeldiserikbay/services-back/pull/122), [`690f772`](https://github.com/nurgeldiserikbay/services-back/commit/690f7728d0443bc7b25ffe25833904e7aaa7466e), [branch CI #43818206462](https://github.com/nurgeldiserikbay/services-back/actions/runs/43818206462), [main CI #43818508988](https://github.com/nurgeldiserikbay/services-back/actions/runs/43818508988) | Database-backed operator MFA/session, org-scoped FAILED-to-PENDING requeue, single append-only audit, replay no-op, scope denial, session revocation and immutable audit are now verified by PostgreSQL E2E with test-transaction rollback | **PASS branch CI, merged main; main CI pending**. Provider is test stub; production provider and HTTP/CSRF remain open |
 
 ## Next acceptance gates
 
