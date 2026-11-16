@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend empty country directory UX (2026-11-16): [frontend `16ed62f`](https://github.com/nurgeldiserikbay/services-front/commit/16ed62f309736641addef15a6ca346317f0b9e41) distinguishes successful zero-country result from loading/error with localized status and regression test. [CI #43809710116](https://github.com/nurgeldiserikbay/services-front/actions/runs/43809710116) pending; prior [#43809124221](https://github.com/nurgeldiserikbay/services-front/actions/runs/43809124221) passed. Manual device acceptance remains open.
+
 Frontend city lookup error test repair (2026-11-16): [frontend `242be3a`](https://github.com/nurgeldiserikbay/services-front/commit/242be3af0b641b79db65352e1a6d080415b43025) updates stale busy-state assertion to account for cityError guard. [CI #43808008812](https://github.com/nurgeldiserikbay/services-front/actions/runs/43808008812) failed frontend unit test; [#43809124221](https://github.com/nurgeldiserikbay/services-front/actions/runs/43809124221) queued. Await green CI and manual device acceptance.
 
 Frontend city lookup error selection guard (2026-11-16): [frontend `50c3f75`](https://github.com/nurgeldiserikbay/services-front/commit/50c3f75a2f0733ee9e71e8173aa6303833faf031) prevents stale city options and selection when lookup fails; regression tests included. [CI #43808008812](https://github.com/nurgeldiserikbay/services-front/actions/runs/43808008812) pending; prior [#43807783004](https://github.com/nurgeldiserikbay/services-front/actions/runs/43807783004) passed. Device acceptance remains open.
