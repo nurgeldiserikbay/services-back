@@ -39,6 +39,29 @@ test('monitoring snapshot validates safe integer counts and sum before returning
  }
 });
 
+
+test('monitor snapshot rejects inherited or getter-backed SQL fields without executing them',async()=>{
+ let getterCalls=0;
+ const getterRow={...empty};
+ Object.defineProperty(getterRow,'pending_due',{
+  enumerable:true,
+  get(){getterCalls++;throw new Error('accessor must not execute');},
+ });
+ const inheritedRow=Object.assign(Object.create({pending_due:'0'}),empty);
+ delete inheritedRow.pending_due;
+ const variants=[
+  getterRow,inheritedRow,null,
+  {...empty,pending_due:0},
+  {...empty,pending_due:'01x'},
+ ];
+ for(const row of variants){
+  await assert.rejects(readExternalDeliveryQueueSnapshot({
+   query:async()=>({rows:[row]}),
+  } as never),/invalid_notification_monitor_snapshot/);
+ }
+ assert.equal(getterCalls,0);
+});
+
 test('PostgreSQL snapshot buckets due, leased, failed and inconsistent rows without PII',async()=>{
  const db=new Client({connectionString:process.env.DATABASE_URL});
  await db.connect();
