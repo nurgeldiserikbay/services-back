@@ -11,7 +11,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --import tsx --test test/*.test.ts",
+    "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts",
     "db:validate": "prisma validate --schema prisma/schema.prisma",
     "db:baseline:generate": "node scripts/generate-baseline.mjs",
     "db:migrate": "prisma migrate deploy --schema prisma/schema.prisma",
