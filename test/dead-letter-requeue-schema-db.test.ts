@@ -25,7 +25,7 @@ test('manual notification requeue audit exists, is durable, and cannot be update
      AND NOT t.tgisinternal
   `);
   assert.equal(trig.rows.length,1);
-  assert.match(trig.rows[0].definition,/BEFORE UPDATE OR DELETE/);
+  assert.match(trig.rows[0].definition,/BEFORE (?:UPDATE OR DELETE|DELETE OR UPDATE)/);
   assert.match(trig.rows[0].definition,/reject_notification_requeue_audit_mutation/);
   const indexes=await db.query<{count:string}>(`
    SELECT count(*)::text AS count FROM pg_indexes
