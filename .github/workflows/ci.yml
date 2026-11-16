@@ -275,6 +275,8 @@ jobs:
         run: node --import tsx --test test/external-delivery-observation.test.ts
       - name: External delivery aggregate alert PostgreSQL privacy E2E (fail fast)
         run: node --import tsx --test test/external-delivery-observation-postgres-e2e.test.ts
+      - name: Bounded notification queue observation polling (fail fast)
+        run: node --import tsx --test test/external-delivery-observation-polling.test.ts
       - name: External delivery monitoring PostgreSQL consistency and privacy (fail fast)
         run: node --import tsx --test test/external-delivery-monitoring-db.test.ts
       - name: Bounded batch external delivery PostgreSQL E2E (fail fast)
