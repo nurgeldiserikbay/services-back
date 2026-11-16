@@ -16,7 +16,7 @@ const backlog={
 test('HTTPS webhook sends only bounded allowlisted aggregates with authentication',async()=>{
  let destination='',options:RequestInit|undefined;
  const transport=createExternalDeliveryWebhookTransport(valid,
-  (async(input:RequestInfo|URL,init?:RequestInit)=>{destination=String(input);options=init;return {ok:true};}) as typeof fetch);
+  (async(input:string|URL|Request,init?:RequestInit)=>{destination=String(input);options=init;return {ok:true} as Response;}) as typeof fetch);
  await transport.send([backlog]);
  assert.equal(destination,valid.endpoint);
  assert.equal(options?.method,'POST');
@@ -51,7 +51,7 @@ test('HTTPS receiver configuration is explicit and restricted to approved endpoi
 test('webhook rejects extra fields and accessor-backed alerts without sending',async()=>{
  let calls=0,reads=0;
  const transport=createExternalDeliveryWebhookTransport(valid,
-  (async()=>{calls++;return {ok:true};}) as typeof fetch);
+  (async()=>{calls++;return {ok:true} as Response;}) as typeof fetch);
  await assert.rejects(transport.send([
   {...backlog,recipient:'person@example.com'} as never,
  ]),/invalid_external_alert_webhook_payload/);
@@ -67,7 +67,7 @@ test('webhook rejects extra fields and accessor-backed alerts without sending',a
 
 test('non-2xx responses and fetch failures are propagated, not treated as success',async()=>{
  const transport=createExternalDeliveryWebhookTransport(valid,
-  (async()=>({ok:false,status:503})) as typeof fetch);
+  (async()=>({ok:false,status:503} as Response)) as typeof fetch);
  await assert.rejects(transport.send([backlog]),
   /external_alert_webhook_delivery_failed/);
  const failure=new Error('network unreachable');
