@@ -30,7 +30,7 @@ test('live PostgreSQL audited requeue is scoped, atomic and idempotent after sta
    [session,staff,tokenHash]);
   await db.query(`INSERT INTO platform_admin_totp_factors(
     staff_id,encrypted_secret,key_version,created_at,activated_at)
-   VALUES($1,'requeue-test-only','test',now()-interval '5 minutes',
+   VALUES($1,'requeue-test-placeholder-encrypted-envelope','test',now()-interval '5 minutes',
     now()-interval '3 minutes')`,[staff]);
   await db.query(`INSERT INTO platform_admin_grants(id,staff_id,scope)
    VALUES($1,$2,$3)`,[grant,staff,scope]);
