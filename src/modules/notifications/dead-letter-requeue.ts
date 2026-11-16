@@ -48,6 +48,18 @@ export async function requeueFailedOrganizationDelivery(
  if(!canPerformAdminOperation(principal,'notifications.requeue',resourceScope,now))
   return 'DENIED';
  const organizationId=resourceScope.slice('organization:'.length);
+ // Idempotent retries must work AFTER the original FAILED row became PENDING.
+ // Check the immutable audit first; the old request must not contact a
+ // provider again or reset any counters. Join the organization for scope.
+ const previous=await db.query<{delivery_id:string}>(`
+  SELECT a.delivery_id::text
+  FROM notification_requeue_audit a
+  JOIN notification_intents n ON n.id=a.intent_id
+  WHERE a.requeue_key=$1::uuid AND n.recipient_org_id=$2::uuid
+ `,[requeueKey,organizationId]);
+ if(previous.rows.length>1)throw new Error('notification_dead_letter_audit_conflict');
+ if(previous.rows.length===1)
+  return previous.rows[0].delivery_id===deliveryId?'ALREADY_REQUEUED':'DENIED';
  const target=await db.query<Target>(`
   SELECT n.id::text AS intent_id,d.channel
   FROM notification_deliveries d
