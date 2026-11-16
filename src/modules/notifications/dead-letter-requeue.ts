@@ -105,7 +105,11 @@ export async function requeueFailedOrganizationDelivery(
    SELECT delivery_id::text FROM notification_requeue_audit
    WHERE requeue_key=$1::uuid
   `,[requeueKey]);
-  if(existing.rows.length>0)return 'ALREADY_REQUEUED';
+  // The idempotency key belongs to exactly one delivery. A key reused for
+  // another row must never be reported as a successful prior operation.
+  if(existing.rows.length>1)throw new Error('notification_dead_letter_audit_conflict');
+  if(existing.rows.length===1)
+   return existing.rows[0].delivery_id===deliveryId?'ALREADY_REQUEUED':'DENIED';
 
   const selected=await client.query<{
    intent_id:string;channel:string;attempt_count:number;intent_attempts:number;
