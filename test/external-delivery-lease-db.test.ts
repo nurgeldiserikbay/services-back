@@ -111,7 +111,7 @@ test('invalid claim proofs and lease bounds fail before SQL',async()=>{
  assert.equal(calls,0);
 });
 
-test('incomplete external delivery lease pairs are not silently reclaimed',async()=>{
+test('PostgreSQL lease pair constraint rejects partial claims; complete expiry can reclaim',async()=>{
  const db=new Client({connectionString:process.env.DATABASE_URL});
  await db.connect();
  await db.query('BEGIN');
@@ -130,22 +130,31 @@ test('incomplete external delivery lease pairs are not silently reclaimed',async
    VALUES($1,$2,$3,'CLIENT','EMAIL',$4)`,
    [intent,event,contact,'lease-parity:'+randomUUID()]);
   await db.query(`INSERT INTO notification_deliveries
-   (id,intent_id,channel,lease_token) VALUES($1,$2,'EMAIL',$3)`,
-   [delivery,intent,randomUUID()]);
-  // A token without an expiry is not the same as an unleased row.
+   (id,intent_id,channel) VALUES($1,$2,'EMAIL')`,[delivery,intent]);
+
+  // The persisted lease pair is protected by a CHECK constraint, independently
+  // of the claim query's defensive validation.
+  for(const sql of [
+   `UPDATE notification_deliveries SET lease_token=$2
+     WHERE id=$1`,
+   `UPDATE notification_deliveries
+     SET lease_expires_at=now()-interval '1 second' WHERE id=$1`,
+  ]){
+   await db.query('SAVEPOINT partial_lease');
+   await assert.rejects(db.query(sql,[delivery,randomUUID()].slice(
+    0,sql.includes('$2')?2:1)),/notification_deliveries_lease_pair_chk/);
+   await db.query('ROLLBACK TO SAVEPOINT partial_lease');
+  }
+
+  const first=await claimExternalDelivery(db,90);
+  assert.equal(first?.deliveryId,delivery);
   assert.equal(await claimExternalDelivery(db,90),null);
   await db.query(`UPDATE notification_deliveries
-   SET lease_token=NULL,lease_expires_at=now()-interval '1 second'
-   WHERE id=$1`,[delivery]);
-  // An expiry without a token is also malformed, even if already due.
-  assert.equal(await claimExternalDelivery(db,90),null);
-  await db.query(`UPDATE notification_deliveries
-   SET lease_token=$2 WHERE id=$1`,[delivery,randomUUID()]);
-  // A complete expired lease may be safely reclaimed with a new proof.
-  const expired=await claimExternalDelivery(db,90);
-  assert.equal(expired?.deliveryId,delivery);
-  assert.notEqual(expired?.leaseToken,null);
-  assert.equal(await claimExternalDelivery(db,90),null);
+   SET lease_expires_at=now()-interval '1 second' WHERE id=$1`,
+   [delivery]);
+  const reclaimed=await claimExternalDelivery(db,90);
+  assert.equal(reclaimed?.deliveryId,delivery);
+  assert.notEqual(reclaimed?.leaseToken,first?.leaseToken);
  }finally{
   await db.query('ROLLBACK').catch(()=>{});
   await db.end();
