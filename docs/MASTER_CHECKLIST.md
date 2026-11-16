@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend geography device acceptance plan (2026-11-16): [frontend `c2eba20`](https://github.com/nurgeldiserikbay/services-front/commit/c2eba2076908ba16e26edda3c7b23d4fcbef68bb) adds explicit locale, keyboard, throttled-network, error/empty, screen-reader and mobile test cases to docs/pwa-device-acceptance.md. [CI #43814703578](https://github.com/nurgeldiserikbay/services-front/actions/runs/43814703578) passed for prior accessibility test fix; [#43814889841](https://github.com/nurgeldiserikbay/services-front/actions/runs/43814889841) queued for docs change. Manual acceptance remains unchecked pending real evidence.
+
 Frontend geography accessible-error test repair (2026-11-16): [frontend `77d8913`](https://github.com/nurgeldiserikbay/services-front/commit/77d8913320aaa103c764e9d793195476657bc4f9) aligns two source-regression assertions with new city error element ID. [CI #43813615697](https://github.com/nurgeldiserikbay/services-front/actions/runs/43813615697) failed two unit assertions; [#43814703578](https://github.com/nurgeldiserikbay/services-front/actions/runs/43814703578) running. Manual assistive-tech acceptance remains open.
 
 Frontend geography form error accessibility (2026-11-16): [frontend `f4ad036`](https://github.com/nurgeldiserikbay/services-front/commit/f4ad03687af08db98c68af550c48bbca04d6e14f) associates country/city lookup error status with corresponding selects via aria-invalid and aria-describedby, with source regression assertions. [CI #43813615697](https://github.com/nurgeldiserikbay/services-front/actions/runs/43813615697) pending. Manual screen-reader/device acceptance remains open.
