@@ -141,7 +141,7 @@
 - [x] Admin MFA PostgreSQL integration — Verified in services-back CI #43723300416 (2026-11-15)
 - [x] Frontend typecheck and production build — Verified: [Frontend CI #43724021062](https://github.com/nurgeldiserikbay/services-front/actions/runs/43724021062), `pnpm typecheck` and `pnpm build` both passed on `680a91f`.
 - [ ] Frontend lint — Prepared: security-focused `pnpm lint` gate and positive/negative regression fixtures verified in frontend CI #43816264053 (2026-11-16); full JS/React/Next.js semantic lint configuration and acceptance remain pending
-- [ ] Admin typecheck lint build — Prepared: admin CI #43824955158 passed typecheck, 103 node tests, production build and default-off/flagged BFF smoke (2026-11-16); dedicated semantic lint gate still missing, so acceptance remains open
+- [ ] Admin typecheck lint build — Prepared: admin CI #43826523983 passed typecheck, AST security lint, Node tests, production build and default-off/flagged BFF smoke (2026-11-16); comprehensive ESLint/React/Next semantic rules and authenticated UI acceptance still pending
 - [x] API contract tests — Backend search, public profile, seller and guest HTTP contract regression gate passed in CI #43724266432 (2026-11-15); cross-repository parity remains separately pending
 - [ ] End-to-end user journeys — Pending verification
 - [ ] All main CI checks green — Backend main passed #43723300416; frontend/admin/docs main checks not yet verified
@@ -173,6 +173,9 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Admin security lint CI gate (2026-11-16): [`services-admin` commit `765262d`](https://github.com/nurgeldiserikbay/services-admin/commit/765262d6ecf1238ab087988cc0afe5560b061668) introduces `pnpm lint` as an AST-based source safety check with the installed TypeScript parser (rejects `eval`, `Function` constructor, `document.write`, `innerHTML`/`outerHTML`), requires it between typecheck and unit tests, and adds a workflow regression assertion. [Admin CI #43826523983](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43826523983) **passed** with lint, typecheck, tests, build and production smoke. This is a targeted security lint, **not** comprehensive ESLint/React/Next lint; combined admin acceptance remains `[ ]` pending broader lint and authenticated MFA UI E2E.
+
 
 Admin final CI cleanup (2026-11-16): [`services-admin` commit `b8e7a9b`](https://github.com/nurgeldiserikbay/services-admin/commit/b8e7a9be0be7b658fc1b635ab1f4bb85f9e1a8f1) removed temporary smoke-test diagnostic output while retaining bounded health checks, deny-by-default Next.js RSC response-content assertions, invalid session/cookie/Origin/Fetch Metadata tests and backend API status/security-header checks. [Admin foundation CI #43825251781](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43825251781) **passed** on this commit: typecheck, unit tests, build, audit and both production smoke steps. This does not change the separate pending semantic lint requirement, authenticated MFA browser flow or production release gates.
 
