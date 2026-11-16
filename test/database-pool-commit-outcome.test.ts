@@ -183,7 +183,7 @@ test('throwing release after uncertain COMMIT is never invoked twice',async()=>{
   }),
   end:async()=>{},
  };
- await assert.rejects(db.transaction(async()=>42),/release failed/);
+ await assert.rejects(db.transaction(async()=>42),/Database operation unavailable/);
  assert.equal(releases,1);
  assert.equal(statements.filter(sql=>sql==='COMMIT').length,1);
  assert.equal(statements.includes('ROLLBACK'),false);
@@ -203,7 +203,7 @@ test('throwing release after uncertain BEGIN is never invoked twice',async()=>{
   }),
   end:async()=>{},
  };
- await assert.rejects(db.transaction(async()=>42),/release failed/);
+ await assert.rejects(db.transaction(async()=>42),/Database operation unavailable/);
  assert.equal(releases,1);
  await db.onModuleDestroy();
 });
