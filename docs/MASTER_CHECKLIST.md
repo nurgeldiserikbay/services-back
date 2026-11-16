@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+Notification observation session suppression (2026-11-16): branch `backend/notification-session-alert-suppression-20261116` adds optional per-invocation alert-code transition suppression to the bounded monitoring poll. A continuous alert emits once per session, a verified clear tick re-arms it, and an abort or malformed snapshot propagates rather than marking recovery. Default remains unchanged. Four regression tests cover recovery, session isolation, default behavior and fail-closed inputs. This is NOT durable multi-replica deduplication and no real alert transport, scheduler, approved SLO or staging drill is present; Delivery monitoring remains unchecked. CI pending.
+
+
 Backend bounded alert observation polling (2026-11-16): PR #144 code landed directly on `main` in commits `d124707`, `84c128b`, `530b158` after both branch CI #43865529950 and PR CI #43865565415 passed, but PR became unmergeable due to concurrent `main` updates. Introduced explicit bounded sequential polling, strict abort and error propagation with six regression tests and a dedicated CI gate. Fresh main CI required for final acceptance. Production alert transport, suppression, scheduler, SLO thresholds and staging remain OPEN; Delivery monitoring stays unchecked.
 
 
