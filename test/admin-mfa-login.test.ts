@@ -17,14 +17,14 @@ const code=String((digest.readUInt32BE(offset)&0x7fffffff)%1_000_000).padStart(6
 const envelope=sealAdminTotpSecret(secret,staffId,key);
 const primary={staffId,authenticatedAt:now-1000};
 
-function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'){
+function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'|'failure-commit-fails'){
  const events:string[]=[];
  const client={
   query:async(sql:string)=>{
    if(sql.startsWith('SET LOCAL ')){events.push(sql);return {rows:[]};}
    if(['BEGIN','COMMIT','ROLLBACK'].includes(sql)){
     events.push(sql);
-    if(sql==='COMMIT'&&mode==='commit-fails')throw Error('commit failed');
+    if(sql==='COMMIT'&&(mode==='commit-fails'||mode==='failure-commit-fails'))throw Error('commit failed');
     return {rows:[]};
    }
    if(sql.includes('INSERT INTO platform_admin_security_events')){
@@ -59,7 +59,7 @@ function fixture(mode:'ok'|'disabled'|'bad-code'|'commit-fails'){
    }
    throw Error('unexpected SQL');
   },
-  release:()=>events.push('release'),
+  release:(error?:unknown)=>events.push(error instanceof Error?'discard':'release'),
  };
  return {pool:{connect:async()=>client} as never,events};
 }
@@ -99,8 +99,20 @@ test('commit failure never releases a bearer',async()=>{
  await assert.rejects(loginAdminWithProvisionedTotp(
   f.pool,primary,code,async()=>key,pepper,now,
  ),/commit failed/);
- assert.equal(f.events.at(-1),'release');
+ assert.equal(f.events.at(-1),'discard');
  assert.equal(f.events.includes('ROLLBACK'),false);
+});
+
+test('failed MFA attempt with uncertain COMMIT discards connection without rollback',async()=>{
+ const f=fixture('failure-commit-fails');
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  f.pool,primary,'12x',async()=>key,pepper,now,
+ ),/commit failed/);
+ assert.ok(f.events.includes('failure'));
+ assert.ok(f.events.includes('audit'));
+ assert.equal(f.events.filter(event=>event==='COMMIT').length,1);
+ assert.equal(f.events.includes('ROLLBACK'),false);
+ assert.equal(f.events.at(-1),'discard');
 });
 
 test('malformed MFA code is counted after a valid primary assertion',async()=>{
