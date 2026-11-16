@@ -329,6 +329,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-16 | services-back | [`a6a9035`](https://github.com/nurgeldiserikbay/services-back/commit/a6a90359b6e1c46c824680c01d6d8ced1a35448e) | Transaction tests: SET LOCAL failure rolls back without callback; connection acquisition failure maps to unavailable | Committed; CI not independently verified |
 
+| 2026-11-16 | services-back | [`4b41f5e`](https://github.com/nurgeldiserikbay/services-back/commit/4b41f5e1c327eecd7fc97e40698a57962b1927c7), [CI #43803692621](https://github.com/nurgeldiserikbay/services-back/actions/runs/43803692621) | Fixed undeclared query params in account-primary MFA transaction regression and forwarded parameters to the underlying mock; previous [CI #43803328544](https://github.com/nurgeldiserikbay/services-back/actions/runs/43803328544) failed TypeScript typecheck TS2304 | **Pending CI**; backend typecheck and main green status not re-verified |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
