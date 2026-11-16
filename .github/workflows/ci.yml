@@ -283,6 +283,8 @@ jobs:
         run: node --import tsx --test test/external-provider-reconciliation.test.ts
       - name: External provider acceptance PostgreSQL integration (fail fast)
         run: node --import tsx --test test/external-delivery-ack-db.test.ts
+      - name: Concurrent external delivery SKIP LOCKED fencing PostgreSQL (fail fast)
+        run: node --import tsx --test test/external-delivery-concurrent-claim-db.test.ts
       - name: External delivery fenced lease PostgreSQL integration (fail fast)
         run: node --import tsx --test test/external-delivery-lease-db.test.ts
       - name: Notification pipeline and person inbox PostgreSQL integration (fail fast)
