@@ -42,7 +42,8 @@ test('monitoring snapshot validates safe integer counts and sum before returning
 test('PostgreSQL snapshot buckets due, leased, failed and inconsistent rows without PII',async()=>{
  const db=new Client({connectionString:process.env.DATABASE_URL});
  await db.connect();
- await db.query('BEGIN');
+ // Freeze the global baseline against concurrent suites while retaining our own writes.
+ await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
  const contact=randomUUID(),event=randomUUID();
  const intentIds=Array.from({length:7},()=>randomUUID());
  const deliveryIds=Array.from({length:7},()=>randomUUID());
