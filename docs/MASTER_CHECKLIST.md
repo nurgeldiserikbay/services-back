@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+Admin CI pending-stream regression (2026-11-16): [admin `c8b206e`](https://github.com/nurgeldiserikbay/services-admin/commit/c8b206ef00f7a421ebafe8e59ee50e12004f1895) closes finite test ReadableStream bodies explicitly so the moderation transport can reach EOF rather than leaving pending asynchronous Node tests. The previous [admin CI #43823446625](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43823446625) reported 101 passed, 0 asserted failures and 2 cancelled pending tests, so **failed overall**. [Replacement admin CI #43823538425](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43823538425) started; keep acceptance unchecked until final conclusion.
+
+
 Admin regression test alignment (2026-11-16): services-admin commits [`0928faf`](https://github.com/nurgeldiserikbay/services-admin/commit/0928faf26937a4804f5585944c2ddc4b8c8d60d6), [`8b6483c`](https://github.com/nurgeldiserikbay/services-admin/commit/8b6483c2674ef767fc3c27dfb825b65f56a89fd7), [`343026d`](https://github.com/nurgeldiserikbay/services-admin/commit/343026d42c5ef23a30977b862b675143d562a96a), and [`01399fd`](https://github.com/nurgeldiserikbay/services-admin/commit/01399fd52ebb93d773925d13ed8aa06d4e8abd7) update runtime test harness to exclude the Next.js `server-only` sentinel only inside in-memory transpilation, retain it in production source, require strict denial of unredacted moderation cases, assert exact logout revocation acknowledgement, and align source guards with the more restrictive cross-site policy. Earlier [admin CI #43823262502](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43823262502) passed typecheck but failed four stale test expectations; [new admin CI #43823446625](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43823446625) was running at recording. Do not mark admin CI or UI acceptance verified until a successful full run.
 
 
