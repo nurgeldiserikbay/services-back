@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+Admin dynamic-execution and DOM injection lint (2026-11-16): [`services-admin` commit `651c4e2`](https://github.com/nurgeldiserikbay/services-admin/commit/651c4e2807402b0385c9bf3aadc89e9202ff373c) expands AST security lint and regression fixtures to reject string-based `setTimeout`/`setInterval` and direct/computed `insertAdjacentHTML`. [Admin CI #43830866245](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43830866245) **passed** typecheck, lint, tests, production build and smoke. Full ESLint/React semantics and authenticated MFA browser E2E remain unverified.
+
+
 Admin partial-representation hardening (2026-11-16): [`services-admin` commit `ffc4a7a`](https://github.com/nurgeldiserikbay/services-admin/commit/ffc4a7a79748e2b2ed2dc3270ba9c0aee167c74b) rejects `Content-Range` on privileged moderation and logout responses even when upstream returns HTTP 200; live transport regression tests cover both. [Admin CI #43828936703](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43828936703) **passed** typecheck, lint, tests, build and production smoke. Authenticated MFA browser E2E and comprehensive semantic lint remain open.
 
 
