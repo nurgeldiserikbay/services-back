@@ -249,6 +249,8 @@ jobs:
             test/account-remote-session-revoke-http.test.ts
       - name: Notification external delivery retry policy regressions (fail fast)
         run: node --import tsx --test test/notification-delivery-retry-policy.test.ts
+      - name: External delivery failure retry and terminal PostgreSQL integration (fail fast)
+        run: node --import tsx --test test/external-delivery-failure-db.test.ts
       - name: Notification pipeline and person inbox PostgreSQL integration (fail fast)
         run: |
           node --import tsx --test \
