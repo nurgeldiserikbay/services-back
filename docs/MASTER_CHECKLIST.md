@@ -414,6 +414,8 @@ These are implementation tracking subitems, **not new top-level acceptance items
 
 Private MFA parser follow-up (2026-11-16): [`135cc88`](https://github.com/nurgeldiserikbay/services-back/commit/135cc887c50fdd1f56f95bc71ed8457e03c715d0) rejects non-enumerable mandatory fields; [`9cc2a14`](https://github.com/nurgeldiserikbay/services-back/commit/9cc2a14fdb094683ffa64da25d081544045088f4) adds regression coverage. **Prepared; CI and HTTP/PostgreSQL acceptance pending.** No top-level checkbox changed.
 
+Private MFA vault regression follow-up (2026-11-16): [`f59eb88`](https://github.com/nurgeldiserikbay/services-back/commit/f59eb88f3cb5b03054a64186a9bde09a3b0c2f4f) adds malformed vault response and independent key-copy tests. **Prepared; CI verification pending.** No acceptance checkbox changed.
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
@@ -421,4 +423,3 @@ Private MFA parser follow-up (2026-11-16): [`135cc88`](https://github.com/nurgel
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
 **Total acceptance items:** 117. **Verified complete:** 17 (15 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
-| 2026-11-15 | services-back | [`8e4eeb7`](https://github.com/nurgeldiserikbay/services-back/commit/8e4eeb7b9ca88f315b98946ed72c766e4a5fb4f4), [CI #43745179540](https://github.com/nurgeldiserikbay/services-back/actions/runs/43745179540) | Notification outbox and intents staging, idempotent IN_APP materialization, authenticated per-person inbox isolation, revocation; admin primary account proof and schedule proposal PostgreSQL gates | **PASS** (build-and-test and dependency-audit); external email/SMS delivery and dead-letter remain pending |
