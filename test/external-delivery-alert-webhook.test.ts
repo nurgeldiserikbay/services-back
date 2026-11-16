@@ -16,7 +16,7 @@ const backlog={
 test('HTTPS webhook sends only bounded allowlisted aggregates with authentication',async()=>{
  let destination='',options:RequestInit|undefined;
  const transport=createExternalDeliveryWebhookTransport(valid,
-  (async(input,init)=>{destination=String(input);options=init;return {ok:true};}) as typeof fetch);
+  (async(input:RequestInfo|URL,init?:RequestInit)=>{destination=String(input);options=init;return {ok:true};}) as typeof fetch);
  await transport.send([backlog]);
  assert.equal(destination,valid.endpoint);
  assert.equal(options?.method,'POST');
