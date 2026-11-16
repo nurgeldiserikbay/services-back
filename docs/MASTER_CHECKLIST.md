@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend city lookup error selection guard (2026-11-16): [frontend `50c3f75`](https://github.com/nurgeldiserikbay/services-front/commit/50c3f75a2f0733ee9e71e8173aa6303833faf031) prevents stale city options and selection when lookup fails; regression tests included. [CI #43808008812](https://github.com/nurgeldiserikbay/services-front/actions/runs/43808008812) pending; prior [#43807783004](https://github.com/nurgeldiserikbay/services-front/actions/runs/43807783004) passed. Device acceptance remains open.
+
 Frontend geography screen-reader loading announcement (2026-11-16): [frontend `8a5d0bc`](https://github.com/nurgeldiserikbay/services-front/commit/8a5d0bca001de4135b331a6a48379f5b533af7d9) adds polite visually-hidden live loading status and regression test. [CI #43807783004](https://github.com/nurgeldiserikbay/services-front/actions/runs/43807783004) pending; prior [#43807470303](https://github.com/nurgeldiserikbay/services-front/actions/runs/43807470303) passed. Screen-reader manual acceptance remains open.
 
 Frontend city pending network lifecycle (2026-11-16): [frontend `889b480`](https://github.com/nurgeldiserikbay/services-front/commit/889b4804febf69ef2ecf1fba9f1f0be0d5ac8780) keeps autocomplete pending until the latest successful/error response, avoiding stale city options during network latency; regression test updated. [CI #43807470303](https://github.com/nurgeldiserikbay/services-front/actions/runs/43807470303) pending; previous [#43806992281](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806992281) passed.
