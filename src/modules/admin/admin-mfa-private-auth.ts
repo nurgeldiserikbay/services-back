@@ -21,7 +21,11 @@ export function requirePrivateAdminMfaAccess(value:unknown):void{
    process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY,
    process.env.ACCOUNT_SESSION_HMAC_KEY,
   ]){
-   if(typeof other==='string'&&other===value)throw new Error('key_reuse');
+   if(typeof other!=='string')continue;
+   // Compare decoded bytes, not textual base64 spellings. Fail closed on
+   // malformed configured peer secrets instead of ignoring key isolation.
+   const peer=requireSecret(other);
+   if(timingSafeEqual(expected,peer))throw new Error('key_reuse');
   }
  }catch{throw new NotFoundException();}
 }
