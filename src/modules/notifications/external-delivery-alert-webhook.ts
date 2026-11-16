@@ -54,6 +54,10 @@ export function createExternalDeliveryWebhookTransport(
    const safe=alerts.map(alert=>{
     if(!alert||typeof alert!=='object')throw new Error('invalid_external_alert_webhook_payload');
     const properties=['code','severity','observed','threshold'] as const;
+    const ownKeys=Reflect.ownKeys(alert);
+    if(ownKeys.length!==properties.length||
+       ownKeys.some(key=>typeof key!=='string'||!properties.includes(key as typeof properties[number])))
+     throw new Error('invalid_external_alert_webhook_payload');
     const values=properties.map(key=>{
      const descriptor=Object.getOwnPropertyDescriptor(alert,key);
      if(!descriptor||!Object.hasOwn(descriptor,'value'))
