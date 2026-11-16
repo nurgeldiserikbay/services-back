@@ -133,6 +133,16 @@ jobs:
             test/admin-session-revocation.test.ts \
             test/admin-primary-account-proof.test.ts \
             test/admin-mfa-account-login.test.ts
+      - name: Private admin MFA composition and transport security regressions (fail fast)
+        run: |
+          node --import tsx --test \
+            test/admin-mfa-key-resolver.test.ts \
+            test/admin-mfa-private-dependencies.test.ts \
+            test/admin-mfa-database-adapter.test.ts \
+            test/admin-mfa-private-wiring.test.ts \
+            test/admin-mfa-private-exchange.test.ts \
+            test/admin-mfa-private-controller.test.ts
+
       - name: Backend API contract regressions (fail fast)
         run: |
           node --import tsx --test \
