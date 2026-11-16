@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend city zero-result UX (2026-11-16): [frontend `0c867fa`](https://github.com/nurgeldiserikbay/services-front/commit/0c867fa247de08583f2b3330c761a79e43367c94) adds localized empty-city feedback and regression tests. [CI #43804651473](https://github.com/nurgeldiserikbay/services-front/actions/runs/43804651473) pending; prior #43804207967 passed.
+
 Frontend country retry UX (2026-11-16): [frontend `cefcb9b`](https://github.com/nurgeldiserikbay/services-front/commit/cefcb9b4c342d67f5604a1c49c6fd59627c5b410) adds localized country directory retry and tests; [CI #43804207967](https://github.com/nurgeldiserikbay/services-front/actions/runs/43804207967) pending; previous #43803673543 passed.
 
 Frontend city lookup retry UX (2026-11-16): [frontend `f2f57ce`](https://github.com/nurgeldiserikbay/services-front/commit/f2f57cef66c9c73c312bde0c6bb5dd8155efa11e) adds localized retry for failed city fetch without resetting filters, with regression tests. [CI #43803673543](https://github.com/nurgeldiserikbay/services-front/actions/runs/43803673543) pending; [previous #43803259315](https://github.com/nurgeldiserikbay/services-front/actions/runs/43803259315) passed.
