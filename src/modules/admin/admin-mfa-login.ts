@@ -131,6 +131,7 @@ export async function loginAdminWithProvisionedTotp(
    DELETE FROM platform_admin_mfa_attempts WHERE staff_id=$1::uuid
   `,[verifiedPrimary.staffId]);
   await recordAdminMfaSecurityEvent(client,verifiedPrimary.staffId,'admin_mfa_login_succeeded');
+  commitAttempted=true;
   try{await client.query('COMMIT');}
   catch(error){discardConnection=true;throw error;}
   began=false;
