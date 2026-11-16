@@ -42,3 +42,23 @@ test('resolver captures the allowlist at construction time',async()=>{
  assert.equal(await resolve('injected'),null);
  assert.equal(reads,1);
 });
+
+test('resolver fails closed on malformed vault responses without exposing key material',async()=>{
+ for(const returned of [null,undefined,'not-a-key',Buffer.alloc(0),Buffer.alloc(31),Buffer.alloc(33),new Uint8Array(32)]){
+  const resolve=createAdminMfaKeyResolver(async()=>returned as never,['rotation_1']);
+  assert.equal(await resolve('rotation_1'),null);
+ }
+});
+
+test('resolver returns independent copies for repeated vault reads',async()=>{
+ const cached=randomBytes(32);
+ const resolve=createAdminMfaKeyResolver(async()=>cached,['rotation_1']);
+ const first=await resolve('rotation_1');
+ const second=await resolve('rotation_1');
+ assert.deepEqual(first,cached);
+ assert.deepEqual(second,cached);
+ assert.notEqual(first,second);
+ first!.fill(0);
+ assert.deepEqual(second,cached);
+ assert.notDeepEqual(first,cached);
+});
