@@ -310,6 +310,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-15 | services-back | [`24b9c52`](https://github.com/nurgeldiserikbay/services-back/commit/24b9c52c63c8967901490087a8c5d0d197aad509), [`7fd1d7c`](https://github.com/nurgeldiserikbay/services-back/commit/7fd1d7c6e6588c68789eb7faa0c552c206ab2728) | Backend admin logout acknowledges revocation only if a session row was actually revoked; repeated/unknown bearer now denied; HTTP regression updated | Committed; CI execution pending |
 
+| 2026-11-16 | services-back | [`46139ab`](https://github.com/nurgeldiserikbay/services-back/commit/46139abf98fdd8c0caa715a39c14dfdccbcb7994), [`bd12d86`](https://github.com/nurgeldiserikbay/services-back/commit/bd12d86a3e11695632b8a7a58f7fb4a4876f4f0d) | Admin MFA COMMIT uncertainty: discard connection and do not issue a misleading ROLLBACK; regression assertion updated | Committed, CI execution unverified |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
