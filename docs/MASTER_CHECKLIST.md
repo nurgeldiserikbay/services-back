@@ -91,7 +91,7 @@
 - [ ] Retry and dead-letter handling — Prepared: fenced retry/acknowledgement, reconciliation, audited requeue, bounded worker and queue monitoring (PR #113–127); PostgreSQL lease E2E and schedule/COMMIT guards (PR #128–133); opt-in polling and staged delivery cycle (PR #134–136); two-connection PostgreSQL staging-to-SENT E2E (PR #137, branch CI #43848576260 PASS). Real provider, production scheduler, admin HTTP/CSRF, alert transport and operational acceptance remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
-- [ ] Delivery monitoring — Pending verification
+- [ ] Delivery monitoring — Prepared: aggregate queue alerts reject inherited/getter-backed telemetry and policy fields without executing getters; production alert transport, approved thresholds and staging drill remain open
 
 ### Admin
 
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Backend queue alert input and shared-DB test isolation (2026-11-16): branch `backend/notification-alert-ci-isolation-20261116` rejects accessor-backed and inherited aggregate alert metrics/policies, adds no-getter-execution regression tests, and serializes the complete `npm test` suite because shared PostgreSQL rows across parallel test files caused nondeterministic external delivery claims (original PR #138 CI #43852408617, 2 failures; individually gated E2E tests passed). Replacement PR CI pending. No production provider, scheduler, alert transport, SLO, or staging sign-off claimed.
 
 Admin MFA cookie directive preparation (2026-11-16): [`services-admin` commit `81ec076`](https://github.com/nurgeldiserikbay/services-admin/commit/81ec0768359bb6c4e893047255041f3834e2d5e0) adds a strict, server-only `adminMfaCookieDirective` returning `__Host-` cookie name, `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/`, and bounded max-age without Domain; rejects malformed/accessor payloads. Runtime tests [`7f9db92`](https://github.com/nurgeldiserikbay/services-admin/commit/7f9db9270972cbd690f6fefdaf2e36ae6f4f8759) verified by [Admin CI #43852757698](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43852757698) **PASS**. No Set-Cookie HTTP handler or public login is enabled; private backend MFA and staging E2E remain open.
 
