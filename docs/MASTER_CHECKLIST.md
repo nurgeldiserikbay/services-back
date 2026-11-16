@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+Admin final CI cleanup (2026-11-16): [`services-admin` commit `b8e7a9b`](https://github.com/nurgeldiserikbay/services-admin/commit/b8e7a9be0be7b658fc1b635ab1f4bb85f9e1a8f1) removed temporary smoke-test diagnostic output while retaining bounded health checks, deny-by-default Next.js RSC response-content assertions, invalid session/cookie/Origin/Fetch Metadata tests and backend API status/security-header checks. [Admin foundation CI #43825251781](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43825251781) **passed** on this commit: typecheck, unit tests, build, audit and both production smoke steps. This does not change the separate pending semantic lint requirement, authenticated MFA browser flow or production release gates.
+
+
 Admin CI recovery verified (2026-11-16): [`services-admin` commit `580c704`](https://github.com/nurgeldiserikbay/services-admin/commit/580c70497f09085805e5ed263500e9bbfaf301e6) passed [Admin foundation CI #43824955158](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43824955158), including `pnpm typecheck`, **103 passing Node tests**, `pnpm build`, dependency audit and unauthenticated/fake-session production HTTP smoke gates. The corrections include TypeScript narrowing (`d313762`), strict test harness/contract updates, and Next.js RSC `notFound()` smoke assertions that verify denied content even when its document response uses HTTP 200. The admin middleware and backend session authorization remain security-critical; this confirms only CI-covered negative paths, not authenticated browser E2E or staff UI acceptance. Since `pnpm lint` is not implemented, the combined `Admin typecheck lint build` acceptance item remains `[ ]`.
 
 
