@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend empty geography results retry (2026-11-16): [frontend `374c326`](https://github.com/nurgeldiserikbay/services-front/commit/374c326438239f6e070d38bef021e1cdf8f7f260) adds retry buttons for successfully empty country/city catalogs with regression assertions. [CI #43811314410](https://github.com/nurgeldiserikbay/services-front/actions/runs/43811314410) pending; [prior #43811056944](https://github.com/nurgeldiserikbay/services-front/actions/runs/43811056944) passed. Manual device acceptance pending.
+
 Frontend country directory stale-option test correction (2026-11-16): [frontend `f2f6395`](https://github.com/nurgeldiserikbay/services-front/commit/f2f6395dee3be9ca99a9e43d4b9646f1889f302b) updates country retry assertion for option clearing. [CI #43809764977](https://github.com/nurgeldiserikbay/services-front/actions/runs/43809764977) failed one frontend unit test; [#43811056944](https://github.com/nurgeldiserikbay/services-front/actions/runs/43811056944) queued. Manual device acceptance remains open.
 
 Frontend country directory stale-options guard (2026-11-16): [frontend `b223e65`](https://github.com/nurgeldiserikbay/services-front/commit/b223e652db499f9bb00e9fec3c14e14d4b724f84) clears old country choices when refetch starts and hides them on errors; source regression test included. [CI #43809764977](https://github.com/nurgeldiserikbay/services-front/actions/runs/43809764977) pending; [prior #43809124221](https://github.com/nurgeldiserikbay/services-front/actions/runs/43809124221) passed. Device acceptance remains open.
