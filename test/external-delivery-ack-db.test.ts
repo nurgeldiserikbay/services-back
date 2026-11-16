@@ -48,6 +48,24 @@ test('provider acceptance requires the current lease and updates intent and deli
    /notification_attempt_counter_mismatch/);
   await db.query('UPDATE notification_intents SET attempts=0 WHERE id=$1',[intent]);
 
+  // A provider acceptance cannot silently heal a contradictory durable
+  // retry schedule. Test both directions before the normal SENT transition.
+  await db.query(`UPDATE notification_intents SET next_attempt_at=now()-interval '1 minute'
+    WHERE id=$1`,[intent]);
+  await assert.rejects(acknowledgeClaimedExternalDeliverySent(db,delivery,replaced),
+   /notification_retry_schedule_mismatch/);
+  await db.query(`UPDATE notification_intents SET next_attempt_at=NULL WHERE id=$1`,
+   [intent]);
+  await db.query(`UPDATE notification_deliveries SET next_attempt_at=now()-interval '1 minute'
+    WHERE id=$1`,[delivery]);
+  await assert.rejects(acknowledgeClaimedExternalDeliverySent(db,delivery,replaced),
+   /notification_retry_schedule_mismatch/);
+  await db.query(`UPDATE notification_deliveries SET next_attempt_at=NULL WHERE id=$1`,
+   [delivery]);
+  const stillPending=await db.query<{state:string;attempt_count:number}>(`
+   SELECT state,attempt_count FROM notification_deliveries WHERE id=$1`,[delivery]);
+  assert.deepEqual(stillPending.rows,[{state:'PENDING',attempt_count:0}]);
+
   assert.deepEqual(await acknowledgeClaimedExternalDeliverySent(db,delivery,replaced),
    {intentId:intent,attempts:1});
   assert.equal(await acknowledgeClaimedExternalDeliverySent(db,delivery,replaced),null);
