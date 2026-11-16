@@ -639,14 +639,14 @@ test('recent account session proof is checked in the MFA transaction before fact
  const pool={connect:async()=>{
   const client=await originalConnect();
   const originalQuery=client.query.bind(client);
-  client.query=async(sql:string)=>{
+  client.query=async(sql:string,params?:unknown[])=>{
    if(sql.includes('FROM sessions session')){
     assert.match(sql,/JOIN platform_admin_staff staff/);
     assert.deepEqual(params,[hashSessionToken(accountToken,accountPepper),now]);
     f.events.push('account-primary');
     return {rows:[{staff_id:staffId,authenticated_at:new Date(now-1000)}]};
    }
-   return originalQuery(sql);
+   return originalQuery(sql,params);
   };
   return client;
  }};
