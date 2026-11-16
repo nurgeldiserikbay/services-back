@@ -1,5 +1,6 @@
 import {isIP} from 'node:net';
-import type {ExternalDeliveryAlert,ExternalDeliveryAlertTransport}
+import type {ExternalDeliveryAlert} from './external-delivery-alerts.js';
+import type {ExternalDeliveryAlertTransport}
  from './external-delivery-alert-dispatch.js';
 
 /**
@@ -33,10 +34,10 @@ export function createExternalDeliveryWebhookTransport(
  // address literals, port overrides, query strings or URL fragments.
  if(url.protocol!=='https:'||url.port!==''||url.username!==''||
     url.password!==''||url.search!==''||url.hash!==''||
-    !/^[a-z0-9-]+(?:\\.[a-z0-9-]+)+$/.test(approvedHostname)||
+    !/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(approvedHostname)||
     url.hostname!==approvedHostname||isIP(url.hostname)!==0||
     bearerToken.length<16||bearerToken.length>2048||
-    !/^[\\x21-\\x7e]+$/.test(bearerToken)||
+    !/^[\x21-\x7e]+$/.test(bearerToken)||
     typeof request!=='function')
   throw new Error('invalid_external_alert_webhook_config');
  // Do not capture the mutable user-owned config or allow config getter
