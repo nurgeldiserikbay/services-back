@@ -47,7 +47,7 @@ export function evaluateExternalDeliveryQueueAlerts(
   throw new Error('invalid_external_delivery_alert_input');
  for(const key of COUNTS){
   const count=ownDataValue(snapshot,key);
-  if(!Number.isSafeInteger(count)||count<0)
+  if(typeof count!=='number'||!Number.isSafeInteger(count)||count<0)
    throw new Error('invalid_external_delivery_alert_snapshot');
  }
  const total=COUNTS.slice(0,-1).reduce((sum,key)=>sum+Number(ownDataValue(snapshot,key)),0);
@@ -58,7 +58,7 @@ export function evaluateExternalDeliveryQueueAlerts(
  const terminalFailedThreshold=ownDataValue(policy,'terminalFailedThreshold');
  for(const threshold of [pendingDueThreshold,expiredLeaseThreshold,
   terminalFailedThreshold]){
-  if(!Number.isSafeInteger(threshold)||threshold<1)
+  if(typeof threshold!=='number'||!Number.isSafeInteger(threshold)||threshold<1)
    throw new Error('invalid_external_delivery_alert_policy');
  }
  const counts=Object.fromEntries(COUNTS.map(key=>[key,ownDataValue(snapshot,key)])) as ExternalDeliveryQueueSnapshot;
