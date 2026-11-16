@@ -108,3 +108,19 @@ test('transaction failures propagate rather than claiming successful sessions',a
   f.provider,policy,sig,async()=>{}),/uncertain COMMIT/);
  assert.equal(f.sends(),0);
 });
+
+test('abort during a provider call finishes its acknowledgement but prevents another claim',async()=>{
+ const f=fixture(25),controller=new AbortController();
+ let sends=0;
+ const provider={...f.provider,send:async()=>{
+  sends++;
+  controller.abort();
+  return 'ACCEPTED' as const;
+ }};
+ await assert.rejects(runExternalNotificationPolling(
+  f.database as never,provider,{
+   ...policy,maxTicks:1,maxItemsPerTick:25,
+  },controller.signal,async()=>{}),/abort/i);
+ assert.equal(sends,1,'no second external provider call');
+ assert.equal(f.claims(),1,'no second delivery claimed after cancellation');
+});

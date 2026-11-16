@@ -122,3 +122,20 @@ test('transaction failure propagates rather than presenting a healthy summary',a
   db as never,f.provider,1),/commit outcome unknown/);
  assert.equal(f.sends(),0);
 });
+
+test('already aborted signal refuses every claim and provider operation',async()=>{
+ const f=fixture(3),controller=new AbortController();
+ controller.abort();
+ await assert.rejects(processExternalNotificationBatch(
+  f.database as never,f.provider,3,90,controller.signal),/abort/i);
+ assert.deepEqual(f.log,[]);
+ assert.equal(f.sends(),0);
+});
+
+test('malformed optional abort signal fails before any transaction',async()=>{
+ const f=fixture(3);
+ await assert.rejects(processExternalNotificationBatch(
+  f.database as never,f.provider,3,90,{} as never),
+ /invalid_external_delivery_abort_signal/);
+ assert.deepEqual(f.log,[]);
+});
