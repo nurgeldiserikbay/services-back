@@ -42,7 +42,7 @@ export async function readExternalDeliveryQueueSnapshot(
       d.attempt_count,n.attempts,
       d.next_attempt_at AS delivery_due,n.next_attempt_at AS intent_due,
       d.lease_token,d.lease_expires_at,
-      clock_timestamp() AS observed_at
+      statement_timestamp() AS observed_at
     FROM notification_deliveries d
     JOIN notification_intents n ON n.id=d.intent_id AND n.channel=d.channel
     WHERE d.channel IN ('EMAIL','SMS')
@@ -88,7 +88,7 @@ export async function readExternalDeliveryQueueSnapshot(
   'terminal_failed','provider_accepted','inconsistent','total'] as const;
  const values=keys.map(key=>{
   const item=raw[key];
-  if(typeof item!=='string'||!/^\\d+$/.test(item))
+  if(typeof item!=='string'||!/^[0-9]+$/.test(item))
    throw new Error('invalid_notification_monitor_snapshot');
   const parsed=Number(item);
   if(!Number.isSafeInteger(parsed)||parsed<0)
