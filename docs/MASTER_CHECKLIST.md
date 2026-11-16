@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend geography duplicate-query rejection (2026-11-16): [frontend `5f4c02f`](https://github.com/nurgeldiserikbay/services-front/commit/5f4c02f76726f823e46f8e8f688ece20ed0ee230) adds strict single-valued geography BFF filters with executable duplicate/malformed query regression tests; [CI #43823084966](https://github.com/nurgeldiserikbay/services-front/actions/runs/43823084966) queued at recording. Earlier bounded-response [CI #43822327302](https://github.com/nurgeldiserikbay/services-front/actions/runs/43822327302) was cancelled by newer main commits, **not** verified green; its tests must pass on the current head before acceptance. Security and full frontend acceptance remain open.
+
 Frontend geography BFF bounded-response hardening (2026-11-16): [frontend `8b0a758`](https://github.com/nurgeldiserikbay/services-front/commit/8b0a7589481c3fda0ac13ab096c70456a3346193) adds bounded 128-KiB streaming JSON decoding, strict media type and declared-length checks, malformed-body/UTF-8 rejection, and executable unit tests for the public geography BFF; [CI #43822327302](https://github.com/nurgeldiserikbay/services-front/actions/runs/43822327302) pending when recorded. Prior executable geography catalog validation [frontend `7d4bec6`](https://github.com/nurgeldiserikbay/services-front/commit/7d4bec641b75e685c5adca13c852637a861a50fc) passed [CI #43821610461](https://github.com/nurgeldiserikbay/services-front/actions/runs/43821610461). End-to-end search and manual device acceptance are still open.
 
 
