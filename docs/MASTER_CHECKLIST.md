@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend notification inbox React effect lint cleanup (2026-11-16): [frontend `8ab9a64`](https://github.com/nurgeldiserikbay/services-front/commit/8ab9a64041bf187a9c194f4e01fbe453ddf5f17b) schedules the initial notification inbox load outside the synchronous React effect callback, cancels pending timers on cleanup and removes its file-scoped `react-hooks/set-state-in-effect` exemption, with source regression and docs. Previous seller decision ref cleanup and corrected tests [frontend `71a4416`](https://github.com/nurgeldiserikbay/services-front/commit/71a4416919cb22ad4e54c2f66122324003739435) passed [CI #43842106397](https://github.com/nurgeldiserikbay/services-front/actions/runs/43842106397). Latest [CI #43843157594](https://github.com/nurgeldiserikbay/services-front/actions/runs/43843157594) pending; do not mark notification cleanup accepted until CI passes. Four other effect-lint file exceptions remain; browser accessibility and full E2E acceptance open.
+
 Admin RBAC UI accessor safety (2026-11-16): [`services-admin` commit `683299f`](https://github.com/nurgeldiserikbay/services-admin/commit/683299fd9037d83d48e313293d7b68f6e8d62e97) rejects accessor-backed role/MFA/session claims without evaluating untrusted getters; executable regression tests added in [`e7c9305`](https://github.com/nurgeldiserikbay/services-admin/commit/e7c9305c956c1f38ffc3f52fa4e633f86e704953). Initial typecheck failed due to literal newline escapes, corrected in follow-up; [Admin CI #43843050687](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43843050687) **passed** typecheck, lint, tests, build and production smoke. Full MFA browser E2E and backend authorization integration remain open.
 
 
