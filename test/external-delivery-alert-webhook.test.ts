@@ -48,6 +48,23 @@ test('HTTPS receiver configuration is explicit and restricted to approved endpoi
  }
 });
 
+
+test('webhook configuration rejects inherited and accessor-backed keys without executing getters',()=>{
+ let getterCalls=0;
+ for(const key of ['endpoint','approvedHostname','bearerToken','timeoutMs'] as const){
+  const accessor=Object.defineProperty({...valid},key,{
+   get(){getterCalls++;throw new Error('unsafe getter executed');},
+  });
+  assert.throws(()=>createExternalDeliveryWebhookTransport(accessor),
+   /invalid_external_alert_webhook_config/);
+  const inherited=Object.assign(Object.create({[key]:valid[key]}),valid);
+  delete inherited[key];
+  assert.throws(()=>createExternalDeliveryWebhookTransport(inherited),
+   /invalid_external_alert_webhook_config/);
+ }
+ assert.equal(getterCalls,0);
+});
+
 test('webhook rejects extra fields and accessor-backed alerts without sending',async()=>{
  let calls=0,reads=0;
  const transport=createExternalDeliveryWebhookTransport(valid,
