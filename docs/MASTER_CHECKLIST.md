@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend queue observation PostgreSQL acceptance (2026-11-16): branch `backend/notification-observation-postgres-e2e-20261116` exercises explicit aggregate alert publication against actual PostgreSQL transactions, with a due record and mismatched intent/delivery attempt count. It checks deterministic alert codes, redaction of contact/intent/delivery/outbox IDs, count-only payloads, and transaction rollback isolation. Dedicated CI gate added; verification pending. Production transport, scheduler, thresholds, staging run and operator authorization remain OPEN; do not mark Delivery monitoring verified.
+
 Backend notification observation boundary (2026-11-16): branch `backend/notification-observation-dispatch-20261116` provides a single-shot, explicit, cancellation-aware queue observation and count-only alert-publisher callback. It awaits every alert acknowledgement and propagates snapshot/policy/publisher failure instead of falsely reporting success. Dedicated privacy, fail-closed, abort and publisher failure tests are included in CI; branch CI pending. No production scheduler, durable alert transport, staging drill, or approved SLO threshold is provided; Delivery monitoring remains unchecked.
 
 Backend monitoring SQL row integrity (2026-11-16): branch `backend/notification-snapshot-own-fields-20261116` validates all 8 database-derived notification aggregate counters as own data properties, rejecting inherited/accessor-backed fields and malformed rows without executing getters. Regression tests include inherited, accessor-backed, missing/invalid row cases. Branch CI pending. This is internal snapshot integrity only: real production monitoring transport, alert drill, thresholds and staging acceptance remain OPEN.
