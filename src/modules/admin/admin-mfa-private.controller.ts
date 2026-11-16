@@ -1,17 +1,25 @@
 import {
- Body,Controller,Header,Headers,HttpCode,NotFoundException,Post,
- UnauthorizedException,
+ Body,Controller,Header,Headers,HttpCode,Inject,Post,
+ ServiceUnavailableException,UnauthorizedException,
 } from '@nestjs/common';
-import {requirePrivateAdminMfaAccess} from './admin-mfa-private-auth.js';
-import {parsePrivateAdminMfaRequest} from './admin-mfa-private-request.js';
+import {
+ exchangePrivateAdminMfa,type PrivateAdminMfaDependencies,
+} from './admin-mfa-private-exchange.js';
 
 /**
- * Private MFA exchange boundary. Intentionally not registered in a Nest module
- * until a trusted database pool and vault-backed key resolver are wired.
- * Transport access is checked BEFORE inspecting the request body.
+ * Only the trusted server-side integration module may provide this token.
+ * Never populate it from HTTP input. The controller remains UNREGISTERED
+ * until a vault-backed key resolver and restricted private ingress exist.
  */
+export const PRIVATE_ADMIN_MFA_DEPS='PRIVATE_ADMIN_MFA_DEPS';
+
 @Controller('admin/private/mfa')
 export class PrivateAdminMfaController{
+ constructor(
+  @Inject(PRIVATE_ADMIN_MFA_DEPS)
+  private readonly dependencies:PrivateAdminMfaDependencies,
+ ){}
+
  @Post('verify')
  @HttpCode(200)
  @Header('Cache-Control','private, no-store, max-age=0')
@@ -23,12 +31,17 @@ export class PrivateAdminMfaController{
  async verify(
   @Headers('x-services-admin-mfa-key') access:unknown,
   @Body() body:unknown,
- ):Promise<never>{
-  requirePrivateAdminMfaAccess(access);
-  if(!parsePrivateAdminMfaRequest(body))
-   throw new UnauthorizedException('Invalid admin authentication');
-  // Fail closed until server-side account proof, vault key resolver and
-  // atomic MFA transaction are injected. Never return a fake bearer.
-  throw new NotFoundException();
+ ):Promise<{session_token:string;expires_at:number}>{
+  let result:{session_token:string;expires_at:number}|null;
+  try{
+   result=await exchangePrivateAdminMfa(access,body,this.dependencies);
+  }catch(error){
+   // Preserve the transport's fail-closed NotFoundException; do not expose
+   // database, secret-manager or cryptographic driver exception messages.
+   if(error instanceof Error&&error.name==='NotFoundException')throw error;
+   throw new ServiceUnavailableException('Admin authentication unavailable');
+  }
+  if(!result)throw new UnauthorizedException('Invalid admin authentication');
+  return result;
  }
 }
