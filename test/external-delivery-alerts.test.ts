@@ -67,3 +67,38 @@ test('no implicit SLO: unsafe thresholds fail closed',()=>{
  assert.throws(()=>evaluateExternalDeliveryQueueAlerts(empty,null as never),
   /invalid_external_delivery_alert_input/);
 });
+
+
+test('rejects inherited and getter-backed metrics without executing getters',()=>{
+ let reads=0;
+ const getterValue={...empty};
+ Object.defineProperty(getterValue,'pendingDue',{
+  enumerable:true,get(){reads++;throw new Error('should not execute getter');},
+ });
+ assert.throws(()=>evaluateExternalDeliveryQueueAlerts(
+  getterValue as ExternalDeliveryQueueSnapshot,policy),
+ /invalid_external_delivery_alert_input/);
+ assert.equal(reads,0);
+
+ const inherited=Object.create({pendingDue:0}) as Record<string,unknown>;
+ Object.assign(inherited,empty);
+ delete inherited.pendingDue;
+ assert.throws(()=>evaluateExternalDeliveryQueueAlerts(
+  inherited as unknown as ExternalDeliveryQueueSnapshot,policy),
+ /invalid_external_delivery_alert_input/);
+
+ const getterPolicy={...policy};
+ Object.defineProperty(getterPolicy,'expiredLeaseThreshold',{
+  get(){reads++;throw new Error('should not execute policy getter');},
+ });
+ assert.throws(()=>evaluateExternalDeliveryQueueAlerts(
+  empty,getterPolicy),
+ /invalid_external_delivery_alert_input/);
+ assert.equal(reads,0);
+
+ const inheritedPolicy=Object.create({pendingDueThreshold:10}) as Record<string,unknown>;
+ Object.assign(inheritedPolicy,{expiredLeaseThreshold:2,terminalFailedThreshold:3});
+ assert.throws(()=>evaluateExternalDeliveryQueueAlerts(
+  empty,inheritedPolicy as unknown as typeof policy),
+ /invalid_external_delivery_alert_input/);
+});
