@@ -325,6 +325,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-16 | services-back | [`ee2845e`](https://github.com/nurgeldiserikbay/services-back/commit/ee2845ecf607120167e9aaa0ad0072a5c6b0ad08) | CI main concurrency policy changed to preserve in-flight main runs during parallel pushes; superseded PR runs may still be cancelled | **Committed; verification of new workflow run pending**; all-main-CI-green remains unchecked |
 
+| 2026-11-16 | services-back | [`a6a9035`](https://github.com/nurgeldiserikbay/services-back/commit/a6a90359b6e1c46c824680c01d6d8ced1a35448e) | Transaction tests: SET LOCAL failure rolls back without callback; connection acquisition failure maps to unavailable | Committed; CI not independently verified |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
