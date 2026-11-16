@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend seller decision React ref cleanup (2026-11-16): Full ESLint/Next.js gate passed [frontend CI #43832954643](https://github.com/nurgeldiserikbay/services-front/actions/runs/43832954643) for frontend [`656d6fc`](https://github.com/nurgeldiserikbay/services-front/commit/656d6fcbcce7fb769a37e955f5469d87871b595b), but that baseline still contains five file-scoped `react-hooks/set-state-in-effect` exceptions and one `react-hooks/refs` exception. [Frontend `c8783bb`](https://github.com/nurgeldiserikbay/services-front/commit/c8783bb82e3d3a3ece156a4a3a15002bcce37b3d) removes render-time pending ref access from SellerDecisionActions, lifts its `react-hooks/refs` exception, adds source regression assertions and documents the remaining debt. [CI #43840095101](https://github.com/nurgeldiserikbay/services-front/actions/runs/43840095101) pending at record. The submit-time server decision/idempotency guard remains. Full React cleanup and manual acceptance remain open.
+
 Admin RBAC/MFA presentation policy runtime verification (2026-11-16): [`services-admin` commit `fc01a7a`](https://github.com/nurgeldiserikbay/services-admin/commit/fc01a7affd4c5305112d14285afc2e4d5857cbb0) adds executed TypeScript policy matrix tests for owner/admin/operator/auditor across all seven supported actions, expired/future/stale MFA, invalid sessions and moderation decision state/reason bounds. [Admin CI #43839912414](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43839912414) **passed**. These are UI capability hints, not backend authorization or full browser MFA E2E; both integration tasks remain open.
 
 
