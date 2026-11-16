@@ -88,7 +88,7 @@
 - [x] Outbox model — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); outbox event staging and delivery linkage
 - [x] Notification intents — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); IN_APP and EMAIL intent staging
 - [ ] Email/SMS integration — Pending verification
-- [ ] Retry and dead-letter handling — Prepared: retry persistence, fenced lease and SENT acknowledgement, provider idempotency/reconciliation contracts (PR #113–115), privacy-minimal FAILED inventory (PR #116), and due-schedule parity guard (PR #117; branch CI #43810080747 PASS); concrete provider, authenticated/audited requeue, and operational end-to-end verification remain open
+- [ ] Retry and dead-letter handling — Prepared: retry persistence, fenced claim/lease and SENT acknowledgement, provider idempotency/reconciliation contracts (PR #113–115), privacy-minimal FAILED inventory (PR #116), schedule parity (PR #117), and expired lease provider-I/O guard (PR #118; CI #43811387559 PASS); concrete provider, authenticated/audited requeue and operational E2E remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
 - [ ] Delivery monitoring — Pending verification
@@ -387,6 +387,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 | 2026-11-16 | services-back | [PR #116](https://github.com/nurgeldiserikbay/services-back/pull/116), [`25f32f1`](https://github.com/nurgeldiserikbay/services-back/commit/25f32f145636e9192e3bcbea4e3b34b8b876ef01), [branch CI #43809221621](https://github.com/nurgeldiserikbay/services-back/actions/runs/43809221621) | Internal FAILED EMAIL/SMS inventory with no PII, keyset pagination, counter/lease consistency filters; PostgreSQL integration, full build/test and dependency audit passed | **PASS branch CI, merged main**; not a public endpoint or replay handler; main verification pending |
 
 | 2026-11-16 | services-back | [PR #117](https://github.com/nurgeldiserikbay/services-back/pull/117), [`4fb64ad`](https://github.com/nurgeldiserikbay/services-back/commit/4fb64ad49ca97b4e0da670898df847290a0abe1a), [branch CI #43810080747](https://github.com/nurgeldiserikbay/services-back/actions/runs/43810080747), [main CI #43810341652](https://github.com/nurgeldiserikbay/services-back/actions/runs/43810341652) | Claim only due EMAIL/SMS deliveries when delivery and intent retry timestamps match precisely; expanded PostgreSQL regression for inconsistent schedules and double-claim prevention | **PASS branch CI, merged main**; post-merge CI pending and external provider/requeue still open |
+
+| 2026-11-16 | services-back | [PR #118](https://github.com/nurgeldiserikbay/services-back/pull/118), [`ba8e7c7`](https://github.com/nurgeldiserikbay/services-back/commit/ba8e7c7109cc25ec23eb550238b17488a40c7a82), [branch CI #43811387559](https://github.com/nurgeldiserikbay/services-back/actions/runs/43811387559), [main CI #43811608720](https://github.com/nurgeldiserikbay/services-back/actions/runs/43811608720) | Reject provider reconciliation on expired lease; recheck expiry before starting external send; regression tests ensure no I/O on stale lease | **PASS branch CI, merged main**; post-merge CI pending; concrete provider and audited replay still open |
 
 ## Next acceptance gates
 
