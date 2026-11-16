@@ -275,6 +275,8 @@ jobs:
         run: node --import tsx --test test/external-delivery-monitoring-db.test.ts
       - name: Bounded batch external delivery PostgreSQL E2E (fail fast)
         run: node --import tsx --test test/external-delivery-batch-postgres-e2e.test.ts
+      - name: Outbox staging to external delivery PostgreSQL acceptance E2E (fail fast)
+        run: node --import tsx --test test/external-delivery-cycle-postgres-e2e.test.ts
       - name: Opt-in notification staging and delivery cycle commit boundaries (fail fast)
         run: node --import tsx --test test/external-delivery-cycle.test.ts
       - name: Opt-in external delivery polling safety and cancellation (fail fast)
