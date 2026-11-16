@@ -38,20 +38,27 @@ export async function readExternalDeliveryQueueSnapshot(
   total:string;
  }>(`
   WITH observed AS (
-    SELECT d.state AS delivery_state,n.state AS intent_state,
+    SELECT d.channel AS delivery_channel,n.channel AS intent_channel,
+      d.state AS delivery_state,n.state AS intent_state,
       d.attempt_count,n.attempts,
       d.next_attempt_at AS delivery_due,n.next_attempt_at AS intent_due,
       d.lease_token,d.lease_expires_at,
       statement_timestamp() AS observed_at
     FROM notification_deliveries d
-    JOIN notification_intents n ON n.id=d.intent_id AND n.channel=d.channel
+    LEFT JOIN notification_intents n ON n.id=d.intent_id
     WHERE d.channel IN ('EMAIL','SMS')
   ),
   classified AS (
     SELECT *,
       (
-        delivery_state<>intent_state
+        intent_channel IS NULL
+        OR delivery_channel IS DISTINCT FROM intent_channel
+        OR delivery_state IS DISTINCT FROM intent_state
+        OR attempts IS NULL
         OR attempt_count<>attempts
+        OR (delivery_state='FAILED' AND attempt_count<1)
+        OR (delivery_state IN ('SENT','DELIVERED')
+            AND (delivery_due IS NOT NULL OR lease_token IS NOT NULL))
         OR NOT(delivery_due IS NOT DISTINCT FROM intent_due)
         OR (lease_token IS NULL)<>(lease_expires_at IS NULL)
         OR (delivery_state<>'PENDING' AND lease_token IS NOT NULL)
