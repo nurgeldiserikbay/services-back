@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend geography response minimization (2026-11-16): [frontend `3a4dcb3`](https://github.com/nurgeldiserikbay/services-front/commit/3a4dcb3234a5f5ae797c8e8dd53e717e24486a7b) limits public geography BFF responses to the documented `items` envelope, avoiding accidental reflection of upstream top-level metadata; executable regression added. [CI #43823295835](https://github.com/nurgeldiserikbay/services-front/actions/runs/43823295835) pending at recording. Previous duplicate-filter rejection [frontend `5f4c02f`](https://github.com/nurgeldiserikbay/services-front/commit/5f4c02f76726f823e46f8e8f688ece20ed0ee230) [CI #43823084966 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/43823084966). Earlier 128-KiB proxy change [CI #43822327302](https://github.com/nurgeldiserikbay/services-front/actions/runs/43822327302) was cancelled by newer push, not independently verified by that run. Full E2E and device acceptance still open.
+
 Admin TypeScript CI repair (2026-11-16): [services-admin `d313762`](https://github.com/nurgeldiserikbay/services-admin/commit/d313762d2e9d30ddbe9a5150b31a3be111788426) narrows the untrusted moderation payload to an explicit record only after exact-key/plain-object checks, then reads `items` through `rawItems`, preserving strict 50-item and per-row validation. The preceding admin [CI #43806495110](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43806495110) failed with TS2339 on `payload.items`; the replacement [CI #43823262502](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43823262502) started and was in progress at recording. Admin typecheck/build and full UI acceptance remain **unchecked** until CI and runtime evidence pass.
 
 
