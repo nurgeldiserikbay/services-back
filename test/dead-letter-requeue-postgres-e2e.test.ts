@@ -52,7 +52,7 @@ test('PostgreSQL requeue is audited, idempotent, scoped and rolled back atomical
   await db.query(`INSERT INTO platform_admin_sessions
    (id,staff_id,token_hash,mfa_verified_at,expires_at,created_at)
    VALUES($1,$2,$3,now()-interval '2 minutes',
-          now()+interval '1 hour',now()-interval '4 minutes')`,
+          now()+interval '1 hour',now()-interval '1 minute')`,
    [sessionId,staffId,tokenHash]);
   await db.query(`INSERT INTO platform_admin_totp_factors
    (staff_id,encrypted_secret,key_version,created_at,activated_at)
