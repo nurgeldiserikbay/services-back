@@ -101,6 +101,44 @@ test('definitive provider rejection delegates retry decision, stale fencing neve
  assert.match(statements[0],/lease_token/);
 });
 
+test('definite provider rejection propagates SQL and unknown COMMIT failures',async()=>{
+ const {claim}=fixture();
+ let sends=0;
+ for(const message of ['failed SQL write','unknown COMMIT status']){
+  let transactions=0;
+  const db={
+   transaction:async()=>{
+    transactions++;
+    throw new Error(message);
+   },
+  };
+  await assert.rejects(reconcileAndSendClaimedExternalDelivery(
+   db as never,{
+    supportsIdempotentSend:true,
+    reconcile:async()=> 'NOT_FOUND',
+    send:async()=>{sends++;return 'REJECTED';},
+   },claim),new RegExp(message));
+  assert.equal(transactions,1);
+ }
+ assert.equal(sends,2);
+});
+
+test('provider transport exceptions still defer and never start a transaction',async()=>{
+ const {claim}=fixture();
+ let transactions=0;
+ const db={transaction:async()=>{
+  transactions++;
+  throw new Error('unexpected database write');
+ }};
+ assert.equal(await reconcileAndSendClaimedExternalDelivery(
+  db as never,{
+   supportsIdempotentSend:true,
+   reconcile:async()=> 'NOT_FOUND',
+   send:async()=>{throw new Error('provider timeout potentially sent');},
+  },claim),'DEFERRED');
+ assert.equal(transactions,0);
+});
+
 test('expired delivery lease never consults provider or changes SQL',async()=>{
  const {claim,database,statements}=fixture();
  const calls:string[]=[];

@@ -71,23 +71,27 @@ export async function reconcileAndSendClaimedExternalDelivery(
   if(!(sendTime instanceof Date)||!Number.isFinite(sendTime.getTime()))
    throw new RangeError('invalid_delivery_retry_time');
   if(claim.leaseExpiresAt.getTime()<=sendTime.getTime())return 'LEASE_LOST';
+  // Only provider network errors are uncertain outcomes. Never swallow a
+  // failed database transaction/COMMIT as a provider timeout.
+  let sent:'ACCEPTED'|'REJECTED'|'UNKNOWN';
   try{
-   const result=await provider.send({
+   sent=await provider.send({
     intentId:claim.intentId,channel:claim.channel,idempotencyKey:key,
    });
-   if(result==='ACCEPTED')observed='ACCEPTED';
-   else if(result==='REJECTED'){
-    return database.transaction(async(client)=>{
-     const outcome=await failClaimedExternalDelivery(
-      client,claim.deliveryId,claim.leaseToken,now());
-     return outcome?(outcome.state==='FAILED'?'FAILED':'RETRY_SCHEDULED'):'LEASE_LOST';
-    });
-   }else return 'DEFERRED';
   }catch{
-   // The send may have reached the provider even when the response is lost.
-   // Never treat a transport exception as a definitive provider rejection.
+   // The send may have reached the provider even when its response is lost.
    return 'DEFERRED';
   }
+  if(sent==='ACCEPTED')observed='ACCEPTED';
+  else if(sent==='REJECTED'){
+   // Definite rejection is persisted transactionally; SQL failures MUST
+   // propagate so monitoring can detect an unknown COMMIT outcome.
+   return database.transaction(async(client)=>{
+    const outcome=await failClaimedExternalDelivery(
+     client,claim.deliveryId,claim.leaseToken,now());
+    return outcome?(outcome.state==='FAILED'?'FAILED':'RETRY_SCHEDULED'):'LEASE_LOST';
+   });
+  }else return 'DEFERRED';
  }
  if(observed!=='ACCEPTED')return 'DEFERRED';
  return database.transaction(async(client)=>{
