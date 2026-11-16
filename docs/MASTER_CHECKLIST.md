@@ -402,6 +402,14 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-16 | services-back | [PR #120](https://github.com/nurgeldiserikbay/services-back/pull/120), [`8c200df`](https://github.com/nurgeldiserikbay/services-back/commit/8c200df0a432b5834f0de7826d0d0c04a228238c), [branch CI #43816233852](https://github.com/nurgeldiserikbay/services-back/actions/runs/43816233852), [main CI #43816529456](https://github.com/nurgeldiserikbay/services-back/actions/runs/43816529456) | Replayed audited requeue key is recognized after original FAILED state becomes PENDING; exact organization authorization remains required; no provider call or repeated mutation; cross-delivery replay rejected | **PASS branch CI; merged main; post-merge CI pending**. Provider, HTTP/CSRF, full operational E2E remain open |
 
+## Private admin MFA implementation register (2026-11-16)
+
+- [ ] **Prepared, CI verification pending:** trusted shared PostgreSQL pool adapter and dependency wiring; allowlisted vault key versions; separation of account/admin/BFF/TOTP key domains; rejected-key buffer cleanup. Evidence: [`f3cc98b`](https://github.com/nurgeldiserikbay/services-back/commit/f3cc98b290d4ef12ee4c63f23313f9e242e32409), [`4179b1d`](https://github.com/nurgeldiserikbay/services-back/commit/4179b1decddc0332663c8649e58df869cf44f061), [`b4c923d`](https://github.com/nurgeldiserikbay/services-back/commit/b4c923dd992aad237f49a4e493e91a06a756d26c).
+- [ ] **Prepared, CI verification pending:** private MFA request parser rejects accessors/hidden fields, controller sanitizes misleading driver errors, regression suite included in backend workflow. Evidence: [`9c4750b`](https://github.com/nurgeldiserikbay/services-back/commit/9c4750b94deb2b3f2080f9b54bd7ddcc086c7ca5), [`eb3a029`](https://github.com/nurgeldiserikbay/services-back/commit/eb3a02905ae60a5c4c7db1194b6487d8b81aea13), [`9fd0254`](https://github.com/nurgeldiserikbay/services-back/commit/9fd025441d224a633c5a551b310ee3b5bdfcc0a7), [`3ce8f76`](https://github.com/nurgeldiserikbay/services-back/commit/3ce8f76d4c5deab1e2e65b84ed16006ebfcc7b93).
+- [ ] **Pending:** verified main CI run for these changes; real private MFA Nest HTTP integration and isolated PostgreSQL E2E; trusted vault deployment, ingress restriction, BFF sealed-cookie integration and staging security sign-off. The private controller remains **unregistered**; do not enable on the strength of unit tests alone.
+
+These are implementation tracking subitems, **not new top-level acceptance items**; the 117-item denominator and verified-complete count are unchanged. CI run URL/result for these commits: **not yet verified**.
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
