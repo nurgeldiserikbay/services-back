@@ -102,3 +102,63 @@ test('abort during last alert acknowledgement does not report completed poll',as
   {...policy,maxTicks:1},controller.signal,async()=>{}),/abort/i);
  assert.equal(calls,1);
 });
+
+
+test('opt-in suppression emits first alert, stays quiet, and re-arms after recovery',async()=>{
+ const sequence=[
+  {...row,pending_due:'1',total:'1'},
+  {...row,pending_due:'3',total:'3'},
+  {...row,pending_due:'0',total:'0'},
+  {...row,pending_due:'1',total:'1'},
+ ];
+ let index=0;
+ const codes:string[]=[];
+ const client={query:async()=>({rows:[sequence[index++]]})};
+ const summary=await pollExternalDeliveryObservations(
+  client as never,thresholds,async alert=>{codes.push(alert.code);},
+  {maxTicks:4,intervalMs:100},new AbortController().signal,
+  async()=>{},true);
+ assert.deepEqual(summary,{ticks:4,alertsPublished:2});
+ assert.deepEqual(codes,['DUE_BACKLOG','DUE_BACKLOG']);
+ assert.equal(index,4);
+});
+
+test('suppression is invocation-scoped and default behavior remains unchanged',async()=>{
+ const client={query:async()=>({rows:[row]})};
+ const first=await pollExternalDeliveryObservations(
+  client as never,thresholds,async()=>{},policy,
+  new AbortController().signal,async()=>{},true);
+ const second=await pollExternalDeliveryObservations(
+  client as never,thresholds,async()=>{},policy,
+  new AbortController().signal,async()=>{},true);
+ const legacy=await pollExternalDeliveryObservations(
+  client as never,thresholds,async()=>{},policy,
+  new AbortController().signal,async()=>{});
+ assert.deepEqual(first,{ticks:3,alertsPublished:1});
+ assert.deepEqual(second,{ticks:3,alertsPublished:1});
+ assert.deepEqual(legacy,{ticks:3,alertsPublished:3});
+});
+
+test('invalid suppression option fails before any SQL query',async()=>{
+ let reads=0;
+ const client={query:async()=>{reads++;return {rows:[row]};}};
+ await assert.rejects(pollExternalDeliveryObservations(
+  client as never,thresholds,async()=>{},
+  policy,new AbortController().signal,async()=>{},'yes' as never),
+ /invalid_external_observation_suppression_policy/);
+ assert.equal(reads,0);
+});
+
+test('suppression does not silently recover after malformed snapshot',async()=>{
+ let reads=0,publishes=0;
+ const client={query:async()=>{
+  reads++;
+  return {rows:[reads===2?{...row,total:'9'}:row]};
+ }};
+ await assert.rejects(pollExternalDeliveryObservations(
+  client as never,thresholds,async()=>{publishes++;},
+  policy,new AbortController().signal,async()=>{},true),
+ /invalid_notification_monitor_snapshot/);
+ assert.equal(reads,2);
+ assert.equal(publishes,1);
+});
