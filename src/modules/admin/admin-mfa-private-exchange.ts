@@ -3,7 +3,7 @@ import {loginAdminWithRecentAccountSession} from './admin-mfa-account-login.js';
 import {requirePrivateAdminMfaAccess} from './admin-mfa-private-auth.js';
 import {parsePrivateAdminMfaRequest} from './admin-mfa-private-request.js';
 
-type Dependencies=Readonly<{
+export type PrivateAdminMfaDependencies=Readonly<{
  pool:Pick<Pool,'connect'>;
  accountSessionPepper:Buffer;
  adminSessionPepper:Buffer;
@@ -19,7 +19,7 @@ type Dependencies=Readonly<{
 export async function exchangePrivateAdminMfa(
  access:unknown,
  body:unknown,
- dependencies:Dependencies,
+ dependencies:PrivateAdminMfaDependencies,
 ):Promise<{session_token:string;expires_at:number}|null>{
  requirePrivateAdminMfaAccess(access);
  const parsed=parsePrivateAdminMfaRequest(body);
