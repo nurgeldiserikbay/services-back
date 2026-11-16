@@ -28,6 +28,14 @@ test('external failure persists retry schedule, then terminal failure, without P
   await db.query(`INSERT INTO notification_deliveries
    (id,intent_id,channel) VALUES($1,$2,'EMAIL')`,[delivery,intent]);
 
+  // An inconsistent durable counter must not be silently overwritten.
+  await db.query('UPDATE notification_intents SET attempts=7 WHERE id=$1',[intent]);
+  await assert.rejects(recordExternalDeliveryFailure(db,delivery,now,2),
+   /notification_attempt_counter_mismatch/);
+  const afterMismatch=await db.query<{attempt_count:number}>(`
+   SELECT attempt_count FROM notification_deliveries WHERE id=$1`,[delivery]);
+  assert.equal(afterMismatch.rows[0].attempt_count,0);
+  await db.query('UPDATE notification_intents SET attempts=0 WHERE id=$1',[intent]);
   const first=await recordExternalDeliveryFailure(db,delivery,now,2);
   assert.deepEqual(first,{state:'PENDING',attempts:1,nextAttemptAt:new Date(now.getTime()+30_000)});
   assert.equal(await recordExternalDeliveryFailure(db,delivery,new Date(now.getTime()+29_999),2),null);
