@@ -639,7 +639,7 @@ test('recent account session proof is checked in the MFA transaction before fact
  const pool={connect:async()=>{
   const client=await originalConnect();
   const originalQuery=client.query.bind(client);
-  client.query=async(sql:string,params?:unknown[])=>{
+  client.query=async(sql:string)=>{
    if(sql.includes('FROM sessions session')){
     assert.match(sql,/JOIN platform_admin_staff staff/);
     assert.deepEqual(params,[hashSessionToken(accountToken,accountPepper),now]);
@@ -667,7 +667,7 @@ test('invalid account primary proof denies MFA before factor and session issuanc
  const pool={connect:async()=>{
   const client=await originalConnect();
   const originalQuery=client.query.bind(client);
-  client.query=async(sql:string,params?:unknown[])=>{
+  client.query=async(sql:string)=>{
    if(sql.includes('FROM sessions session'))return {rows:[]};
    return originalQuery(sql);
   };
@@ -744,7 +744,7 @@ test('malformed TOTP with valid recent account proof persists MFA failure and au
  const pool={connect:async()=>{
   const client=await originalConnect();
   const originalQuery=client.query.bind(client);
-  client.query=async(sql:string,params?:unknown[])=>{
+  client.query=async(sql:string)=>{
    if(sql.includes('FROM sessions session')){
     f.events.push('account-primary');
     return {rows:[{staff_id:staffId,authenticated_at:new Date(now-1000)}]};
