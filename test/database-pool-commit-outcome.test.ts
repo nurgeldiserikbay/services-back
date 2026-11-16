@@ -50,3 +50,30 @@ test('successful COMMIT returns result and releases a reusable connection',async
  assert.deepEqual(released,[undefined]);
  await db.onModuleDestroy();
 });
+
+test('failed BEGIN discards connection without attempting COMMIT or ROLLBACK',async()=>{
+ const statements:string[]=[];
+ const released:unknown[]=[];
+ const db=new DatabasePool();
+ (db as unknown as {pool:unknown}).pool={
+  connect:async()=>({
+   query:async(sql:string)=>{
+    statements.push(sql);
+    throw new Error('lost begin acknowledgement');
+   },
+   release:(error?:unknown)=>released.push(error),
+  }),
+  end:async()=>{},
+ };
+ let callbacks=0;
+ await assert.rejects(db.transaction(async()=>{
+  callbacks++;
+  return 1;
+ }),/Database operation unavailable/);
+ assert.equal(callbacks,0);
+ assert.deepEqual(statements,['BEGIN']);
+ assert.equal(released.length,1);
+ assert.ok(released[0] instanceof Error);
+ assert.match((released[0] as Error).message,/begin outcome uncertain/i);
+ await db.onModuleDestroy();
+});
