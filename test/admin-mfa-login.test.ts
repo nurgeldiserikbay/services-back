@@ -792,3 +792,19 @@ test('failed primary lookup never loads TOTP key or records an admin session',as
   'primary-lookup','ROLLBACK','release',
  ]);
 });
+
+test('uncertain BEGIN discards MFA connection before any privileged SQL',async()=>{
+ const events:string[]=[];
+ const pool={connect:async()=>({
+  query:async(sql:string)=>{
+   events.push(sql);
+   if(sql==='BEGIN')throw new Error('begin acknowledgement lost');
+   throw new Error('unexpected SQL after failed BEGIN');
+  },
+  release:(error?:unknown)=>events.push(error instanceof Error?'discard':'release'),
+ })};
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  pool as never,primary,code,async()=>key,pepper,now,
+ ),/begin acknowledgement lost/);
+ assert.deepEqual(events,['BEGIN','discard']);
+});
