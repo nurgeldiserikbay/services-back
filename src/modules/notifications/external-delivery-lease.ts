@@ -41,7 +41,14 @@ export async function claimExternalDelivery(
      -- The two durable schedules must agree; a stale intent must never be sent.
      AND d.next_attempt_at IS NOT DISTINCT FROM n.next_attempt_at
      AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=clock_timestamp())
-     AND (d.lease_expires_at IS NULL OR d.lease_expires_at<=clock_timestamp())
+     -- A half-written lease is corrupt and must be surfaced via monitoring,
+     -- never silently reclaimed. Only a fully empty or fully expired lease
+     -- is eligible for another worker.
+     AND (
+       (d.lease_token IS NULL AND d.lease_expires_at IS NULL)
+       OR (d.lease_token IS NOT NULL
+           AND d.lease_expires_at<=clock_timestamp())
+     )
    ORDER BY d.next_attempt_at NULLS FIRST,d.id
    LIMIT 1
    FOR UPDATE OF d SKIP LOCKED
