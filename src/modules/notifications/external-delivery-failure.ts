@@ -9,6 +9,7 @@ type DeliveryRow={
  attempt_count:number;
  intent_attempts:number;
  next_attempt_at:Date|null;
+ intent_next_attempt_at:Date|null;
  intent_state:string;
 };
 
@@ -36,7 +37,8 @@ export async function recordExternalDeliveryFailure(
 
  const selected=await client.query<DeliveryRow>(`
   SELECT d.id::text,d.intent_id::text,d.channel,d.state,d.attempt_count,d.next_attempt_at,
-         n.state AS intent_state,n.attempts AS intent_attempts
+         n.state AS intent_state,n.attempts AS intent_attempts,
+         n.next_attempt_at AS intent_next_attempt_at
   FROM notification_deliveries d
   JOIN notification_intents n ON n.id=d.intent_id AND n.channel=d.channel
   WHERE d.id=$1::uuid AND d.channel IN ('EMAIL','SMS')
@@ -45,6 +47,19 @@ export async function recordExternalDeliveryFailure(
  if(selected.rows.length!==1)return null;
  const row=selected.rows[0];
  if(row.state!=='PENDING'||row.intent_state!=='PENDING')return null;
+ // A stale or divergent durable schedule cannot be advanced into another
+ // retry. The claim path requires schedule parity; keep that invariant here
+ // after acquiring locks rather than silently repairing the intent.
+ const deliveryDue=row.next_attempt_at;
+ const intentDue=row.intent_next_attempt_at;
+ if((deliveryDue!==null&&
+     (!(deliveryDue instanceof Date)||!Number.isFinite(deliveryDue.getTime())))||
+    (intentDue!==null&&
+     (!(intentDue instanceof Date)||!Number.isFinite(intentDue.getTime())))||
+    (deliveryDue===null)!==(intentDue===null)||
+    (deliveryDue!==null&&intentDue!==null&&
+     deliveryDue.getTime()!==intentDue.getTime()))
+  throw new Error('notification_retry_schedule_mismatch');
  // A scheduled retry must never be consumed before its due timestamp.
  if(row.next_attempt_at!==null){
   if(!(row.next_attempt_at instanceof Date)||!Number.isFinite(row.next_attempt_at.getTime()))

@@ -36,6 +36,22 @@ test('external failure persists retry schedule, then terminal failure, without P
    SELECT attempt_count FROM notification_deliveries WHERE id=$1`,[delivery]);
   assert.equal(afterMismatch.rows[0].attempt_count,0);
   await db.query('UPDATE notification_intents SET attempts=0 WHERE id=$1',[intent]);
+  // A partial retry schedule must never be overwritten as if it were healthy.
+  await db.query(`UPDATE notification_intents
+   SET next_attempt_at=$2 WHERE id=$1`,[intent,new Date(now.getTime()-1000)]);
+  await assert.rejects(recordExternalDeliveryFailure(db,delivery,now,2),
+   /notification_retry_schedule_mismatch/);
+  await db.query(`UPDATE notification_intents
+   SET next_attempt_at=NULL WHERE id=$1`,[intent]);
+  await db.query(`UPDATE notification_deliveries
+   SET next_attempt_at=$2 WHERE id=$1`,[delivery,new Date(now.getTime()-1000)]);
+  await assert.rejects(recordExternalDeliveryFailure(db,delivery,now,2),
+   /notification_retry_schedule_mismatch/);
+  await db.query(`UPDATE notification_deliveries
+   SET next_attempt_at=NULL WHERE id=$1`,[delivery]);
+  const noMutation=await db.query<{attempt_count:number}>(`
+   SELECT attempt_count FROM notification_deliveries WHERE id=$1`,[delivery]);
+  assert.equal(noMutation.rows[0].attempt_count,0);
   const first=await recordExternalDeliveryFailure(db,delivery,now,2);
   assert.deepEqual(first,{state:'PENDING',attempts:1,nextAttemptAt:new Date(now.getTime()+30_000)});
   assert.equal(await recordExternalDeliveryFailure(db,delivery,new Date(now.getTime()+29_999),2),null);
