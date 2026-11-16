@@ -651,6 +651,18 @@ model NotificationDelivery {
   @@map("notification_deliveries")
 }
 
+/** Append-only minimal audit for manually requeued FAILED external notifications. */
+model NotificationRequeueAudit {
+ id String @id @default(uuid()) @db.Uuid
+ deliveryId String @map("delivery_id") @db.Uuid
+ intentId String @map("intent_id") @db.Uuid
+ actorStaffId String @map("actor_staff_id") @db.Uuid
+ requeueKey String @unique @map("requeue_key") @db.Uuid
+ occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(3)
+ @@index([deliveryId,occurredAt],map:"notification_requeue_audit_delivery_idx")
+ @@map("notification_requeue_audit")
+}
+
 model ReliabilityEvent {
   id               String                 @id @default(uuid()) @db.Uuid
   requestId        String                 @map("request_id") @db.Uuid
