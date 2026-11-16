@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend city autocomplete race guard (2026-11-16): [frontend `c5e4aba`](https://github.com/nurgeldiserikbay/services-front/commit/c5e4aba69b984bf464b98e9193ec258b818d8d9d) adds input-generation checks to prevent late city results/errors/loading transitions from obsolete requests; source regression test added. [CI #43806855396](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806855396) pending; [previous #43806473016](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806473016) passed. Device acceptance remains open.
+
 Frontend city autocomplete stale-result UX (2026-11-16): [frontend `f4e385d`](https://github.com/nurgeldiserikbay/services-front/commit/f4e385d2ca1e8249c2e0aa17f3bbf698a126689a) hides stale city options and errors during debounce pending input; source regression tests added. [CI #43806473016](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806473016) pending; [previous #43805836179](https://github.com/nurgeldiserikbay/services-front/actions/runs/43805836179) passed. Device acceptance remains open.
 
 Frontend city debounce pending-state UX (2026-11-16): [frontend `835e9f8`](https://github.com/nurgeldiserikbay/services-front/commit/835e9f8ed95d78a96f47500d52a76a36c98ab08b) adds pending-input state so the UI does not show stale empty city results during debounce; source regression coverage included. [CI #43805836179](https://github.com/nurgeldiserikbay/services-front/actions/runs/43805836179) pending; [previous #43805449975](https://github.com/nurgeldiserikbay/services-front/actions/runs/43805449975) passed. Manual device acceptance remains open.
