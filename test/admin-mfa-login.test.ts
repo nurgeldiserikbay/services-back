@@ -845,3 +845,25 @@ test('MFA transaction setup failure rolls back before accessing privileged data'
  ]);
  assert.equal(keyReads,0);
 });
+
+test('failed MFA rollback is attempted once and discards the connection',async()=>{
+ const statements:string[]=[];
+ const releases:unknown[]=[];
+ const client={
+  query:async(sql:string)=>{
+   statements.push(sql);
+   if(sql==='BEGIN'||sql.startsWith('SET LOCAL '))return {rows:[]};
+   if(sql==='ROLLBACK')throw new Error('rollback acknowledgement lost');
+   throw new Error('unexpected privileged query');
+  },
+  release:(error?:unknown)=>releases.push(error),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,
+  {staffId,authenticatedAt:now-1000},code,async()=>key,pepper,now,
+ ),/rollback acknowledgement lost/);
+ assert.equal(statements.filter(sql=>sql==='ROLLBACK').length,1);
+ assert.equal(statements.includes('COMMIT'),false);
+ assert.equal(releases.length,1);
+ assert.ok(releases[0] instanceof Error);
+});
