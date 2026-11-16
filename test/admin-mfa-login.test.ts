@@ -867,3 +867,37 @@ test('failed MFA rollback is attempted once and discards the connection',async()
  assert.equal(releases.length,1);
  assert.ok(releases[0] instanceof Error);
 });
+
+test('MFA connection release failure cannot replace successful authentication denial',async()=>{
+ let releases=0;
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL '))return {rows:[]};
+   if(sql.includes('pg_advisory_xact_lock'))throw new Error('unexpected privileged query');
+   throw new Error('unexpected SQL');
+  },
+  release:()=>{releases++;throw new Error('sensitive pool cleanup detail');},
+ };
+ const result=await loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ );
+ assert.equal(result,null);
+ assert.equal(releases,1);
+});
+
+test('MFA release failure preserves original transaction rejection',async()=>{
+ let releases=0;
+ const client={
+  query:async(sql:string)=>{
+   if(sql==='BEGIN'||sql.startsWith('SET LOCAL '))return {rows:[]};
+   if(sql.includes('pg_advisory_xact_lock'))throw new Error('transaction operation failed');
+   if(sql==='ROLLBACK')return {rows:[]};
+   throw new Error('unexpected SQL');
+  },
+  release:()=>{releases++;throw new Error('sensitive pool cleanup detail');},
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),/transaction operation failed/);
+ assert.equal(releases,1);
+});
