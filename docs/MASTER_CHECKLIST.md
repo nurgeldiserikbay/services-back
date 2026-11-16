@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend computed-property AST security gate (2026-11-16): [frontend `f17f08b`](https://github.com/nurgeldiserikbay/services-front/commit/f17f08b8378dcae7ddaf2a27c45d165da3d4cf59) extends existing TS AST lint to recognize computed-property dynamic execution, browser storage writes and direct `innerHTML` assignments, plus executable fixture regressions and updated lint docs. [CI #43831007066](https://github.com/nurgeldiserikbay/services-front/actions/runs/43831007066) pending when recorded. Prior AST lint introduction [frontend `9e64e1e`](https://github.com/nurgeldiserikbay/services-front/commit/9e64e1ed4c608d2d1c8d8d17c18c99c0612b43dd) verified by [CI #43828866560 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/43828866560). Full ESLint/React/Next.js acceptance is still open.
+
 Admin dynamic-execution and DOM injection lint (2026-11-16): [`services-admin` commit `651c4e2`](https://github.com/nurgeldiserikbay/services-admin/commit/651c4e2807402b0385c9bf3aadc89e9202ff373c) expands AST security lint and regression fixtures to reject string-based `setTimeout`/`setInterval` and direct/computed `insertAdjacentHTML`. [Admin CI #43830866245](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43830866245) **passed** typecheck, lint, tests, production build and smoke. Full ESLint/React semantics and authenticated MFA browser E2E remain unverified.
 
 
