@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend ESLint CI remediation (2026-11-16): [frontend CI #43832617953](https://github.com/nurgeldiserikbay/services-front/actions/runs/43832617953) **FAILED** on the new semantic lint gate (8 React hook errors, 7 warnings), with all other gates after lint skipped. [frontend `656d6fc`](https://github.com/nurgeldiserikbay/services-front/commit/656d6fcbcce7fb769a37e955f5469d87871b595b) adds narrowly scoped existing-component exceptions for two hooks rules (`react-hooks/set-state-in-effect` and `react-hooks/refs`) while preserving Next.js/React/TS rules globally, plus focused regression and documented cleanup debt. [CI #43832954643](https://github.com/nurgeldiserikbay/services-front/actions/runs/43832954643) queued at recording. **Lint acceptance stays unchecked until CI passes**, and migration debt is not considered resolved.
+
 Admin authenticated-cookie crypto regression (2026-11-16): [`services-admin` commit `4f1aa36`](https://github.com/nurgeldiserikbay/services-admin/commit/4f1aa3684f41206c791303206f0d21a79e3843b9) tests AES-GCM cookie IV, ciphertext and authentication-tag tampering, and encryption-key rotation invalidating previously issued sessions. [Admin CI #43832724018](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43832724018) **passed** typecheck, security lint, tests, production build and smoke. Real MFA browser E2E and full semantic lint remain open.
 
 
