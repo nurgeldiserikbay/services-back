@@ -861,11 +861,12 @@ test('failed MFA rollback is attempted once and discards the connection',async()
  await assert.rejects(loginAdminWithProvisionedTotp(
   {connect:async()=>client} as never,
   {staffId,authenticatedAt:now-1000},code,async()=>key,pepper,now,
- ),/rollback acknowledgement lost/);
+ ),/unexpected privileged query/);
  assert.equal(statements.filter(sql=>sql==='ROLLBACK').length,1);
  assert.equal(statements.includes('COMMIT'),false);
  assert.equal(releases.length,1);
  assert.ok(releases[0] instanceof Error);
+ assert.match((releases[0] as Error).message,/transaction outcome uncertain/i);
 });
 
 test('MFA connection release failure cannot replace successful authentication denial',async()=>{
