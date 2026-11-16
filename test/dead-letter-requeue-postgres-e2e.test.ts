@@ -56,7 +56,7 @@ test('PostgreSQL requeue is audited, idempotent, scoped and rolled back atomical
    [sessionId,staffId,tokenHash]);
   await db.query(`INSERT INTO platform_admin_totp_factors
    (staff_id,encrypted_secret,key_version,created_at,activated_at)
-   VALUES($1,'encrypted-test-envelope','test-v1',
+   VALUES($1,'encrypted-test-envelope-placeholder-not-real','test-v1',
           now()-interval '5 minutes',now()-interval '3 minutes')`,
    [staffId]);
   await db.query(`INSERT INTO platform_admin_grants(id,staff_id,scope)
