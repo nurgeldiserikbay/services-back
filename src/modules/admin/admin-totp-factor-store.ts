@@ -80,5 +80,11 @@ export async function loadActiveAdminTotpFactor(
   throw new Error('admin_totp_factor_unavailable');
  const key=await resolveKey(factor.key_version);
  if(!Buffer.isBuffer(key)||key.length!==32)return null;
- return openAdminTotpSecret(factor.encrypted_secret,staffId,key);
+ try{
+  return openAdminTotpSecret(factor.encrypted_secret,staffId,key);
+ }finally{
+  // The trusted resolver returns an owned copy. Clear decrypted key material
+  // even when the envelope is corrupt or authentication fails.
+  key.fill(0);
+ }
 }
