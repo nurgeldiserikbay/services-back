@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend city autocomplete debounce (2026-11-16): [frontend `acee916`](https://github.com/nurgeldiserikbay/services-front/commit/acee916ecd38464ec0a09fa3f1e69fb51ccb45ca) introduces 250ms city-query debounce to reduce requests during typing, preserving AbortController cleanup and adding regression assertions. [CI #43805449975](https://github.com/nurgeldiserikbay/services-front/actions/runs/43805449975) queued; [previous #43804993015](https://github.com/nurgeldiserikbay/services-front/actions/runs/43804993015) passed. Device acceptance remains open.
+
 Frontend city-result CI fix (2026-11-16): [frontend `31d8aae`](https://github.com/nurgeldiserikbay/services-front/commit/31d8aae0200cd0fcbeacb6e06867ec6f682063c6) fixes three stale geography test assertions. [CI #43804651473](https://github.com/nurgeldiserikbay/services-front/actions/runs/43804651473) failed; [#43804993015](https://github.com/nurgeldiserikbay/services-front/actions/runs/43804993015) queued.
 
 Frontend city zero-result UX (2026-11-16): [frontend `0c867fa`](https://github.com/nurgeldiserikbay/services-front/commit/0c867fa247de08583f2b3330c761a79e43367c94) adds localized empty-city feedback and regression tests. [CI #43804651473](https://github.com/nurgeldiserikbay/services-front/actions/runs/43804651473) pending; prior #43804207967 passed.
