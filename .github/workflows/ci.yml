@@ -12,7 +12,9 @@ permissions:
   contents: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Preserve main verification evidence even when parallel contributors push more commits.
+  # PR superseded revisions may still be cancelled to conserve runner capacity.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   # Keep the security gate independent so an advisory cannot hide build, migration, or DB regressions.
   # Both jobs are required for a green workflow; a failing audit still fails CI.
