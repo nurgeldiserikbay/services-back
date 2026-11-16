@@ -904,3 +904,26 @@ test('MFA release failure preserves original transaction rejection',async()=>{
  ),/transaction operation failed/);
  assert.equal(releases,1);
 });
+
+test('uncertain MFA rollback does not leak pool release failure or retry rollback',async()=>{
+ const statements:string[]=[];
+ let releases=0;
+ const client={
+  query:async(sql:string)=>{
+   statements.push(sql);
+   if(sql==='BEGIN'||sql.startsWith('SET LOCAL '))return {rows:[]};
+   if(sql==='ROLLBACK')throw new Error('rollback acknowledgement lost');
+   throw new Error('primary transaction failed');
+  },
+  release:()=>{
+   releases++;
+   throw new Error('sensitive pool release detail');
+  },
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
+ ),/primary transaction failed/);
+ assert.equal(statements.filter(sql=>sql==='ROLLBACK').length,1);
+ assert.equal(statements.includes('COMMIT'),false);
+ assert.equal(releases,1);
+});
