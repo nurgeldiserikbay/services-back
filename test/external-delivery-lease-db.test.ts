@@ -39,13 +39,12 @@ test('fenced external claim excludes active lease and rejects stale acknowledgem
   // Retry is due later, therefore an immediate reclaim is prohibited.
   assert.equal(await claimExternalDelivery(second,90),null);
 
-  // Simulate scheduled time passing without waiting, then claim again.
+  // Both durable schedules must share precisely the same timestamp.
+  const dueAt=new Date(Date.now()-1000);
   await db.query(`UPDATE notification_deliveries
-   SET next_attempt_at=now()-interval '1 second'
-   WHERE id=$1`,[delivery]);
+   SET next_attempt_at=$2 WHERE id=$1`,[delivery,dueAt]);
   await db.query(`UPDATE notification_intents
-   SET next_attempt_at=now()-interval '1 second'
-   WHERE id=$1`,[intent]);
+   SET next_attempt_at=$2 WHERE id=$1`,[intent,dueAt]);
   const next=await claimExternalDelivery(second,90);
   assert.equal(next?.deliveryId,delivery);
   assert.notEqual(next?.leaseToken,first?.leaseToken);
