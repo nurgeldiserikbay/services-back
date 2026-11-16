@@ -438,6 +438,8 @@ Private MFA HTTP follow-up (2026-11-16): [`97547f9`](https://github.com/nurgeldi
 
 Private MFA HTTP follow-up (2026-11-16): [`4ba9b00`](https://github.com/nurgeldiserikbay/services-back/commit/4ba9b00248e1dad75275fe76111baba8a0de6888) adds isolated Nest HTTP assertions for wrong BFF credential (404) and caller-injected staffId (401), both without DB access. **Prepared; CI result unverified; real PostgreSQL E2E pending.** No acceptance checkbox changed.
 
+Private MFA HTTP database-outage follow-up (2026-11-16): [`0bf3569`](https://github.com/nurgeldiserikbay/services-back/commit/0bf35699197fd607830a989077adacab9fb8dffb) adds isolated HTTP 503/error-body sanitization regression for a valid BFF credential when the database connection fails. **Prepared; CI execution and real PostgreSQL E2E pending.** No top-level acceptance checkbox changed.
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
