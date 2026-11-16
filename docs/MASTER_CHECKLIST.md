@@ -88,7 +88,7 @@
 - [x] Outbox model — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); outbox event staging and delivery linkage
 - [x] Notification intents — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); IN_APP and EMAIL intent staging
 - [ ] Email/SMS integration — Pending verification
-- [ ] Retry and dead-letter handling — Prepared: external delivery failure transaction, bounded retry schedule, terminal FAILED state, and counter-divergence fail-closed protection; prior CI #43805141569 passed, latest counter regression CI pending; claim/lease, provider sender and operational dead-letter replay remain open
+- [ ] Retry and dead-letter handling — Prepared: retry and terminal failure persistence, counter-divergence fail-closed protection, and fenced PostgreSQL claim/lease are implemented (PR #113; branch CI #43806884028 PASS). Provider sending, idempotency reconciliation, operational dead-letter replay and main CI verification remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
 - [ ] Delivery monitoring — Pending verification
@@ -357,6 +357,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 | 2026-11-16 | services-back | [`e10206e`](https://github.com/nurgeldiserikbay/services-back/commit/e10206e4d7964c4195d4ee1a2aac1ba530fd486a), [`0258ca0`](https://github.com/nurgeldiserikbay/services-back/commit/0258ca00f9a770710e6209548f2d7395259bb46f), [CI #43805510366](https://github.com/nurgeldiserikbay/services-back/actions/runs/43805510366) | Fail-closed if notification_delivery and notification_intent persistent retry counters diverge; PostgreSQL test proves no silent repair | **Pending** new CI; release gate unchanged |
 
 | 2026-11-16 | services-back | [`252c9aa`](https://github.com/nurgeldiserikbay/services-back/commit/252c9aaa32fa06556b6f9b5ea36eb50a47f835f5), [`01406e9`](https://github.com/nurgeldiserikbay/services-back/commit/01406e9219e3bc38b3751a9ce6f13f6902d41684), [CI #43806055155](https://github.com/nurgeldiserikbay/services-back/actions/runs/43806055155) | Fixed privileged MFA rollback-original-error regression and simulated real authentication denial on pool release failure; full backend build-and-test and dependency-audit completed | **PASS**; delivery worker claim/lease and provider sending remain pending |
+
+| 2026-11-16 | services-back | [PR #113](https://github.com/nurgeldiserikbay/services-back/pull/113), [`6007488`](https://github.com/nurgeldiserikbay/services-back/commit/60074888c78905cc89b4c07697a264fb1bebd67f), [branch CI #43806884028](https://github.com/nurgeldiserikbay/services-back/actions/runs/43806884028) | PostgreSQL fenced external EMAIL/SMS delivery claim/lease with fresh tokens, expiry, stale-ack rejection, forward migration, restore-stable index and E2E regression; branch build-and-test and dependency-audit both passed | **PASS branch CI, merged main**; provider sender, exact-once reconciliation, dead-letter replay and post-merge main CI still open |
 
 ## Next acceptance gates
 
