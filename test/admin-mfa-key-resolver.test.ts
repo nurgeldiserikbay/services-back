@@ -30,3 +30,15 @@ test('admin MFA resolver rejects invalid configuration and wrong key length',asy
  const resolve=createAdminMfaKeyResolver(async()=>randomBytes(31),['v1']);
  assert.equal(await resolve('v1'),null);
 });
+
+test('resolver captures the allowlist at construction time',async()=>{
+ const versions=['current'];
+ let reads=0;
+ const resolve=createAdminMfaKeyResolver(async()=>{reads++;return randomBytes(32);},versions);
+ versions[0]='other';
+ versions.push('injected');
+ assert.equal((await resolve('current'))?.length,32);
+ assert.equal(await resolve('other'),null);
+ assert.equal(await resolve('injected'),null);
+ assert.equal(reads,1);
+});
