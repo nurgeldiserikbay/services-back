@@ -110,3 +110,44 @@ test('invalid claim proofs and lease bounds fail before SQL',async()=>{
  await assert.rejects(failClaimedExternalDelivery(db as never,randomUUID(),randomUUID(),new Date(NaN)),RangeError);
  assert.equal(calls,0);
 });
+
+test('incomplete external delivery lease pairs are not silently reclaimed',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ await db.query('BEGIN');
+ const contact=randomUUID(),event=randomUUID(),intent=randomUUID(),delivery=randomUUID();
+ try{
+  await db.query(`INSERT INTO guest_contacts
+   (id,channel,encrypted_value,digest,expires_at)
+   VALUES($1,'email','encrypted-test',$2,now()+interval '1 day')`,
+   [contact,'lease-parity:'+randomUUID()]);
+  await db.query(`INSERT INTO domain_outbox_events
+   (id,topic,subject_kind,subject_id,safe_payload)
+   VALUES($1,'test.lease.parity','ServiceRequest',$2,'{}'::jsonb)`,
+   [event,randomUUID()]);
+  await db.query(`INSERT INTO notification_intents
+   (id,domain_event_id,guest_contact_id,audience,channel,dedupe_key)
+   VALUES($1,$2,$3,'CLIENT','EMAIL',$4)`,
+   [intent,event,contact,'lease-parity:'+randomUUID()]);
+  await db.query(`INSERT INTO notification_deliveries
+   (id,intent_id,channel,lease_token) VALUES($1,$2,'EMAIL',$3)`,
+   [delivery,intent,randomUUID()]);
+  // A token without an expiry is not the same as an unleased row.
+  assert.equal(await claimExternalDelivery(db,90),null);
+  await db.query(`UPDATE notification_deliveries
+   SET lease_token=NULL,lease_expires_at=now()-interval '1 second'
+   WHERE id=$1`,[delivery]);
+  // An expiry without a token is also malformed, even if already due.
+  assert.equal(await claimExternalDelivery(db,90),null);
+  await db.query(`UPDATE notification_deliveries
+   SET lease_token=$2 WHERE id=$1`,[delivery,randomUUID()]);
+  // A complete expired lease may be safely reclaimed with a new proof.
+  const expired=await claimExternalDelivery(db,90);
+  assert.equal(expired?.deliveryId,delivery);
+  assert.notEqual(expired?.leaseToken,null);
+  assert.equal(await claimExternalDelivery(db,90),null);
+ }finally{
+  await db.query('ROLLBACK').catch(()=>{});
+  await db.end();
+ }
+});
