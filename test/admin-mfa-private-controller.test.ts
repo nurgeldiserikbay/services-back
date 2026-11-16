@@ -106,6 +106,9 @@ test('private MFA controller sanitizes database failures and preserves genuine h
 test('private MFA controller sanitizes driver errors with misleading names',async()=>{
  const original=process.env.SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP;
  const originalKey=process.env.ADMIN_MFA_BFF_KEY;
+ const originalAccount=process.env.ACCOUNT_LOGIN_BFF_KEY;
+ const originalAdmin=process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+ const originalSession=process.env.ACCOUNT_SESSION_HMAC_KEY;
  const credential=randomBytes(32).toString('base64');
  const driverError=new Error('internal driver failure');
  driverError.name='NotFoundException';
@@ -118,6 +121,9 @@ test('private MFA controller sanitizes driver errors with misleading names',asyn
  try{
   process.env.SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP='enabled';
   process.env.ADMIN_MFA_BFF_KEY=credential;
+  delete process.env.ACCOUNT_LOGIN_BFF_KEY;
+  delete process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+  delete process.env.ACCOUNT_SESSION_HMAC_KEY;
   await assert.rejects(controller.verify(credential,{
    account_session_token:randomBytes(32).toString('base64url'),
    totp_code:'123456',
@@ -127,5 +133,13 @@ test('private MFA controller sanitizes driver errors with misleading names',asyn
   else process.env.SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP=original;
   if(originalKey===undefined)delete process.env.ADMIN_MFA_BFF_KEY;
   else process.env.ADMIN_MFA_BFF_KEY=originalKey;
+  for(const [name,value] of Object.entries({
+   ACCOUNT_LOGIN_BFF_KEY:originalAccount,
+   PLATFORM_ADMIN_SESSION_HMAC_KEY:originalAdmin,
+   ACCOUNT_SESSION_HMAC_KEY:originalSession,
+  })){
+   if(value===undefined)delete process.env[name];
+   else process.env[name]=value;
+  }
  }
 });
