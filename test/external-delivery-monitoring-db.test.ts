@@ -44,8 +44,8 @@ test('PostgreSQL snapshot buckets due, leased, failed and inconsistent rows with
  await db.connect();
  await db.query('BEGIN');
  const contact=randomUUID(),event=randomUUID();
- const intentIds=Array.from({length:5},()=>randomUUID());
- const deliveryIds=Array.from({length:5},()=>randomUUID());
+ const intentIds=Array.from({length:7},()=>randomUUID());
+ const deliveryIds=Array.from({length:7},()=>randomUUID());
  try{
   const base=await readExternalDeliveryQueueSnapshot(db);
   await db.query(`INSERT INTO guest_contacts
@@ -56,8 +56,8 @@ test('PostgreSQL snapshot buckets due, leased, failed and inconsistent rows with
    (id,topic,subject_kind,subject_id,safe_payload)
    VALUES($1,'test.external.monitor','ServiceRequest',$2,'{}'::jsonb)`,
    [event,randomUUID()]);
-  const states=['PENDING','PENDING','PENDING','FAILED','PENDING'];
-  for(let i=0;i<5;i++){
+  const states=['PENDING','PENDING','PENDING','FAILED','PENDING','PENDING','SENT'];
+  for(let i=0;i<7;i++){
    await db.query(`INSERT INTO notification_intents
     (id,domain_event_id,guest_contact_id,audience,channel,dedupe_key,state,attempts)
     VALUES($1,$2,$3,'CLIENT','EMAIL',$4,$5,0)`,
@@ -74,12 +74,19 @@ test('PostgreSQL snapshot buckets due, leased, failed and inconsistent rows with
     SET next_attempt_at=now()-interval '1 second' WHERE id=$1`,[deliveryIds[2]]);
   await db.query(`UPDATE notification_intents SET attempts=1 WHERE id=$1`,
     [intentIds[4]]);
+  // A mismatched channel must be visible instead of disappearing from JOIN.
+  await db.query(`UPDATE notification_intents SET channel='SMS' WHERE id=$1`,
+    [intentIds[5]]);
+  // A SENT row must not retain a retry timestamp.
+  await db.query(`UPDATE notification_deliveries
+    SET next_attempt_at=now()-interval '1 minute' WHERE id=$1`,
+    [deliveryIds[6]]);
   const snapshot=await readExternalDeliveryQueueSnapshot(db);
   assert.equal(snapshot.pendingDue-base.pendingDue,1);
   assert.equal(snapshot.leasedActive-base.leasedActive,1);
   assert.equal(snapshot.terminalFailed-base.terminalFailed,1);
-  assert.equal(snapshot.inconsistent-base.inconsistent,2);
-  assert.equal(snapshot.total-base.total,5);
+  assert.equal(snapshot.inconsistent-base.inconsistent,4);
+  assert.equal(snapshot.total-base.total,7);
   assert.deepEqual(Object.keys(snapshot).sort(),Object.keys(base).sort());
   assert.equal(JSON.stringify(snapshot).includes('private-test-address'),false);
  }finally{
