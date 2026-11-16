@@ -35,7 +35,11 @@ export function createPrivateAdminMfaDependencies(input:Readonly<{
   // transport credential. Refuse the key instead of decrypting with it.
   if(key.equals(accountSessionPepper)||
      key.equals(adminSessionPepper)||
-     key.equals(transportKey))return null;
+     key.equals(transportKey)){
+   // vaultResolver returns an owned copy; erase rejected key material.
+   key.fill(0);
+   return null;
+  }
   return key;
  };
  return Object.freeze({
