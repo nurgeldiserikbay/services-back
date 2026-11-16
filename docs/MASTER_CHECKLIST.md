@@ -165,7 +165,7 @@
 - [ ] Architecture docs — Prepared; verification pending
 - [ ] API/Redocly docs — Prepared; verification pending
 - [ ] Business rules and role matrix — Prepared; verification pending
-- [ ] Frontend/admin user guides — Pending verification
+- [ ] Frontend/admin user guides — Prepared: admin privileged rollout, staging acceptance and rollback runbook committed in services-admin; end-user MFA/moderation guides and functional acceptance remain pending
 - [ ] Environment/deployment runbook — Pending verification
 - [ ] Backup/restore/incident runbook — Pending verification
 - [ ] Security/privacy docs — Pending verification
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Admin rollout documentation (2026-11-16): [`services-admin` commit `b2e5161`](https://github.com/nurgeldiserikbay/services-admin/commit/b2e5161743917f576d8c3c5be866b1103e7ee55f) adds [privileged rollout, staging acceptance and rollback runbook](https://github.com/nurgeldiserikbay/services-admin/blob/main/docs/admin-rollout-and-acceptance.md); README linked in [`4f35e3c`](https://github.com/nurgeldiserikbay/services-admin/commit/4f35e3c01f9156ab31c54358870742069c1509fa). [Admin CI #43843560194](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43843560194) **passed** typecheck, lint, tests, build and production smoke. This is documentation only; browser MFA E2E, admin functional acceptance, deployment approval and user guides remain open.
 
 Frontend device sessions React effect lint cleanup (2026-11-16): [frontend `78c27e5`](https://github.com/nurgeldiserikbay/services-front/commit/78c27e56d980edeccc070a98e6284d69ed0092c7) defers the initial `AccountDeviceSessions` refresh outside the synchronous effect body, clears the pending timer and invalidates stale responses at cleanup, removes the file-specific `react-hooks/set-state-in-effect` exception, and adds source regression ensuring backend-confirmed device revocation remains. [Frontend CI #43843555639](https://github.com/nurgeldiserikbay/services-front/actions/runs/43843555639) pending at recording. Prior notification inbox exception removal [frontend `8ab9a64`](https://github.com/nurgeldiserikbay/services-front/commit/8ab9a64041bf187a9c194f4e01fbe453ddf5f17b) passed [CI #43843157594](https://github.com/nurgeldiserikbay/services-front/actions/runs/43843157594). Three legacy effect exceptions remain in GeographyPicker, GuestRequestStatusCheck and SellerWorkspace, as do browser/device acceptance gates.
 
