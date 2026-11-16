@@ -164,3 +164,46 @@ test('connection acquisition failure is mapped to unavailable without running wo
  assert.equal(callbacks,0);
  await db.onModuleDestroy();
 });
+
+test('throwing release after uncertain COMMIT is never invoked twice',async()=>{
+ const statements:string[]=[];
+ let releases=0;
+ const db=new DatabasePool();
+ (db as unknown as {pool:unknown}).pool={
+  connect:async()=>({
+   query:async(sql:string)=>{
+    statements.push(sql);
+    if(sql==='COMMIT')throw new Error('commit acknowledgement lost');
+    return {rows:[]};
+   },
+   release:()=>{
+    releases++;
+    throw new Error('release failed');
+   },
+  }),
+  end:async()=>{},
+ };
+ await assert.rejects(db.transaction(async()=>42),/release failed/);
+ assert.equal(releases,1);
+ assert.equal(statements.filter(sql=>sql==='COMMIT').length,1);
+ assert.equal(statements.includes('ROLLBACK'),false);
+ await db.onModuleDestroy();
+});
+
+test('throwing release after uncertain BEGIN is never invoked twice',async()=>{
+ let releases=0;
+ const db=new DatabasePool();
+ (db as unknown as {pool:unknown}).pool={
+  connect:async()=>({
+   query:async()=>{throw new Error('begin acknowledgement lost');},
+   release:()=>{
+    releases++;
+    throw new Error('release failed');
+   },
+  }),
+  end:async()=>{},
+ };
+ await assert.rejects(db.transaction(async()=>42),/release failed/);
+ assert.equal(releases,1);
+ await db.onModuleDestroy();
+});
