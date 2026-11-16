@@ -433,6 +433,8 @@ Private MFA HTTP follow-up (2026-11-16): [`97547f9`](https://github.com/nurgeldi
 
 | 2026-11-16 | services-back | [PR #124](https://github.com/nurgeldiserikbay/services-back/pull/124), [`85d0c11`](https://github.com/nurgeldiserikbay/services-back/commit/85d0c11e83f53eaf1b824b40a44dd4de68e9ff15), [branch CI #43821794412](https://github.com/nurgeldiserikbay/services-back/actions/runs/43821794412), [main CI #43822098451](https://github.com/nurgeldiserikbay/services-back/actions/runs/43822098451) | Internal aggregate monitoring of EMAIL/SMS due, scheduled, leased, expired, failed and inconsistent states; counters only, strict integer/sum validation, PostgreSQL regression, no PII | **PASS branch CI, merged main**; post-merge CI pending. Not wired to a public API, production alerts or a real provider |
 
+Private MFA HTTP follow-up (2026-11-16): [`4ba9b00`](https://github.com/nurgeldiserikbay/services-back/commit/4ba9b00248e1dad75275fe76111baba8a0de6888) adds isolated Nest HTTP assertions for wrong BFF credential (404) and caller-injected staffId (401), both without DB access. **Prepared; CI result unverified; real PostgreSQL E2E pending.** No acceptance checkbox changed.
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
