@@ -25,7 +25,11 @@ test('backend CI prepares PostgreSQL before running DB integration tests',()=>{
  assert.match(workflow,/^permissions:\n  contents: read$/m);
  assert.match(workflow,/uses: actions\/checkout@v4\n\s+with:\n\s+persist-credentials: false/);
  assert.match(workflow,/^    timeout-minutes: 25$/m);
- assert.match(workflow,/^concurrency:\n  group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}\n  cancel-in-progress: true$/m);
+ // Do not cancel main CI when independent contributors push during validation.
+ // Superseded non-main branch revisions may still be cancelled.
+ assert.match(workflow,/^concurrency:\n  group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}/m);
+ assert.match(workflow,/^  cancel-in-progress: \$\{\{ github\.ref != 'refs\/heads\/main' \}\}$/m);
+ assert.doesNotMatch(workflow,/^  cancel-in-progress: true$/m);
  assert.match(workflow,/DATABASE_URL: postgresql:\/\/services:services@127\.0\.0\.1:5432\/services_test/);
  assert.match(workflow,/AS required\(table_name\)/);
  assert.match(workflow,/to_regclass\(format\('public\.%I', required\.table_name\)\)/);
