@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend accessible city picker busy state (2026-11-16): [frontend `fa4b69c`](https://github.com/nurgeldiserikbay/services-front/commit/fa4b69c038d919251670cbd32ed2b90dcf6f5971) links city search input to city select via aria-controls, exposes aria-busy/aria-disabled and guards changes while preserving city_id form submission; regression tests added. [CI #43807443871](https://github.com/nurgeldiserikbay/services-front/actions/runs/43807443871) pending; previous #43806992281 passed. Manual assistive/device acceptance remains open.
+
 Frontend country retry loading state (2026-11-16): [frontend `031a10b`](https://github.com/nurgeldiserikbay/services-front/commit/031a10bd1390b2e29063a10b4351f7472d72b158) resets busy state when country directory retry starts and adds regression coverage. [CI #43806992281](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806992281) pending; prior city race guard CI #43806855396 still in progress at check. Manual device acceptance remains open.
 
 Frontend city autocomplete race guard (2026-11-16): [frontend `c5e4aba`](https://github.com/nurgeldiserikbay/services-front/commit/c5e4aba69b984bf464b98e9193ec258b818d8d9d) adds input-generation checks to prevent late city results/errors/loading transitions from obsolete requests; source regression test added. [CI #43806855396](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806855396) pending; [previous #43806473016](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806473016) passed. Device acceptance remains open.
