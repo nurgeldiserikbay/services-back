@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend country retry UX (2026-11-16): [frontend `cefcb9b`](https://github.com/nurgeldiserikbay/services-front/commit/cefcb9b4c342d67f5604a1c49c6fd59627c5b410) adds localized country directory retry and tests; [CI #43804207967](https://github.com/nurgeldiserikbay/services-front/actions/runs/43804207967) pending; previous #43803673543 passed.
+
 Frontend city lookup retry UX (2026-11-16): [frontend `f2f57ce`](https://github.com/nurgeldiserikbay/services-front/commit/f2f57cef66c9c73c312bde0c6bb5dd8155efa11e) adds localized retry for failed city fetch without resetting filters, with regression tests. [CI #43803673543](https://github.com/nurgeldiserikbay/services-front/actions/runs/43803673543) pending; [previous #43803259315](https://github.com/nurgeldiserikbay/services-front/actions/runs/43803259315) passed.
 
 Frontend CI regression correction (2026-11-16): [frontend `624baae`](https://github.com/nurgeldiserikbay/services-front/commit/624baae435eb0acf052be6e7ae2b4f5affea8098) updates outdated geography retry assertion to expect `setCityError(false)` after country/city error-state separation. [CI #43802871313](https://github.com/nurgeldiserikbay/services-front/actions/runs/43802871313) failed at frontend unit tests due to this stale assertion; [rerun #43803259315](https://github.com/nurgeldiserikbay/services-front/actions/runs/43803259315) queued. No green CI claim until rerun passes.
