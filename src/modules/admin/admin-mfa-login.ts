@@ -50,6 +50,7 @@ export async function loginAdminWithProvisionedTotp(
  const client:PoolClient=await pool.connect();
  let began=false;
  let discardConnection=false;
+ let rollbackAttempted=false;
  let commitAttempted=false;
  let secret:Buffer|null=null;
  try{
@@ -65,7 +66,7 @@ export async function loginAdminWithProvisionedTotp(
    await resolveRecentAdminPrimaryAccountProof(
     client,account.accountBearer,account.accountPepper,now):attested;
   if(!verifiedPrimary){
-   try{await client.query('ROLLBACK');}
+   try{rollbackAttempted=true;await client.query('ROLLBACK');}
    catch(error){discardConnection=true;throw error;}
    began=false;
    return null;
@@ -75,7 +76,7 @@ export async function loginAdminWithProvisionedTotp(
    [verifiedPrimary.staffId],
   );
   if(await isAdminMfaLocked(client,verifiedPrimary.staffId,now)){
-   try{await client.query('ROLLBACK');}
+   try{rollbackAttempted=true;await client.query('ROLLBACK');}
    catch(error){discardConnection=true;throw error;}
    began=false;
    return null;
@@ -98,14 +99,14 @@ export async function loginAdminWithProvisionedTotp(
      factorLock.rows.length!==1||
      typeof factorLock.rows[0]?.staff_id!=='string'||
      factorLock.rows[0].staff_id.toLowerCase()!==verifiedPrimary.staffId.toLowerCase()){
-   try{await client.query('ROLLBACK');}
+   try{rollbackAttempted=true;await client.query('ROLLBACK');}
    catch(error){discardConnection=true;throw error;}
    began=false;
    return null;
   }
   secret=await loadActiveAdminTotpFactor(client,verifiedPrimary.staffId,resolveKey);
   if(!secret){
-   try{await client.query('ROLLBACK');}
+   try{rollbackAttempted=true;await client.query('ROLLBACK');}
    catch(error){discardConnection=true;throw error;}
    began=false;
    return null;
@@ -137,8 +138,8 @@ export async function loginAdminWithProvisionedTotp(
   began=false;
   return session;
  }catch(error){
-  if(began&&!commitAttempted){
-   try{await client.query('ROLLBACK');}
+  if(began&&!commitAttempted&&!rollbackAttempted){
+   try{rollbackAttempted=true;await client.query('ROLLBACK');}
    catch{discardConnection=true;}
   }
   throw error;
