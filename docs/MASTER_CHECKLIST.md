@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend area DTO minimization (2026-11-16): backend geography contract `AreaRow = {id,country_id,code,name}` verified against `services-back/src/modules/geography/geo-contract.ts`; [frontend `37219ea`](https://github.com/nurgeldiserikbay/services-front/commit/37219ea67ecba8e8ab8953156363dc3d4b873f10) validates `areas` response entries and restricts returned fields, with executable valid/invalid DTO tests; [CI #43828011017](https://github.com/nurgeldiserikbay/services-front/actions/runs/43828011017) in progress when recorded. Previous country/city nested-field minimization [frontend `3a5b9dd`](https://github.com/nurgeldiserikbay/services-front/commit/3a5b9dd07c13788e0840f343117734616f796153) verified by [CI #43826679682 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/43826679682). Browser E2E, mobile accessibility and full semantic lint acceptance remain unchecked.
+
 Admin AST lint regression coverage (2026-11-16): [`services-admin` commit `2b1f976`](https://github.com/nurgeldiserikbay/services-admin/commit/2b1f97643a5ebc4e2c7494e32ad70b9db5686b8e) adds isolated positive/negative fixtures for dynamic code execution, DOM HTML sinks and React `dangerouslySetInnerHTML`, and the scanner supports explicit fixture roots. [Admin CI #43827894725](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43827894725) **passed** typecheck, AST lint, regression tests, production build and security smoke. This does not establish comprehensive semantic ESLint or authenticated admin browser E2E; those acceptance gates remain open.
 
 
