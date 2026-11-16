@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend country retry loading state (2026-11-16): [frontend `031a10b`](https://github.com/nurgeldiserikbay/services-front/commit/031a10bd1390b2e29063a10b4351f7472d72b158) resets busy state when country directory retry starts and adds regression coverage. [CI #43806992281](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806992281) pending; prior city race guard CI #43806855396 still in progress at check. Manual device acceptance remains open.
+
 Frontend city autocomplete race guard (2026-11-16): [frontend `c5e4aba`](https://github.com/nurgeldiserikbay/services-front/commit/c5e4aba69b984bf464b98e9193ec258b818d8d9d) adds input-generation checks to prevent late city results/errors/loading transitions from obsolete requests; source regression test added. [CI #43806855396](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806855396) pending; [previous #43806473016](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806473016) passed. Device acceptance remains open.
 
 Frontend city autocomplete stale-result UX (2026-11-16): [frontend `f4e385d`](https://github.com/nurgeldiserikbay/services-front/commit/f4e385d2ca1e8249c2e0aa17f3bbf698a126689a) hides stale city options and errors during debounce pending input; source regression tests added. [CI #43806473016](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806473016) pending; [previous #43805836179](https://github.com/nurgeldiserikbay/services-front/actions/runs/43805836179) passed. Device acceptance remains open.
