@@ -25,15 +25,16 @@ function fixture(role:'owner'|'admin'|'operator'|'auditor'='owner'){
      mfa_verified_at:new Date(now-1000),scope,
     }]};
    }
+   if(sql.includes('SELECT n.id::text AS intent_id,d.channel,d.attempt_count'))
+    return {rows:[{intent_id:intentId,channel:'EMAIL',
+     attempt_count:5,intent_attempts:5}]};
    if(sql.includes('SELECT n.id::text AS intent_id,d.channel'))
     return {rows:[{intent_id:intentId,channel:'EMAIL'}]};
    if(sql.includes('SELECT staff.id::text AS staff_id'))
     return {rows:revoked?[]:[{staff_id:staffId}]};
    if(sql.includes('SELECT delivery_id::text FROM notification_requeue_audit'))
     return {rows:[]};
-   if(sql.includes('SELECT n.id::text AS intent_id,d.channel,d.attempt_count'))
-    return {rows:[{intent_id:intentId,channel:'EMAIL',
-     attempt_count:5,intent_attempts:5}]};
+
    if(sql.includes('UPDATE notification_deliveries')||
       sql.includes('UPDATE notification_intents')){
     updates++;
