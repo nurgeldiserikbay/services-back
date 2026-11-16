@@ -91,10 +91,17 @@ export async function readExternalDeliveryQueueSnapshot(
  if(result.rows.length!==1)
   throw new Error('invalid_notification_monitor_snapshot');
  const raw=result.rows[0] as Record<string,unknown>;
+ if(!raw||typeof raw!=='object')
+  throw new Error('invalid_notification_monitor_snapshot');
  const keys=['pending_due','pending_scheduled','leased_active','leased_expired',
   'terminal_failed','provider_accepted','inconsistent','total'] as const;
  const values=keys.map(key=>{
-  const item=raw[key];
+  // Never execute an accessor or accept an inherited value from a host/driver
+  // response. A malformed metric must not silently become a healthy snapshot.
+  const field=Object.getOwnPropertyDescriptor(raw,key);
+  if(!field||!Object.hasOwn(field,'value'))
+   throw new Error('invalid_notification_monitor_snapshot');
+  const item:unknown=field.value;
   if(typeof item!=='string'||!/^[0-9]+$/.test(item))
    throw new Error('invalid_notification_monitor_snapshot');
   const parsed=Number(item);
