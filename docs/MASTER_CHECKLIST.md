@@ -410,6 +410,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 These are implementation tracking subitems, **not new top-level acceptance items**; the 117-item denominator and verified-complete count are unchanged. CI run URL/result for these commits: **not yet verified**.
 
+Private MFA parser follow-up (2026-11-16): [`135cc88`](https://github.com/nurgeldiserikbay/services-back/commit/135cc887c50fdd1f56f95bc71ed8457e03c715d0) rejects non-enumerable mandatory fields; [`9cc2a14`](https://github.com/nurgeldiserikbay/services-back/commit/9cc2a14fdb094683ffa64da25d081544045088f4) adds regression coverage. **Prepared; CI and HTTP/PostgreSQL acceptance pending.** No top-level checkbox changed.
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
