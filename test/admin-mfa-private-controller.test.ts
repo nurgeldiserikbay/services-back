@@ -52,3 +52,53 @@ test('private MFA controller denies requests before accessing the database',asyn
   }
  }
 });
+
+test('private MFA controller sanitizes database failures and preserves genuine hidden route',async()=>{
+ const previous={
+  enabled:process.env.SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP,
+  key:process.env.ADMIN_MFA_BFF_KEY,
+  account:process.env.ACCOUNT_LOGIN_BFF_KEY,
+  admin:process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY,
+  session:process.env.ACCOUNT_SESSION_HMAC_KEY,
+ };
+ const credential=randomBytes(32).toString('base64');
+ const token=randomBytes(32).toString('base64url');
+ let connections=0;
+ const controller=new PrivateAdminMfaController({
+  pool:{connect:async()=>{connections++;throw Error('private database password');}} as never,
+  accountSessionPepper:randomBytes(32),
+  adminSessionPepper:randomBytes(32),
+  resolveTotpKey:async()=>null,
+ });
+ try{
+  process.env.ADMIN_MFA_BFF_KEY=credential;
+  delete process.env.ACCOUNT_LOGIN_BFF_KEY;
+  delete process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY;
+  delete process.env.ACCOUNT_SESSION_HMAC_KEY;
+  delete process.env.SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP;
+  await assert.rejects(controller.verify(credential,{
+   account_session_token:token,totp_code:'123456',
+  }),{name:'NotFoundException'});
+  assert.equal(connections,0);
+  process.env.SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP='enabled';
+  await assert.rejects(controller.verify(credential,{
+   account_session_token:token,totp_code:'123456',
+  }),error=>{
+   assert.equal((error as Error).name,'ServiceUnavailableException');
+   assert.doesNotMatch((error as Error).message,/private database password/);
+   return true;
+  });
+  assert.equal(connections,1);
+ }finally{
+  for(const [name,value] of Object.entries({
+   SERVICES_ENABLE_ADMIN_MFA_PRIVATE_HTTP:previous.enabled,
+   ADMIN_MFA_BFF_KEY:previous.key,
+   ACCOUNT_LOGIN_BFF_KEY:previous.account,
+   PLATFORM_ADMIN_SESSION_HMAC_KEY:previous.admin,
+   ACCOUNT_SESSION_HMAC_KEY:previous.session,
+  })){
+   if(value===undefined)delete process.env[name];
+   else process.env[name]=value;
+  }
+ }
+});
