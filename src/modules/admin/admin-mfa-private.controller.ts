@@ -1,5 +1,5 @@
 import {
- Body,Controller,Header,Headers,HttpCode,Inject,Post,
+ Body,Controller,Header,Headers,HttpCode,Inject,NotFoundException,Post,
  ServiceUnavailableException,UnauthorizedException,
 } from '@nestjs/common';
 import {
@@ -38,7 +38,7 @@ export class PrivateAdminMfaController{
   }catch(error){
    // Preserve the transport's fail-closed NotFoundException; do not expose
    // database, secret-manager or cryptographic driver exception messages.
-   if(error instanceof Error&&error.name==='NotFoundException')throw error;
+   if(error instanceof NotFoundException)throw error;
    throw new ServiceUnavailableException('Admin authentication unavailable');
   }
   if(!result)throw new UnauthorizedException('Invalid admin authentication');
