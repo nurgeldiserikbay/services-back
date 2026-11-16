@@ -65,6 +65,42 @@ test('fenced external claim excludes active lease and rejects stale acknowledgem
  }
 });
 
+test('external claim refuses divergent delivery/intent retry schedules',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ await db.query('BEGIN');
+ const event=randomUUID(),intent=randomUUID(),delivery=randomUUID(),contact=randomUUID();
+ try{
+  await db.query(`INSERT INTO guest_contacts
+   (id,channel,encrypted_value,digest,expires_at)
+   VALUES($1,'email','encrypted-test',$2,now()+interval '1 day')`,
+   [contact,'claim-parity:'+randomUUID()]);
+  await db.query(`INSERT INTO domain_outbox_events
+   (id,topic,subject_kind,subject_id,safe_payload)
+   VALUES($1,'test.claim.schedule','ServiceRequest',$2,'{}'::jsonb)`,
+   [event,randomUUID()]);
+  await db.query(`INSERT INTO notification_intents
+   (id,domain_event_id,guest_contact_id,audience,channel,dedupe_key,
+    next_attempt_at)
+   VALUES($1,$2,$3,'CLIENT','EMAIL',$4,now()+interval '10 minutes')`,
+   [intent,event,contact,'claim-parity:'+randomUUID()]);
+  await db.query(`INSERT INTO notification_deliveries
+   (id,intent_id,channel,next_attempt_at)
+   VALUES($1,$2,'EMAIL',NULL)`,[delivery,intent]);
+
+  // The delivery is due, but its intent is not. No lease may be issued.
+  assert.equal(await claimExternalDelivery(db),null);
+  await db.query(`UPDATE notification_intents SET next_attempt_at=NULL WHERE id=$1`,[intent]);
+  const claim=await claimExternalDelivery(db);
+  assert.equal(claim?.deliveryId,delivery);
+  // A worker must not be able to claim the same row again while lease is live.
+  assert.equal(await claimExternalDelivery(db),null);
+ }finally{
+  await db.query('ROLLBACK').catch(()=>{});
+  await db.end();
+ }
+});
+
 test('invalid claim proofs and lease bounds fail before SQL',async()=>{
  let calls=0;
  const db={query:async()=>{calls++;throw Error('unexpected SQL');}};
