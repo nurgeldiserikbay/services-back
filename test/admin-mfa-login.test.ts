@@ -809,3 +809,39 @@ test('uncertain BEGIN discards MFA connection before any privileged SQL',async()
  ),/begin acknowledgement lost/);
  assert.deepEqual(events,['BEGIN','discard']);
 });
+
+test('MFA database acquisition failure cannot issue a bearer or invoke key resolver',async()=>{
+ let connections=0,keyReads=0;
+ const pool={connect:async()=>{
+  connections++;
+  throw new Error('admin database unavailable');
+ }};
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  pool as never,primary,code,async()=>{keyReads++;return key;},pepper,now,
+ ),/admin database unavailable/);
+ assert.equal(connections,1);
+ assert.equal(keyReads,0);
+});
+
+test('MFA transaction setup failure rolls back before accessing privileged data',async()=>{
+ const events:string[]=[];
+ let keyReads=0;
+ const client={
+  query:async(sql:string)=>{
+   events.push(sql);
+   if(sql.includes('statement_timeout'))throw new Error('transaction setup unavailable');
+   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL '))return {rows:[]};
+   throw new Error('unexpected privileged query');
+  },
+  release:(error?:unknown)=>events.push(error instanceof Error?'discard':'release'),
+ };
+ await assert.rejects(loginAdminWithProvisionedTotp(
+  {connect:async()=>client} as never,primary,code,
+  async()=>{keyReads++;return key;},pepper,now,
+ ),/transaction setup unavailable/);
+ assert.deepEqual(events,[
+  'BEGIN',"SET LOCAL lock_timeout = '3s'",
+  "SET LOCAL statement_timeout = '8s'",'ROLLBACK','release',
+ ]);
+ assert.equal(keyReads,0);
+});
