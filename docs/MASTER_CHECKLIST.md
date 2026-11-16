@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+Backend durable alert dispatch lease and ACK (2026-11-16): branch `backend/durable-alert-dispatch-lease-20261116` adds a separate PostgreSQL dispatch state table, transaction-safe `FOR UPDATE SKIP LOCKED` claim with 30–300 second bounded lease, expired-lease takeover, and token/expiry-fenced delivery ACK. Immutable alert event journal remains unchanged. Dedicated PostgreSQL E2E covers replay denial, stale-worker ACK rejection, lease expiration and successful ACK; CI pending. **Important**: callers must COMMIT claim before sending and use stable (code,generation) provider idempotency. This is not wired to external transport, no durable sender retry policy, scheduler, approved SLO, or staging sign-off. Delivery monitoring stays unchecked.
+
+
 Backend durable alert episode PostgreSQL foundation (2026-11-16): rebased branch `backend/durable-alert-rebased-20261116` restores PR #146 migration, transactionally locked alert state, immutable count-only alert events, regression tests and CI gate on current main. Original [PR #146](https://github.com/nurgeldiserikbay/services-back/pull/146) passed [branch CI #43869222582](https://github.com/nurgeldiserikbay/services-back/actions/runs/43869222582) and [PR CI #43869251547](https://github.com/nurgeldiserikbay/services-back/actions/runs/43869251547) but conflicted with advancing main. New branch CI pending. No production alert transport, acknowledgement/retry, operator authorization, approved SLO or staging sign-off. Delivery monitoring remains unchecked.
 
 
