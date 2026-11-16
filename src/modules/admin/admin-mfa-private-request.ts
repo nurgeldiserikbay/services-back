@@ -21,8 +21,8 @@ export function parsePrivateAdminMfaRequest(value:unknown):PrivateAdminMfaReques
  const token=descriptors.account_session_token;
  const code=descriptors.totp_code;
  // Never execute caller-defined getters or accept hidden symbol properties.
- if(!token||!Object.hasOwn(token,'value')||
-    !code||!Object.hasOwn(code,'value')||
+ if(!token||!Object.hasOwn(token,'value')||!token.enumerable||
+    !code||!Object.hasOwn(code,'value')||!code.enumerable||
     typeof token.value!=='string'||!TOKEN.test(token.value)||
     typeof code.value!=='string'||code.value.length>16)return null;
  // The MFA transaction must see malformed codes so it can persist failures
