@@ -84,7 +84,7 @@ test('rejects inherited and getter-backed metrics without executing getters',()=
  Object.assign(inherited,empty);
  delete inherited.pendingDue;
  assert.throws(()=>evaluateExternalDeliveryQueueAlerts(
-  inherited as ExternalDeliveryQueueSnapshot,policy),
+  inherited as unknown as ExternalDeliveryQueueSnapshot,policy),
  /invalid_external_delivery_alert_input/);
 
  const getterPolicy={...policy};
@@ -99,6 +99,6 @@ test('rejects inherited and getter-backed metrics without executing getters',()=
  const inheritedPolicy=Object.create({pendingDueThreshold:10}) as Record<string,unknown>;
  Object.assign(inheritedPolicy,{expiredLeaseThreshold:2,terminalFailedThreshold:3});
  assert.throws(()=>evaluateExternalDeliveryQueueAlerts(
-  empty,inheritedPolicy as typeof policy),
+  empty,inheritedPolicy as unknown as typeof policy),
  /invalid_external_delivery_alert_input/);
 });
