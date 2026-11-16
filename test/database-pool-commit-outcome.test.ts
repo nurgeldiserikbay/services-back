@@ -126,3 +126,41 @@ test('successful ROLLBACK preserves original callback failure and reuses client'
  assert.deepEqual(released,[undefined]);
  await db.onModuleDestroy();
 });
+
+test('transaction setup failure rolls back before work and never commits',async()=>{
+ const statements:string[]=[];
+ const released:unknown[]=[];
+ const db=new DatabasePool();
+ (db as unknown as {pool:unknown}).pool={
+  connect:async()=>({
+   query:async(sql:string)=>{
+    statements.push(sql);
+    if(sql.includes('statement_timeout'))throw new Error('timeout setup failed');
+    return {rows:[]};
+   },
+   release:(error?:unknown)=>released.push(error),
+  }),
+  end:async()=>{},
+ };
+ let callbacks=0;
+ await assert.rejects(db.transaction(async()=>{callbacks++;return 1;}),/timeout setup failed/);
+ assert.equal(callbacks,0);
+ assert.deepEqual(statements,[
+  'BEGIN',"SET LOCAL lock_timeout = '3s'",
+  "SET LOCAL statement_timeout = '8s'",'ROLLBACK',
+ ]);
+ assert.deepEqual(released,[undefined]);
+ await db.onModuleDestroy();
+});
+
+test('connection acquisition failure is mapped to unavailable without running work',async()=>{
+ const db=new DatabasePool();
+ (db as unknown as {pool:unknown}).pool={
+  connect:async()=>{throw new Error('database connection refused');},
+  end:async()=>{},
+ };
+ let callbacks=0;
+ await assert.rejects(db.transaction(async()=>{callbacks++;return 1;}),/Database operation unavailable/);
+ assert.equal(callbacks,0);
+ await db.onModuleDestroy();
+});
