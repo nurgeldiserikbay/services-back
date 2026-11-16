@@ -52,7 +52,15 @@ export class DatabasePool implements OnModuleDestroy {
     let released = false;
     let commitAttempted = false;
     try {
-      await client.query('BEGIN');
+      try {
+        await client.query('BEGIN');
+      } catch {
+        // BEGIN may have reached PostgreSQL before the connection failed.
+        // Its transaction state is unknown; do not return it to the pool.
+        client.release(new Error('Transaction begin outcome uncertain'));
+        released = true;
+        throw new ServiceUnavailableException('Database operation unavailable');
+      }
       begun = true;
       await client.query("SET LOCAL lock_timeout = '3s'");
       await client.query("SET LOCAL statement_timeout = '8s'");
