@@ -33,6 +33,7 @@ export async function processExternalNotificationBatch(
  provider:ExternalProvider,
  maxItems=10,
  leaseSeconds=90,
+ signal?:AbortSignal,
 ):Promise<ExternalDeliveryBatchSummary>{
  if(!Number.isSafeInteger(maxItems)||maxItems<1||maxItems>25)
   throw new RangeError('invalid_external_delivery_batch_limit');
@@ -42,6 +43,9 @@ export async function processExternalNotificationBatch(
     !provider||provider.supportsIdempotentSend!==true||
     typeof provider.reconcile!=='function'||typeof provider.send!=='function')
   throw new Error('external_provider_idempotency_required');
+ if(signal!==undefined&&
+    (typeof signal.aborted!=='boolean'||typeof signal.throwIfAborted!=='function'))
+  throw new Error('invalid_external_delivery_abort_signal');
 
  const counts:Record<Outcome,number>={
   SENT:0,RETRY_SCHEDULED:0,FAILED:0,DEFERRED:0,LEASE_LOST:0,
@@ -49,6 +53,9 @@ export async function processExternalNotificationBatch(
  let examined=0;
  let exhausted=false;
  while(examined<maxItems){
+  // Cancelling mid-batch prevents a new claim. A provider call already in
+  // progress is allowed to finish and durably acknowledge its outcome.
+  signal?.throwIfAborted();
   const outcome=await processOneExternalNotification(database,provider,leaseSeconds);
   if(outcome==='NO_WORK'){
    exhausted=true;
