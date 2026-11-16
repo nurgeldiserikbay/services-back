@@ -269,6 +269,8 @@ jobs:
         run: node --import tsx --test test/dead-letter-requeue.test.ts test/dead-letter-requeue-schema-db.test.ts test/dead-letter-requeue-live-db.test.ts
       - name: External failed delivery inventory PostgreSQL integration (fail fast)
         run: node --import tsx --test test/dead-letter-inventory-db.test.ts
+      - name: External notification queue alert thresholds and privacy (fail fast)
+        run: node --import tsx --test test/external-delivery-alerts.test.ts
       - name: External delivery monitoring PostgreSQL consistency and privacy (fail fast)
         run: node --import tsx --test test/external-delivery-monitoring-db.test.ts
       - name: External notification one-shot worker transaction boundaries (fail fast)
