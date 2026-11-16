@@ -231,7 +231,7 @@ test('successful rollback returns admin MFA database connection normally',async(
 });
 
 
-test('uncertain MFA commit discards the database connection even if rollback succeeds',async()=>{
+test('uncertain MFA commit discards the database connection without rollback',async()=>{
  const releases:unknown[]=[];
  const events:string[]=[];
  const client={
@@ -259,7 +259,8 @@ test('uncertain MFA commit discards the database connection even if rollback suc
  await assert.rejects(loginAdminWithProvisionedTotp(
   {connect:async()=>client} as never,primary,code,async()=>key,pepper,now,
  ),/commit uncertain/);
- assert.ok(events.includes('ROLLBACK'));
+ assert.equal(events.includes('ROLLBACK'),false);
+ assert.equal(events.filter(sql=>sql==='COMMIT').length,1);
  assert.equal(releases.length,1);
  assert.ok(releases[0] instanceof Error);
 });
