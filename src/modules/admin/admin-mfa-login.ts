@@ -145,7 +145,13 @@ export async function loginAdminWithProvisionedTotp(
   throw error;
  }finally{
   secret?.fill(0);
-  if(discardConnection)client.release(new Error('Admin MFA transaction outcome uncertain'));
-  else client.release();
+  // Pool cleanup must not replace the authentication/transaction outcome
+  // with a raw driver error that could reach an HTTP boundary.
+  try{
+   if(discardConnection)client.release(new Error('Admin MFA transaction outcome uncertain'));
+   else client.release();
+  }catch{
+   // No second release attempt: pool state may already have changed.
+  }
  }
 }
