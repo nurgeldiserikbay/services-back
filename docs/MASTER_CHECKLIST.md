@@ -88,7 +88,7 @@
 - [x] Outbox model — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); outbox event staging and delivery linkage
 - [x] Notification intents — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); IN_APP and EMAIL intent staging
 - [ ] Email/SMS integration — Pending verification
-- [ ] Retry and dead-letter handling — Prepared: retry and terminal failure persistence, counter-divergence fail-closed protection, and fenced PostgreSQL claim/lease are implemented (PR #113; branch CI #43806884028 PASS). Provider sending, idempotency reconciliation, operational dead-letter replay and main CI verification remain open
+- [ ] Retry and dead-letter handling — Prepared: retry/terminal failure persistence, counter consistency, fenced claim/lease (PR #113) and fenced provider acceptance SENT acknowledgement (PR #114) implemented; branch CI #43807581452 PASS. Provider adapter, uncertainty reconciliation, dead-letter replay and post-merge main CI remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
 - [ ] Delivery monitoring — Pending verification
@@ -365,6 +365,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 | 2026-11-16 | services-back | [`252c9aa`](https://github.com/nurgeldiserikbay/services-back/commit/252c9aaa32fa06556b6f9b5ea36eb50a47f835f5), [`01406e9`](https://github.com/nurgeldiserikbay/services-back/commit/01406e9219e3bc38b3751a9ce6f13f6902d41684), [CI #43806055155](https://github.com/nurgeldiserikbay/services-back/actions/runs/43806055155) | Fixed privileged MFA rollback-original-error regression and simulated real authentication denial on pool release failure; full backend build-and-test and dependency-audit completed | **PASS**; delivery worker claim/lease and provider sending remain pending |
 
 | 2026-11-16 | services-back | [PR #113](https://github.com/nurgeldiserikbay/services-back/pull/113), [`6007488`](https://github.com/nurgeldiserikbay/services-back/commit/60074888c78905cc89b4c07697a264fb1bebd67f), [branch CI #43806884028](https://github.com/nurgeldiserikbay/services-back/actions/runs/43806884028) | PostgreSQL fenced external EMAIL/SMS delivery claim/lease with fresh tokens, expiry, stale-ack rejection, forward migration, restore-stable index and E2E regression; branch build-and-test and dependency-audit both passed | **PASS branch CI, merged main**; provider sender, exact-once reconciliation, dead-letter replay and post-merge main CI still open |
+
+| 2026-11-16 | services-back | [PR #114](https://github.com/nurgeldiserikbay/services-back/pull/114), [`c22e056`](https://github.com/nurgeldiserikbay/services-back/commit/c22e0564074dbda9aaea5d74c143be8636dc2c0a), [branch CI #43807581452](https://github.com/nurgeldiserikbay/services-back/actions/runs/43807581452), [main CI #43807824019](https://github.com/nurgeldiserikbay/services-back/actions/runs/43807824019) | Added fenced provider acceptance acknowledgement for external EMAIL/SMS notifications, with PostgreSQL stale/expired lease and divergent-attempt regression tests; build/test and dependency-audit passed on PR branch | **PASS branch CI, merged main; main verification pending**. SENT is provider acceptance, not end-user delivery. Full external provider adapter and dead-letter remain pending |
 
 ## Next acceptance gates
 
