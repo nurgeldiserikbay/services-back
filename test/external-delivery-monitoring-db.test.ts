@@ -67,6 +67,11 @@ test('PostgreSQL snapshot buckets due, leased, failed and inconsistent rows with
     VALUES($1,$2,'EMAIL',$3,0)`,
     [deliveryIds[i],intentIds[i],states[i]]);
   }
+  // A terminal FAILED row must have recorded at least one delivery attempt.
+  await db.query(`UPDATE notification_deliveries
+    SET attempt_count=1 WHERE id=$1`,[deliveryIds[3]]);
+  await db.query(`UPDATE notification_intents
+    SET attempts=1 WHERE id=$1`,[intentIds[3]]);
   await db.query(`UPDATE notification_deliveries
     SET lease_token=$2,lease_expires_at=now()+interval '90 seconds'
     WHERE id=$1`,[deliveryIds[1],randomUUID()]);
