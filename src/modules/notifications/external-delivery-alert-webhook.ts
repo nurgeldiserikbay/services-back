@@ -1,0 +1,82 @@
+import {isIP} from 'node:net';
+import type {ExternalDeliveryAlert,ExternalDeliveryAlertTransport}
+ from './external-delivery-alert-dispatch.js';
+
+/**
+ * Opt-in HTTPS delivery adapter for an operator-approved alert receiver.
+ * Not wired into runtime, scheduler, public routes or environment defaults.
+ * A deployment owner must approve the receiver hostname and provide its token.
+ * The receiver itself is responsible for deduplication and alert lifecycle.
+ */
+export type ExternalDeliveryWebhookConfig=Readonly<{
+ endpoint:string;
+ approvedHostname:string;
+ bearerToken:string;
+ timeoutMs:number;
+}>;
+
+export function createExternalDeliveryWebhookTransport(
+ config:ExternalDeliveryWebhookConfig,
+ request:typeof fetch=fetch,
+):ExternalDeliveryAlertTransport{
+ if(!config||typeof config!=='object')
+  throw new Error('invalid_external_alert_webhook_config');
+ const {endpoint,approvedHostname,bearerToken,timeoutMs}=config;
+ if(typeof endpoint!=='string'||typeof approvedHostname!=='string'||
+    typeof bearerToken!=='string'||!Number.isSafeInteger(timeoutMs)||
+    timeoutMs<1000||timeoutMs>30000)
+  throw new Error('invalid_external_alert_webhook_config');
+ let url:URL;
+ try{url=new URL(endpoint);}
+ catch{throw new Error('invalid_external_alert_webhook_config');}
+ // Exact approved FQDN; do not follow redirects, accept embedded credentials,
+ // address literals, port overrides, query strings or URL fragments.
+ if(url.protocol!=='https:'||url.port!==''||url.username!==''||
+    url.password!==''||url.search!==''||url.hash!==''||
+    !/^[a-z0-9-]+(?:\\.[a-z0-9-]+)+$/.test(approvedHostname)||
+    url.hostname!==approvedHostname||isIP(url.hostname)!==0||
+    bearerToken.length<16||bearerToken.length>2048||
+    !/^[\\x21-\\x7e]+$/.test(bearerToken)||
+    typeof request!=='function')
+  throw new Error('invalid_external_alert_webhook_config');
+ // Do not capture the mutable user-owned config or allow config getter
+ // execution during any subsequent send.
+ const destination=url.toString();
+ const authorization='Bearer '+bearerToken;
+ const timeout=timeoutMs;
+ return Object.freeze({
+  async send(alerts:ReadonlyArray<ExternalDeliveryAlert>):Promise<void>{
+   if(!Array.isArray(alerts)||alerts.length===0||alerts.length>4)
+    throw new Error('invalid_external_alert_webhook_payload');
+   const allowedCodes=new Set(['QUEUE_INCONSISTENT','DUE_BACKLOG',
+    'EXPIRED_LEASES','TERMINAL_FAILURES']);
+   const safe=alerts.map(alert=>{
+    if(!alert||typeof alert!=='object')throw new Error('invalid_external_alert_webhook_payload');
+    const properties=['code','severity','observed','threshold'] as const;
+    const values=properties.map(key=>{
+     const descriptor=Object.getOwnPropertyDescriptor(alert,key);
+     if(!descriptor||!Object.hasOwn(descriptor,'value'))
+      throw new Error('invalid_external_alert_webhook_payload');
+     return descriptor.value as unknown;
+    });
+    const [code,severity,observed,threshold]=values;
+    if(!allowedCodes.has(code as string)||
+       (severity!=='warning'&&severity!=='critical')||
+       (code==='QUEUE_INCONSISTENT'?! (severity==='critical'&&threshold===1):
+        severity!=='warning')||
+       typeof observed!=='number'||!Number.isSafeInteger(observed)||observed<1||
+       typeof threshold!=='number'||!Number.isSafeInteger(threshold)||threshold<1)
+     throw new Error('invalid_external_alert_webhook_payload');
+    return {code,severity,observed,threshold};
+   });
+   const response=await request(destination,{
+    method:'POST',
+    headers:{'content-type':'application/json','authorization':authorization},
+    body:JSON.stringify({alerts:safe}),
+    redirect:'error',
+    signal:AbortSignal.timeout(timeout),
+   });
+   if(!response.ok)throw new Error('external_alert_webhook_delivery_failed');
+  },
+ } satisfies ExternalDeliveryAlertTransport);
+}
