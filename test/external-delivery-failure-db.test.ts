@@ -30,6 +30,7 @@ test('external failure persists retry schedule, then terminal failure, without P
 
   const first=await recordExternalDeliveryFailure(db,delivery,now,2);
   assert.deepEqual(first,{state:'PENDING',attempts:1,nextAttemptAt:new Date(now.getTime()+30_000)});
+  assert.equal(await recordExternalDeliveryFailure(db,delivery,new Date(now.getTime()+29_999),2),null);
   const second=await recordExternalDeliveryFailure(db,delivery,new Date(now.getTime()+30_000),2);
   assert.deepEqual(second,{state:'FAILED',attempts:2,nextAttemptAt:null});
   assert.equal(await recordExternalDeliveryFailure(db,delivery,now,2),null);
