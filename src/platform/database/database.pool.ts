@@ -55,7 +55,12 @@ export class DatabasePool implements OnModuleDestroy {
     const releaseOnce = (error?: Error): void => {
       if (released) return;
       released = true;
-      client.release(error);
+      try {
+        client.release(error);
+      } catch {
+        // Pool cleanup must not replace a sanitized database error or
+        // trigger another release attempt on the same client.
+      }
     };
     try {
       try {
