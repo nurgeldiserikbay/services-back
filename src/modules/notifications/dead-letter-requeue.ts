@@ -87,12 +87,16 @@ export async function requeueFailedOrganizationDelivery(
    JOIN platform_admin_staff staff ON staff.id=session.staff_id
    JOIN users usr ON usr.id=staff.user_id
    JOIN platform_admin_grants grants ON grants.staff_id=staff.id
+   JOIN platform_admin_totp_factors factor ON factor.staff_id=staff.id
    WHERE session.token_hash=$1 AND usr.id=$2::uuid
      AND staff.role IN ('owner','admin')
      AND staff.disabled_at IS NULL AND usr.status='ACTIVE'
      AND session.revoked_at IS NULL AND session.expires_at>clock_timestamp()
+     AND factor.activated_at IS NOT NULL
+     AND factor.activated_at<=session.mfa_verified_at
+     AND factor.disabled_at IS NULL
      AND grants.scope=$3
-   FOR SHARE OF session,staff,usr,grants
+   FOR SHARE OF session,staff,usr,grants,factor
   `,[hash,current!.userId,resourceScope]);
   if(actor.rows.length!==1||!UUID.test(actor.rows[0].staff_id))
    return 'DENIED';
