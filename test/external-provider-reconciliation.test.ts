@@ -101,6 +101,39 @@ test('definitive provider rejection delegates retry decision, stale fencing neve
  assert.match(statements[0],/lease_token/);
 });
 
+test('expired delivery lease never consults provider or changes SQL',async()=>{
+ const {claim,database,statements}=fixture();
+ const calls:string[]=[];
+ const provider={
+  supportsIdempotentSend:true as const,
+  reconcile:async()=>{calls.push('lookup');return 'NOT_FOUND' as const;},
+  send:async()=>{calls.push('send');return 'ACCEPTED' as const;},
+ };
+ const expired={...claim,leaseExpiresAt:new Date(Date.now()-1000)};
+ assert.equal(await reconcileAndSendClaimedExternalDelivery(
+  database as never,provider,expired),'LEASE_LOST');
+ assert.deepEqual(calls,[]);
+ assert.deepEqual(statements,[]);
+});
+
+test('lease expiring during reconciliation cannot start a provider send',async()=>{
+ const {claim,database,statements}=fixture();
+ const calls:string[]=[];
+ // First lease check passes; the second is after expiration.
+ const earlier=new Date(claim.leaseExpiresAt.getTime()-1000);
+ const later=new Date(claim.leaseExpiresAt.getTime()+1000);
+ let checks=0;
+ const outcome=await reconcileAndSendClaimedExternalDelivery(
+  database as never,{
+   supportsIdempotentSend:true,
+   reconcile:async()=>{calls.push('lookup');return 'NOT_FOUND';},
+   send:async()=>{calls.push('send');return 'ACCEPTED';},
+  },claim,()=>++checks===1?earlier:later);
+ assert.equal(outcome,'LEASE_LOST');
+ assert.deepEqual(calls,['lookup']);
+ assert.deepEqual(statements,[]);
+});
+
 test('unsupported provider cannot send or access database',async()=>{
  const {claim,database,statements}=fixture();
  let sends=0;

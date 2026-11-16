@@ -48,6 +48,13 @@ export async function reconcileAndSendClaimedExternalDelivery(
     !Number.isFinite(claim.leaseExpiresAt.getTime()))
   throw new Error('invalid_external_delivery_claim');
 
+ // The lease is a time-bounded proof. Do not perform provider I/O when it
+ // is already expired; a different worker may have acquired the same intent.
+ const initialTime=now();
+ if(!(initialTime instanceof Date)||!Number.isFinite(initialTime.getTime()))
+  throw new RangeError('invalid_delivery_retry_time');
+ if(claim.leaseExpiresAt.getTime()<=initialTime.getTime())return 'LEASE_LOST';
+
  const key=claim.channel+':'+claim.intentId;
  let observed:'ACCEPTED'|'NOT_FOUND'|'UNKNOWN';
  try{
@@ -58,6 +65,12 @@ export async function reconcileAndSendClaimedExternalDelivery(
  }
  if(observed==='UNKNOWN')return 'DEFERRED';
  if(observed==='NOT_FOUND'){
+  // Reconciliation may be slow; recheck before any external send. Provider
+  // idempotency remains required for leases that expire mid-request.
+  const sendTime=now();
+  if(!(sendTime instanceof Date)||!Number.isFinite(sendTime.getTime()))
+   throw new RangeError('invalid_delivery_retry_time');
+  if(claim.leaseExpiresAt.getTime()<=sendTime.getTime())return 'LEASE_LOST';
   try{
    const result=await provider.send({
     intentId:claim.intentId,channel:claim.channel,idempotencyKey:key,
