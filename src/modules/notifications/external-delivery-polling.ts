@@ -73,7 +73,7 @@ export async function runExternalNotificationPolling(
    signal.throwIfAborted();
   }
   const batch=await processExternalNotificationBatch(
-   database,provider,policy.maxItemsPerTick,policy.leaseSeconds);
+   database,provider,policy.maxItemsPerTick,policy.leaseSeconds,signal);
   totals.ticks++;
   totals.examined+=batch.examined;
   totals.sent+=batch.sent;
