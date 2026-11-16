@@ -12,7 +12,8 @@ const scope='organization:'+orgId;
 const deliveryId=randomUUID(),intentId=randomUUID();
 const now=Date.now();
 
-function fixture(role:'owner'|'admin'|'operator'|'auditor'='owner'){
+function fixture(role:'owner'|'admin'|'operator'|'auditor'='owner',
+ auditDeliveryId:string|null=null){
  const queries:string[]=[];
  let updates=0,audits=0,providerCalls=0,transactions=0;
  let revoked=false;
@@ -33,7 +34,7 @@ function fixture(role:'owner'|'admin'|'operator'|'auditor'='owner'){
    if(sql.includes('SELECT staff.id::text AS staff_id'))
     return {rows:revoked?[]:[{staff_id:staffId}]};
    if(sql.includes('SELECT delivery_id::text FROM notification_requeue_audit'))
-    return {rows:[]};
+    return {rows:auditDeliveryId===null?[]:[{delivery_id:auditDeliveryId}]};
 
    if(sql.includes('UPDATE notification_deliveries')||
       sql.includes('UPDATE notification_intents')){
@@ -92,6 +93,19 @@ test('authorized scoped requeue is recorded with audit in transaction',async()=>
  assert.ok(counts().queries.some(q=>q.includes('FOR UPDATE OF d,n')));
  assert.ok(counts().queries.some(q=>q.includes('FOR SHARE OF session,staff,usr,grants')));
  assert.ok(counts().queries.some(q=>q.includes('INSERT INTO notification_requeue_audit')));
+});
+
+test('requeue request key cannot acknowledge another delivery',async()=>{
+ const {db,provider,counts}=fixture('owner',randomUUID());
+ assert.equal(await requeueFailedOrganizationDelivery(db as never,provider,
+  bearer,pepper,deliveryId,randomUUID(),scope,now),'DENIED');
+ assert.equal(counts().updates,0);
+ assert.equal(counts().audits,0);
+ const prior=fixture('owner',deliveryId);
+ assert.equal(await requeueFailedOrganizationDelivery(
+  prior.db as never,prior.provider,bearer,pepper,
+  deliveryId,randomUUID(),scope,now),'ALREADY_REQUEUED');
+ assert.equal(prior.counts().updates,0);
 });
 
 test('provider uncertainty never requeues failed delivery',async()=>{
