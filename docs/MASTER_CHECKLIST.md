@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend city lookup retry UX (2026-11-16): [frontend `f2f57ce`](https://github.com/nurgeldiserikbay/services-front/commit/f2f57cef66c9c73c312bde0c6bb5dd8155efa11e) adds localized retry for failed city fetch without resetting filters, with regression tests. [CI #43803673543](https://github.com/nurgeldiserikbay/services-front/actions/runs/43803673543) pending; [previous #43803259315](https://github.com/nurgeldiserikbay/services-front/actions/runs/43803259315) passed.
+
 Frontend CI regression correction (2026-11-16): [frontend `624baae`](https://github.com/nurgeldiserikbay/services-front/commit/624baae435eb0acf052be6e7ae2b4f5affea8098) updates outdated geography retry assertion to expect `setCityError(false)` after country/city error-state separation. [CI #43802871313](https://github.com/nurgeldiserikbay/services-front/actions/runs/43802871313) failed at frontend unit tests due to this stale assertion; [rerun #43803259315](https://github.com/nurgeldiserikbay/services-front/actions/runs/43803259315) queued. No green CI claim until rerun passes.
 
 Frontend independent geography error states (2026-11-16): [frontend `b97bbfc`](https://github.com/nurgeldiserikbay/services-front/commit/b97bbfc2a9eba389607bc6c4b5249b0aaee62a02) separates country-directory and city-query errors so a city retry does not hide country lookup failures, and adds source regression tests. [CI #43802871313](https://github.com/nurgeldiserikbay/services-front/actions/runs/43802871313) pending; [previous CI #43802323716](https://github.com/nurgeldiserikbay/services-front/actions/runs/43802323716) passed. Manual device and assistive technology acceptance remain open.
