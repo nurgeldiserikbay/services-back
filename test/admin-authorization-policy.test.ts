@@ -12,13 +12,13 @@ function principal(role:PlatformRole){
 }
 const ops:readonly AdminOperation[]=['moderation.read','moderation.decide',
  'audit.read','taxonomy.read','taxonomy.publish','platform_roles.read',
- 'platform_roles.manage'];
+ 'platform_roles.manage','notifications.requeue'];
 
 test('role permission matrix denies ungranted operations',()=>{
  const expected:Record<PlatformRole,readonly AdminOperation[]>={
   owner:ops,
   admin:['moderation.read','moderation.decide','audit.read','taxonomy.read',
-   'taxonomy.publish','platform_roles.read'],
+   'taxonomy.publish','platform_roles.read','notifications.requeue'],
   operator:['moderation.read','moderation.decide','taxonomy.read'],
   auditor:['moderation.read','audit.read','taxonomy.read'],
  };
