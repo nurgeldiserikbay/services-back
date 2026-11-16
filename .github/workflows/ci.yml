@@ -273,6 +273,8 @@ jobs:
         run: node --import tsx --test test/external-delivery-alerts.test.ts
       - name: External delivery monitoring PostgreSQL consistency and privacy (fail fast)
         run: node --import tsx --test test/external-delivery-monitoring-db.test.ts
+      - name: Bounded external notification batch and uncertainty regressions (fail fast)
+        run: node --import tsx --test test/external-delivery-batch.test.ts
       - name: External notification one-shot worker transaction boundaries (fail fast)
         run: node --import tsx --test test/external-delivery-worker.test.ts
       - name: External provider uncertainty and idempotency contract regressions (fail fast)
