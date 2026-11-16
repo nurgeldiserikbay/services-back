@@ -427,6 +427,8 @@ Private MFA isolated HTTP acceptance preparation (2026-11-16): [`06e8463`](https
 
 | 2026-11-16 | services-back | [PR #123](https://github.com/nurgeldiserikbay/services-back/pull/123), [`5796af4`](https://github.com/nurgeldiserikbay/services-back/commit/5796af488f90e50ac1e050ee760087e11b56d5cd), [main CI #43820490000](https://github.com/nurgeldiserikbay/services-back/actions/runs/43820490000) | Added internal opt-in one-shot external notification worker with provider idempotency guard and no external I/O inside PostgreSQL transactions, plus tests and dedicated CI gate; fixed concurrent admin TOTP test fixture constraint ([`1b1c48b`](https://github.com/nurgeldiserikbay/services-back/commit/1b1c48bfe92775e44a30508aabda83f0c99ae1b9), [CI #43820168769](https://github.com/nurgeldiserikbay/services-back/actions/runs/43820168769) PASS) | **Merged main; final worker CI pending**. No real provider configured and no automatic activation |
 
+Private MFA HTTP follow-up (2026-11-16): [`97547f9`](https://github.com/nurgeldiserikbay/services-back/commit/97547f9f355280fab23c9a480171acfadee01a21) adds an isolated Nest HTTP check for enabled-but-missing BFF credentials (404, no DB access) and restores environment variables. **Prepared; CI execution and PostgreSQL E2E still pending.** No acceptance checkbox changed.
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
