@@ -91,7 +91,7 @@
 - [ ] Retry and dead-letter handling — Prepared: fenced retry/acknowledgement, reconciliation, audited requeue, bounded worker and queue monitoring (PR #113–127); PostgreSQL lease E2E and schedule/COMMIT guards (PR #128–133); opt-in polling and staged delivery cycle (PR #134–136); two-connection PostgreSQL staging-to-SENT E2E (PR #137, branch CI #43848576260 PASS). Real provider, production scheduler, admin HTTP/CSRF, alert transport and operational acceptance remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
-- [ ] Delivery monitoring — Pending verification
+- [ ] Delivery monitoring — Prepared: queue aggregate alerts now reject inherited/accessor-backed snapshot and threshold fields without invoking getters (backend PR pending CI). Real alert transport, approved SLO thresholds and staging alert drill remain open
 
 ### Admin
 
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Backend notification alert input hardening (2026-11-16): branch `backend/notification-alert-input-hardening-20261116` adds own-data-property checks to queue aggregate alert evaluation and regression tests that reject inherited fields and accessor-backed telemetry/policies without running getters. Branch CI pending; **Delivery monitoring remains unchecked** until verified operational alert transport, thresholds and staging exercise.
 
 Frontend production BFF default-off live HTTP E2E (2026-11-16): [frontend `19eda9e`](https://github.com/nurgeldiserikbay/services-front/commit/19eda9ec0a1d117adbf3137cf57a2f550d71c415) adds `private-bff-default-off.e2e.mjs` to live production Next.js CI for guest private status, OTP bootstrap/start, seller inbox/accept/decline, and account notifications, with/without forged cookies. It asserts default-off HTTP 404, no-store/noindex/no-referrer, bounded sanitized JSON and no cookie issuance. The first run [CI #43848552054 FAILED](https://github.com/nurgeldiserikbay/services-front/actions/runs/43848552054) because the global Next.js security header overrode private handlers' stricter Referrer-Policy with `strict-origin-when-cross-origin`. [Frontend `e13ee72`](https://github.com/nurgeldiserikbay/services-front/commit/e13ee729125f888a8c2c37f1329ac76e9b3fabec) scoped `no-referrer` config to private `/api/guest-requests`, `/api/seller`, and `/api/account` routes; regression [`a75a3b4`](https://github.com/nurgeldiserikbay/services-front/commit/a75a3b452a46f2bd13bdc59fde39089d6673f7d7). [Frontend CI #43848942180 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/43848942180) completed lint, units, typecheck, build, PostgreSQL integration and live BFF/public journeys. This validates **disabled** private features only; authenticated guest/seller success flows, real-browser navigation, mobile PWA and staging sign-off remain OPEN.
 
