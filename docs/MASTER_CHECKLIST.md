@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend city autocomplete stale-result UX (2026-11-16): [frontend `f4e385d`](https://github.com/nurgeldiserikbay/services-front/commit/f4e385d2ca1e8249c2e0aa17f3bbf698a126689a) hides stale city options and errors during debounce pending input; source regression tests added. [CI #43806473016](https://github.com/nurgeldiserikbay/services-front/actions/runs/43806473016) pending; [previous #43805836179](https://github.com/nurgeldiserikbay/services-front/actions/runs/43805836179) passed. Device acceptance remains open.
+
 Frontend city debounce pending-state UX (2026-11-16): [frontend `835e9f8`](https://github.com/nurgeldiserikbay/services-front/commit/835e9f8ed95d78a96f47500d52a76a36c98ab08b) adds pending-input state so the UI does not show stale empty city results during debounce; source regression coverage included. [CI #43805836179](https://github.com/nurgeldiserikbay/services-front/actions/runs/43805836179) pending; [previous #43805449975](https://github.com/nurgeldiserikbay/services-front/actions/runs/43805449975) passed. Manual device acceptance remains open.
 
 Frontend city autocomplete debounce (2026-11-16): [frontend `acee916`](https://github.com/nurgeldiserikbay/services-front/commit/acee916ecd38464ec0a09fa3f1e69fb51ccb45ca) introduces 250ms city-query debounce to reduce requests during typing, preserving AbortController cleanup and adding regression assertions. [CI #43805449975](https://github.com/nurgeldiserikbay/services-front/actions/runs/43805449975) queued; [previous #43804993015](https://github.com/nurgeldiserikbay/services-front/actions/runs/43804993015) passed. Device acceptance remains open.
