@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend geography city-picker loading and selection fix (2026-11-16): [frontend `d9ae5ff`](https://github.com/nurgeldiserikbay/services-front/commit/d9ae5ff24e09234ac61969060364770b43b97730) clears stale city options when country/query changes, adds city loading state, preserves selected city as a form option during refresh, and adds regression assertions. [CI #43801235937](https://github.com/nurgeldiserikbay/services-front/actions/runs/43801235937) pending; [previous CI #43747936589](https://github.com/nurgeldiserikbay/services-front/actions/runs/43747936589) passed. Real device and screen-reader acceptance remain open.
+
 Frontend search input accessible description (2026-11-15): [frontend `2773d04`](https://github.com/nurgeldiserikbay/services-front/commit/2773d041bd2273ca07801a30c9b22d66bae3d567) associates the search field with localized results heading via `aria-describedby=results-title`, alongside existing `aria-controls` and a source regression assertion. [CI #43747936589](https://github.com/nurgeldiserikbay/services-front/actions/runs/43747936589) queued. Real-device screen-reader acceptance remains open.
 
 Frontend search input/results accessibility relationship (2026-11-15): [frontend `da6f0bd`](https://github.com/nurgeldiserikbay/services-front/commit/da6f0bd1748dde7aca828bd955373ab15a625223) links the search input via `aria-controls=results-list` to the existing results section and adds a source regression test. [CI #43747795859](https://github.com/nurgeldiserikbay/services-front/actions/runs/43747795859) pending. Real-device and assistive technology acceptance remain open.
