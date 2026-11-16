@@ -142,7 +142,8 @@ jobs:
             test/admin-mfa-private-wiring.test.ts \
             test/admin-mfa-private-exchange.test.ts \
             test/admin-mfa-private-request.test.ts \
-            test/admin-mfa-private-controller.test.ts
+            test/admin-mfa-private-controller.test.ts \
+            test/admin-mfa-private-http.test.ts
 
       - name: Backend API contract regressions (fail fast)
         run: |
