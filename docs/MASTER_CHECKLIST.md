@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend nested public geography field minimization (2026-11-16): [frontend `3a5b9dd`](https://github.com/nurgeldiserikbay/services-front/commit/3a5b9dd07c13788e0840f343117734616f796153) projects validated `countries` and `cities` responses onto documented UI fields, dropping unexpected per-entry upstream attributes; executable unit regression added, `areas` remains passthrough pending explicit DTO. [Frontend CI #43826679682](https://github.com/nurgeldiserikbay/services-front/actions/runs/43826679682) pending when recorded. Prior [frontend `3a4dcb3`](https://github.com/nurgeldiserikbay/services-front/commit/3a4dcb3234a5f5ae797c8e8dd53e717e24486a7b) passed [CI #43823295835](https://github.com/nurgeldiserikbay/services-front/actions/runs/43823295835) confirming top-level response minimization. Do not close frontend E2E or mobile accessibility acceptance yet.
+
 Admin security lint CI gate (2026-11-16): [`services-admin` commit `765262d`](https://github.com/nurgeldiserikbay/services-admin/commit/765262d6ecf1238ab087988cc0afe5560b061668) introduces `pnpm lint` as an AST-based source safety check with the installed TypeScript parser (rejects `eval`, `Function` constructor, `document.write`, `innerHTML`/`outerHTML`), requires it between typecheck and unit tests, and adds a workflow regression assertion. [Admin CI #43826523983](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43826523983) **passed** with lint, typecheck, tests, build and production smoke. This is a targeted security lint, **not** comprehensive ESLint/React/Next lint; combined admin acceptance remains `[ ]` pending broader lint and authenticated MFA UI E2E.
 
 
