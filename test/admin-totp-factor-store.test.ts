@@ -164,3 +164,25 @@ test('TOTP factor store rejects missing database clients before encryption or lo
  }
  assert.equal(keyLookups,0);
 });
+
+test('factor decryption never mutates the vault resolver shared key on success or failure',async()=>{
+ const vaultKey=randomBytes(32);
+ const original=Buffer.from(vaultKey);
+ const factorSecret=randomBytes(32);
+ let envelope='';
+ await provisionAdminTotpFactor({query:async(_sql:string,params:unknown[])=>{
+  envelope=params[1] as string;
+  return {rows:[{staff_id:staffId}]};
+ }} as never,staffId,factorSecret,'rotation_1',vaultKey);
+ const read=(ciphertext:string)=>({query:async()=>({
+  rows:[{encrypted_secret:ciphertext,key_version:'rotation_1'}],
+ })} as never);
+ assert.deepEqual(await loadActiveAdminTotpFactor(
+  read(envelope),staffId,async()=>vaultKey,
+ ),factorSecret);
+ assert.deepEqual(vaultKey,original);
+ assert.equal(await loadActiveAdminTotpFactor(
+  read('v1.corrupt'),staffId,async()=>vaultKey,
+ ),null);
+ assert.deepEqual(vaultKey,original);
+});
