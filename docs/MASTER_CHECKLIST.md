@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend AST lint gate (2026-11-16): [frontend `9e64e1e`](https://github.com/nurgeldiserikbay/services-front/commit/9e64e1ed4c608d2d1c8d8d17c18c99c0612b43dd) augments the existing regex security gate with TypeScript compiler AST parsing, debugger-statement checks, forbidden TS suppression directives, runnable positive/negative fixtures and documentation. [CI #43828795052](https://github.com/nurgeldiserikbay/services-front/actions/runs/43828795052) pending verification at recording (earlier intermediate runs may be cancelled). Prior `areas` DTO validation [frontend `37219ea`](https://github.com/nurgeldiserikbay/services-front/commit/37219ea67ecba8e8ab8953156363dc3d4b873f10) passed [CI #43828011017](https://github.com/nurgeldiserikbay/services-front/actions/runs/43828011017). **Do not close full frontend lint**: AST/security checks do not replace a full JS/React/Next.js ESLint ruleset.
+
 Admin upstream response framing (2026-11-16): [`services-admin` commit `5a7d2cc`](https://github.com/nurgeldiserikbay/services-admin/commit/5a7d2cc9f3627c986e65348bd51f880b6f0953ae) makes moderation and backend logout transport reject `Content-Length` that disagrees with the fully read response body (both truncated and overlong declarations); adds positive and negative live transport regression tests. [Admin CI #43828617824](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43828617824) **passed** typecheck, lint, tests, build and deny-by-default production smoke. Authenticated admin browser MFA and comprehensive semantic lint remain open.
 
 
