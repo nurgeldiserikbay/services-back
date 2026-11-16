@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+Admin upstream response framing (2026-11-16): [`services-admin` commit `5a7d2cc`](https://github.com/nurgeldiserikbay/services-admin/commit/5a7d2cc9f3627c986e65348bd51f880b6f0953ae) makes moderation and backend logout transport reject `Content-Length` that disagrees with the fully read response body (both truncated and overlong declarations); adds positive and negative live transport regression tests. [Admin CI #43828617824](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43828617824) **passed** typecheck, lint, tests, build and deny-by-default production smoke. Authenticated admin browser MFA and comprehensive semantic lint remain open.
+
+
 Admin computed-sink security lint (2026-11-16): [`services-admin` commit `bdc26a4`](https://github.com/nurgeldiserikbay/services-admin/commit/bdc26a4ab9a499ddd807c21338d9743d48201bbb) extends AST lint to computed `innerHTML`/`outerHTML` and indirect `eval` access, with negative fixtures for each. [Admin CI #43828141237](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43828141237) **passed** typecheck, lint, tests, production build and production deny-by-default smoke. This does not prove authenticated MFA/browser or full semantic ESLint coverage; those remain open.
 
 
