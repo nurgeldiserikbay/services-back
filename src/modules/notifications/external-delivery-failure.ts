@@ -7,6 +7,7 @@ type DeliveryRow={
  channel:string;
  state:string;
  attempt_count:number;
+ next_attempt_at:Date|null;
  intent_state:string;
 };
 
@@ -33,7 +34,7 @@ export async function recordExternalDeliveryFailure(
   throw new RangeError('invalid_delivery_max_attempts');
 
  const selected=await client.query<DeliveryRow>(`
-  SELECT d.id::text,d.intent_id::text,d.channel,d.state,d.attempt_count,
+  SELECT d.id::text,d.intent_id::text,d.channel,d.state,d.attempt_count,d.next_attempt_at,
          n.state AS intent_state
   FROM notification_deliveries d
   JOIN notification_intents n ON n.id=d.intent_id AND n.channel=d.channel
@@ -43,6 +44,12 @@ export async function recordExternalDeliveryFailure(
  if(selected.rows.length!==1)return null;
  const row=selected.rows[0];
  if(row.state!=='PENDING'||row.intent_state!=='PENDING')return null;
+ // A scheduled retry must never be consumed before its due timestamp.
+ if(row.next_attempt_at!==null){
+  if(!(row.next_attempt_at instanceof Date)||!Number.isFinite(row.next_attempt_at.getTime()))
+   throw new Error('invalid_delivery_next_attempt_time');
+  if(row.next_attempt_at.getTime()>now.getTime())return null;
+ }
  if(!Number.isSafeInteger(row.attempt_count)||row.attempt_count<0)
   throw new Error('invalid_delivery_attempt_count');
  const attempts=row.attempt_count+1;
