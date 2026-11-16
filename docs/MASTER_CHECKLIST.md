@@ -420,6 +420,8 @@ Private MFA vault regression follow-up (2026-11-16): [`f59eb88`](https://github.
 
 | 2026-11-16 | services-back | [PR #122](https://github.com/nurgeldiserikbay/services-back/pull/122), [`690f772`](https://github.com/nurgeldiserikbay/services-back/commit/690f7728d0443bc7b25ffe25833904e7aaa7466e), [branch CI #43818206462](https://github.com/nurgeldiserikbay/services-back/actions/runs/43818206462), [main CI #43818508988](https://github.com/nurgeldiserikbay/services-back/actions/runs/43818508988) | Database-backed operator MFA/session, org-scoped FAILED-to-PENDING requeue, single append-only audit, replay no-op, scope denial, session revocation and immutable audit are now verified by PostgreSQL E2E with test-transaction rollback | **PASS branch CI, merged main; main CI pending**. Provider is test stub; production provider and HTTP/CSRF remain open |
 
+Private MFA isolated HTTP acceptance preparation (2026-11-16): [`06e8463`](https://github.com/nurgeldiserikbay/services-back/commit/06e84638b3717c7c462dd1cfc1ad931e599ec581) adds a test-only Nest HTTP server checking disabled endpoint returns 404 without opening PostgreSQL; [`9d38394`](https://github.com/nurgeldiserikbay/services-back/commit/9d3839406b01f5e337300934ff2f6a1ba126825f) adds it to the CI regression gate. **Prepared, execution/CI pending**; this does not verify enabled MFA, real PostgreSQL, vault or deployment ingress. Production controller remains unregistered. No acceptance checkbox changed.
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
