@@ -26,6 +26,20 @@ export class DatabasePool implements OnModuleDestroy {
     return this.pool;
   }
 
+  /**
+   * Dedicated connection lease for the admin MFA primitive, which manages
+   * BEGIN/COMMIT/ROLLBACK and client.release() itself. Reuse the same bounded
+   * application pool rather than creating a second privileged pool.
+   * Never return raw driver connection errors to the HTTP boundary.
+   */
+  async connectForAdminMfa(): Promise<PoolClient> {
+    try {
+      return await this.getPool().connect();
+    } catch {
+      throw new ServiceUnavailableException('Database operation unavailable');
+    }
+  }
+
   async query<T extends QueryResultRow>(sql: string, values: readonly unknown[]): Promise<QueryResult<T>> {
     try {
       return await this.getPool().query<T>(sql, [...values]);
