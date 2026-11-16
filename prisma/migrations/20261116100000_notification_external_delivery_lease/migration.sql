@@ -9,6 +9,7 @@ ALTER TABLE notification_deliveries
   ADD CONSTRAINT notification_deliveries_lease_pair_chk
   CHECK ((lease_token IS NULL) = (lease_expires_at IS NULL));
 
+-- A non-partial index has a stable pg_dump/pg_restore representation.
+-- The query still filters external PENDING deliveries explicitly.
 CREATE INDEX notification_deliveries_external_lease_idx
-  ON notification_deliveries (next_attempt_at, lease_expires_at, id)
-  WHERE channel IN ('EMAIL','SMS') AND state='PENDING';
+  ON notification_deliveries (state, next_attempt_at, lease_expires_at, id);
