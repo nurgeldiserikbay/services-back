@@ -38,6 +38,8 @@ export async function claimExternalDelivery(
    WHERE d.channel IN ('EMAIL','SMS')
      AND d.state='PENDING' AND n.state='PENDING'
      AND d.attempt_count=n.attempts
+     -- The two durable schedules must agree; a stale intent must never be sent.
+     AND d.next_attempt_at IS NOT DISTINCT FROM n.next_attempt_at
      AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=clock_timestamp())
      AND (d.lease_expires_at IS NULL OR d.lease_expires_at<=clock_timestamp())
    ORDER BY d.next_attempt_at NULLS FIRST,d.id
