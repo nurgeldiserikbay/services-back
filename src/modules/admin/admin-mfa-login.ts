@@ -50,6 +50,7 @@ export async function loginAdminWithProvisionedTotp(
  const client:PoolClient=await pool.connect();
  let began=false;
  let discardConnection=false;
+ let commitAttempted=false;
  let secret:Buffer|null=null;
  try{
   try{await client.query('BEGIN');}
@@ -118,6 +119,7 @@ export async function loginAdminWithProvisionedTotp(
    // acknowledge a failed login if its lockout state was not persisted.
    if(!failure)throw new Error('admin_mfa_failure_record_missing');
    await recordAdminMfaSecurityEvent(client,verifiedPrimary.staffId,'admin_mfa_login_failed');
+   commitAttempted=true;
    try{await client.query('COMMIT');}
    catch(error){discardConnection=true;throw error;}
    began=false;
@@ -134,7 +136,7 @@ export async function loginAdminWithProvisionedTotp(
   began=false;
   return session;
  }catch(error){
-  if(began){
+  if(began&&!commitAttempted){
    try{await client.query('ROLLBACK');}
    catch{discardConnection=true;}
   }
