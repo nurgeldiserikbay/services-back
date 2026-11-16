@@ -291,7 +291,7 @@ test('failed-MFA attempt commit error discards connection without returning succ
   {connect:async()=>client} as never,primary,bad,async()=>key,pepper,now,
  ),/attempt commit uncertain/);
  assert.ok(events.includes('COMMIT'));
- assert.ok(events.includes('ROLLBACK'));
+ assert.equal(events.includes('ROLLBACK'),false);
  assert.equal(released.length,1);
  assert.ok(released[0] instanceof Error);
 });
