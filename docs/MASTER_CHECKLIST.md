@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend seller decision guard test correction (2026-11-16): [frontend CI #43840095101](https://github.com/nurgeldiserikbay/services-front/actions/runs/43840095101) **FAILED** only in frontend unit tests: 412 passed, two legacy seller decision source regex assertions still expected render-time `pendingKey.current` access removed by the hooks cleanup. [Frontend `71a4416`](https://github.com/nurgeldiserikbay/services-front/commit/71a4416919cb22ad4e54c2f66122324003739435) updates the two assertions to the new render-safe disabled guards while keeping a separate check for the imperative idempotency guard in `submit`. [CI #43842106397](https://github.com/nurgeldiserikbay/services-front/actions/runs/43842106397) in progress at recording; do not mark accepted until passing.
+
 Admin RBAC UI claim integrity (2026-11-16): [`services-admin` commit `d3283fc`](https://github.com/nurgeldiserikbay/services-admin/commit/d3283fc0e31834cffa06273ae0484ed742117fa5) rejects inherited and incomplete verified role/MFA/session claims before showing privileged UI hints; executable tests cover prototype inheritance, missing fields and valid own-field records. [Admin CI #43842032378](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43842032378) **passed**. UI hints are not authorization; backend RBAC and real MFA browser E2E remain open.
 
 
