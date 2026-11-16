@@ -318,6 +318,9 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-16 | services-back | [`46139ab`](https://github.com/nurgeldiserikbay/services-back/commit/46139abf98fdd8c0caa715a39c14dfdccbcb7994), [`bd12d86`](https://github.com/nurgeldiserikbay/services-back/commit/bd12d86a3e11695632b8a7a58f7fb4a4876f4f0d) | Admin MFA COMMIT uncertainty: discard connection and do not issue a misleading ROLLBACK; regression assertion updated | Committed, CI execution unverified |
 
+
+| 2026-11-16 | services-back | [`c02f5bf`](https://github.com/nurgeldiserikbay/services-back/commit/c02f5bf744b1363d292b97e3e539fd585aed718c), [CI #43803077283](https://github.com/nurgeldiserikbay/services-back/actions/runs/43803077283) | Added fail-fast enabled/disabled privileged moderation HTTP permission and PostgreSQL authorization E2E gate after schema migrations, before broader test suite | **Queued / not yet verified**; admin PostgreSQL and E2E acceptance remains unchecked |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
