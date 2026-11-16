@@ -91,7 +91,7 @@
 - [ ] Retry and dead-letter handling — Prepared: fenced retry/acknowledgement, reconciliation, audited requeue, bounded worker and queue monitoring (PR #113–127); PostgreSQL lease E2E and schedule/COMMIT guards (PR #128–133); opt-in polling and staged delivery cycle (PR #134–136); two-connection PostgreSQL staging-to-SENT E2E (PR #137, branch CI #43848576260 PASS). Real provider, production scheduler, admin HTTP/CSRF, alert transport and operational acceptance remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
-- [ ] Delivery monitoring — Pending verification
+- [ ] Delivery monitoring — Prepared: aggregate queue alerts now reject inherited/accessor-backed metrics and policies, without executing getters; alert transport, approved SLO thresholds and staging drill remain pending
 
 ### Admin
 
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Backend alert boundary and shared-PostgreSQL CI isolation (2026-11-16): rebased branch `backend/notification-alert-main-rebase-20261116` carries strict own-data-property validation for notification queue metrics and thresholds, plus no-getter execution tests and serializes full `npm test` to prevent separate integration test files claiming each other's shared PostgreSQL fixtures. Earlier identical implementation on PR #139 passed [push CI #43852982172](https://github.com/nurgeldiserikbay/services-back/actions/runs/43852982172) and [PR CI #43853012123](https://github.com/nurgeldiserikbay/services-back/actions/runs/43853012123), but diverged from fast-moving `main`. Current rebased branch CI pending. Production delivery monitoring remains unchecked.
 
 Frontend real Chrome mobile-width and keyboard smoke (2026-11-16): [frontend `00e8abc`](https://github.com/nurgeldiserikbay/services-front/commit/00e8abc439bca91a06b76e12e2215bb326e7dc43) introduces a dependency-free headless Chrome DevTools runtime test of the production Next.js pages in both locales at a 320px viewport: verifies language, viewport metadata, one H1, main landmark, skip-link focus and page overflow. [Frontend CI #43853260947 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/43853260947) confirmed: lint, unit tests, TypeScript, production build, live PWA/BFF isolation, headless Chrome mobile/keyboard smoke and public journey completed successfully. Previous served-worker security [CI #43852337854 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/43852337854). Headless Chrome smoke is NOT Android installability, screen-reader acceptance, offline lifecycle, or authenticated E2E; those remain open.
 
