@@ -25,9 +25,19 @@ export function createPrivateAdminMfaDependencies(input:Readonly<{
     accountSessionPepper.equals(transportKey)||
     adminSessionPepper.equals(transportKey))
   throw new Error('admin_mfa_key_reuse');
- const resolveTotpKey=createAdminMfaKeyResolver(
+ const vaultResolver=createAdminMfaKeyResolver(
   input.readTotpKey,input.allowedTotpVersions,
  );
+ const resolveTotpKey=async(version:string):Promise<Buffer|null>=>{
+  const key=await vaultResolver(version);
+  if(!key)return null;
+  // Encryption material must never share a domain with any signing or
+  // transport credential. Refuse the key instead of decrypting with it.
+  if(key.equals(accountSessionPepper)||
+     key.equals(adminSessionPepper)||
+     key.equals(transportKey))return null;
+  return key;
+ };
  return Object.freeze({
   pool:input.pool,
   accountSessionPepper,
