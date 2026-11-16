@@ -874,7 +874,9 @@ test('MFA connection release failure cannot replace successful authentication de
  const client={
   query:async(sql:string)=>{
    if(sql==='BEGIN'||sql==='ROLLBACK'||sql.startsWith('SET LOCAL '))return {rows:[]};
-   if(sql.includes('pg_advisory_xact_lock'))throw new Error('unexpected privileged query');
+   if(sql.includes('pg_advisory_xact_lock'))return {rows:[{}]};
+   if(sql.includes('FROM platform_admin_mfa_attempts'))return {rows:[]};
+   if(sql.includes('FOR SHARE OF factor'))return {rows:[]};
    throw new Error('unexpected SQL');
   },
   release:()=>{releases++;throw new Error('sensitive pool cleanup detail');},
