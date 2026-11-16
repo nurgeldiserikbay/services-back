@@ -51,14 +51,19 @@ export class DatabasePool implements OnModuleDestroy {
     let begun = false;
     let released = false;
     let commitAttempted = false;
+    // Mark before invoking release: a throwing release must never be retried.
+    const releaseOnce = (error?: Error): void => {
+      if (released) return;
+      released = true;
+      client.release(error);
+    };
     try {
       try {
         await client.query('BEGIN');
       } catch {
         // BEGIN may have reached PostgreSQL before the connection failed.
         // Its transaction state is unknown; do not return it to the pool.
-        client.release(new Error('Transaction begin outcome uncertain'));
-        released = true;
+        releaseOnce(new Error('Transaction begin outcome uncertain'));
         throw new ServiceUnavailableException('Database operation unavailable');
       }
       begun = true;
@@ -73,8 +78,7 @@ export class DatabasePool implements OnModuleDestroy {
       return result;
     } catch (error) {
       if (commitAttempted) {
-        client.release(new Error('Transaction commit outcome uncertain'));
-        released = true;
+        releaseOnce(new Error('Transaction commit outcome uncertain'));
         throw new ServiceUnavailableException('Database operation unavailable');
       }
       if (begun) {
@@ -82,14 +86,13 @@ export class DatabasePool implements OnModuleDestroy {
           await client.query('ROLLBACK');
         } catch {
           // Release with an error to discard an uncertain connection.
-          client.release(new Error('Transaction rollback failed'));
-          released = true;
+          releaseOnce(new Error('Transaction rollback failed'));
           throw new ServiceUnavailableException('Database operation unavailable');
         }
       }
       throw error;
     } finally {
-      if (!released) client.release();
+      releaseOnce();
     }
   }
 
