@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend executable geography parser tests (2026-11-16): [frontend `7d4bec6`](https://github.com/nurgeldiserikbay/services-front/commit/7d4bec641b75e685c5adca13c852637a861a50fc) extracts the country/city response validator into a reusable typed JavaScript module and adds executable unit tests for valid, empty, malformed, cross-country and case-insensitive UUID inputs; [CI #43821610461](https://github.com/nurgeldiserikbay/services-front/actions/runs/43821610461) pending when recorded. Previous per-record validation [frontend `81a4412`](https://github.com/nurgeldiserikbay/services-front/commit/81a44122d049dc6701c03c50271d5c183dad3c38) verified by [CI #43819904371 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/43819904371). Neither constitutes real-browser/device search acceptance, so UX and accessibility gates stay open.
+
 Frontend catalog record-validation hardening (2026-11-16): [frontend `81a4412`](https://github.com/nurgeldiserikbay/services-front/commit/81a44122d049dc6701c03c50271d5c183dad3c38) adds per-entry country/city validation (IDs, names, ISO2 and geographic metadata) before rendering; [CI #43819904371](https://github.com/nurgeldiserikbay/services-front/actions/runs/43819904371) pending at recording. Prior malformed-array and country-mismatch guard [frontend `a47652f`](https://github.com/nurgeldiserikbay/services-front/commit/a47652f5a5b63054eacb5135bec296a85be1f650) passed [CI #43817936835](https://github.com/nurgeldiserikbay/services-front/actions/runs/43817936835). Full search UX and real-device acceptance remain open.
 
 
