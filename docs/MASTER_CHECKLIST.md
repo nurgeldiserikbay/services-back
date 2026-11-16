@@ -88,7 +88,7 @@
 - [x] Outbox model — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); outbox event staging and delivery linkage
 - [x] Notification intents — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); IN_APP and EMAIL intent staging
 - [ ] Email/SMS integration — Pending verification
-- [ ] Retry and dead-letter handling — Pending verification
+- [ ] Retry and dead-letter handling — Prepared: external delivery failure transaction, bounded retry schedule and terminal FAILED state added; CI verification and operational dead-letter worker/replay remain pending
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
 - [ ] Delivery monitoring — Pending verification
@@ -340,6 +340,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 | 2026-11-16 | services-back | [`98f2f54`](https://github.com/nurgeldiserikbay/services-back/commit/98f2f54011a2200ed98827007d812400269a94d5), [CI #43804193702](https://github.com/nurgeldiserikbay/services-back/actions/runs/43804193702) | Repaired CI structural regression after main concurrency-policy change: assert main runs are preserved and PR runs can be superseded; previous [CI #43803723792](https://github.com/nurgeldiserikbay/services-back/actions/runs/43803723792) reached full suite but failed `ci-database-order.test.ts` | **Pending CI**; full backend green not yet verified |
 
 | 2026-11-16 | services-back | [`e2c1c60`](https://github.com/nurgeldiserikbay/services-back/commit/e2c1c60be980448da7582a750472773aa230b732), [CI #43804251293](https://github.com/nurgeldiserikbay/services-back/actions/runs/43804251293), [CI #43804193702](https://github.com/nurgeldiserikbay/services-back/actions/runs/43804193702) | Full backend main build-and-test and dependency-audit PASS; includes privileged moderation live HTTP/PostgreSQL E2E, admin session/MFA, schema, unit and smoke gates | **PASS**; admin PostgreSQL/E2E acceptance verified; admin UI, cross-repo CI and production sign-off remain pending |
+
+| 2026-11-16 | services-back | [`8d44e09`](https://github.com/nurgeldiserikbay/services-back/commit/8d44e0901cc4821eaaa994c50e97322a66d4287e), [`c2d41ec`](https://github.com/nurgeldiserikbay/services-back/commit/c2d41ec4cbdebcb58251b83e03be0441eccd029c), [`fdf7807`](https://github.com/nurgeldiserikbay/services-back/commit/fdf7807c88f1c7494159cc124d041018f3607d6b), [`0cf8362`](https://github.com/nurgeldiserikbay/services-back/commit/0cf83621f25db33c4693effb719c6c0fcc77c4b6), [`fb588ac`](https://github.com/nurgeldiserikbay/services-back/commit/fb588ace89694fbc8c0beaafe876fd36a88dcf16) | Added transaction-scoped external EMAIL/SMS failure persistence, bounded retry and terminal FAILED transition, due-time guard, PostgreSQL regression and fail-fast CI step; sender, claim/lease, replay and full dead-letter operation are NOT implemented | **Pending CI**, no retry/dead-letter acceptance checkbox closed |
 
 ## Next acceptance gates
 
