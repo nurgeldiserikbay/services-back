@@ -77,3 +77,52 @@ test('failed BEGIN discards connection without attempting COMMIT or ROLLBACK',as
  assert.match((released[0] as Error).message,/begin outcome uncertain/i);
  await db.onModuleDestroy();
 });
+
+test('failed ROLLBACK discards client and reports database unavailability',async()=>{
+ const statements:string[]=[];
+ const released:unknown[]=[];
+ const db=new DatabasePool();
+ (db as unknown as {pool:unknown}).pool={
+  connect:async()=>({
+   query:async(sql:string)=>{
+    statements.push(sql);
+    if(sql==='ROLLBACK')throw new Error('rollback acknowledgement lost');
+    return {rows:[]};
+   },
+   release:(error?:unknown)=>released.push(error),
+  }),
+  end:async()=>{},
+ };
+ let callbacks=0;
+ await assert.rejects(db.transaction(async()=>{
+  callbacks++;
+  throw new Error('business operation failed');
+ }),/Database operation unavailable/);
+ assert.equal(callbacks,1);
+ assert.equal(statements.filter(sql=>sql==='ROLLBACK').length,1);
+ assert.equal(statements.includes('COMMIT'),false);
+ assert.equal(released.length,1);
+ assert.ok(released[0] instanceof Error);
+ assert.match((released[0] as Error).message,/rollback failed/i);
+ await db.onModuleDestroy();
+});
+
+test('successful ROLLBACK preserves original callback failure and reuses client',async()=>{
+ const statements:string[]=[];
+ const released:unknown[]=[];
+ const db=new DatabasePool();
+ (db as unknown as {pool:unknown}).pool={
+  connect:async()=>({
+   query:async(sql:string)=>{statements.push(sql);return {rows:[]};},
+   release:(error?:unknown)=>released.push(error),
+  }),
+  end:async()=>{},
+ };
+ await assert.rejects(db.transaction(async()=>{
+  throw new Error('business operation failed');
+ }),/business operation failed/);
+ assert.equal(statements.at(-1),'ROLLBACK');
+ assert.equal(statements.includes('COMMIT'),false);
+ assert.deepEqual(released,[undefined]);
+ await db.onModuleDestroy();
+});
