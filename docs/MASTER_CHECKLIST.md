@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend geography form error accessibility (2026-11-16): [frontend `f4ad036`](https://github.com/nurgeldiserikbay/services-front/commit/f4ad03687af08db98c68af550c48bbca04d6e14f) associates country/city lookup error status with corresponding selects via aria-invalid and aria-describedby, with source regression assertions. [CI #43813615697](https://github.com/nurgeldiserikbay/services-front/actions/runs/43813615697) pending. Manual screen-reader/device acceptance remains open.
+
 Frontend empty geography retry verified (2026-11-16): [frontend `374c326`](https://github.com/nurgeldiserikbay/services-front/commit/374c326438239f6e070d38bef021e1cdf8f7f260) passed [frontend CI #43811314410](https://github.com/nurgeldiserikbay/services-front/actions/runs/43811314410). This verifies automated checks for the empty country/city retry controls, not the broader loading/empty/error or accessibility acceptance items; manual browser/device checks remain open.
 
 Frontend empty geography results retry (2026-11-16): [frontend `374c326`](https://github.com/nurgeldiserikbay/services-front/commit/374c326438239f6e070d38bef021e1cdf8f7f260) adds retry buttons for successfully empty country/city catalogs with regression assertions. [CI #43811314410](https://github.com/nurgeldiserikbay/services-front/actions/runs/43811314410) pending; [prior #43811056944](https://github.com/nurgeldiserikbay/services-front/actions/runs/43811056944) passed. Manual device acceptance pending.
