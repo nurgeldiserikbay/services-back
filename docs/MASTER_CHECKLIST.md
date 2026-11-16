@@ -140,7 +140,7 @@
 - [x] PostgreSQL migration and schema smoke — Verified in services-back CI #43723300416 (2026-11-15)
 - [x] Admin MFA PostgreSQL integration — Verified in services-back CI #43723300416 (2026-11-15)
 - [x] Frontend typecheck and production build — Verified: [Frontend CI #43724021062](https://github.com/nurgeldiserikbay/services-front/actions/runs/43724021062), `pnpm typecheck` and `pnpm build` both passed on `680a91f`.
-- [ ] Frontend lint — Pending verification; frontend workspace has no lint script yet
+- [ ] Frontend lint — Prepared: security-focused `pnpm lint` gate and positive/negative regression fixtures verified in frontend CI #43816264053 (2026-11-16); full JS/React/Next.js semantic lint configuration and acceptance remain pending
 - [ ] Admin typecheck lint build — Pending verification
 - [x] API contract tests — Backend search, public profile, seller and guest HTTP contract regression gate passed in CI #43724266432 (2026-11-15); cross-repository parity remains separately pending
 - [ ] End-to-end user journeys — Pending verification
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Frontend lint/security and geography accessibility evidence (2026-11-16): [frontend `6dc4566`](https://github.com/nurgeldiserikbay/services-front/commit/6dc456666ef101b39cec2ddcf3717eb67327faa3) — [CI #43816264053 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/43816264053): dependency-free security lint, regression fixtures and CI wiring; does **not** satisfy full frontend lint acceptance. [frontend `ca8385a`](https://github.com/nurgeldiserikbay/services-front/commit/ca8385aa0a89f91e8ba99a018fb122c027f70354) — [CI #43817071404 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/43817071404): geography input ARIA busy/error association and automated regression, not real-device/screen-reader acceptance. [frontend `9cae890`](https://github.com/nurgeldiserikbay/services-front/commit/9cae890c0e3de67238a7111d3dc503b0622013b4) — [CI #43817300357 pending at record](https://github.com/nurgeldiserikbay/services-front/actions/runs/43817300357): geography retry 44px CSS touch-target hardening; mobile/device acceptance remains unverified.
 
 Frontend geography device acceptance plan (2026-11-16): [frontend `c2eba20`](https://github.com/nurgeldiserikbay/services-front/commit/c2eba2076908ba16e26edda3c7b23d4fcbef68bb) adds explicit locale, keyboard, throttled-network, error/empty, screen-reader and mobile test cases to docs/pwa-device-acceptance.md. [CI #43814703578](https://github.com/nurgeldiserikbay/services-front/actions/runs/43814703578) passed for prior accessibility test fix; [#43814889841](https://github.com/nurgeldiserikbay/services-front/actions/runs/43814889841) queued for docs change. Manual acceptance remains unchecked pending real evidence.
 
