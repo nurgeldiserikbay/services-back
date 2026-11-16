@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend geography retry and selected-country retention (2026-11-16): [frontend `c56b352`](https://github.com/nurgeldiserikbay/services-front/commit/c56b352a087f4d6d246d819c1b7746db6cdbf37a) resets stale geography errors on retry and preserves the selected country option while country data loads/fails, with regression tests. [CI #43802323716](https://github.com/nurgeldiserikbay/services-front/actions/runs/43802323716) pending; [previous CI #43801235937](https://github.com/nurgeldiserikbay/services-front/actions/runs/43801235937) passed. Manual device and assistive technology acceptance remain open.
+
 Frontend geography city-picker loading and selection fix (2026-11-16): [frontend `d9ae5ff`](https://github.com/nurgeldiserikbay/services-front/commit/d9ae5ff24e09234ac61969060364770b43b97730) clears stale city options when country/query changes, adds city loading state, preserves selected city as a form option during refresh, and adds regression assertions. [CI #43801235937](https://github.com/nurgeldiserikbay/services-front/actions/runs/43801235937) pending; [previous CI #43747936589](https://github.com/nurgeldiserikbay/services-front/actions/runs/43747936589) passed. Real device and screen-reader acceptance remain open.
 
 Frontend search input accessible description (2026-11-15): [frontend `2773d04`](https://github.com/nurgeldiserikbay/services-front/commit/2773d041bd2273ca07801a30c9b22d66bae3d567) associates the search field with localized results heading via `aria-describedby=results-title`, alongside existing `aria-controls` and a source regression assertion. [CI #43747936589](https://github.com/nurgeldiserikbay/services-front/actions/runs/43747936589) queued. Real-device screen-reader acceptance remains open.
