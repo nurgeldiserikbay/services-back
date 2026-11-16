@@ -26,6 +26,8 @@ function fixture(role:'owner'|'admin'|'operator'|'auditor'='owner',
      mfa_verified_at:new Date(now-1000),scope,
     }]};
    }
+   if(sql.includes('SELECT a.delivery_id::text'))
+    return {rows:auditDeliveryId===null?[]:[{delivery_id:auditDeliveryId}]};
    if(sql.includes('SELECT n.id::text AS intent_id,d.channel,d.attempt_count'))
     return {rows:[{intent_id:intentId,channel:'EMAIL',
      attempt_count:5,intent_attempts:5}]};
@@ -106,6 +108,23 @@ test('requeue request key cannot acknowledge another delivery',async()=>{
   prior.db as never,prior.provider,bearer,pepper,
   deliveryId,randomUUID(),scope,now),'ALREADY_REQUEUED');
  assert.equal(prior.counts().updates,0);
+ assert.equal(prior.counts().providerCalls,0);
+ assert.equal(prior.counts().transactions,0);
+ assert.equal(prior.counts().queries.some(q=>q.includes(
+  'SELECT n.id::text AS intent_id,d.channel')),false);
+});
+
+test('replayed audit key is recognized without requiring FAILED state',async()=>{
+ const {db,provider,counts}=fixture('admin',deliveryId);
+ // A successful prior requeue moved the row to PENDING, so any subsequent
+ // terminal-state lookup must be skipped entirely.
+ assert.equal(await requeueFailedOrganizationDelivery(
+  db as never,provider,bearer,pepper,deliveryId,randomUUID(),scope,now),
+  'ALREADY_REQUEUED');
+ assert.equal(counts().providerCalls,0);
+ assert.equal(counts().transactions,0);
+ assert.equal(counts().queries.some(q=>q.includes(
+  'SELECT n.id::text AS intent_id,d.channel')),false);
 });
 
 test('provider uncertainty never requeues failed delivery',async()=>{
