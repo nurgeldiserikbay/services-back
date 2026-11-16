@@ -100,7 +100,7 @@ test('commit failure never releases a bearer',async()=>{
   f.pool,primary,code,async()=>key,pepper,now,
  ),/commit failed/);
  assert.equal(f.events.at(-1),'release');
- assert.ok(f.events.includes('ROLLBACK'));
+ assert.equal(f.events.includes('ROLLBACK'),false);
 });
 
 test('malformed MFA code is counted after a valid primary assertion',async()=>{
