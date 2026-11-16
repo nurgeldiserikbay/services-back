@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Frontend full ESLint adoption (2026-11-16): [frontend `2a290f6`](https://github.com/nurgeldiserikbay/services-front/commit/2a290f65817ba6139e3289af0b0a10d6ace16fa4) introduces ESLint 9 + Next.js 16 core-web-vitals and TypeScript flat configs, runs `eslint src` after the existing security/AST gates, and adds CI source-contract tests and docs. The lockfile generation workflow [#43832550297](https://github.com/nurgeldiserikbay/services-front/actions/runs/43832550297) passed and committed the verified lockfile; latest [frontend CI #43832617953](https://github.com/nurgeldiserikbay/services-front/actions/runs/43832617953) pending at recording. Earlier computed-property AST lint [frontend `f17f08b`](https://github.com/nurgeldiserikbay/services-front/commit/f17f08b8378dcae7ddaf2a27c45d165da3d4cf59) passed [CI #43831007066](https://github.com/nurgeldiserikbay/services-front/actions/runs/43831007066). Leave full frontend lint checklist open until end-to-end frontend CI with actual ESLint passes.
+
 Admin encrypted-session envelope validation (2026-11-16): [`services-admin` commit `3f9c26f`](https://github.com/nurgeldiserikbay/services-admin/commit/3f9c26f25d2736e38141851d15e9df27bdd7623d) requires exact own session payload fields and adds tests for TTL boundary and malformed cookie envelope. [Admin CI #43832412603](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43832412603) **passed** typecheck, security lint, tests, build and production smoke. Authenticated MFA browser E2E and comprehensive ESLint/React checks remain open.
 
 
