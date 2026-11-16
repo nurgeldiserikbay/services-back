@@ -52,6 +52,8 @@ test('vault TOTP key must be isolated from every session and transport key',asyn
  for(const reused of [account,admin,transport]){
   current=reused;
   assert.equal(await deps.resolveTotpKey('v1'),null);
+  // Rejection must not mutate the source buffer held by the vault adapter.
+  assert.deepEqual(current,reused);
  }
  assert.equal(reads,3);
  current=vaultKey;
