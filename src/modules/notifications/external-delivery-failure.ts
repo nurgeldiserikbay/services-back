@@ -7,6 +7,7 @@ type DeliveryRow={
  channel:string;
  state:string;
  attempt_count:number;
+ intent_attempts:number;
  next_attempt_at:Date|null;
  intent_state:string;
 };
@@ -35,7 +36,7 @@ export async function recordExternalDeliveryFailure(
 
  const selected=await client.query<DeliveryRow>(`
   SELECT d.id::text,d.intent_id::text,d.channel,d.state,d.attempt_count,d.next_attempt_at,
-         n.state AS intent_state
+         n.state AS intent_state,n.attempts AS intent_attempts
   FROM notification_deliveries d
   JOIN notification_intents n ON n.id=d.intent_id AND n.channel=d.channel
   WHERE d.id=$1::uuid AND d.channel IN ('EMAIL','SMS')
@@ -52,6 +53,10 @@ export async function recordExternalDeliveryFailure(
  }
  if(!Number.isSafeInteger(row.attempt_count)||row.attempt_count<0)
   throw new Error('invalid_delivery_attempt_count');
+ // The two durable counters must represent the same attempt. Never silently
+ // repair contradictory database state by overwriting either counter.
+ if(!Number.isSafeInteger(row.intent_attempts)||row.intent_attempts!==row.attempt_count)
+  throw new Error('notification_attempt_counter_mismatch');
  const attempts=row.attempt_count+1;
  const decision=planNotificationRetry(attempts,now,maxAttempts);
  const nextAttemptAt=decision.nextAttemptAt;
