@@ -7,6 +7,8 @@ type PendingClaim={
   channel:string;
   attempt_count:number;
   intent_attempts:number;
+  next_attempt_at:Date|null;
+  intent_next_attempt_at:Date|null;
 };
 
 /**
@@ -31,7 +33,8 @@ export async function acknowledgeClaimedExternalDeliverySent(
 
  const selected=await client.query<PendingClaim>(`
   SELECT d.intent_id::text,d.channel,d.attempt_count,
-         n.attempts AS intent_attempts
+         n.attempts AS intent_attempts,
+         d.next_attempt_at,n.next_attempt_at AS intent_next_attempt_at
   FROM notification_deliveries d
   JOIN notification_intents n ON n.id=d.intent_id AND n.channel=d.channel
   WHERE d.id=$1::uuid AND d.lease_token=$2::uuid
@@ -48,6 +51,15 @@ export async function acknowledgeClaimedExternalDeliverySent(
     !Number.isSafeInteger(row.intent_attempts)||
     row.intent_attempts!==row.attempt_count)
   throw new Error('notification_attempt_counter_mismatch');
+ // Both schedules must remain identical after the claim. A race or corrupt
+ // intent schedule must not be normalized by a successful acknowledgement.
+ const due=row.next_attempt_at, intentDue=row.intent_next_attempt_at;
+ if((due!==null&&(!(due instanceof Date)||!Number.isFinite(due.getTime())))||
+    (intentDue!==null&&
+     (!(intentDue instanceof Date)||!Number.isFinite(intentDue.getTime())))||
+    (due===null)!==(intentDue===null)||
+    (due!==null&&intentDue!==null&&due.getTime()!==intentDue.getTime()))
+  throw new Error('notification_retry_schedule_mismatch');
  const attempts=row.attempt_count+1;
  if(!Number.isSafeInteger(attempts))
   throw new RangeError('invalid_delivery_attempt_count');

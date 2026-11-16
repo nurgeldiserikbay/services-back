@@ -28,7 +28,7 @@ function fixture(items:number,verdict:'ACCEPTED'|'UNKNOWN'='ACCEPTED'){
       if(sql.includes('SELECT d.intent_id::text')){
        log.push('LOCK');
        return {rows:[{intent_id:randomUUID(),channel:'EMAIL',
-        attempt_count:0,intent_attempts:0}]};
+        attempt_count:0,intent_attempts:0,next_attempt_at:null,intent_next_attempt_at:null}]};
       }
       if(sql.includes('UPDATE notification_deliveries')||
          sql.includes('UPDATE notification_intents')){
