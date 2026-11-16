@@ -13,7 +13,7 @@ test('bounded batch commits each PostgreSQL claim before provider reconciliation
  const contact=randomUUID(),event=randomUUID();
  const intents=[randomUUID(),randomUUID()];
  const deliveries=[randomUUID(),randomUUID()];
- const expected=new Set(intents);
+ const expected=new Set<string>(intents);
  const observed=new Set<string>();
  let inTransaction=false;
  let providerSends=0;
