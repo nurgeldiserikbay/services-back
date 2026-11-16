@@ -266,7 +266,7 @@ jobs:
       - name: Audited notification requeue PostgreSQL end-to-end (fail fast)
         run: node --import tsx --test test/dead-letter-requeue-postgres-e2e.test.ts
       - name: External audited requeue authorization and provider certainty regressions (fail fast)
-        run: node --import tsx --test test/dead-letter-requeue.test.ts test/dead-letter-requeue-schema-db.test.ts
+        run: node --import tsx --test test/dead-letter-requeue.test.ts test/dead-letter-requeue-schema-db.test.ts test/dead-letter-requeue-live-db.test.ts
       - name: External failed delivery inventory PostgreSQL integration (fail fast)
         run: node --import tsx --test test/dead-letter-inventory-db.test.ts
       - name: External provider uncertainty and idempotency contract regressions (fail fast)
