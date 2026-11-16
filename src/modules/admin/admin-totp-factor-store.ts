@@ -80,11 +80,12 @@ export async function loadActiveAdminTotpFactor(
   throw new Error('admin_totp_factor_unavailable');
  const key=await resolveKey(factor.key_version);
  if(!Buffer.isBuffer(key)||key.length!==32)return null;
+ const ownedKey=Buffer.from(key);
  try{
-  return openAdminTotpSecret(factor.encrypted_secret,staffId,key);
+  return openAdminTotpSecret(factor.encrypted_secret,staffId,ownedKey);
  }finally{
-  // The trusted resolver returns an owned copy. Clear decrypted key material
-  // even when the envelope is corrupt or authentication fails.
-  key.fill(0);
+  // Never mutate a resolver's possibly shared vault cache. Clear only the
+  // private decryption copy, including when authentication fails.
+  ownedKey.fill(0);
  }
 }
