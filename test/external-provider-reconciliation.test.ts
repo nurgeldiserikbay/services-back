@@ -37,7 +37,7 @@ test('reconciliation finds accepted receipt and never issues another send',async
  const result=await reconcileAndSendClaimedExternalDelivery(database as never,provider,claim);
  assert.equal(result,'SENT');
  assert.deepEqual(calls,['lookup:EMAIL:'+claim.intentId]);
- assert.equal(statements.filter(x=>x.includes('UPDATE')).length,2);
+ assert.equal(statements.filter(x=>/^\s*UPDATE\b/.test(x)).length,2);
 });
 
 test('fresh send only follows conclusive NOT_FOUND with a stable idempotency key',async()=>{
