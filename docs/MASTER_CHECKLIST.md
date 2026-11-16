@@ -323,6 +323,8 @@ Frontend CI investigation (2026-11-15): [failed run 43710794087](https://github.
 
 | 2026-11-16 | services-back | [`c02f5bf`](https://github.com/nurgeldiserikbay/services-back/commit/c02f5bf744b1363d292b97e3e539fd585aed718c), [CI #43803077283](https://github.com/nurgeldiserikbay/services-back/actions/runs/43803077283) | Added fail-fast enabled/disabled privileged moderation HTTP permission and PostgreSQL authorization E2E gate after schema migrations, before broader test suite | **Queued / not yet verified**; admin PostgreSQL and E2E acceptance remains unchecked |
 
+| 2026-11-16 | services-back | [`ee2845e`](https://github.com/nurgeldiserikbay/services-back/commit/ee2845ecf607120167e9aaa0ad0072a5c6b0ad08) | CI main concurrency policy changed to preserve in-flight main runs during parallel pushes; superseded PR runs may still be cancelled | **Committed; verification of new workflow run pending**; all-main-CI-green remains unchecked |
+
 ## Next acceptance gates
 
 1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
