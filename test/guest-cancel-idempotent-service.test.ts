@@ -43,6 +43,64 @@ test('idempotent cancellation service rejects missing, malformed or shared signi
   }
 });
 
+test('guest cancellation service preflight rejects untrusted transport before DB',async()=>{
+  let calls=0;
+  const db={transaction:async()=>{calls++;throw new Error('unexpected_database_access');}}
+    as unknown as DatabasePool;
+  const service=new GuestCancellationService(db);
+  const csrf=randomBytes(32).toString('base64url');
+  const valid={
+    requestId,rawBody:'{"expectedVersion":1}',idempotencyHeader:key,
+    csrfHeader:csrf,sessionExpectedCsrf:csrf,
+    expectedOrigin:'https://services.example.test',
+    origin:'https://services.example.test',
+    fetchSite:'same-origin',contentType:'application/json',
+    requestProtocol:'https:',
+  };
+  for(const changes of [
+    {origin:'https://attacker.example.test'},
+    {fetchSite:'cross-site'},
+    {csrfHeader:randomBytes(32).toString('base64url')},
+    {contentType:'text/plain'},
+    {rawBody:'{"expectedVersion":1,"actor":"admin"}'},
+    {idempotencyHeader:''},
+  ]){
+    await assert.rejects(
+      async()=>service.cancelWithPreflight({...valid,...changes},proof),
+    );
+  }
+  assert.equal(calls,0);
+});
+
+test('guest cancellation service preflight dispatches validated command to transaction',async()=>{
+  const oldPepper=process.env.GUEST_REQUEST_HMAC_KEY;
+  const oldLedger=process.env.GUEST_CANCEL_LEDGER_HMAC_KEY;
+  const csrf=randomBytes(32).toString('base64url');
+  let calls=0;
+  const db={transaction:async(work:(client:{query:()=>Promise<never>})=>Promise<unknown>)=>{
+    calls++;
+    return work({query:async()=>{throw new Error('db_read_reached');}});
+  }} as unknown as DatabasePool;
+  try{
+    process.env.GUEST_REQUEST_HMAC_KEY=randomBytes(32).toString('base64');
+    process.env.GUEST_CANCEL_LEDGER_HMAC_KEY=randomBytes(32).toString('base64');
+    const service=new GuestCancellationService(db);
+    await assert.rejects(async()=>service.cancelWithPreflight({
+      requestId,rawBody:'{"expectedVersion":1}',idempotencyHeader:key,
+      csrfHeader:csrf,sessionExpectedCsrf:csrf,
+      expectedOrigin:'https://services.example.test',
+      origin:'https://services.example.test',fetchSite:'same-origin',
+      contentType:'application/json',requestProtocol:'https:',
+    },proof),/db_read_reached/);
+    assert.equal(calls,1);
+  }finally{
+    if(oldPepper===undefined)delete process.env.GUEST_REQUEST_HMAC_KEY;
+    else process.env.GUEST_REQUEST_HMAC_KEY=oldPepper;
+    if(oldLedger===undefined)delete process.env.GUEST_CANCEL_LEDGER_HMAC_KEY;
+    else process.env.GUEST_CANCEL_LEDGER_HMAC_KEY=oldLedger;
+  }
+});
+
 test('idempotent cancellation service uses a single transaction with distinct secrets',async()=>{
   const priorPepper=process.env.GUEST_REQUEST_HMAC_KEY;
   const priorLedger=process.env.GUEST_CANCEL_LEDGER_HMAC_KEY;
