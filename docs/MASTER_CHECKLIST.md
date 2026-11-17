@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend direct guest cancellation int4 boundary (2026-11-18): Prepared in this PR. The legacy internal cancelVerifiedGuestRequest transaction rejects expectedVersion outside 1..2147483646 before any SQL, matching idempotent/preflight cancellation, and regression checks invalid numeric boundaries with zero DB calls. CI pending; no HTTP BFF/staging acceptance claimed.
+
 Backend guest contact expiry regressions (2026-11-18): Prepared in this PR. PostgreSQL fixtures test expiration of verified guest contact during an already open transaction before fresh cancellation and after completed idempotent cancellation; both must reject the expired contact by live database time and preserve request state/event/notification counts. CI pending; no authenticated HTTP or staging acceptance claimed.
 
 Backend guest cancellation fresh proof/contact row-lock (2026-11-18): Prepared in this PR. Fresh guest cancellation rechecks READ_CANCEL capability joined to the same verified unexpired guest contact with PostgreSQL FOR SHARE OF c,g after request row lock, and uses contact channel from that locked row, preventing concurrent revocation between check and state write. PostgreSQL regression rejects revoked verification without mutating request. CI pending; authenticated HTTP and staging gates remain open.
