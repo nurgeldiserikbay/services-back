@@ -57,9 +57,15 @@ export async function requeueFailedOrganizationDelivery(
   JOIN notification_intents n ON n.id=a.intent_id
   WHERE a.requeue_key=$1::uuid AND n.recipient_org_id=$2::uuid
  `,[requeueKey,organizationId]);
- if(previous.rows.length>1)throw new Error('notification_dead_letter_audit_conflict');
- if(previous.rows.length===1)
-  return previous.rows[0].delivery_id===deliveryId?'ALREADY_REQUEUED':'DENIED';
+ if(!Array.isArray(previous.rows)||previous.rows.length>1)
+  throw new Error('notification_dead_letter_audit_conflict');
+ if(previous.rows.length===1){
+  const recorded=previous.rows[0]?.delivery_id;
+  if(typeof recorded!=='string'||!UUID.test(recorded))
+   throw new Error('notification_dead_letter_audit_conflict');
+  return recorded.toLowerCase()===deliveryId.toLowerCase()?
+   'ALREADY_REQUEUED':'DENIED';
+ }
  const target=await db.query<Target>(`
   SELECT n.id::text AS intent_id,d.channel
   FROM notification_deliveries d
@@ -119,9 +125,15 @@ export async function requeueFailedOrganizationDelivery(
   `,[requeueKey]);
   // The idempotency key belongs to exactly one delivery. A key reused for
   // another row must never be reported as a successful prior operation.
-  if(existing.rows.length>1)throw new Error('notification_dead_letter_audit_conflict');
-  if(existing.rows.length===1)
-   return existing.rows[0].delivery_id===deliveryId?'ALREADY_REQUEUED':'DENIED';
+  if(!Array.isArray(existing.rows)||existing.rows.length>1)
+   throw new Error('notification_dead_letter_audit_conflict');
+  if(existing.rows.length===1){
+   const recorded=existing.rows[0]?.delivery_id;
+   if(typeof recorded!=='string'||!UUID.test(recorded))
+    throw new Error('notification_dead_letter_audit_conflict');
+   return recorded.toLowerCase()===deliveryId.toLowerCase()?
+    'ALREADY_REQUEUED':'DENIED';
+  }
 
   const selected=await client.query<{
    intent_id:string;channel:string;attempt_count:number;intent_attempts:number;
@@ -149,14 +161,16 @@ export async function requeueFailedOrganizationDelivery(
    WHERE id=$1::uuid AND state='FAILED'
    RETURNING id::text
   `,[deliveryId]);
-  if(updated.rows.length!==1)throw new Error('notification_dead_letter_conflict');
+  if(updated.rows.length!==1||updated.rows[0]?.id!==deliveryId)
+   throw new Error('notification_dead_letter_conflict');
   const intent=await client.query<{id:string}>(`
    UPDATE notification_intents
    SET state='PENDING',attempts=0,next_attempt_at=NULL
    WHERE id=$1::uuid AND state='FAILED'
    RETURNING id::text
   `,[row.intent_id]);
-  if(intent.rows.length!==1)throw new Error('notification_dead_letter_conflict');
+  if(intent.rows.length!==1||intent.rows[0]?.id!==row.intent_id)
+   throw new Error('notification_dead_letter_conflict');
   const audit=await client.query<{id:string}>(`
    INSERT INTO notification_requeue_audit
      (delivery_id,intent_id,actor_staff_id,requeue_key)

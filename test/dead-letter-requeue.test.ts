@@ -41,7 +41,7 @@ function fixture(role:'owner'|'admin'|'operator'|'auditor'='owner',
    if(sql.includes('UPDATE notification_deliveries')||
       sql.includes('UPDATE notification_intents')){
     updates++;
-    return {rows:[{id:deliveryId}]};
+    return {rows:[{id:sql.includes('UPDATE notification_intents')?intentId:deliveryId}]};
    }
    if(sql.includes('INSERT INTO notification_requeue_audit')){
     audits++;
@@ -155,4 +155,34 @@ test('unsupported provider fails closed before SQL',async()=>{
   {...provider,supportsIdempotentSend:false as never},bearer,pepper,
   deliveryId,randomUUID(),scope,now),/external_provider_idempotency_required/);
  assert.equal(counts().queries.length,0);
+});
+
+test('malformed prior audit identity fails closed before provider contact',async()=>{
+ for(const recorded of ['invalid',42]){
+  const {db,provider,counts}=fixture('owner',recorded as never);
+  await assert.rejects(requeueFailedOrganizationDelivery(
+   db as never,provider,bearer,pepper,deliveryId,randomUUID(),scope,now),
+   /notification_dead_letter_audit_conflict/);
+  assert.equal(counts().providerCalls,0);
+  assert.equal(counts().transactions,0);
+  assert.equal(counts().updates,0);
+ }
+});
+
+test('requeue update row identity mismatch must not be reported successful',async()=>{
+ for(const corrupted of ['delivery','intent']){
+  const {db,provider,counts}=fixture();
+  const original=db.query;
+  db.query=async(sql:string)=>{
+   const response=await original(sql);
+   if((corrupted==='delivery'&&sql.includes('UPDATE notification_deliveries'))||
+      (corrupted==='intent'&&sql.includes('UPDATE notification_intents')))
+    return {rows:[{id:randomUUID()}]};
+   return response;
+  };
+  await assert.rejects(requeueFailedOrganizationDelivery(
+   db as never,provider,bearer,pepper,deliveryId,randomUUID(),scope,now),
+   /notification_dead_letter_conflict/);
+  assert.equal(counts().audits,0);
+ }
 });
