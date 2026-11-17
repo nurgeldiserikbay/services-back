@@ -126,8 +126,8 @@ export function assertCancellationSessionCsrf(
   const a=Buffer.from(submitted,'base64url');
   const b=Buffer.from(sessionExpected,'base64url');
   if(a.length!==32||b.length!==32||
-     !/^[A-Za-z0-9_-]{43}$/.test(a.toString('base64url'))||
-     !/^[A-Za-z0-9_-]{43}$/.test(b.toString('base64url'))||
+     a.toString('base64url')!==submitted||
+     b.toString('base64url')!==sessionExpected||
      !timingSafeEqual(a,b))
     throw new CancellationCommandRejected('invalid_request');
 }
