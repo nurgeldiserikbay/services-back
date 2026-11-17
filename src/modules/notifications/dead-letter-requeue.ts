@@ -161,7 +161,9 @@ export async function requeueFailedOrganizationDelivery(
    WHERE id=$1::uuid AND state='FAILED'
    RETURNING id::text
   `,[deliveryId]);
-  if(updated.rows.length!==1||updated.rows[0]?.id!==deliveryId)
+  if(updated.rows.length!==1||
+     typeof updated.rows[0]?.id!=='string'||
+     updated.rows[0].id.toLowerCase()!==deliveryId.toLowerCase())
    throw new Error('notification_dead_letter_conflict');
   const intent=await client.query<{id:string}>(`
    UPDATE notification_intents
