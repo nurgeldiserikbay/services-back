@@ -91,8 +91,7 @@ test('PostgreSQL receiver monitor propagates mocked HTTPS outage without false d
   assert.equal(await recordExternalAlertReceiverDeliveryFailure(
    db,scope,claim[0].id,claim[0].token,
    {baseDelayMs:60000,maxDelayMs:60000,maxAttempts:1}),'terminal');
-  const http=(async()=>{throw Error('mocked provider body contains private data');})
-   as typeof fetch;
+  const http=(async()=>{throw Error('mocked provider body contains private data');}) as typeof fetch;
   const transport=createReceiverMonitorHttpsTransport(destination(),http);
   await assert.rejects(dispatchConfiguredExternalAlertReceiverMonitoring(
    db,scope,config('1'),transport),
