@@ -31,6 +31,11 @@ export async function claimExternalAlertReceiverIngress(
    SELECT id FROM notification_alert_receiver_ingress
    WHERE receiver_scope=$1 AND state='PENDING'
      AND claim_count<2147483647
+     AND NOT EXISTS (
+      SELECT 1 FROM notification_alert_receiver_retry_schedule retry
+      WHERE retry.ingress_id=notification_alert_receiver_ingress.id
+       AND retry.next_attempt_at>clock_timestamp()
+     )
      AND (lease_token IS NULL OR lease_expires_at<=clock_timestamp())
    ORDER BY created_at,id
    FOR UPDATE SKIP LOCKED
