@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend legacy guest cancellation service fail-fast guard (2026-11-18): Prepared in this PR. The internal GuestCancellationService.cancel path now validates canonical request UUID, PostgreSQL int4 expectedVersion increment range, and canonical 32-byte READ_CANCEL bearer before leasing a DB transaction, matching the idempotent service's fail-fast boundary. Unit regressions verify zero SQL for malformed input and one transaction delegation for valid input. This does not expose an HTTP endpoint; CI, session authentication and staging acceptance remain open.
+
 Backend direct guest cancellation int4 boundary (2026-11-18): Prepared in this PR. The legacy internal cancelVerifiedGuestRequest transaction rejects expectedVersion outside 1..2147483646 before any SQL, matching idempotent/preflight cancellation, and regression checks invalid numeric boundaries with zero DB calls. CI pending; no HTTP BFF/staging acceptance claimed.
 
 Backend guest contact expiry regressions (2026-11-18): Prepared in this PR. PostgreSQL fixtures test expiration of verified guest contact during an already open transaction before fresh cancellation and after completed idempotent cancellation; both must reject the expired contact by live database time and preserve request state/event/notification counts. CI pending; no authenticated HTTP or staging acceptance claimed.
