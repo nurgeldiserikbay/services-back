@@ -43,6 +43,27 @@ test('idempotent cancellation service rejects missing, malformed or shared signi
   }
 });
 
+test('guest cancellation service rejects malformed command and proof before DB',async()=>{
+  let calls=0;
+  const db={transaction:async()=>{calls++;throw new Error('unexpected_db_access');}} as unknown as DatabasePool;
+  const service=new GuestCancellationService(db);
+  for(const [badRequest,badProof,badVersion,badKey] of [
+    [requestId,'not-a-capability',1,key],
+    [requestId,proof,0,key],
+    [requestId,proof,1,'short'],
+    ['bad-request-id',proof,1,key],
+    [requestId,proof,Number.MAX_SAFE_INTEGER+1,key],
+    [requestId,proof,1,key+',other'],
+    [requestId,proof+'=',1,key],
+  ] as const){
+    await assert.rejects(
+      async()=>service.cancelIdempotently(badRequest,badProof,badVersion,badKey),
+      (error:unknown)=>error instanceof GuestCancellationRejected&&
+        error.reason==='unavailable');
+  }
+  assert.equal(calls,0);
+});
+
 test('guest cancellation service preflight rejects untrusted transport before DB',async()=>{
   let calls=0;
   const db={transaction:async()=>{calls++;throw new Error('unexpected_database_access');}} as unknown as DatabasePool;
