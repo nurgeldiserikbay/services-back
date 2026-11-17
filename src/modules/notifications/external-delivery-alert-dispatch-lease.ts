@@ -90,7 +90,8 @@ export async function claimExternalAlertEvent(
   threshold:ownData(candidate,'threshold'),
   severity:ownData(candidate,'severity'),
  };
- if(!row||!UUID.test(row.event_id)||!CODES.has(row.code)||
+ if(typeof row.event_id!=='string'||!UUID.test(row.event_id)||
+    typeof row.code!=='string'||!CODES.has(row.code)||
     typeof row.generation!=='string'||!DECIMAL.test(row.generation)||
     BigInt(row.generation)<1n||
     typeof row.observed!=='string'||!DECIMAL.test(row.observed)||
@@ -130,7 +131,9 @@ export async function acknowledgeExternalAlertEvent(
  `,[eventId,leaseToken]);
  const rows=checkedRows(result);
  if(rows.length>1||
-    (rows.length===1&&ownData(rows[0],'event_id')!==eventId))
+    (rows.length===1&&
+     (typeof ownData(rows[0],'event_id')!=='string'||
+      String(ownData(rows[0],'event_id')).toLowerCase()!==eventId.toLowerCase())))
   throw new Error('invalid_external_alert_dispatch_ack_result');
  return rows.length===1;
 }
