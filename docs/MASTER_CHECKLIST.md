@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend dead-letter requeue audit row integrity (2026-11-17): PR pending adds fail-closed replay-audit ID validation, and checks returned delivery/intent update identities before an audit row can be recorded; mocked negative regressions added. Full PostgreSQL, CI and production acceptance not yet verified; notification audit logs checkbox remains unchecked.
+
 Backend alert dispatch driver-result integrity (2026-11-17): PR #215 introduces strict fail-closed PostgreSQL claim/ACK result validation and regression tests; prior branch/PR CI passed, latest merged-head CI is not yet verified; provider acceptance and delivery monitoring remain unchecked.
 
 Frontend finalized seller decision post-merge main CI (2026-11-17): services-front squash merge [5fc98f5f](https://github.com/nurgeldiserikbay/services-front/commit/5fc98f5f468ae912a163222ba756e1714e2687ee) from [PR #105](https://github.com/nurgeldiserikbay/services-front/pull/105) passed [post-merge main push CI #44083183776](https://github.com/nurgeldiserikbay/services-front/actions/runs/44083183776) on the exact merge SHA. This confirms the integrated default-pinned test baseline, including PostgreSQL-backed seller conflict/no-opposite-notification checks, passed CI after merge. It does not establish real OTP, staging, final notification delivery or mobile device acceptance; release gates remain unchecked.
