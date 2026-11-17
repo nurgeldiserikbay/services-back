@@ -16,6 +16,16 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CODES=new Set(['QUEUE_INCONSISTENT','DUE_BACKLOG',
  'EXPIRED_LEASES','TERMINAL_FAILURES']);
 const DECIMAL=/^(0|[1-9][0-9]*)$/;
+function ownData(value:unknown,key:string):unknown{
+ if(!value||typeof value!=='object')return undefined;
+ const descriptor=Object.getOwnPropertyDescriptor(value,key);
+ return descriptor&&Object.hasOwn(descriptor,'value')?descriptor.value:undefined;
+}
+function checkedRows(result:unknown):unknown[]{
+ const rows=ownData(result,'rows');
+ if(!Array.isArray(rows))throw new Error('invalid_external_alert_dispatch_result');
+ return rows;
+}
 
 /**
  * CALL WITHIN a PostgreSQL transaction. Commit before external I/O.
@@ -67,11 +77,21 @@ export async function claimExternalAlertEvent(
    e.observed::text,e.threshold::text,e.severity
   FROM claimed c JOIN notification_alert_events e ON e.id=c.event_id
  `,[leaseToken,leaseSeconds]);
- if(result.rows.length===0)return null;
- if(result.rows.length!==1)
+ const rows=checkedRows(result);
+ if(rows.length===0)return null;
+ if(rows.length!==1)
   throw new Error('invalid_external_alert_dispatch_row');
- const row=result.rows[0];
- if(!row||!UUID.test(row.event_id)||!CODES.has(row.code)||
+ const candidate=rows[0];
+ const row={
+  event_id:ownData(candidate,'event_id'),
+  code:ownData(candidate,'code'),
+  generation:ownData(candidate,'generation'),
+  observed:ownData(candidate,'observed'),
+  threshold:ownData(candidate,'threshold'),
+  severity:ownData(candidate,'severity'),
+ };
+ if(typeof row.event_id!=='string'||!UUID.test(row.event_id)||
+    typeof row.code!=='string'||!CODES.has(row.code)||
     typeof row.generation!=='string'||!DECIMAL.test(row.generation)||
     BigInt(row.generation)<1n||
     typeof row.observed!=='string'||!DECIMAL.test(row.observed)||
@@ -109,7 +129,11 @@ export async function acknowledgeExternalAlertEvent(
     AND lease_expires_at>clock_timestamp()
   RETURNING event_id
  `,[eventId,leaseToken]);
- if(result.rows.length>1)
+ const rows=checkedRows(result);
+ if(rows.length>1||
+    (rows.length===1&&
+     (typeof ownData(rows[0],'event_id')!=='string'||
+      String(ownData(rows[0],'event_id')).toLowerCase()!==eventId.toLowerCase())))
   throw new Error('invalid_external_alert_dispatch_ack_result');
- return result.rows.length===1;
+ return rows.length===1;
 }
