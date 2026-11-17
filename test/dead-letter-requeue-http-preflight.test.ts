@@ -97,12 +97,12 @@ test('requeue preflight never invokes accessor-backed or inherited transport fie
 
 test('requeue preflight rejects extra fields and accepts plain null prototype data',()=>{
  const input=fixture();
- assert.throws(()=>parseRequeueHttpPreflight({
-  ...input,actor:'admin',
- }),RequeueHttpPreflightRejected);
- assert.throws(()=>parseRequeueHttpPreflight({
-  ...input,organizationScope:'organization:any',
- }),RequeueHttpPreflightRejected);
+ const withActor=Object.assign({},input,{actor:'admin'});
+ assert.throws(()=>parseRequeueHttpPreflight(withActor),
+  RequeueHttpPreflightRejected);
+ const withScope=Object.assign({},input,{organizationScope:'organization:any'});
+ assert.throws(()=>parseRequeueHttpPreflight(withScope),
+  RequeueHttpPreflightRejected);
  const extraSymbol=Object.assign({},input);
  Object.defineProperty(extraSymbol,Symbol('hidden'),{value:true});
  assert.throws(()=>parseRequeueHttpPreflight(extraSymbol),
