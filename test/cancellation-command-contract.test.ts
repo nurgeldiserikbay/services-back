@@ -1,8 +1,9 @@
 import {test} from 'node:test';
+import {randomBytes} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {CancellationCommandRejected,parseCancellationCommand,
   parseCancellationIdempotencyHeader,parseCancellationRawJsonBody,
-  assertCancellationTransportHeaders} from
+  assertCancellationTransportHeaders,assertCancellationSessionCsrf} from
   '../src/modules/requests/cancellation-command-contract.js';
 
 const request='11111111-1111-4111-8111-111111111111';
@@ -165,4 +166,30 @@ test('unmounted cancellation envelope requires configured HTTPS origin',()=>{
   }
   assert.throws(()=>assertCancellationTransportHeaders(null as never),
     CancellationCommandRejected);
+});
+
+test('unmounted cancellation CSRF requires canonical session-bound 256-bit proof',()=>{
+  const bound=randomBytes(32).toString('base64url');
+  assert.doesNotThrow(()=>assertCancellationSessionCsrf(bound,bound));
+  const another=randomBytes(32).toString('base64url');
+  assert.throws(()=>assertCancellationSessionCsrf(another,bound),
+    CancellationCommandRejected);
+  for(const value of [
+    undefined,null,'',0,{},[],['token'],false,'bad',bound+'=',
+    bound+' ',bound.toUpperCase(),'a'.repeat(43),'0'.repeat(43),
+    'x'.repeat(1000),
+  ]){
+    // Uppercase or all-zeros might accidentally form a valid canonical
+    // 32-byte token, but should not match the separate trusted session key.
+    if(value===bound)continue;
+    assert.throws(()=>assertCancellationSessionCsrf(value,bound),
+      CancellationCommandRejected);
+    assert.throws(()=>assertCancellationSessionCsrf(bound,value),
+      CancellationCommandRejected);
+  }
+  const invalidLastByte=bound.slice(0,-1)+'B';
+  if(invalidLastByte!==bound){
+    assert.throws(()=>assertCancellationSessionCsrf(invalidLastByte,bound),
+      CancellationCommandRejected);
+  }
 });
