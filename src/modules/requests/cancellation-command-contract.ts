@@ -43,7 +43,8 @@ export function parseCancellationCommand(
   const descriptor=Object.getOwnPropertyDescriptor(data,'expectedVersion');
   if(ownKeys.length!==1||ownKeys[0]!=='expectedVersion'||!descriptor||
      !descriptor.enumerable||!Object.hasOwn(descriptor,'value')||
-     !Number.isSafeInteger(descriptor.value)||descriptor.value<1)
+     !Number.isSafeInteger(descriptor.value)||descriptor.value<1||
+     descriptor.value>=2147483647)
     throw new CancellationCommandRejected('invalid_request');
   return Object.freeze({
     requestId:requestId.toLowerCase(),
