@@ -3,6 +3,7 @@ import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {Client} from 'pg';
 import {issueGuestCapability} from '../src/modules/guest-requests/guest-request.security.js';
+import {cancelGuestRequestIdempotently} from '../src/modules/requests/guest-cancel-idempotency.transaction.js';
 import {
   cancelVerifiedGuestRequest,GuestCancellationRejected,
 } from '../src/modules/requests/guest-cancel.transaction.js';
@@ -173,5 +174,78 @@ test('scheduled accepted request is blocked until calendar allocation cleanup is
       WHERE dedupe_key LIKE $1
     `,['cancel:%:'+f.request]);
     assert.equal(count.rows[0].n,'0');
+  });
+});
+
+test('guest cancel ledger atomically records one cancellation and replays same key',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000001';
+    const cancel=(version=1,k=key,proof=f.valid)=>
+      cancelGuestRequestIdempotently(db,f.request,proof,version,k,
+        secret,ledgerSecret);
+    const first=await cancel();
+    assert.deepEqual(first,{id:f.request,state:'cancelled_by_customer',version:2});
+    const replay=await cancel();
+    assert.deepEqual(replay,first);
+    const ledger=await db.query<{
+      actor_scope:string;method:string;route:string;key:string;
+      state:string;request_hash:string;response_status:number;
+      response_body:{id:string;version:number;state:string};
+    }>(`
+      SELECT actor_scope,method,route,key,state,request_hash,
+        response_status,response_body
+      FROM idempotency_records WHERE route=$1
+    `,['/v1/requests/'+f.request+'/cancel']);
+    assert.equal(ledger.rows.length,1);
+    assert.match(ledger.rows[0].actor_scope,/^guest-cancel:[0-9a-f]{64}$/);
+    assert.equal(ledger.rows[0].key,'guest-cancel-v1');
+    assert.equal(ledger.rows[0].state,'COMPLETED');
+    assert.equal(ledger.rows[0].method,'POST');
+    assert.equal(ledger.rows[0].response_status,200);
+    assert.deepEqual(ledger.rows[0].response_body,first);
+    assert.doesNotMatch(JSON.stringify(ledger.rows),new RegExp(key));
+    assert.doesNotMatch(JSON.stringify(ledger.rows),new RegExp(f.valid));
+    await assert.rejects(cancel(2),
+      (error:unknown)=>error instanceof GuestCancellationRejected&&
+        error.reason==='conflict');
+    await assert.rejects(cancel(1,'GuestCancel_2026_00000002'),
+      GuestCancellationRejected);
+    await assert.rejects(cancel(1,key,f.foreign),
+      (error:unknown)=>error instanceof GuestCancellationRejected&&
+        error.reason==='unavailable');
+    const events=await db.query<{n:string}>(`
+      SELECT count(*)::text n FROM cancellation_events
+      WHERE request_id=$1
+    `,[f.request]);
+    assert.equal(events.rows[0].n,'1');
+    const notices=await db.query<{n:string}>(`
+      SELECT count(*)::text n FROM notification_intents
+      WHERE dedupe_key LIKE $1
+    `,['cancel:%:'+f.request]);
+    assert.equal(notices.rows[0].n,'2');
+    const outbox=await db.query<{n:string}>(`
+      SELECT count(*)::text n FROM domain_outbox_events
+      WHERE subject_id=$1 AND topic='service_request.cancelled'
+    `,[f.request]);
+    assert.equal(outbox.rows[0].n,'1');
+  });
+});
+test('failed guest cancellation ledger and state changes roll back together',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000003';
+    await db.query('SAVEPOINT idempotent_cancel');
+    await assert.rejects(cancelGuestRequestIdempotently(
+      db,f.request,f.valid,2,key,secret,ledgerSecret),
+      GuestCancellationRejected);
+    await db.query('ROLLBACK TO SAVEPOINT idempotent_cancel');
+    const ledger=await db.query<{n:string}>(`
+      SELECT count(*)::text n FROM idempotency_records
+      WHERE route=$1
+    `,['/v1/requests/'+f.request+'/cancel']);
+    assert.equal(ledger.rows[0].n,'0');
+    const request=await db.query<{status:string;version:number}>(`
+      SELECT status::text,version FROM service_requests WHERE id=$1
+    `,[f.request]);
+    assert.deepEqual(request.rows[0],{status:'PENDING',version:1});
   });
 });
