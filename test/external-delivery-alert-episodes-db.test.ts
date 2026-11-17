@@ -79,6 +79,36 @@ test('PostgreSQL alert episode stages once, recovers, and re-arms durably',async
  }
 });
 
+
+test('episode state validation rejects inherited, getter-backed and oversized generations',async()=>{
+ const codes=['DUE_BACKLOG','EXPIRED_LEASES','QUEUE_INCONSISTENT','TERMINAL_FAILURES'];
+ const baseline=codes.map(code=>({code,active:false,generation:'0'}));
+ let reads=0;
+ const getter=Object.defineProperty({...baseline[0]},'active',{
+  get(){reads++;throw new Error('unexpected getter');},
+ });
+ const inherited=Object.assign(Object.create({generation:'0'}),baseline[0]);
+ delete inherited.generation;
+ for(const replacement of [
+  getter,inherited,{...baseline[0],generation:'9223372036854775808'},
+  {...baseline[0],generation:0},{...baseline[0],active:'false'},
+  null,
+ ]){
+  let queries=0;
+  const db={query:async()=>{
+   queries++;
+   if(queries===1)return {rows:[]};
+   if(queries===2)return {rows:[replacement,...baseline.slice(1)]};
+   throw new Error('unsafe additional query');
+  }};
+  await assert.rejects(stageExternalDeliveryAlertEpisodes(db as never,{
+   pendingDueThreshold:1,expiredLeaseThreshold:1,terminalFailedThreshold:1,
+  }),/invalid_external_alert_episode_state/);
+  assert.equal(queries,2);
+ }
+ assert.equal(reads,0);
+});
+
 test('invalid client never stages an alert',async()=>{
  await assert.rejects(stageExternalDeliveryAlertEpisodes(
   null as never,{pendingDueThreshold:1,expiredLeaseThreshold:1,
