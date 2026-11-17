@@ -73,3 +73,34 @@ export function parseCancellationRawJsonBody(
   return parseCancellationCommand(requestId,{expectedVersion:Number(match[1])},
     idempotencyKey);
 }
+
+/**
+ * Unmounted transport precondition for a future cancellation HTTP adapter.
+ * expectedOrigin comes from trusted deployment configuration, NEVER a
+ * request Host/X-Forwarded-Host header. requestProtocol must come from the
+ * trusted proxy/TLS layer, NEVER untrusted X-Forwarded-Proto input.
+ * This is NOT a replacement for session-bound CSRF or authorization.
+ */
+export function assertCancellationTransportHeaders(input:Readonly<{
+  expectedOrigin:unknown;
+  origin:unknown;
+  fetchSite:unknown;
+  contentType:unknown;
+  requestProtocol:unknown;
+}>):void{
+  const fail=():never=>{throw new CancellationCommandRejected('invalid_request');};
+  if(!input||typeof input!=='object'||
+     typeof input.expectedOrigin!=='string'||input.expectedOrigin.length>255||
+     typeof input.origin!=='string'||input.origin.length>255||
+     input.fetchSite!=='same-origin'||input.requestProtocol!=='https:'||
+     typeof input.contentType!=='string'||
+     !/^application\/json(?:;\s*charset=utf-8)?$/i.test(input.contentType))
+    fail();
+  let expected:URL;
+  try{expected=new URL(input.expectedOrigin as string);}
+  catch{fail();return;}
+  if(expected.protocol!=='https:'||expected.origin!==input.expectedOrigin||
+     expected.username||expected.password||expected.pathname!=='/'||
+     expected.search||expected.hash||input.origin!==expected.origin)
+    fail();
+}
