@@ -49,11 +49,21 @@ export async function listFailedExternalDeliveries(
  `,[limit,afterId]);
  if(!Array.isArray(result.rows)||result.rows.length>limit)
   throw new Error('invalid_dead_letter_inventory');
+ // PostgreSQL orders UUIDs by their canonical byte sequence. Verify the
+ // cursor and strictly increasing order at the driver boundary as well: a
+ // corrupt/duplicated page must not appear valid to an operator.
+ let lastId=afterId?.toLowerCase()??null;
  return result.rows.map(row=>{
-  if(!UUID.test(row.delivery_id)||!UUID.test(row.intent_id)||
+  if(!row||typeof row.delivery_id!=='string'||
+     typeof row.intent_id!=='string'||
+     !UUID.test(row.delivery_id)||!UUID.test(row.intent_id)||
      (row.channel!=='EMAIL'&&row.channel!=='SMS')||
      !Number.isSafeInteger(row.attempt_count)||row.attempt_count<1)
    throw new Error('invalid_dead_letter_inventory');
+  const currentId=row.delivery_id.toLowerCase();
+  if(lastId!==null&&currentId<=lastId)
+   throw new Error('invalid_dead_letter_inventory');
+  lastId=currentId;
   return {
    deliveryId:row.delivery_id,intentId:row.intent_id,
    channel:row.channel,attempts:row.attempt_count,
