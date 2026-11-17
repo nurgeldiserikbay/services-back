@@ -97,7 +97,7 @@ export function assertCancellationTransportHeaders(input:Readonly<{
      !/^application\/json(?:;\s*charset=utf-8)?$/i.test(input.contentType))
     fail();
   let expected:URL;
-  try{expected=new URL(input.expectedOrigin);}
+  try{expected=new URL(input.expectedOrigin as string);}
   catch{fail();return;}
   if(expected.protocol!=='https:'||expected.origin!==input.expectedOrigin||
      expected.username||expected.password||expected.pathname!=='/'||
