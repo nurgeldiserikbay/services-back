@@ -19,6 +19,16 @@ Status: **PREPARED / NOT ACTIVATED**. This runbook is an acceptance plan, not ev
 5. **Security reviewer:** verify DB least privilege, service-to-service credentials, secret rotation, transport destination allowlist, no public route, and that outgoing payloads contain only `code`, `observed`, `threshold`.
 6. **On-call owner:** document coverage, acknowledgment and escalation, paging thresholds, deduplication/repeated-alert handling, recovery and false-positive suppression. A count-only monitoring dispatcher alone does **not** provide deduplication, notification acknowledgments or paging.
 
+## One-shot operator dry-run CLI (does not dispatch alerts)
+
+Use only against an approved private staging PostgreSQL endpoint with a read-only account and an operator-controlled deployment scope. Export the sensitive `DATABASE_URL` through the deployment secret manager; **do not paste credentials into shell history, log files or PRs**.
+
+Set `RECEIVER_MONITOR_SCOPE` and all four mandatory positive integer string values: `RECEIVER_MONITOR_RETRY_SCHEDULED`, `RECEIVER_MONITOR_LEASED_EXPIRED`, `RECEIVER_MONITOR_TERMINAL`, `RECEIVER_MONITOR_INCONSISTENT`. Use only thresholds approved for the staging measurement window; there are no defaults.
+
+Execute `pnpm monitor:receiver:preview` from the backend directory with these environment variables supplied securely. The one-shot command opens a bounded PostgreSQL connection, runs a read-only transaction, and prints only `{"mode":"dry-run","breaches":[{"code":"...","observed":1,"threshold":1}]}` (or an empty breaches array). On any failure it exits nonzero with the constant error `receiver_monitor_preview_failed`, avoiding SQL errors and credentials in logs.
+
+**No email, webhook, paging provider, scheduled task, or external network delivery is performed other than the configured PostgreSQL connection.** A successful dry-run cannot be counted as delivery, staging drill, or production activation approval.
+
 ## Staging acceptance matrix
 
 | Case | Setup (staging only) | Required evidence |
