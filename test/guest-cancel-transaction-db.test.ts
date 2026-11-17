@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {Client} from 'pg';
+import type {DatabasePool} from '../src/platform/database/database.pool.js';
+import {GuestCancellationService} from '../src/modules/requests/guest-cancel.service.js';
 import {issueGuestCapability} from '../src/modules/guest-requests/guest-request.security.js';
 import {cancelGuestRequestIdempotently} from '../src/modules/requests/guest-cancel-idempotency.transaction.js';
 import {
@@ -174,6 +176,53 @@ test('scheduled accepted request is blocked until calendar allocation cleanup is
       WHERE dedupe_key LIKE $1
     `,['cancel:%:'+f.request]);
     assert.equal(count.rows[0].n,'0');
+  });
+});
+
+test('Nest guest cancellation service delegates real PostgreSQL ledger within one client',async()=>{
+  await withFixture(async(db,f)=>{
+    const priorPepper=process.env.GUEST_REQUEST_HMAC_KEY;
+    const priorLedger=process.env.GUEST_CANCEL_LEDGER_HMAC_KEY;
+    const ledgerSecret=randomBytes(32);
+    let transactions=0;
+    const adapter={
+      transaction:async<T>(work:(client:Client)=>Promise<T>):Promise<T>=>{
+        transactions++;
+        // Fixture owns BEGIN/ROLLBACK, just like DatabasePool owns the
+        // transaction boundary in production; retain one leased DB client.
+        return work(db);
+      },
+    } as unknown as DatabasePool;
+    try{
+      process.env.GUEST_REQUEST_HMAC_KEY=secret.toString('base64');
+      process.env.GUEST_CANCEL_LEDGER_HMAC_KEY=ledgerSecret.toString('base64');
+      const service=new GuestCancellationService(adapter);
+      const key='GuestCancel_Service_2026_00000001';
+      const first=await service.cancelIdempotently(f.request,f.valid,1,key);
+      assert.deepEqual(first,{
+        id:f.request,state:'cancelled_by_customer',version:2,
+      });
+      assert.deepEqual(
+        await service.cancelIdempotently(f.request,f.valid,1,key),first);
+      assert.equal(transactions,2);
+      const counts=await db.query<{events:string;intents:string}>(`
+        SELECT
+          (SELECT count(*)::text FROM cancellation_events
+           WHERE request_id=$1) AS events,
+          (SELECT count(*)::text FROM notification_intents
+           WHERE dedupe_key LIKE $2) AS intents
+      `,[f.request,'cancel:%:'+f.request]);
+      assert.deepEqual(counts.rows,[{events:'1',intents:'2'}]);
+      await assert.rejects(
+        service.cancelIdempotently(f.request,f.foreign,1,key),
+        (error:unknown)=>error instanceof GuestCancellationRejected&&
+          error.reason==='unavailable');
+    }finally{
+      if(priorPepper===undefined)delete process.env.GUEST_REQUEST_HMAC_KEY;
+      else process.env.GUEST_REQUEST_HMAC_KEY=priorPepper;
+      if(priorLedger===undefined)delete process.env.GUEST_CANCEL_LEDGER_HMAC_KEY;
+      else process.env.GUEST_CANCEL_LEDGER_HMAC_KEY=priorLedger;
+    }
   });
 });
 
