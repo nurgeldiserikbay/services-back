@@ -54,3 +54,22 @@ export function parseCancellationIdempotencyHeader(
     throw new CancellationCommandRejected('missing_idempotency_key');
   return header;
 }
+
+/**
+ * Wire-level allowlist for a FUTURE HTTP adapter. Parsing JSON into an object
+ * first silently erases duplicate properties, so validate the bounded UTF-8
+ * body BEFORE JSON.parse. No request is authorized or mutated by this helper.
+ * A JSON serializer can emit whitespace around the one allowed property,
+ * but no duplicate keys, escaped aliases, arrays, floats or unknown fields.
+ */
+export function parseCancellationRawJsonBody(
+  requestId:unknown,rawBody:unknown,idempotencyKey:unknown,
+):CancellationCommand{
+  if(typeof rawBody!=='string'||Buffer.byteLength(rawBody,'utf8')>128)
+    throw new CancellationCommandRejected('invalid_request');
+  const match=/^[ \t\r\n]*\{[ \t\r\n]*"expectedVersion"[ \t\r\n]*:[ \t\r\n]*([1-9][0-9]*)[ \t\r\n]*\}[ \t\r\n]*$/.exec(rawBody);
+  if(!match||!Number.isSafeInteger(Number(match[1])))
+    throw new CancellationCommandRejected('invalid_request');
+  return parseCancellationCommand(requestId,{expectedVersion:Number(match[1])},
+    idempotencyKey);
+}
