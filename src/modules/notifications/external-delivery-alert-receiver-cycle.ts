@@ -6,6 +6,10 @@ import {claimExternalAlertReceiverIngress}
  from './external-delivery-alert-receiver-claim.js';
 import {acknowledgeClaimedExternalAlertReceiverIngress}
  from './external-delivery-alert-receiver-ack.js';
+import {recordExternalAlertReceiverDeliveryFailure}
+ from './external-delivery-alert-receiver-failure.js';
+import type {ReceiverAlertRetryPolicy}
+ from './external-delivery-alert-receiver-retry-policy.js';
 
 const CODES=new Set(['QUEUE_INCONSISTENT','DUE_BACKLOG',
  'EXPIRED_LEASES','TERMINAL_FAILURES']);
@@ -24,6 +28,7 @@ export async function deliverOneExternalAlertReceiverIngress(
  receiverScope:string,
  leaseMs:number,
  transport:ExternalDeliveryAlertTransport,
+ retryPolicy?:ReceiverAlertRetryPolicy,
 ):Promise<'empty'|'acknowledged'|'stale'>{
  if(!transport||typeof transport!=='object')
   throw new Error('invalid_external_alert_receiver_transport');
@@ -68,8 +73,21 @@ export async function deliverOneExternalAlertReceiverIngress(
  });
  // An external send may be accepted just before this lease expires. A stale
  // ACK is reported, never silently treated as successful confirmation.
- await (sender.value as ExternalDeliveryAlertTransport['send'])
-  .call(transport,Object.freeze(safe));
+ try{
+  await (sender.value as ExternalDeliveryAlertTransport['send'])
+   .call(transport,Object.freeze(safe));
+ }catch(error){
+  if(retryPolicy===undefined)throw error;
+  // Only explicit, operator-approved retries are persisted. Never log or
+  // propagate raw provider exceptions that may contain secrets/PII.
+  try{
+   await recordExternalAlertReceiverDeliveryFailure(
+    db,receiverScope,item.id,item.token,retryPolicy);
+  }catch{
+   throw new Error('external_alert_receiver_failure_record_failed');
+  }
+  throw new Error('external_alert_receiver_delivery_failed');
+ }
  return acknowledgeClaimedExternalAlertReceiverIngress(
   db,receiverScope,item.id,item.token);
 }
