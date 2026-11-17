@@ -44,3 +44,33 @@ export async function acknowledgeExternalAlertReceiverIngress(
   throw new Error('invalid_external_alert_receiver_database');
  return 'already_acked';
 }
+
+/**
+ * Only a worker holding the current, unexpired lease token can ACK a
+ * claimed item. Stale workers MUST NOT acknowledge a re-claimed delivery.
+ * No transport or scheduling is activated by this helper.
+ */
+export async function acknowledgeClaimedExternalAlertReceiverIngress(
+ db:Pick<PoolClient,'query'>,
+ receiverScope:string,
+ ingressId:string,
+ leaseToken:string,
+):Promise<'acknowledged'|'stale'>{
+ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+ if(!db||typeof db.query!=='function'||
+    typeof receiverScope!=='string'||
+    !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(receiverScope)||
+    typeof ingressId!=='string'||!uuid.test(ingressId)||
+    typeof leaseToken!=='string'||!uuid.test(leaseToken))
+  throw new Error('invalid_external_alert_receiver_ack');
+ const changed=await db.query<{id:string}>(`
+  UPDATE notification_alert_receiver_ingress
+  SET state='ACKED',lease_token=NULL,lease_expires_at=NULL
+  WHERE id=$1::uuid AND receiver_scope=$2 AND lease_token=$3::uuid
+   AND state='PENDING' AND lease_expires_at>clock_timestamp()
+  RETURNING id
+ `,[ingressId,receiverScope,leaseToken]);
+ if(!Array.isArray(changed.rows)||changed.rows.length>1)
+  throw new Error('invalid_external_alert_receiver_database');
+ return changed.rows.length===1?'acknowledged':'stale';
+}
