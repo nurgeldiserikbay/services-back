@@ -322,7 +322,7 @@ test('expired cancellation ledger never replays completed success',async()=>{
     assert.equal(done.version,2);
     await db.query(`
       UPDATE idempotency_records
-      SET expires_at=clock_timestamp()-interval '1 second'
+      SET expires_at=created_at + interval '1 microsecond'
       WHERE route=$1
     `,['/v1/requests/'+f.request+'/cancel']);
     await assert.rejects(replay(),(error:unknown)=>
