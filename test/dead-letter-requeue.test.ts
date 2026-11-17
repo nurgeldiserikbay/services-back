@@ -197,3 +197,51 @@ test('uppercase input UUID matches PostgreSQL canonical delivery identity',async
  assert.equal(counts().audits,1);
  assert.equal(counts().providerCalls,1);
 });
+
+test('concurrent requeue that loses FAILED row lock rechecks durable audit',async()=>{
+ for(const matching of [true,false]){
+  const {db,provider,counts}=fixture();
+  const original=db.query;
+  let auditReads=0;
+  db.query=async(sql:string)=>{
+   if(sql.includes('SELECT delivery_id::text FROM notification_requeue_audit'))
+    return {rows:[]};
+   if(sql.includes('SELECT n.id::text AS intent_id,d.channel,d.attempt_count'))
+    return {rows:[]};
+   if(sql.includes('SELECT a.delivery_id::text')){
+    auditReads++;
+    return {rows:auditReads===1?[]:[{delivery_id:matching?deliveryId:randomUUID()}]};
+   }
+   return original(sql);
+  };
+  assert.equal(await requeueFailedOrganizationDelivery(
+   db as never,provider,bearer,pepper,deliveryId,randomUUID(),scope,now),
+   matching?'ALREADY_REQUEUED':'DENIED');
+  assert.equal(counts().updates,0);
+  assert.equal(counts().audits,0);
+  assert.equal(counts().providerCalls,1);
+  assert.equal(auditReads,2);
+ }
+});
+
+test('malformed raced audit result aborts before any requeue update',async()=>{
+ const {db,provider,counts}=fixture();
+ const original=db.query;
+ let auditReads=0;
+ db.query=async(sql:string)=>{
+  if(sql.includes('SELECT delivery_id::text FROM notification_requeue_audit'))
+   return {rows:[]};
+  if(sql.includes('SELECT n.id::text AS intent_id,d.channel,d.attempt_count'))
+   return {rows:[]};
+  if(sql.includes('SELECT a.delivery_id::text')){
+   auditReads++;
+   return {rows:auditReads===1?[]:[{delivery_id:'invalid'}]};
+  }
+  return original(sql);
+ };
+ await assert.rejects(requeueFailedOrganizationDelivery(
+  db as never,provider,bearer,pepper,deliveryId,randomUUID(),scope,now),
+  /notification_dead_letter_audit_conflict/);
+ assert.equal(counts().updates,0);
+ assert.equal(counts().audits,0);
+});
