@@ -111,13 +111,20 @@ export function createExternalDeliveryWebhookTransport(
     const digest=createHash('sha256').update(JSON.stringify({v:1,bucket,alerts:canonical})).digest('hex');
     headers['idempotency-key']='services-alert-v1-'+digest;
    }
-   const response=await request(destination,{
-    method:'POST',
-    headers,
-    body:JSON.stringify({alerts:safe}),
-    redirect:'error',
-    signal:AbortSignal.timeout(timeout),
-   });
+   let response:Response;
+   try{
+    response=await request(destination,{
+     method:'POST',
+     headers,
+     body:JSON.stringify({alerts:safe}),
+     redirect:'error',
+     signal:AbortSignal.timeout(timeout),
+    });
+   }catch{
+    // Network failures may contain destination URLs or authorization details.
+    // Never expose the original message or cause to higher-level logs.
+    throw new Error('external_alert_webhook_transport_failed');
+   }
    if(!response.ok)throw new Error('external_alert_webhook_delivery_failed');
   },
  } satisfies ExternalDeliveryAlertTransport);
