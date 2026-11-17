@@ -31,6 +31,12 @@ flags from a browser. Inputs are untrusted even when syntactically valid.
 
 This is **not yet a PostgreSQL ledger implementation**: before enabling an HTTP route the server must atomically reserve/serialize the scoped key, reject body-hash mismatch, replay only a committed matching response, lock and authorize the request, and commit the cancellation + outbox + two notifications + ledger result together. Test rollback, concurrent replays and secret-rotation behavior before release.
 
+## Internal PostgreSQL ledger-backed guest cancellation (not routed)
+
+`cancelGuestRequestIdempotently` is an **internal caller-transaction-only** function. It first revalidates the supplied request-scoped READ_CANCEL capability against the same verified, unexpired guest contact and service request in PostgreSQL, then derives an opaque scoped ledger key with the independent server HMAC key. It uses the existing `idempotency_records` table and its unique constraint to serialize concurrent attempts. A matching completed result may be replayed only after fresh proof verification and body-hash matching; changed expectedVersion under the same key conflicts. On first invocation it calls the existing atomic guest cancellation primitive and records the successful response in the SAME transaction as request state, cancellation history, PII-free outbox and the two notification intents. Caller **must rollback on any failure**; a thrown error does not automatically rollback a caller-owned open transaction.
+
+This is **not yet a mounted guest cancellation HTTP route**, nor does it establish the caller's HTTP cookie/Origin/CSRF itself. The HTTP adapter must authenticate/resolve a fresh request-scoped proof and the server-only ledger secret, then run `parseCancellationPreflight` and the ledger-backed operation in a single correctly managed database transaction. Multi-client concurrency, expiry/cleanup and key-rotation, network-error replay, full authenticated HTTP E2E and staging acceptance remain required. A failure to insert a notification MUST rollback the idempotency record as well.
+
 ## Mandatory integration sequence (not yet implemented)
 
 1. Verify account session or request-scoped guest capability. Determine the
