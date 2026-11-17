@@ -102,3 +102,25 @@ export async function recordReceiverMonitoringDelivered(
  if(result.rowCount!==delivered.length)
   throw new Error('receiver_monitor_delivery_state_update_failed');
 }
+
+
+/**
+ * Rearm only metric codes that have recovered below threshold in the current
+ * successful scoped observation. A new breach after recovery must page again,
+ * even within the previously approved cooldown window.
+ *
+ * The caller MUST hold the same per-scope advisory lock across observation,
+ * send and this cleanup, and MUST pass the entire observed breach list
+ * (not merely the cooldown-filtered subset). SQL failure propagates.
+ */
+export async function clearRecoveredReceiverMonitoringDeliveryState(
+ db:Db,
+ scope:string,
+ observedBreaches:readonly ReceiverMonitorBreach[],
+):Promise<void>{
+ validate(scope,observedBreaches);
+ await db.query(
+  `DELETE FROM notification_receiver_monitor_delivery_state
+   WHERE receiver_scope=$1 AND NOT (code = ANY($2::text[]))`,
+  [scope,observedBreaches.map(b=>b.code)]);
+}
