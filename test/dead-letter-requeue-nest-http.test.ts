@@ -70,7 +70,7 @@ test('isolated Nest requeue HTTP boundary denies cross-site or forged input befo
   const good=await send();
   assert.equal(good.status,204);
   assert.match(good.headers.get('cache-control')??'',/no-store/);
-  const invalid=[
+  const invalid:Record<string,string>[]=[
    {'origin':'https://malicious.example.kz'},
    {'origin':'http://admin.example.kz'},
    {'sec-fetch-site':'cross-site'},
