@@ -131,3 +131,34 @@ export function assertCancellationSessionCsrf(
      !timingSafeEqual(a,b))
     throw new CancellationCommandRejected('invalid_request');
 }
+
+/**
+ * Compose all pure preflight checks for a FUTURE cancellation HTTP adapter.
+ * This DOES NOT authenticate the caller. Trusted transport properties and
+ * expected session CSRF must come from an already authenticated server side
+ * context, never reconstructed from client-controlled headers.
+ *
+ * The future adapter must additionally enforce a principal-scoped,
+ * transaction-bound idempotency ledger, authorization and DB state locks.
+ */
+export function parseCancellationPreflight(input:Readonly<{
+  requestId:unknown;
+  rawBody:unknown;
+  idempotencyHeader:unknown;
+  csrfHeader:unknown;
+  sessionExpectedCsrf:unknown;
+  expectedOrigin:unknown;
+  origin:unknown;
+  fetchSite:unknown;
+  contentType:unknown;
+  requestProtocol:unknown;
+}>):CancellationCommand{
+  if(!input||typeof input!=='object')
+    throw new CancellationCommandRejected('invalid_request');
+  assertCancellationTransportHeaders(input);
+  assertCancellationSessionCsrf(input.csrfHeader,input.sessionExpectedCsrf);
+  const idempotencyKey=parseCancellationIdempotencyHeader(
+    input.idempotencyHeader);
+  return parseCancellationRawJsonBody(input.requestId,input.rawBody,
+    idempotencyKey);
+}
