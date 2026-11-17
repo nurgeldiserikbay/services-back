@@ -31,7 +31,7 @@ test('idempotent cancellation service rejects missing, malformed or shared signi
       if(ledger===undefined)delete process.env.GUEST_CANCEL_LEDGER_HMAC_KEY;
       else process.env.GUEST_CANCEL_LEDGER_HMAC_KEY=ledger;
       await assert.rejects(
-        service.cancelIdempotently(requestId,proof,1,key),
+        async()=>service.cancelIdempotently(requestId,proof,1,key),
         (error:unknown)=>error instanceof GuestCancellationRejected&&
           error.reason==='unavailable');
     }
@@ -59,7 +59,7 @@ test('idempotent cancellation service uses a single transaction with distinct se
     process.env.GUEST_REQUEST_HMAC_KEY=randomBytes(32).toString('base64');
     process.env.GUEST_CANCEL_LEDGER_HMAC_KEY=randomBytes(32).toString('base64');
     const service=new GuestCancellationService(db);
-    await assert.rejects(service.cancelIdempotently(requestId,proof,1,key),
+    await assert.rejects(async()=>service.cancelIdempotently(requestId,proof,1,key),
       /db_read_reached/);
     assert.equal(calls,1);
   }finally{
