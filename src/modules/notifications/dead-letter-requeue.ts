@@ -149,7 +149,27 @@ export async function requeueFailedOrganizationDelivery(
      AND d.next_attempt_at IS NULL AND n.next_attempt_at IS NULL
    FOR UPDATE OF d,n
   `,[deliveryId,organizationId]);
-  if(selected.rows.length!==1)return 'DENIED';
+  if(selected.rows.length!==1){
+   if(selected.rows.length>1)
+    throw new Error('notification_dead_letter_inconsistent');
+   // Under READ COMMITTED the row lock can wait for a concurrent requeue.
+   // After its COMMIT the formerly FAILED row is no longer selectable.
+   // Recheck the immutable audit instead of reporting a false failure.
+   const raced=await client.query<{delivery_id:string}>(`
+    SELECT a.delivery_id::text
+    FROM notification_requeue_audit a
+    JOIN notification_intents n ON n.id=a.intent_id
+    WHERE a.requeue_key=$1::uuid AND n.recipient_org_id=$2::uuid
+   `,[requeueKey,organizationId]);
+   if(!Array.isArray(raced.rows)||raced.rows.length>1)
+    throw new Error('notification_dead_letter_audit_conflict');
+   if(raced.rows.length===0)return 'DENIED';
+   const recorded=raced.rows[0]?.delivery_id;
+   if(typeof recorded!=='string'||!UUID.test(recorded))
+    throw new Error('notification_dead_letter_audit_conflict');
+   return recorded.toLowerCase()===deliveryId.toLowerCase()?
+    'ALREADY_REQUEUED':'DENIED';
+  }
   const row=selected.rows[0];
   if(row.intent_id!==item.intent_id||row.channel!==item.channel||
      !Number.isSafeInteger(row.attempt_count)||row.attempt_count<1||
