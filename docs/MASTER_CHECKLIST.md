@@ -91,7 +91,7 @@
 - [ ] Retry and dead-letter handling — Prepared: fenced retry/acknowledgement, reconciliation, audited requeue, bounded worker and queue monitoring (PR #113–127); PostgreSQL lease E2E and schedule/COMMIT guards (PR #128–133); opt-in polling and staged delivery cycle (PR #134–136); two-connection PostgreSQL staging-to-SENT E2E (PR #137, branch CI #43848576260 PASS). Real provider, production scheduler, admin HTTP/CSRF, alert transport and operational acceptance remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
-- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open
+- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open; receiver aggregate threshold evaluator and fail-closed unit tests prepared (branch backend/receiver-monitor-policy-20261117), CI pending
 
 ### Admin
 
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Receiver count-only monitoring policy (2026-11-17): branch `backend/receiver-monitor-policy-20261117` adds an offline, explicit-threshold evaluator with immutable count-only breaches, defensive own-data validation, consistency checks and boundary tests. **Prepared: branch/PR CI pending.** No live alerting endpoint, transport or scheduler has been activated. Production thresholds, owner approval, staging drills and on-call response remain open; Delivery monitoring stays unchecked.
 
 Frontend loading localization PR #76 and keyboard reset acceptance PR #77 (2026-11-17): [services-front PR #76](https://github.com/nurgeldiserikbay/services-front/pull/76) passed [push CI #44032814907](https://github.com/nurgeldiserikbay/services-front/actions/runs/44032814907) and [PR CI #44032843083](https://github.com/nurgeldiserikbay/services-front/actions/runs/44032843083), merged as [`9fda379`](https://github.com/nurgeldiserikbay/services-front/commit/9fda379c3448bb86e305626fc83e04e0c754bf12). It localizes streaming loading announcements for kk/ru with main-content skip target preserved; previous PR #75 main CI [#44032713961 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44032713961). [Frontend PR #77](https://github.com/nurgeldiserikbay/services-front/pull/77), head [`141d406`](https://github.com/nurgeldiserikbay/services-front/commit/141d40631a7cfe144fb0bf8fc56ebaa4f0ca0ab5), adds Chrome real-keyboard Enter activation of the search reset link in both locales and asserts cleared URL/query/results; **CI and merge pending.** No full accessibility/physical-device/staging sign-off claimed.
 
