@@ -5,6 +5,7 @@ import {readReceiverMonitorPreviewSettings}
 
 const valid=()=>({
  RECEIVER_MONITOR_SCOPE:'staging-kz',
+ RECEIVER_MONITOR_PREVIEW_ACK:'READ_ONLY_STAGING',
  RECEIVER_MONITOR_RETRY_SCHEDULED:'2',
  RECEIVER_MONITOR_LEASED_EXPIRED:'1',
  RECEIVER_MONITOR_TERMINAL:'3',
@@ -29,7 +30,9 @@ test('staging preview rejects missing, unsafe and getter-backed settings',()=>{
   get(){reads++;throw new Error('getter should not execute');},
  });
  const cases=[
-  {},{...valid(),RECEIVER_MONITOR_SCOPE:'BAD_SCOPE'},
+  {},{...valid(),RECEIVER_MONITOR_PREVIEW_ACK:undefined},
+  {...valid(),RECEIVER_MONITOR_PREVIEW_ACK:'PRODUCTION'},
+  {...valid(),RECEIVER_MONITOR_SCOPE:'BAD_SCOPE'},
   {...valid(),RECEIVER_MONITOR_SCOPE:''},
   {...valid(),RECEIVER_MONITOR_SCOPE:'a'.repeat(65)},
   {...valid(),RECEIVER_MONITOR_TERMINAL:'0'},
