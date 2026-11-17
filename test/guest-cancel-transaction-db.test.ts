@@ -226,6 +226,64 @@ test('Nest guest cancellation service delegates real PostgreSQL ledger within on
   });
 });
 
+test('guest cancellation preflight and PostgreSQL transaction compose without duplicate notices',async()=>{
+  await withFixture(async(db,f)=>{
+    const oldPepper=process.env.GUEST_REQUEST_HMAC_KEY;
+    const oldLedger=process.env.GUEST_CANCEL_LEDGER_HMAC_KEY;
+    let transactions=0;
+    const database={
+      transaction:async<T>(work:(client:Client)=>Promise<T>):Promise<T>=>{
+        transactions++;
+        return work(db);
+      },
+    } as unknown as DatabasePool;
+    try{
+      process.env.GUEST_REQUEST_HMAC_KEY=secret.toString('base64');
+      process.env.GUEST_CANCEL_LEDGER_HMAC_KEY=randomBytes(32).toString('base64');
+      const service=new GuestCancellationService(database);
+      const csrf=randomBytes(32).toString('base64url');
+      const transport={
+        requestId:f.request,rawBody:'{"expectedVersion":1}',
+        idempotencyHeader:'GuestCancel_BFF_2026_00000001',
+        csrfHeader:csrf,sessionExpectedCsrf:csrf,
+        expectedOrigin:'https://services.example.test',
+        origin:'https://services.example.test',
+        fetchSite:'same-origin',contentType:'application/json',
+        requestProtocol:'https:',
+      };
+      for(const invalid of [
+        {...transport,origin:'https://attacker.example.test'},
+        {...transport,rawBody:'{"expectedVersion":1,"actor":"admin"}'},
+        {...transport,csrfHeader:randomBytes(32).toString('base64url')},
+      ]){
+        await assert.rejects(
+          async()=>service.cancelWithPreflight(invalid,f.valid));
+      }
+      assert.equal(transactions,0,'invalid HTTP preflight must not lease DB');
+      const first=await service.cancelWithPreflight(transport,f.valid);
+      assert.deepEqual(first,{
+        id:f.request,state:'cancelled_by_customer',version:2,
+      });
+      assert.deepEqual(
+        await service.cancelWithPreflight(transport,f.valid),first);
+      assert.equal(transactions,2);
+      const rows=await db.query<{events:string;intents:string}>(`
+        SELECT
+          (SELECT count(*)::text FROM cancellation_events
+           WHERE request_id=$1) AS events,
+          (SELECT count(*)::text FROM notification_intents
+           WHERE dedupe_key LIKE $2) AS intents
+      `,[f.request,'cancel:%:'+f.request]);
+      assert.deepEqual(rows.rows,[{events:'1',intents:'2'}]);
+    }finally{
+      if(oldPepper===undefined)delete process.env.GUEST_REQUEST_HMAC_KEY;
+      else process.env.GUEST_REQUEST_HMAC_KEY=oldPepper;
+      if(oldLedger===undefined)delete process.env.GUEST_CANCEL_LEDGER_HMAC_KEY;
+      else process.env.GUEST_CANCEL_LEDGER_HMAC_KEY=oldLedger;
+    }
+  });
+});
+
 test('guest cancel ledger atomically records one cancellation and replays same key',async()=>{
   await withFixture(async(db,f)=>{
     const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000001';
