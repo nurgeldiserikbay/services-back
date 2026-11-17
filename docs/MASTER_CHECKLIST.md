@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend guest cancellation fresh proof/contact row-lock (2026-11-18): Prepared in this PR. Fresh guest cancellation rechecks READ_CANCEL capability joined to the same verified unexpired guest contact with PostgreSQL FOR SHARE OF c,g after request row lock, and uses contact channel from that locked row, preventing concurrent revocation between check and state write. PostgreSQL regression rejects revoked verification without mutating request. CI pending; authenticated HTTP and staging gates remain open.
+
 Backend guest cancellation live capability expiry across PostgreSQL transaction waits (2026-11-17): Prepared in PR. All READ_CANCEL capability and verified guest contact expiry checks in fresh and replay transaction paths use PostgreSQL clock_timestamp() rather than BEGIN-frozen now(). PostgreSQL long-transaction regressions reject expired proofs before a fresh transition and on completed replay without duplicate cancellation event. CI pending; authenticated HTTP/staging acceptance remains open.
 
 Backend guest cancellation PostgreSQL version bound (2026-11-17): Prepared in this PR. Cancellation expectedVersion is bounded to 1..2147483646 because service_requests.version is PostgreSQL signed int4, and successful cancellation increments it exactly once. Raw JSON, direct command and service input regressions reject int4 overflow before DB transaction; existing last valid version is preserved. CI, authenticated HTTP E2E and staging acceptance remain open.
