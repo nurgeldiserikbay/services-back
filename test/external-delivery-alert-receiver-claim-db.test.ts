@@ -6,6 +6,8 @@ import {acceptExternalDeliveryAlertIngress}
  from '../src/modules/notifications/external-delivery-alert-receiver-ingress.js';
 import {claimExternalAlertReceiverIngress}
  from '../src/modules/notifications/external-delivery-alert-receiver-claim.js';
+import {acknowledgeClaimedExternalAlertReceiverIngress}
+ from '../src/modules/notifications/external-delivery-alert-receiver-ack.js';
 
 test('receiver claims reject unbounded or invalid worker parameters before SQL',async()=>{
  let queries=0;
@@ -49,11 +51,19 @@ test('PostgreSQL receiver claim is unique until expiry and scope-bound',async()=
   assert.equal(second.length,1);
   assert.equal(second[0].id,first[0].id);
   assert.notEqual(second[0].token,first[0].token);
+  assert.equal(await acknowledgeClaimedExternalAlertReceiverIngress(
+   db,scope,first[0].id,first[0].token),'stale');
+  assert.equal(await acknowledgeClaimedExternalAlertReceiverIngress(
+   db,'prod-kz',second[0].id,second[0].token),'stale');
+  assert.equal(await acknowledgeClaimedExternalAlertReceiverIngress(
+   db,scope,second[0].id,second[0].token),'acknowledged');
+  assert.equal(await acknowledgeClaimedExternalAlertReceiverIngress(
+   db,scope,second[0].id,second[0].token),'stale');
   const current=await db.query<{claim_count:number;state:string}>(`
    SELECT claim_count,state FROM notification_alert_receiver_ingress WHERE id=$1
   `,[first[0].id]);
   assert.equal(current.rows[0].claim_count,2);
-  assert.equal(current.rows[0].state,'PENDING');
+  assert.equal(current.rows[0].state,'ACKED');
   await db.query('SAVEPOINT forbidden_payload');
   await assert.rejects(db.query(`
     UPDATE notification_alert_receiver_ingress SET body_digest=$2 WHERE id=$1
