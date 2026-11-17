@@ -25,6 +25,8 @@ export function readReceiverMonitorPreviewSettings(
    throw new Error('invalid_external_alert_receiver_preview_config');
   return field.value;
  };
+ if(read('RECEIVER_MONITOR_PREVIEW_ACK')!=='READ_ONLY_STAGING')
+  throw new Error('invalid_external_alert_receiver_preview_config');
  const receiverScope=read('RECEIVER_MONITOR_SCOPE');
  if(!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(receiverScope))
   throw new Error('invalid_external_alert_receiver_preview_config');
