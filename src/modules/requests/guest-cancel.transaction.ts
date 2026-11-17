@@ -44,7 +44,10 @@ export async function cancelVerifiedGuestRequest(
     typeof readCancelToken!=='string'||!CAPABILITY.test(readCancelToken)||
     !Buffer.isBuffer(pepper)||pepper.length!==32)
     throw new GuestCancellationRejected('unavailable');
-  if(!Number.isSafeInteger(expectedVersion)||expectedVersion<1)
+  // PostgreSQL service_requests.version is int4; mutation increments it.
+  // Reject an unrepresentable next version before any SQL is issued.
+  if(!Number.isSafeInteger(expectedVersion)||expectedVersion<1||
+     expectedVersion>=2147483647)
     throw new GuestCancellationRejected('conflict');
   const proofHash=hashGuestCapability('READ_CANCEL',readCancelToken,pepper);
   // Access check is scoped to the same verified guest contact and request.
