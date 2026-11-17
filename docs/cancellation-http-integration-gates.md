@@ -13,6 +13,10 @@ It **must not** accept the cancellation actor, seller context, reliability
 weights, approval IDs, guest capability, penalty suspension or permission
 flags from a browser. Inputs are untrusted even when syntactically valid.
 
+## Unmounted HTTPS and origin preconditions
+
+`assertCancellationTransportHeaders` accepts only a configured canonical HTTPS origin, an exact matching `Origin` header, `Sec-Fetch-Site: same-origin`, a trusted TLS protocol indicator (`https:`), and an allowlisted JSON Content-Type (`application/json` with optional UTF-8 charset). Header arrays, cross-site requests, unexpected media parameters and a mismatched/malformed configured origin are denied. The expected origin must come from trusted deployment configuration, not the incoming Host/X-Forwarded-Host headers; TLS information must come from the trusted server/proxy configuration, not untrusted X-Forwarded-Proto. This pure helper is **not mounted** and does not implement session-bound CSRF, capability authorization, idempotency or mutations. An actual adapter must also bound raw body bytes before decoding and call `parseCancellationRawJsonBody`.
+
 ## Mandatory integration sequence (not yet implemented)
 
 1. Verify account session or request-scoped guest capability. Determine the
