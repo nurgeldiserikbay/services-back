@@ -91,7 +91,7 @@
 - [ ] Retry and dead-letter handling — Prepared: fenced retry/acknowledgement, reconciliation, audited requeue, bounded worker and queue monitoring (PR #113–127); PostgreSQL lease E2E and schedule/COMMIT guards (PR #128–133); opt-in polling and staged delivery cycle (PR #134–136); two-connection PostgreSQL staging-to-SENT E2E (PR #137, branch CI #43848576260 PASS). Real provider, production scheduler, admin HTTP/CSRF, alert transport and operational acceptance remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
-- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open; receiver count-only threshold evaluator source and tests landed on main (ce199469, 14ad399), post-merge CI pending
+- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open; receiver count-only threshold evaluator source and tests landed on main (ce199469, 14ad399), post-merge CI pending; scoped PostgreSQL observation and regression tests prepared (rebased branch; CI pending)
 
 ### Admin
 
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Receiver observation PR #182 conflict recovery (2026-11-17): original PR #182 CI run #44046205460 in progress at rebase. New `backend/receiver-observation-rebase-20261117` carries exactly the observation module and PostgreSQL tests onto current main after concurrent checklist changes. No HTTP endpoint, production scheduler, default thresholds, transport or on-call activation. New branch CI needed before any merge; Delivery monitoring stays unchecked.
 
 Frontend live search upstream-outage error recovery E2E (2026-11-17): [services-front PR #79](https://github.com/nurgeldiserikbay/services-front/pull/79) passed [push CI #44034779512](https://github.com/nurgeldiserikbay/services-front/actions/runs/44034779512) and [PR CI #44034802970](https://github.com/nurgeldiserikbay/services-front/actions/runs/44034802970), merged to frontend `main` as [`512cd54`](https://github.com/nurgeldiserikbay/services-front/commit/512cd5407b6cc6a772d7469179d0a283a4442c4a). Prior PR #78 post-merge main [CI #44034643084 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44034643084). Follow-up [frontend PR #81](https://github.com/nurgeldiserikbay/services-front/pull/81), head [`c7e3bbf`](https://github.com/nurgeldiserikbay/services-front/commit/c7e3bbff03b23eac2cf03a46579a6f2c3734b3ee), adds an isolated production Next.js server with deliberately unreachable HTTPS backend and live kk/ru HTTP assertions that search errors offer a localized native retry URL preserving the active query, scope, profession and delivery while emitting no fake results. New workflow gate reports real upstream-failure E2E. **PR #81 CI/merge and PR #79 post-merge main CI pending; broader device/screen-reader/staging acceptance remains unchecked.**
 
