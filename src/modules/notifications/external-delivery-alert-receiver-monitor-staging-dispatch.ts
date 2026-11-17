@@ -7,6 +7,8 @@ import {runWithReceiverMonitoringSessionLock}
  from './external-delivery-alert-receiver-monitor-send-lock.js';
 import {createReceiverMonitoringCooldownTransport}
  from './external-delivery-alert-receiver-monitor-cooldown-transport.js';
+import {clearRecoveredReceiverMonitoringDeliveryState}
+ from './external-delivery-alert-receiver-monitor-delivery-state.js';
 
 export type ReceiverMonitoringStagingSendCounts=Readonly<{
  breachCount:number;
@@ -36,10 +38,17 @@ export async function dispatchOneShotReceiverStagingMonitoring(
   },
  });
  const breaches=await runWithReceiverMonitoringSessionLock(
-  db,receiverScope,()=>dispatchConfiguredExternalAlertReceiverMonitoring(
-   db,receiverScope,thresholds,
-   cooldownSeconds===undefined?countingTransport:
-    createReceiverMonitoringCooldownTransport(
-     db,receiverScope,cooldownSeconds,countingTransport)));
+  db,receiverScope,async()=>{
+   const observed=await dispatchConfiguredExternalAlertReceiverMonitoring(
+    db,receiverScope,thresholds,
+    cooldownSeconds===undefined?countingTransport:
+     createReceiverMonitoringCooldownTransport(
+      db,receiverScope,cooldownSeconds,countingTransport));
+   // Clear ONLY recovered codes, based on the full scoped observation.
+   // Never use the filtered due subset or a failed observation for rearming.
+   if(cooldownSeconds!==undefined)
+    await clearRecoveredReceiverMonitoringDeliveryState(db,receiverScope,observed);
+   return observed;
+  });
  return Object.freeze({breachCount:breaches.length,sentCount});
 }
