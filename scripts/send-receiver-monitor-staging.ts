@@ -3,11 +3,9 @@ import {readReceiverMonitorSendSettings}
  from '../src/modules/notifications/external-delivery-alert-receiver-monitor-send-settings.js';
 import {createReceiverMonitorHttpsTransport}
  from '../src/modules/notifications/external-delivery-alert-receiver-monitor-https-transport.js';
-import {dispatchConfiguredExternalAlertReceiverMonitoring}
- from '../src/modules/notifications/external-delivery-alert-receiver-monitor-configured-dispatch.js';
-import {runWithReceiverMonitoringSessionLock}
- from '../src/modules/notifications/external-delivery-alert-receiver-monitor-send-lock.js';
-import {createReceiverMonitoringCooldownTransport,readReceiverMonitoringOptionalCooldown}
+import {dispatchOneShotReceiverStagingMonitoring}
+ from '../src/modules/notifications/external-delivery-alert-receiver-monitor-staging-dispatch.js';
+import {readReceiverMonitoringOptionalCooldown}
  from '../src/modules/notifications/external-delivery-alert-receiver-monitor-cooldown-transport.js';
 
 /**
@@ -36,14 +34,11 @@ async function main():Promise<void>{
   await db.connect();
   // The observer uses a single scoped count query; no transaction lock
   // should remain open while the HTTP transport is awaited.
-  const breaches=await runWithReceiverMonitoringSessionLock(
-   db,settings.receiverScope,()=>dispatchConfiguredExternalAlertReceiverMonitoring(
-    db,settings.receiverScope,settings.thresholds,
-    cooldownSeconds===undefined?transport:createReceiverMonitoringCooldownTransport(
-     db,settings.receiverScope,cooldownSeconds,transport)));
+  const counts=await dispatchOneShotReceiverStagingMonitoring(
+   db,settings.receiverScope,settings.thresholds,transport,cooldownSeconds);
   process.stdout.write(JSON.stringify({
    mode:'one-shot-staging-send',
-   breachCount:breaches.length,
+   ...counts,
   })+'\n');
  }finally{
   await db.end().catch(()=>{});
