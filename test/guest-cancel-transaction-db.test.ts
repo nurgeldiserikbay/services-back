@@ -122,6 +122,57 @@ test('unverified guest contact cannot authorize a fresh cancellation',async()=>{
   });
 });
 
+test('expired guest contact during a long transaction blocks fresh cancellation',async()=>{
+  await withFixture(async(db,f)=>{
+    await db.query(`
+      UPDATE guest_contacts
+      SET expires_at=clock_timestamp()+interval '100 milliseconds'
+      WHERE id=$1
+    `,[f.guest]);
+    await db.query('SELECT pg_sleep(0.20)');
+    await assert.rejects(
+      cancelVerifiedGuestRequest(db,f.request,f.valid,1,secret),
+      (error:unknown)=>error instanceof GuestCancellationRejected&&
+        error.reason==='unavailable');
+    const rows=await db.query<{status:string;version:number}>(`
+      SELECT status::text,version FROM service_requests WHERE id=$1
+    `,[f.request]);
+    assert.deepEqual(rows.rows,[{status:'PENDING',version:1}]);
+    const events=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM cancellation_events WHERE request_id=$1
+    `,[f.request]);
+    assert.equal(events.rows[0].n,'0');
+  });
+});
+
+test('expired guest contact denies saved cancellation replay without new events',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000016';
+    const replay=()=>cancelGuestRequestIdempotently(
+      db,f.request,f.valid,1,key,secret,ledgerSecret);
+    const first=await replay();
+    assert.equal(first.version,2);
+    assert.deepEqual(await replay(),first);
+    await db.query(`
+      UPDATE guest_contacts
+      SET expires_at=clock_timestamp()+interval '100 milliseconds'
+      WHERE id=$1
+    `,[f.guest]);
+    await db.query('SELECT pg_sleep(0.20)');
+    await assert.rejects(replay(),(error:unknown)=>
+      error instanceof GuestCancellationRejected&&error.reason==='unavailable');
+    const events=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM cancellation_events WHERE request_id=$1
+    `,[f.request]);
+    assert.equal(events.rows[0].n,'1');
+    const notices=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM notification_intents
+      WHERE dedupe_key LIKE $1
+    `,['cancel:%:'+f.request]);
+    assert.equal(notices.rows[0].n,'2');
+  });
+});
+
 test('expired READ_CANCEL proof during one long transaction cannot cancel',async()=>{
   await withFixture(async(db,f)=>{
     await db.query(`
