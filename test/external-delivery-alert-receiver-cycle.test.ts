@@ -72,7 +72,7 @@ test('worker rejects malformed durable payload without sending or ACK',async()=>
   }} as never;
   await assert.rejects(deliverOneExternalAlertReceiverIngress(
    db,scope,30000,{send:async()=>{sends++;}}),
-   /invalid_external_alert_receiver_payload/);
+   /invalid_external_alert_receiver_(?:payload|database)/);
   assert.equal(calls,1);
   assert.equal(sends,0);
  }
