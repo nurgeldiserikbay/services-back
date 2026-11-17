@@ -24,7 +24,10 @@ function validate(scope:string,alerts:readonly ReceiverMonitorBreach[]):void{
    return d.value as unknown;
   });
   const [code,observed,threshold]=props;
-  if(typeof code!=='string'||!CODES.has(code)||seen.has(code)||
+  if(typeof code!=='string')return invalid();
+  if(typeof observed!=='number')return invalid();
+  if(typeof threshold!=='number')return invalid();
+  if(!CODES.has(code)||seen.has(code)||
      typeof observed!=='number'||!Number.isSafeInteger(observed)||
      typeof threshold!=='number'||!Number.isSafeInteger(threshold)||
      threshold<1||observed<threshold)invalid();
