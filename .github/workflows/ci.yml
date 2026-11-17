@@ -279,6 +279,8 @@ jobs:
         run: node --import tsx --test test/external-delivery-observation-polling.test.ts
       - name: Durable notification alert episodes PostgreSQL E2E (fail fast)
         run: node --import tsx --test test/external-delivery-alert-episodes-db.test.ts
+      - name: Alert episode lease claim and fenced ACK PostgreSQL E2E (fail fast)
+        run: node --import tsx --test test/external-delivery-alert-dispatch-lease-db.test.ts
       - name: External delivery monitoring PostgreSQL consistency and privacy (fail fast)
         run: node --import tsx --test test/external-delivery-monitoring-db.test.ts
       - name: Bounded batch external delivery PostgreSQL E2E (fail fast)
