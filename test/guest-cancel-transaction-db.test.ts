@@ -93,6 +93,23 @@ test('verified guest pending cancel is a single transition with exactly two noti
     assert.equal(reliability.rows[0].n,'0');
   });
 });
+test('direct guest cancellation rejects PostgreSQL int4 overflow without SQL',async()=>{
+  let calls=0;
+  const noDb={query:async()=>{calls++;throw new Error('unexpected_sql');}};
+  for(const invalidVersion of [
+    0,-1,2147483647,2147483648,Number.MAX_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER+1,1.5,NaN,Infinity,
+  ]){
+    await assert.rejects(
+      cancelVerifiedGuestRequest(noDb as never,
+        '11111111-1111-4111-8111-111111111111',
+        randomBytes(32).toString('base64url'),invalidVersion,secret),
+      (error:unknown)=>error instanceof GuestCancellationRejected&&
+        error.reason==='conflict');
+  }
+  assert.equal(calls,0);
+});
+
 test('wrong, foreign-contact or expired proof cannot cancel or query other guest',async()=>{
   await withFixture(async(db,f)=>{
     for(const token of [f.foreign,randomBytes(32).toString('base64url')]){
