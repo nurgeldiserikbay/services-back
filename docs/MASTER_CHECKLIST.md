@@ -91,7 +91,7 @@
 - [ ] Retry and dead-letter handling — Prepared: fenced retry/acknowledgement, reconciliation, audited requeue, bounded worker and queue monitoring (PR #113–127); PostgreSQL lease E2E and schedule/COMMIT guards (PR #128–133); opt-in polling and staged delivery cycle (PR #134–136); two-connection PostgreSQL staging-to-SENT E2E (PR #137, branch CI #43848576260 PASS). Real provider, production scheduler, admin HTTP/CSRF, alert transport and operational acceptance remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
-- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open
+- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open; count-only monitor threshold evaluator and unit regression (rebased PR), CI pending
 
 ### Admin
 
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Receiver monitoring threshold evaluation (2026-11-17): Rebased branch `backend/receiver-monitor-policy-rebased-20261117` carries the CI-passing source and tests from PR #180 onto current main, after concurrent checklist updates caused merge conflict. Pure count-only evaluation rejects malformed snapshots/accessors and emits frozen threshold breaches. **New branch CI and merge pending;** operational thresholds, real transport, scheduler, on-call and staging sign-off remain open. Delivery monitoring stays unchecked.
 
 Frontend keyboard search reset and accessible touch target (2026-11-17): [services-front PR #77](https://github.com/nurgeldiserikbay/services-front/pull/77) passed [push CI #44033846437](https://github.com/nurgeldiserikbay/services-front/actions/runs/44033846437) and [PR CI #44033867652](https://github.com/nurgeldiserikbay/services-front/actions/runs/44033867652); squash merged to frontend `main` at [`de58251`](https://github.com/nurgeldiserikbay/services-front/commit/de582517367b59d0bc0d0e606196dd5663b4155f). Live Chrome keyboard kk/ru journey verifies native Enter search followed by reset link Enter and cleared URL/input/results. Follow-up [PR #78](https://github.com/nurgeldiserikbay/services-front/pull/78), head [`f2dd7ba`](https://github.com/nurgeldiserikbay/services-front/commit/f2dd7bac22a7b5c9cf7251484e97011e32c6bd95), adds Chrome 44×44 CSS px reset target and localized accessibility-tree link-name assertions; **PR #78 CI/merge and PR #77 post-merge main CI pending.** Full physical-device/screen-reader/staging acceptance is not verified.
 
