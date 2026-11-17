@@ -5,6 +5,8 @@ import {cancelVerifiedGuestRequest,type GuestCancellationResult,
   GuestCancellationRejected} from './guest-cancel.transaction.js';
 import {cancelGuestRequestIdempotently}
   from './guest-cancel-idempotency.transaction.js';
+import {parseCancellationPreflight}
+  from './cancellation-command-contract.js';
 
 /**
  * Internal only. No public controller until a CSRF/Origin-checked BFF
@@ -19,6 +21,21 @@ export class GuestCancellationService{
    * The ledger key MUST be an independent 256-bit secret. No HTTP route
    * is exposed by this service; authorization/CSRF belong to its caller.
    */
+  /**
+   * Unmounted future BFF boundary: the caller MUST supply a trusted,
+   * server-verified session CSRF and deployment origin/protocol context.
+   * readCancelProof must come from a sealed, request-scoped server secret;
+   * never accept it from a request JSON body. No HTTP controller is exposed.
+   */
+  cancelWithPreflight(
+    transport:Parameters<typeof parseCancellationPreflight>[0],
+    readCancelProof:string,
+  ):Promise<GuestCancellationResult>{
+    const command=parseCancellationPreflight(transport);
+    return this.cancelIdempotently(command.requestId,readCancelProof,
+      command.expectedVersion,command.idempotencyKey);
+  }
+
   cancelIdempotently(
     requestId:string,readCancelProof:string,expectedVersion:number,
     idempotencyKey:string,
