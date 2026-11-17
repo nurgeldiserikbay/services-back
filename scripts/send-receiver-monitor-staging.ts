@@ -7,6 +7,8 @@ import {dispatchConfiguredExternalAlertReceiverMonitoring}
  from '../src/modules/notifications/external-delivery-alert-receiver-monitor-configured-dispatch.js';
 import {runWithReceiverMonitoringSessionLock}
  from '../src/modules/notifications/external-delivery-alert-receiver-monitor-send-lock.js';
+import {createReceiverMonitoringCooldownTransport,readReceiverMonitoringOptionalCooldown}
+ from '../src/modules/notifications/external-delivery-alert-receiver-monitor-cooldown-transport.js';
 
 /**
  * Operator-invoked, staging-only one-shot dispatch.
@@ -16,6 +18,7 @@ import {runWithReceiverMonitoringSessionLock}
  */
 async function main():Promise<void>{
  const settings=readReceiverMonitorSendSettings(process.env);
+ const cooldownSeconds=readReceiverMonitoringOptionalCooldown(process.env);
  const connectionString=process.env.DATABASE_URL;
  if(typeof connectionString!=='string'||connectionString.length===0)
   throw new Error('missing_database_url');
@@ -35,7 +38,9 @@ async function main():Promise<void>{
   // should remain open while the HTTP transport is awaited.
   const breaches=await runWithReceiverMonitoringSessionLock(
    db,settings.receiverScope,()=>dispatchConfiguredExternalAlertReceiverMonitoring(
-    db,settings.receiverScope,settings.thresholds,transport));
+    db,settings.receiverScope,settings.thresholds,
+    cooldownSeconds===undefined?transport:createReceiverMonitoringCooldownTransport(
+     db,settings.receiverScope,cooldownSeconds,transport)));
   process.stdout.write(JSON.stringify({
    mode:'one-shot-staging-send',
    breachCount:breaches.length,
