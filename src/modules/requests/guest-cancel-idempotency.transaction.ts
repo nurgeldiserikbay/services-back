@@ -50,8 +50,8 @@ export async function cancelGuestRequestIdempotently(
       AND r.guest_contact_id=c.guest_contact_id
     WHERE c.request_id=$1::uuid AND c.scope='READ_CANCEL'
       AND c.token_hash=$2 AND c.consumed_at IS NULL
-      AND c.expires_at>now() AND g.verified_at IS NOT NULL
-      AND g.expires_at>now()
+      AND c.expires_at>clock_timestamp() AND g.verified_at IS NOT NULL
+      AND g.expires_at>clock_timestamp()
     LIMIT 1
   `,[cmd.requestId,tokenHash]);
   const guestContactId=proof.rows[0]?.guest_contact_id;
@@ -116,8 +116,8 @@ export async function cancelGuestRequestIdempotently(
       JOIN guest_contacts g ON g.id=c.guest_contact_id
       WHERE c.request_id=$1::uuid AND c.guest_contact_id=$2::uuid
         AND c.scope='READ_CANCEL' AND c.token_hash=$3
-        AND c.consumed_at IS NULL AND c.expires_at>now()
-        AND g.verified_at IS NOT NULL AND g.expires_at>now()
+        AND c.consumed_at IS NULL AND c.expires_at>clock_timestamp()
+        AND g.verified_at IS NOT NULL AND g.expires_at>clock_timestamp()
       LIMIT 1
       FOR SHARE OF c,g
     `,[cmd.requestId,guestContactId,tokenHash]);
