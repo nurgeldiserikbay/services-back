@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend cancellation saved replay JSON shape (2026-11-17): Prepared in this PR. Only the exact {id,state,version} JSON object is accepted from a COMPLETED idempotency record; arrays, missing and extra fields are rejected. PostgreSQL replay regression added. Branch/PR CI pending; HTTP/staging acceptance remains open.
+
 Backend guest cancellation replay final proof lock (2026-11-17): Prepared in this PR. After ledger and request locks, replay revalidates active READ_CANCEL guest capability and verified unexpired contact with PostgreSQL FOR SHARE row locks; test covers contact expiration and denies replay despite COMPLETED ledger. CI and staging acceptance pending. No public route enabled or release checkbox marked complete.
 
 Backend guest cancellation exact replay version and state invariant (2026-11-17): Prepared in this PR. Previously committed replay responses must report exactly expectedVersion+1, and authoritative locked request status/version must match. PostgreSQL tests simulate forged higher response version alongside advanced request version, and changed request status at unchanged version. Branch/PR CI pending; unmounted HTTP contract and staging acceptance remain open.

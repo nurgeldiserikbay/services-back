@@ -86,6 +86,12 @@ export async function cancelGuestRequestIdempotently(
        saved.state!=='COMPLETED'||saved.response_status!==200||
        !saved.response_body||typeof saved.response_body!=='object')
       throw new GuestCancellationRejected('conflict');
+    // Only the canonical three-field success payload is replayable.
+    // A malformed or extended stored JSON document is never authority.
+    if(Array.isArray(saved.response_body)||
+       Object.keys(saved.response_body as Record<string,unknown>).sort()
+         .join(',')!=='id,state,version')
+      throw new GuestCancellationRejected('conflict');
     const result=saved.response_body as Record<string,unknown>;
     if(result.id!==cmd.requestId||result.state!=='cancelled_by_customer'||
        !Number.isSafeInteger(result.version)||
