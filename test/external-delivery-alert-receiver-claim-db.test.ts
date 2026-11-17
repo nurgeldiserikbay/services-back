@@ -6,7 +6,8 @@ import {acceptExternalDeliveryAlertIngress}
  from '../src/modules/notifications/external-delivery-alert-receiver-ingress.js';
 import {claimExternalAlertReceiverIngress}
  from '../src/modules/notifications/external-delivery-alert-receiver-claim.js';
-import {acknowledgeClaimedExternalAlertReceiverIngress}
+import {acknowledgeClaimedExternalAlertReceiverIngress,
+ acknowledgeExternalAlertReceiverIngress}
  from '../src/modules/notifications/external-delivery-alert-receiver-ack.js';
 
 test('receiver claims reject unbounded or invalid worker parameters before SQL',async()=>{
@@ -43,6 +44,12 @@ test('PostgreSQL receiver claim is unique until expiry and scope-bound',async()=
    code:'DUE_BACKLOG',severity:'warning',observed:3,threshold:2,
   }]);
   assert.deepEqual(await claimExternalAlertReceiverIngress(db,scope,1,5000),[]);
+  await assert.rejects(acknowledgeExternalAlertReceiverIngress(
+   db,scope,first[0].id),/invalid_external_alert_receiver_database/);
+  const stillPending=await db.query<{state:string}>(`
+   SELECT state FROM notification_alert_receiver_ingress WHERE id=$1
+  `,[first[0].id]);
+  assert.equal(stillPending.rows[0].state,'PENDING');
   await db.query(`
    UPDATE notification_alert_receiver_ingress
    SET lease_expires_at=clock_timestamp()-interval '1 second'
