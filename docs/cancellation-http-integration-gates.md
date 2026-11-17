@@ -21,6 +21,10 @@ flags from a browser. Inputs are untrusted even when syntactically valid.
 
 `assertCancellationSessionCsrf` requires two canonical unpadded base64url 256-bit values and compares their decoded bytes in constant time. The **expected** value must come from an independently authenticated, server-verified session or an equivalent server-side request proof, not an attacker-controlled cookie/header; the submitted value is untrusted. Missing, forged and noncanonical token representations are rejected. This pure helper neither issues CSRF tokens nor authenticates a session, and must not be used as a standalone double-submit-cookie gate. The future adapter must call it only after verifying the principal and correctly binding the expected token to that principal.
 
+## Composed unmounted preflight
+
+`parseCancellationPreflight` combines the previously independent strict trusted HTTPS/Origin/Fetch Metadata/media-type checks, canonical session-bound CSRF comparison, strict single idempotency header and raw one-field JSON body validation. This is a **pure, unmounted** input boundary that returns a frozen command only after every check passes. It does **not** establish or verify an account/guest identity itself: `sessionExpectedCsrf`, the expected origin and trusted TLS state must be provided by an authenticated server-side context and trusted deployment configuration. An actual adapter still needs identity authorization, a principal-scoped PostgreSQL idempotency ledger, request lock, atomic mutation and HTTP/rollback E2E before route exposure.
+
 ## Mandatory integration sequence (not yet implemented)
 
 1. Verify account session or request-scoped guest capability. Determine the
