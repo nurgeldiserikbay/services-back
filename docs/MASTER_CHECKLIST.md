@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+Backend guest cancellation replay authoritative state check (2026-11-17): Prepared in this change. A COMMITTED idempotency response now requires a locked service_requests row matching CANCELLED_BY_CUSTOMER and the recorded version; regression exercises a later version mutation and refuses stale success. PostgreSQL branch/PR CI and post-merge main evidence pending. No HTTP route enabled, and no broad release checkbox marked complete.
+
+
 Backend cancellation HTTP command own-property hardening (2026-11-17): Prepared in this change; `parseCancellationCommand` now rejects non-enumerable and symbol-keyed extra fields, and non-enumerable `expectedVersion`; composed preflight also snapshots exactly ten own data fields, rejecting inherited/accessor/hidden transport and CSRF properties without invoking getters. Regression tests added. This remains an unmounted pure contract; PR CI and post-merge main CI pending, no authorization or production release checkbox changed.
 
 
