@@ -33,7 +33,8 @@ export function createReceiverMonitorHttpsTransport(
  if(keys.length!==fields.length||keys.some(k=>typeof k!=='string'||!fields.includes(k)))fail();
  const values=fields.map(k=>{
   const d=Object.getOwnPropertyDescriptor(config,k);
-  if(!d||!Object.hasOwn(d,'value'))fail();
+  if(!d)return fail();
+  if(!Object.hasOwn(d,'value'))return fail();
   return d.value as unknown;
  });
  const [endpoint,approvedHostname,bearerToken,timeoutMs]=values;
@@ -42,7 +43,11 @@ export function createReceiverMonitorHttpsTransport(
     !Number.isSafeInteger(timeoutMs)||timeoutMs<1000||timeoutMs>10000||
     bearerToken.length<32||bearerToken.length>2048||
     !/^[\x21-\x7E]+$/.test(bearerToken))fail();
- if(typeof request!=='function')fail();
+ if(typeof endpoint!=='string')return fail();
+ if(typeof approvedHostname!=='string')return fail();
+ if(typeof bearerToken!=='string')return fail();
+ if(typeof timeoutMs!=='number')return fail();
+ if(typeof request!=='function')return fail();
  let uri:URL;
  try{uri=new URL(endpoint);}catch{return fail();}
  if(uri.protocol!=='https:'||uri.username||uri.password||uri.hash||
@@ -60,13 +65,15 @@ export function createReceiverMonitorHttpsTransport(
     !['code','observed','threshold'].includes(p)))fail();
    const values=['code','observed','threshold'].map(k=>{
     const d=Object.getOwnPropertyDescriptor(b,k);
-    if(!d||!Object.hasOwn(d,'value'))fail();
+    if(!d)return fail();
+    if(!Object.hasOwn(d,'value'))return fail();
     return d.value as unknown;
    });
    const [code,observed,threshold]=values;
-   if(typeof code!=='string'||!CODES.has(code)||
-      typeof observed!=='number'||!Number.isSafeInteger(observed)||
-      observed<0||typeof threshold!=='number'||
+   if(typeof code!=='string')return fail();
+   if(typeof observed!=='number')return fail();
+   if(typeof threshold!=='number')return fail();
+   if(!CODES.has(code)||!Number.isSafeInteger(observed)||observed<0||
       !Number.isSafeInteger(threshold)||threshold<1||observed<threshold)fail();
    return {code,observed,threshold};
   });
