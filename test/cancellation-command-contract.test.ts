@@ -1,7 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {CancellationCommandRejected,parseCancellationCommand,
-  parseCancellationIdempotencyHeader,parseCancellationRawJsonBody} from
+  parseCancellationIdempotencyHeader,parseCancellationRawJsonBody,
+  assertCancellationTransportHeaders} from
   '../src/modules/requests/cancellation-command-contract.js';
 
 const request='11111111-1111-4111-8111-111111111111';
@@ -120,4 +121,48 @@ test('wire parser rejects invalid idempotency header and malformed request ID',(
     request,'{"expectedVersion":1}', 'bad'),CancellationCommandRejected);
   assert.throws(()=>parseCancellationRawJsonBody(
     '../invalid','{"expectedVersion":1}',key),CancellationCommandRejected);
+});
+
+test('unmounted cancellation envelope requires configured HTTPS origin',()=>{
+  const valid={
+    expectedOrigin:'https://services.example.test',
+    origin:'https://services.example.test',
+    fetchSite:'same-origin',
+    contentType:'application/json; charset=utf-8',
+    requestProtocol:'https:',
+  };
+  assert.doesNotThrow(()=>assertCancellationTransportHeaders(valid));
+  assert.doesNotThrow(()=>assertCancellationTransportHeaders({
+    ...valid,contentType:'application/json',
+  }));
+  for(const override of [
+    {origin:undefined},{origin:null},{origin:['https://services.example.test']},
+    {origin:'https://evil.example.test'},
+    {origin:'https://services.example.test.evil.invalid'},
+    {origin:'https://services.example.test:444'},
+    {origin:'null'},
+    {origin:'https://services.example.test/'},
+    {fetchSite:undefined},{fetchSite:'none'}, {fetchSite:'same-site'},
+    {fetchSite:'cross-site'}, {fetchSite:['same-origin']},
+    {requestProtocol:'http:'},{requestProtocol:undefined},
+    {contentType:'text/plain'},{contentType:'application/json, text/plain'},
+    {contentType:'application/json; charset=iso-8859-1'},
+    {contentType:'application/json; debug=true'},
+    {contentType:'application/json; charset=utf-8; debug=true'},
+    {contentType:['application/json']},
+    {expectedOrigin:'http://services.example.test'},
+    {expectedOrigin:'https://services.example.test/'},
+    {expectedOrigin:'https://services.example.test/path'},
+    {expectedOrigin:'https://user:pass@services.example.test'},
+    {expectedOrigin:'https://services.example.test?debug=true'},
+    {expectedOrigin:'https://services.example.test#fragment'},
+    {expectedOrigin:'https://evil.example.test'},
+    {expectedOrigin:'not-an-origin'},
+  ]){
+    assert.throws(()=>assertCancellationTransportHeaders({...valid,...override}),
+      (error:unknown)=>error instanceof CancellationCommandRejected&&
+        error.reason==='invalid_request',JSON.stringify(override));
+  }
+  assert.throws(()=>assertCancellationTransportHeaders(null as never),
+    CancellationCommandRejected);
 });
