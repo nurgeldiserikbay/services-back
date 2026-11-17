@@ -112,8 +112,8 @@ export async function cancelGuestRequestIdempotently(
         AND c.scope='READ_CANCEL' AND c.token_hash=$3
         AND c.consumed_at IS NULL AND c.expires_at>now()
         AND g.verified_at IS NOT NULL AND g.expires_at>now()
-      FOR SHARE OF c,g
       LIMIT 1
+      FOR SHARE OF c,g
     `,[cmd.requestId,guestContactId,tokenHash]);
     if(!liveProof.rows[0])
       throw new GuestCancellationRejected('unavailable');
