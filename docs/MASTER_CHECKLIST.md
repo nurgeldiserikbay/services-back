@@ -174,7 +174,9 @@
 
 ## Evidence log
 
-Backend concurrent requeue audit replay (2026-11-17): Prepared fail-closed READ COMMITTED race guard for an already-committed competing requeue: if the locked FAILED row disappears, recheck the scoped immutable audit before deciding ALREADY_REQUEUED vs DENIED; tests cover matching, conflicting, and malformed replay rows. CI and production acceptance pending; notification audit logs unchecked.
+Backend concurrent requeue audit replay (2026-11-17): [PR #221](https://github.com/nurgeldiserikbay/services-back/pull/221) adds scoped audit replay recheck after a row-lock race when a competing requeue commits, with regressions for same key, different delivery, and malformed audit result. Full CI and staging acceptance pending; notification audit logs unchecked.
+
+Frontend guest create changed-body replay post-merge validation (2026-11-17): [services-front PR #110](https://github.com/nurgeldiserikbay/services-front/pull/110) merged as [328a1553](https://github.com/nurgeldiserikbay/services-front/commit/328a1553e16ff06c052c9d75c5694f758f1a6576) and passed [post-merge main CI #44106904754](https://github.com/nurgeldiserikbay/services-front/actions/runs/44106904754) at the exact merge SHA. Confirms that the real CI guest-create HTTP/PostgreSQL regression rejects changed body under a consumed idempotency key with no additional request/outbox or new cookie. Authenticated cancellation, production OTP, deployed staging and hardware acceptance remain open; no release checkbox changed.
 
 Backend dead-letter requeue uppercase UUID normalization (2026-11-17): [PR #219](https://github.com/nurgeldiserikbay/services-back/pull/219) passed [branch CI #44106483993](https://github.com/nurgeldiserikbay/services-back/actions/runs/44106483993) and [PR CI #44106515081](https://github.com/nurgeldiserikbay/services-back/actions/runs/44106515081) at `db4d803`. Compares the returned canonical PostgreSQL delivery UUID case-insensitively with valid upper-case input while rejecting malformed/incorrect IDs. Notification audit operational acceptance remains open.
 
