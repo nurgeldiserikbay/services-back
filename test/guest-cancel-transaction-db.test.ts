@@ -333,6 +333,25 @@ test('completed guest cancellation replay requires a still-active verified proof
     assert.equal(events.rows[0].n,'1');
   });
 });
+test('completed cancellation ledger replay requires live verified guest contact',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000012';
+    const replay=()=>cancelGuestRequestIdempotently(
+      db,f.request,f.valid,1,key,secret,ledgerSecret);
+    assert.equal((await replay()).version,2);
+    await db.query(`
+      UPDATE guest_contacts SET expires_at=now()-interval '1 second'
+      WHERE id=$1
+    `,[f.guest]);
+    await assert.rejects(replay(),(error:unknown)=>
+      error instanceof GuestCancellationRejected&&error.reason==='unavailable');
+    const ledger=await db.query<{state:string}>(`
+      SELECT state FROM idempotency_records WHERE route=$1
+    `,['/v1/requests/'+f.request+'/cancel']);
+    assert.deepEqual(ledger.rows,[{state:'COMPLETED'}]);
+  });
+});
+
 test('notification failure rolls back guest cancellation and ledger result together',async()=>{
   await withFixture(async(db,f)=>{
     const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000005';
