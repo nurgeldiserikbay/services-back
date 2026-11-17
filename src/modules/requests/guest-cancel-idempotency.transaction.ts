@@ -75,7 +75,7 @@ export async function cancelGuestRequestIdempotently(
   if(!created.rows[0]){
     const existing=await db.query<LedgerRow>(`
       SELECT request_hash,state,response_status,response_body,
-        expires_at>now() AS is_live
+        expires_at>clock_timestamp() AS is_live
       FROM idempotency_records
       WHERE actor_scope=$1 AND method='POST'
         AND route=$2 AND key='guest-cancel-v1'
