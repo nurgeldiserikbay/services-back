@@ -24,11 +24,30 @@ test('PostgreSQL requeue is audited, idempotent, scoped and rolled back atomical
    return 'NOT_FOUND' as const;
   },
  };
+ let injectAuditFailure=false;
  const database={
   query:db.query.bind(db),
-  // Outer BEGIN keeps all fixture and assertions isolated in a single test
-  // transaction; each call uses the SAME PostgreSQL connection as production.
-  transaction:async<T>(fn:(client:Client)=>Promise<T>):Promise<T>=>fn(db),
+  // Model the production atomicity contract inside the isolated outer BEGIN:
+  // a failed audit INSERT must roll back both state transitions.
+  transaction:async<T>(fn:(client:Client)=>Promise<T>):Promise<T>=>{
+   await db.query('SAVEPOINT requeue_atomic_operation');
+   try{
+    const client={
+     query:((sql:string,values?:unknown[])=>{
+      if(injectAuditFailure&&sql.includes('INSERT INTO notification_requeue_audit'))
+       throw new Error('simulated_notification_audit_insert_failure');
+      return db.query(sql,values);
+     }) as Client['query'],
+    };
+    const result=await fn(client as Client);
+    await db.query('RELEASE SAVEPOINT requeue_atomic_operation');
+    return result;
+   }catch(error){
+    await db.query('ROLLBACK TO SAVEPOINT requeue_atomic_operation');
+    await db.query('RELEASE SAVEPOINT requeue_atomic_operation');
+    throw error;
+   }
+  },
  };
  const read=async()=>{
   const d=await db.query<{state:string;attempt_count:number;lease_token:string|null}>(`
@@ -73,6 +92,21 @@ test('PostgreSQL requeue is audited, idempotent, scoped and rolled back atomical
    (id,intent_id,channel,state,attempt_count)
    VALUES($1,$2,'EMAIL','FAILED',5)`,[deliveryId,intentId]);
 
+  // Simulate the audit INSERT failing after both UPDATE statements ran.
+  // A transaction implementation must roll back the state as well as the
+  // missing audit row. No partial requeue can escape the COMMIT boundary.
+  injectAuditFailure=true;
+  await assert.rejects(requeueFailedOrganizationDelivery(
+   database as never,provider,token,pepper,deliveryId,key,scope),
+   /simulated_notification_audit_insert_failure/);
+  injectAuditFailure=false;
+  assert.deepEqual(await read(),{
+   delivery:{state:'FAILED',attempt_count:5,lease_token:null},
+   intent:{state:'FAILED',attempts:5},
+   audits:[],
+  });
+  assert.equal(providerCalls,1);
+
   assert.equal(await requeueFailedOrganizationDelivery(
    database as never,provider,token,pepper,deliveryId,key,scope),'REQUEUED');
   assert.deepEqual(await read(),{
@@ -84,12 +118,12 @@ test('PostgreSQL requeue is audited, idempotent, scoped and rolled back atomical
   assert.equal(await requeueFailedOrganizationDelivery(
    database as never,provider,token,pepper,deliveryId,key,scope),
    'ALREADY_REQUEUED');
-  assert.equal(providerCalls,1);
+  assert.equal(providerCalls,2);
   assert.equal((await read()).audits.length,1);
   assert.equal(await requeueFailedOrganizationDelivery(
    database as never,provider,token,pepper,deliveryId,randomUUID(),
    'organization:'+randomUUID()),'DENIED');
-  assert.equal(providerCalls,1);
+  assert.equal(providerCalls,2);
 
   // A revoked session cannot even receive ALREADY_REQUEUED metadata.
   await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',
