@@ -89,7 +89,7 @@ export async function cancelGuestRequestIdempotently(
     const result=saved.response_body as Record<string,unknown>;
     if(result.id!==cmd.requestId||result.state!=='cancelled_by_customer'||
        !Number.isSafeInteger(result.version)||
-       (result.version as number)<=cmd.expectedVersion)
+       (result.version as number)!==cmd.expectedVersion+1)
       throw new GuestCancellationRejected('conflict');
     // A stored success is not authority to report a stale state after any
     // later request mutation. Verify the authoritative row under a lock.
