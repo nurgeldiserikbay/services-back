@@ -32,6 +32,10 @@ export async function claimExternalAlertReceiverIngress(
    WHERE receiver_scope=$1 AND state='PENDING'
      AND claim_count<2147483647
      AND NOT EXISTS (
+      SELECT 1 FROM notification_alert_receiver_terminal_failures terminal
+      WHERE terminal.ingress_id=notification_alert_receiver_ingress.id
+     )
+     AND NOT EXISTS (
       SELECT 1 FROM notification_alert_receiver_retry_schedule retry
       WHERE retry.ingress_id=notification_alert_receiver_ingress.id
        AND retry.next_attempt_at>clock_timestamp()
