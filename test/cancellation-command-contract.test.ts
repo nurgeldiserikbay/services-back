@@ -260,6 +260,44 @@ test('unmounted cancellation preflight composes all security boundary checks',()
     CancellationCommandRejected);
 });
 
+test('composed cancellation preflight rejects inherited, hidden and getter fields',()=>{
+  const csrf=randomBytes(32).toString('base64url');
+  const valid={
+    requestId:request,rawBody:'{"expectedVersion":1}',
+    idempotencyHeader:key,csrfHeader:csrf,sessionExpectedCsrf:csrf,
+    expectedOrigin:'https://services.example.test',
+    origin:'https://services.example.test',
+    fetchSite:'same-origin',contentType:'application/json',
+    requestProtocol:'https:',
+  };
+  const inherited=Object.create(valid) as typeof valid;
+  assert.throws(()=>parseCancellationPreflight(inherited),
+    CancellationCommandRejected);
+  for(const field of Object.keys(valid)){
+    const poisoned={...valid};
+    let getterCalls=0;
+    Object.defineProperty(poisoned,field,{
+      enumerable:true,configurable:true,
+      get(){getterCalls++;throw Error('accessor_executed');},
+    });
+    assert.throws(()=>parseCancellationPreflight(poisoned),
+      CancellationCommandRejected,field);
+    assert.equal(getterCalls,0,field);
+  }
+  const withHidden=Object.defineProperty({...valid},'actor',{
+    value:'ADMIN',enumerable:false,
+  });
+  const withSymbol=Object.assign({...valid},{
+    [Symbol('override')]:true,
+  });
+  for(const invalid of [withHidden,withSymbol]){
+    assert.throws(()=>parseCancellationPreflight(invalid),
+      CancellationCommandRejected);
+  }
+  const plain=Object.assign(Object.create(null) as typeof valid,valid);
+  assert.equal(parseCancellationPreflight(plain).expectedVersion,1);
+});
+
 test('guest cancellation idempotency identity is stable, scoped and payload-sensitive',()=>{
   const contact='22222222-2222-4222-8222-222222222222';
   const anotherContact='33333333-3333-4333-8333-333333333333';
