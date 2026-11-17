@@ -156,13 +156,37 @@ export function parseCancellationPreflight(input:Readonly<{
   contentType:unknown;
   requestProtocol:unknown;
 }>):CancellationCommand{
-  if(!input||typeof input!=='object')
+  const reject=():never=>{
     throw new CancellationCommandRejected('invalid_request');
-  assertCancellationTransportHeaders(input);
-  assertCancellationSessionCsrf(input.csrfHeader,input.sessionExpectedCsrf);
+  };
+  if(!input||typeof input!=='object')reject();
+  // All transport/session fields must be explicit own data properties.
+  // Accessor-backed fields must never be evaluated by validation.
+  const fields=[
+    'requestId','rawBody','idempotencyHeader','csrfHeader',
+    'sessionExpectedCsrf','expectedOrigin','origin','fetchSite',
+    'contentType','requestProtocol',
+  ] as const;
+  const snapshot:Record<string,unknown>=Object.create(null);
+  try{
+    const prototype=Object.getPrototypeOf(input);
+    if(prototype!==Object.prototype&&prototype!==null)reject();
+    const descriptors=Object.getOwnPropertyDescriptors(input);
+    const names=Reflect.ownKeys(descriptors);
+    if(names.length!==fields.length||
+       names.some(name=>typeof name!=='string'||
+         !(fields as readonly string[]).includes(name)))reject();
+    for(const field of fields){
+      const descriptor=descriptors[field];
+      if(!descriptor||!Object.hasOwn(descriptor,'value'))reject();
+      snapshot[field]=descriptor.value;
+    }
+  }catch{reject();}
+  assertCancellationTransportHeaders(snapshot);
+  assertCancellationSessionCsrf(snapshot.csrfHeader,snapshot.sessionExpectedCsrf);
   const idempotencyKey=parseCancellationIdempotencyHeader(
-    input.idempotencyHeader);
-  return parseCancellationRawJsonBody(input.requestId,input.rawBody,
+    snapshot.idempotencyHeader);
+  return parseCancellationRawJsonBody(snapshot.requestId,snapshot.rawBody,
     idempotencyKey);
 }
 
