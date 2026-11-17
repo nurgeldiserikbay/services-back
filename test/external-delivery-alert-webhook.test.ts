@@ -114,7 +114,12 @@ test('non-2xx responses and fetch failures are propagated, not treated as succes
  const failure=new Error('network unreachable');
  const failed=createExternalDeliveryWebhookTransport(valid,
   (async()=>{throw failure;}) as typeof fetch);
- await assert.rejects(failed.send([backlog]),error=>error===failure);
+ await assert.rejects(failed.send([backlog]),error=>{
+  assert.equal((error as Error).message,'external_alert_webhook_transport_failed');
+  assert.equal((error as Error).cause,undefined);
+  assert.equal(String(error).includes(failure.message),false);
+  return true;
+ });
 });
 
 test('integration: SQL snapshot dispatches to HTTPS transport only above approved policy',async()=>{
@@ -145,4 +150,69 @@ test('integration: SQL snapshot dispatches to HTTPS transport only above approve
  }]}]);
  assert.deepEqual(alerts,bodies.length===1?
   (bodies[0] as {alerts:typeof alerts}).alerts:[]);
+});
+
+test('idempotency window gives stable keys across retries and alert order, then rotates',async()=>{
+ const headers:Record<string,string>[]=[];
+ let now=180000;
+ const transport=createExternalDeliveryWebhookTransport({
+  ...valid,idempotencyWindowMs:60000,
+ },(async(_input:string|URL|Request,init?:RequestInit)=>{
+  headers.push(init?.headers as Record<string,string>);
+  return {ok:true} as Response;
+ }) as typeof fetch,()=>now);
+ const warning={code:'EXPIRED_LEASES',severity:'warning',observed:1,threshold:1} as const;
+ await transport.send([backlog,warning]);
+ now=181000;
+ await transport.send([warning,backlog]);
+ assert.equal(headers.length,2);
+ assert.match(headers[0]['idempotency-key'],/^services-alert-v1-[a-f0-9]{64}$/);
+ assert.equal(headers[0]['idempotency-key'],headers[1]['idempotency-key']);
+ now=240000;
+ await transport.send([backlog,warning]);
+ assert.notEqual(headers[2]['idempotency-key'],headers[1]['idempotency-key']);
+ assert.equal(headers[0]['authorization'],'Bearer '+valid.bearerToken);
+ assert.equal(JSON.stringify(headers[0]).includes(valid.endpoint),false);
+});
+
+test('idempotency stays opt-in and rejects invalid window or clock without sending',async()=>{
+ let sends=0;
+ const noWindow=createExternalDeliveryWebhookTransport(valid,
+  (async(_input:string|URL|Request,init?:RequestInit)=>{
+   sends++;
+   assert.equal((init?.headers as Record<string,string>)['idempotency-key'],undefined);
+   return {ok:true} as Response;
+  }) as typeof fetch);
+ await noWindow.send([backlog]);
+ for(const idempotencyWindowMs of [0,59999,3600001,1.5,NaN,Infinity]){
+  assert.throws(()=>createExternalDeliveryWebhookTransport({
+   ...valid,idempotencyWindowMs,
+  }),/invalid_external_alert_webhook_config/);
+ }
+ let getterCalls=0;
+ const accessor=Object.defineProperty({...valid},'idempotencyWindowMs',{
+  get(){getterCalls++;throw new Error('unexpected getter');},
+ });
+ assert.throws(()=>createExternalDeliveryWebhookTransport(accessor),
+  /invalid_external_alert_webhook_config/);
+ assert.equal(getterCalls,0);
+ const invalidClock=createExternalDeliveryWebhookTransport({
+  ...valid,idempotencyWindowMs:60000,
+ },(async()=>{sends++;return {ok:true} as Response;}) as typeof fetch,
+ ()=>NaN);
+ await assert.rejects(invalidClock.send([backlog]),
+  /invalid_external_alert_webhook_clock/);
+ assert.equal(sends,1);
+});
+
+test('webhook does not leak tokens or target URLs from rejected fetch exceptions',async()=>{
+ const secret='sensitive-private-url-and-token';
+ const transport=createExternalDeliveryWebhookTransport(valid,
+  (async()=>{throw new Error(secret);}) as typeof fetch);
+ await assert.rejects(transport.send([backlog]),error=>{
+  assert.equal((error as Error).message,'external_alert_webhook_transport_failed');
+  assert.equal((error as Error).cause,undefined);
+  assert.equal(String(error).includes(secret),false);
+  return true;
+ });
 });
