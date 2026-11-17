@@ -174,7 +174,9 @@
 
 ## Evidence log
 
-Backend dead-letter requeue audit row integrity (2026-11-17): PR pending adds fail-closed replay-audit ID validation, and checks returned delivery/intent update identities before an audit row can be recorded; mocked negative regressions added. Full PostgreSQL, CI and production acceptance not yet verified; notification audit logs checkbox remains unchecked.
+Backend dead-letter requeue audit row integrity (2026-11-17): PR #216 adds fail-closed replay audit identity and UPDATE RETURNING identity validation with negative tests. Branch/PR CI and full PostgreSQL acceptance pending; notification audit logs checkbox remains unchecked.
+
+Frontend cross-account seller denial has no durable notification side effects (2026-11-17): [services-front PR #106](https://github.com/nurgeldiserikbay/services-front/pull/106) merged as [900b78dc](https://github.com/nurgeldiserikbay/services-front/commit/900b78dc4e9880072ca8537ac2ba2774237e392c) with [push CI #44083947163 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44083947163) and [PR CI #44083958120 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44083958120) at head b56d65e1ae96279e1c0a0fbbbf9954baa17ccb51. The signed-session PostgreSQL + live HTTP E2E verifies that outsider seller action HTTP 403 and invalid-CSRF HTTP 401 leave request pending and cause zero domain outbox events and zero acceptance notification intents. These tests do not establish real provider login, notification delivery worker, deployed staging or mobile device acceptance; release checkboxes remain unchanged. Post-merge main CI not yet confirmed.
 
 Backend alert dispatch driver-result integrity (2026-11-17): PR #215 introduces strict fail-closed PostgreSQL claim/ACK result validation and regression tests; prior branch/PR CI passed, latest merged-head CI is not yet verified; provider acceptance and delivery monitoring remain unchecked.
 
