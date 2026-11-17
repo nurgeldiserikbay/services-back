@@ -37,9 +37,12 @@ export function parseCancellationCommand(
   const prototype=Object.getPrototypeOf(data);
   if(prototype!==Object.prototype&&prototype!==null)
     throw new CancellationCommandRejected('invalid_request');
+  // Reject hidden own keys too: Object.keys omits non-enumerable and
+  // symbol properties, which must not cross this transport boundary.
+  const ownKeys=Reflect.ownKeys(data);
   const descriptor=Object.getOwnPropertyDescriptor(data,'expectedVersion');
-  if(Object.keys(data).length!==1||!descriptor||
-     !Object.hasOwn(descriptor,'value')||
+  if(ownKeys.length!==1||ownKeys[0]!=='expectedVersion'||!descriptor||
+     !descriptor.enumerable||!Object.hasOwn(descriptor,'value')||
      !Number.isSafeInteger(descriptor.value)||descriptor.value<1)
     throw new CancellationCommandRejected('invalid_request');
   return Object.freeze({
