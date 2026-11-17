@@ -251,6 +251,42 @@ test('guest cancellation ledger replay rejects stale authoritative request versi
   });
 });
 
+test('guest cancellation replay rejects forged success version even if DB version matches',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000010';
+    const replay=()=>cancelGuestRequestIdempotently(
+      db,f.request,f.valid,1,key,secret,ledgerSecret);
+    const done=await replay();
+    assert.equal(done.version,2);
+    // An idempotency record cannot assert a transition larger than +1,
+    // even if the authoritative request was separately advanced.
+    await db.query('UPDATE service_requests SET version=3 WHERE id=$1',
+      [f.request]);
+    await db.query(`
+      UPDATE idempotency_records
+      SET response_body=$2::jsonb
+      WHERE route=$1
+    `,['/v1/requests/'+f.request+'/cancel',
+      JSON.stringify({...done,version:3})]);
+    await assert.rejects(replay(),(error:unknown)=>
+      error instanceof GuestCancellationRejected&&error.reason==='conflict');
+  });
+});
+
+test('guest cancellation replay rejects changed request status at same version',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000011';
+    const replay=()=>cancelGuestRequestIdempotently(
+      db,f.request,f.valid,1,key,secret,ledgerSecret);
+    const done=await replay();
+    assert.equal(done.version,2);
+    await db.query("UPDATE service_requests SET status='PENDING' WHERE id=$1",
+      [f.request]);
+    await assert.rejects(replay(),(error:unknown)=>
+      error instanceof GuestCancellationRejected&&error.reason==='conflict');
+  });
+});
+
 test('failed guest cancellation ledger and state changes roll back together',async()=>{
   await withFixture(async(db,f)=>{
     const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000003';

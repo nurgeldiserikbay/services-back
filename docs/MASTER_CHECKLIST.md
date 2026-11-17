@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+Backend guest cancellation exact replay version and state invariant (2026-11-17): Prepared in this PR. Previously committed replay responses must report exactly expectedVersion+1, and authoritative locked request status/version must match. PostgreSQL tests simulate forged higher response version alongside advanced request version, and changed request status at unchanged version. Branch/PR CI pending; unmounted HTTP contract and staging acceptance remain open.
+
+
 Backend guest cancellation replay authoritative state check (2026-11-17): Prepared in this change. A COMMITTED idempotency response now requires a locked service_requests row matching CANCELLED_BY_CUSTOMER and the recorded version; regression exercises a later version mutation and refuses stale success. PostgreSQL branch/PR CI and post-merge main evidence pending. No HTTP route enabled, and no broad release checkbox marked complete.
 
 
