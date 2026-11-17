@@ -5,7 +5,7 @@ import {cancelVerifiedGuestRequest,type GuestCancellationResult,
   GuestCancellationRejected} from './guest-cancel.transaction.js';
 import {cancelGuestRequestIdempotently}
   from './guest-cancel-idempotency.transaction.js';
-import {parseCancellationPreflight}
+import {parseCancellationPreflight,parseCancellationCommand}
   from './cancellation-command-contract.js';
 
 /**
@@ -40,6 +40,20 @@ export class GuestCancellationService{
     requestId:string,readCancelProof:string,expectedVersion:number,
     idempotencyKey:string,
   ):Promise<GuestCancellationResult>{
+    // Reject malformed commands and bearer proofs before acquiring a pool
+    // connection. The transaction repeats validation against live DB state.
+    try{
+      parseCancellationCommand(requestId,{expectedVersion},idempotencyKey);
+      if(typeof readCancelProof!=='string'||
+         !/^[A-Za-z0-9_-]{43}$/.test(readCancelProof)){
+        throw new Error('invalid_guest_capability');
+      }
+      const raw=Buffer.from(readCancelProof,'base64url');
+      if(raw.length!==32||raw.toString('base64url')!==readCancelProof)
+        throw new Error('invalid_guest_capability');
+    }catch{
+      throw new GuestCancellationRejected('unavailable');
+    }
     let pepper:Buffer,ledgerSecret:Buffer;
     try{
       pepper=requireSecret(process.env.GUEST_REQUEST_HMAC_KEY);
