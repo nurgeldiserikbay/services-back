@@ -1,4 +1,5 @@
 import {isIP} from 'node:net';
+import {createHash} from 'node:crypto';
 import type {ExternalDeliveryAlert} from './external-delivery-alerts.js';
 import type {ExternalDeliveryAlertTransport}
  from './external-delivery-alert-dispatch.js';
@@ -14,11 +15,14 @@ export type ExternalDeliveryWebhookConfig=Readonly<{
  approvedHostname:string;
  bearerToken:string;
  timeoutMs:number;
+ /** Optional approved bucket for receiver-side idempotency, 60s–1h. */
+ idempotencyWindowMs?:number;
 }>;
 
 export function createExternalDeliveryWebhookTransport(
  config:ExternalDeliveryWebhookConfig,
  request:typeof fetch=fetch,
+ clock:()=>number=Date.now,
 ):ExternalDeliveryAlertTransport{
  if(!config||typeof config!=='object')
   throw new Error('invalid_external_alert_webhook_config');
@@ -30,6 +34,10 @@ export function createExternalDeliveryWebhookTransport(
   return property.value as unknown;
  });
  const [endpoint,approvedHostname,bearerToken,timeoutMs]=values;
+ const dedupeField=Object.getOwnPropertyDescriptor(config,'idempotencyWindowMs');
+ if(dedupeField&&!Object.hasOwn(dedupeField,'value'))
+  throw new Error('invalid_external_alert_webhook_config');
+ const idempotencyWindowMs:unknown=dedupeField?.value;
  if(typeof endpoint!=='string'||typeof approvedHostname!=='string'||
     typeof bearerToken!=='string'||typeof timeoutMs!=='number'||
     !Number.isSafeInteger(timeoutMs)||timeoutMs<1000||timeoutMs>30000)
@@ -45,13 +53,18 @@ export function createExternalDeliveryWebhookTransport(
     url.hostname!==approvedHostname||isIP(url.hostname)!==0||
     bearerToken.length<16||bearerToken.length>2048||
     !/^[\x21-\x7e]+$/.test(bearerToken)||
-    typeof request!=='function')
+    (idempotencyWindowMs!==undefined&&
+     (typeof idempotencyWindowMs!=='number'||
+      !Number.isSafeInteger(idempotencyWindowMs)||
+      idempotencyWindowMs<60000||idempotencyWindowMs>3600000))||
+    typeof request!=='function'||typeof clock!=='function')
   throw new Error('invalid_external_alert_webhook_config');
  // Do not capture the mutable user-owned config or allow config getter
  // execution during any subsequent send.
  const destination=url.toString();
  const authorization='Bearer '+bearerToken;
  const timeout=timeoutMs;
+ const dedupeWindow=idempotencyWindowMs as number|undefined;
  return Object.freeze({
   async send(alerts:ReadonlyArray<ExternalDeliveryAlert>):Promise<void>{
    if(!Array.isArray(alerts)||alerts.length===0||alerts.length>4)
@@ -84,13 +97,34 @@ export function createExternalDeliveryWebhookTransport(
     seen.add(code as string);
     return {code,severity,observed,threshold};
    });
-   const response=await request(destination,{
-    method:'POST',
-    headers:{'content-type':'application/json','authorization':authorization},
-    body:JSON.stringify({alerts:safe}),
-    redirect:'error',
-    signal:AbortSignal.timeout(timeout),
-   });
+   const headers:Record<string,string>={
+    'content-type':'application/json','authorization':authorization,
+   };
+   if(dedupeWindow!==undefined){
+    const timestamp=clock();
+    if(!Number.isSafeInteger(timestamp)||timestamp<0)
+     throw new Error('invalid_external_alert_webhook_clock');
+    // Canonical order makes the same signals in the same approved time bucket
+    // use the same key across workers; the receiver must enforce deduplication.
+    const canonical=[...safe].sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+    const bucket=Math.floor(timestamp/dedupeWindow);
+    const digest=createHash('sha256').update(JSON.stringify({v:1,bucket,alerts:canonical})).digest('hex');
+    headers['idempotency-key']='services-alert-v1-'+digest;
+   }
+   let response:Response;
+   try{
+    response=await request(destination,{
+     method:'POST',
+     headers,
+     body:JSON.stringify({alerts:safe}),
+     redirect:'error',
+     signal:AbortSignal.timeout(timeout),
+    });
+   }catch{
+    // Network failures may contain destination URLs or authorization details.
+    // Never expose the original message or cause to higher-level logs.
+    throw new Error('external_alert_webhook_transport_failed');
+   }
    if(!response.ok)throw new Error('external_alert_webhook_delivery_failed');
   },
  } satisfies ExternalDeliveryAlertTransport);
