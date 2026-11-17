@@ -34,6 +34,7 @@ export async function scheduleExternalAlertReceiverRetry(
   SELECT id,clock_timestamp()+($4::integer*interval '1 millisecond'),
          clock_timestamp()
   FROM owned
+  WHERE true
   ON CONFLICT (ingress_id) DO UPDATE
   SET next_attempt_at=EXCLUDED.next_attempt_at,
       updated_at=EXCLUDED.updated_at
