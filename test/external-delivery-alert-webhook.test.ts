@@ -114,7 +114,12 @@ test('non-2xx responses and fetch failures are propagated, not treated as succes
  const failure=new Error('network unreachable');
  const failed=createExternalDeliveryWebhookTransport(valid,
   (async()=>{throw failure;}) as typeof fetch);
- await assert.rejects(failed.send([backlog]),error=>error===failure);
+ await assert.rejects(failed.send([backlog]),error=>{
+  assert.equal((error as Error).message,'external_alert_webhook_transport_failed');
+  assert.equal((error as Error).cause,undefined);
+  assert.equal(String(error).includes(failure.message),false);
+  return true;
+ });
 });
 
 test('integration: SQL snapshot dispatches to HTTPS transport only above approved policy',async()=>{
@@ -145,4 +150,16 @@ test('integration: SQL snapshot dispatches to HTTPS transport only above approve
  }]}]);
  assert.deepEqual(alerts,bodies.length===1?
   (bodies[0] as {alerts:typeof alerts}).alerts:[]);
+});
+
+test('webhook does not leak tokens or target URLs from rejected fetch exceptions',async()=>{
+ const secret='sensitive-private-url-and-token';
+ const transport=createExternalDeliveryWebhookTransport(valid,
+  (async()=>{throw new Error(secret);}) as typeof fetch);
+ await assert.rejects(transport.send([backlog]),error=>{
+  assert.equal((error as Error).message,'external_alert_webhook_transport_failed');
+  assert.equal((error as Error).cause,undefined);
+  assert.equal(String(error).includes(secret),false);
+  return true;
+ });
 });
