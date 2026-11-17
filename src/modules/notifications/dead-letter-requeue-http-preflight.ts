@@ -45,7 +45,7 @@ export function parseRequeueHttpPreflight(input:Readonly<{
     !/^application\/json(?:;\s*charset=utf-8)?$/i.test(input.contentType))
   reject();
  let origin:URL;
- try{origin=new URL(input.expectedOrigin);}
+ try{origin=new URL(input.expectedOrigin as string);}
  catch{reject();return undefined as never;}
  if(origin.protocol!=='https:'||origin.origin!==input.expectedOrigin||
     origin.username||origin.password||origin.pathname!=='/'||
@@ -55,8 +55,8 @@ export function parseRequeueHttpPreflight(input:Readonly<{
     typeof input.sessionExpectedCsrf!=='string'||
     !CSRF.test(input.csrfHeader)||!CSRF.test(input.sessionExpectedCsrf))
   reject();
- const a=Buffer.from(input.csrfHeader,'base64url');
- const b=Buffer.from(input.sessionExpectedCsrf,'base64url');
+ const a=Buffer.from(input.csrfHeader as string,'base64url');
+ const b=Buffer.from(input.sessionExpectedCsrf as string,'base64url');
  if(a.length!==32||b.length!==32||
     a.toString('base64url')!==input.csrfHeader||
     b.toString('base64url')!==input.sessionExpectedCsrf||
@@ -65,7 +65,7 @@ export function parseRequeueHttpPreflight(input:Readonly<{
  // No user-supplied actor, organization scope, provider verdict or retry
  // state ever crosses this boundary.
  return Object.freeze({
-  deliveryId:input.deliveryId.toLowerCase(),
-  requeueKey:input.requeueKeyHeader.toLowerCase(),
+  deliveryId:(input.deliveryId as string).toLowerCase(),
+  requeueKey:(input.requeueKeyHeader as string).toLowerCase(),
  });
 }
