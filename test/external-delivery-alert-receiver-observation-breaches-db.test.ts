@@ -24,7 +24,7 @@ test('PostgreSQL receiver observation flags durable retry and terminal counts wi
  try{
   assert.equal(await acceptExternalDeliveryAlertIngress(db,scope,key('e'),alerts),'accepted');
   assert.equal(await acceptExternalDeliveryAlertIngress(db,scope,key('f'),alerts),'accepted');
-  assert.equal(await acceptExternalDeliveryAlertIngress(db,other,key('g'),alerts),'accepted');
+  assert.equal(await acceptExternalDeliveryAlertIngress(db,other,key('a'),alerts),'accepted');
   const leased=await claimExternalAlertReceiverIngress(db,scope,2,30000);
   assert.equal(leased.length,2);
   assert.equal(await recordExternalAlertReceiverDeliveryFailure(
