@@ -5,6 +5,8 @@ import {createReceiverMonitorHttpsTransport}
  from '../src/modules/notifications/external-delivery-alert-receiver-monitor-https-transport.js';
 import {dispatchConfiguredExternalAlertReceiverMonitoring}
  from '../src/modules/notifications/external-delivery-alert-receiver-monitor-configured-dispatch.js';
+import {runWithReceiverMonitoringSessionLock}
+ from '../src/modules/notifications/external-delivery-alert-receiver-monitor-send-lock.js';
 
 /**
  * Operator-invoked, staging-only one-shot dispatch.
@@ -31,8 +33,9 @@ async function main():Promise<void>{
   await db.connect();
   // The observer uses a single scoped count query; no transaction lock
   // should remain open while the HTTP transport is awaited.
-  const breaches=await dispatchConfiguredExternalAlertReceiverMonitoring(
-   db,settings.receiverScope,settings.thresholds,transport);
+  const breaches=await runWithReceiverMonitoringSessionLock(
+   db,settings.receiverScope,()=>dispatchConfiguredExternalAlertReceiverMonitoring(
+    db,settings.receiverScope,settings.thresholds,transport));
   process.stdout.write(JSON.stringify({
    mode:'one-shot-staging-send',
    breachCount:breaches.length,
