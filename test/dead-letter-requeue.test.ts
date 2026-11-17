@@ -245,3 +245,56 @@ test('malformed raced audit result aborts before any requeue update',async()=>{
  assert.equal(counts().updates,0);
  assert.equal(counts().audits,0);
 });
+
+test('preflight race rechecks committed audit without calling provider',async()=>{
+ for(const [recorded,expected] of [
+  [deliveryId,'ALREADY_REQUEUED'],
+  [randomUUID(),'DENIED'],
+  [null,'DENIED'],
+ ] as const){
+  const {db,provider,counts}=fixture();
+  const original=db.query;
+  let auditReads=0;
+  db.query=async(sql:string)=>{
+   if(sql.includes('SELECT a.delivery_id::text')){
+    auditReads++;
+    return {rows:auditReads===1?[]:recorded===null?[]:
+     [{delivery_id:recorded}]};
+   }
+   if(sql.includes('SELECT n.id::text AS intent_id,d.channel'))
+    return {rows:[]};
+   return original(sql);
+  };
+  assert.equal(await requeueFailedOrganizationDelivery(
+   db as never,provider,bearer,pepper,deliveryId,randomUUID(),scope,now),
+   expected);
+  assert.equal(auditReads,2);
+  assert.equal(counts().providerCalls,0);
+  assert.equal(counts().updates,0);
+  assert.equal(counts().audits,0);
+  assert.equal(counts().transactions,0);
+ }
+});
+
+test('preflight race rejects malformed or duplicate audit rows without provider traffic',async()=>{
+ for(const rows of [[{delivery_id:'invalid'}],
+  [{delivery_id:deliveryId},{delivery_id:deliveryId}]]){
+  const {db,provider,counts}=fixture();
+  const original=db.query;
+  let auditReads=0;
+  db.query=async(sql:string)=>{
+   if(sql.includes('SELECT a.delivery_id::text')){
+    auditReads++;
+    return {rows:auditReads===1?[]:rows};
+   }
+   if(sql.includes('SELECT n.id::text AS intent_id,d.channel'))
+    return {rows:[]};
+   return original(sql);
+  };
+  await assert.rejects(requeueFailedOrganizationDelivery(
+   db as never,provider,bearer,pepper,deliveryId,randomUUID(),scope,now),
+   /notification_dead_letter_audit_conflict/);
+  assert.equal(counts().providerCalls,0);
+  assert.equal(counts().updates,0);
+ }
+});
