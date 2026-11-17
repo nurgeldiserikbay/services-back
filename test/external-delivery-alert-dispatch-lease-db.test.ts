@@ -72,3 +72,47 @@ test('invalid leases and malformed tokens reject before SQL',async()=>{
  }
  assert.equal(sql,0);
 });
+
+test('malformed driver claim rows reject without executing getters',async()=>{
+ let reads=0;
+ const forged=Object.defineProperty({
+  event_id:'00000000-0000-4000-8000-000000000001',
+  code:'DUE_BACKLOG',generation:'1',observed:'3',
+  threshold:'2',severity:'warning',
+ },'code',{get(){reads++;throw new Error('unsafe claim getter');}});
+ for(const response of [
+  {rows:[forged]},
+  {rows:null},
+  Object.defineProperty({},'rows',{get(){reads++;throw Error('unsafe rows getter');}}),
+  {rows:[null]},
+ ]) {
+  let queries=0;
+  const db={query:async()=>++queries===1?{rows:[]}:response};
+  await assert.rejects(claimExternalAlertEvent(db as never,30),
+   /invalid_external_alert_dispatch_(row|result)/);
+  assert.equal(queries,2);
+ }
+ assert.equal(reads,0);
+});
+
+test('malformed ACK response cannot be mistaken for delivery success',async()=>{
+ const eventId='00000000-0000-4000-8000-000000000001';
+ const token='00000000-0000-4000-8000-000000000002';
+ let getters=0;
+ const forged=Object.defineProperty({},'event_id',{
+  get(){getters++;throw Error('unsafe ack getter');},
+ });
+ for(const response of [
+  {rows:[{event_id:'00000000-0000-4000-8000-000000000003'}]},
+  {rows:[forged]}, {rows:null}, {rows:[null]},
+  {rows:[{event_id:eventId},{event_id:eventId}]},
+ ]) {
+  let calls=0;
+  const db={query:async()=>{calls++;return response;}};
+  await assert.rejects(
+   acknowledgeExternalAlertEvent(db as never,eventId,token),
+   /invalid_external_alert_dispatch_(ack_result|result)/);
+  assert.equal(calls,1);
+ }
+ assert.equal(getters,0);
+});
