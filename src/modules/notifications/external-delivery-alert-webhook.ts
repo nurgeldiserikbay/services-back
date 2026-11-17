@@ -58,6 +58,7 @@ export function createExternalDeliveryWebhookTransport(
     throw new Error('invalid_external_alert_webhook_payload');
    const allowedCodes=new Set(['QUEUE_INCONSISTENT','DUE_BACKLOG',
     'EXPIRED_LEASES','TERMINAL_FAILURES']);
+   const seen=new Set<string>();
    const safe=alerts.map(alert=>{
     if(!alert||typeof alert!=='object')throw new Error('invalid_external_alert_webhook_payload');
     const properties=['code','severity','observed','threshold'] as const;
@@ -77,8 +78,10 @@ export function createExternalDeliveryWebhookTransport(
        (code==='QUEUE_INCONSISTENT'?! (severity==='critical'&&threshold===1):
         severity!=='warning')||
        typeof observed!=='number'||!Number.isSafeInteger(observed)||observed<1||
-       typeof threshold!=='number'||!Number.isSafeInteger(threshold)||threshold<1)
+       typeof threshold!=='number'||!Number.isSafeInteger(threshold)||threshold<1||
+       observed<threshold||seen.has(code as string))
      throw new Error('invalid_external_alert_webhook_payload');
+    seen.add(code as string);
     return {code,severity,observed,threshold};
    });
    const response=await request(destination,{
