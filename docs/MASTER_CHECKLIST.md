@@ -174,7 +174,9 @@
 
 ## Evidence log
 
-Backend dead-letter requeue uppercase UUID normalization (2026-11-17): PR pending makes UPDATE RETURNING delivery UUID comparison case-insensitive while still requiring a valid string and exact identity; regression covers uppercase caller UUID against canonical PostgreSQL lower-case response. CI, final PR merge and broader notification audit acceptance pending; no acceptance checkbox changed.
+Backend dead-letter requeue uppercase UUID normalization (2026-11-17): [PR #219](https://github.com/nurgeldiserikbay/services-back/pull/219) passed [branch CI #44106483993](https://github.com/nurgeldiserikbay/services-back/actions/runs/44106483993) and [PR CI #44106515081](https://github.com/nurgeldiserikbay/services-back/actions/runs/44106515081) at `db4d803`. Compares the returned canonical PostgreSQL delivery UUID case-insensitively with valid upper-case input while rejecting malformed/incorrect IDs. Notification audit operational acceptance remains open.
+
+Frontend guest create idempotency body-conflict live E2E (2026-11-17): [services-front PR #110](https://github.com/nurgeldiserikbay/services-front/pull/110) merged as [328a1553](https://github.com/nurgeldiserikbay/services-front/commit/328a1553e16ff06c052c9d75c5694f758f1a6576) after [push CI #44106334760 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44106334760) and [PR CI #44106352455 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44106352455) at exact head e4cce0a9fd15ff59d017c9ebd8f2e8b7b24e227c. Disposable PostgreSQL + production-built Next.js HTTP E2E confirms same guest CREATE_REQUEST idempotency key with a changed valid body fails closed, issues no additional READ_CANCEL cookie, and still leaves precisely one committed guest request and outbox event; an unmodified same-key retry remains allowed. No real OTP, external email delivery, guest cancellation HTTP adapter, deployed staging or physical-device sign-off is implied; release checks unchanged. Post-merge main CI pending.
 
 Frontend consumed guest proof post-merge main CI (2026-11-17): services-front [PR #109](https://github.com/nurgeldiserikbay/services-front/pull/109), merged at [f38608ff](https://github.com/nurgeldiserikbay/services-front/commit/f38608ff92269d2f82cef1a0006b60c041e80518), passed [post-merge main CI #44088031282](https://github.com/nurgeldiserikbay/services-front/actions/runs/44088031282) at the exact merge SHA. This confirms integrated CI coverage for consumed CREATE_REQUEST + fresh idempotency-key denial alongside same-key committed replay. This does not approve the default-off guest cancellation HTTP adapter, real provider OTP or delivery, staging or on-device validation. Acceptance gates remain unchecked.
 
@@ -813,9 +815,19 @@ Private MFA HTTP database-outage follow-up (2026-11-16): [`0bf3569`](https://git
 
 | 2026-11-16 | services-back | [PR #137](https://github.com/nurgeldiserikbay/services-back/pull/137), [`89a6d8d`](https://github.com/nurgeldiserikbay/services-back/commit/89a6d8da57d5ebbdd4cd021238e0193b92207b87), [branch CI #43848576260](https://github.com/nurgeldiserikbay/services-back/actions/runs/43848576260), [main CI #43849055634](https://github.com/nurgeldiserikbay/services-back/actions/runs/43849055634) | Real PostgreSQL two-session E2E verifies outbox stage and claim committed before provider reconciliation, SENT intent/delivery consistency, stable accepted receipt without sending again, and idempotently empty second cycle | **PASS branch CI, merged main; post-merge CI pending**. Production provider/scheduler, HTTP authorization and alert transport remain open |
 
+### 2026-11-17 — cross-repository main CI verification
+
+| Date | Repository | Main commit | Workflow evidence | Result and scope |
+|---|---|---|---|---|
+| 2026-11-17 | services-back | [`85ccb102`](https://github.com/nurgeldiserikbay/services-back/commit/85ccb1025ba03dcddaf650cc99fe459ebeb4a028) | [Backend foundation CI #44088086157](https://github.com/nurgeldiserikbay/services-back/actions/runs/44088086157) | **PASS**; foundation workflow only, not production acceptance |
+| 2026-11-17 | services-front | [`f38608ff`](https://github.com/nurgeldiserikbay/services-front/commit/f38608ff92269d2f82cef1a0006b60c041e80518) | [Frontend foundation CI #44088031282](https://github.com/nurgeldiserikbay/services-front/actions/runs/44088031282) | **PASS**; foundation workflow only, cross-service E2E pending |
+| 2026-11-16 | services-admin | [`590d82a0`](https://github.com/nurgeldiserikbay/services-admin/commit/590d82a0244af6deb204340f23f42526211e7e0c) | [Admin foundation CI #43854510440](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43854510440) | **PASS**; foundation workflow only, admin HTTP/CSRF and staging acceptance pending |
+
+No additional acceptance checkbox is closed by these workflow-level results alone. Verify individual job coverage and E2E evidence before changing completion counts.
+
 ## Next acceptance gates
 
-1. Obtain actual backend main workflow/job logs; repair failures and record run URLs.
+1. Inspect the recorded passing backend/frontend/admin main workflow jobs for exact coverage; add missing integration and E2E evidence before closing acceptance items.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
