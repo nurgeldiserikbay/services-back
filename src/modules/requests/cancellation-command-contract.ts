@@ -167,7 +167,7 @@ export function parseCancellationPreflight(input:Readonly<{
     'sessionExpectedCsrf','expectedOrigin','origin','fetchSite',
     'contentType','requestProtocol',
   ] as const;
-  const snapshot:Record<string,unknown>=Object.create(null);
+  const snapshot:Record<(typeof fields)[number],unknown>=Object.create(null);
   try{
     const prototype=Object.getPrototypeOf(input);
     if(prototype!==Object.prototype&&prototype!==null)reject();
