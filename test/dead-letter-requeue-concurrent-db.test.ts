@@ -146,6 +146,23 @@ test('two PostgreSQL clients serialize requeue and keep a single immutable audit
    first.query('ROLLBACK').catch(()=>{}),
    second.query('ROLLBACK').catch(()=>{}),
   ]);
-  await Promise.all([first.end(),second.end(),observer.end()]);
+  // The audit is append-only; preserve it, but neutralize the disposable
+  // fixture so later batch worker E2E tests do not claim its PENDING delivery.
+  // Keep delivery/intent counters and states consistent in one transaction.
+  await observer.query('BEGIN');
+  try{
+   await observer.query(
+    "UPDATE notification_deliveries SET state='SENT',attempt_count=1,next_attempt_at=NULL WHERE id=$1",
+    [ids.delivery]);
+   await observer.query(
+    "UPDATE notification_intents SET state='SENT',attempts=1,next_attempt_at=NULL WHERE id=$1",
+    [ids.intent]);
+   await observer.query('COMMIT');
+  }catch(error){
+   await observer.query('ROLLBACK').catch(()=>{});
+   throw error;
+  }finally{
+   await Promise.all([first.end(),second.end(),observer.end()]);
+  }
  }
 });
