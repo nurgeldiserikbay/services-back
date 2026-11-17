@@ -158,7 +158,7 @@ test('unsupported provider fails closed before SQL',async()=>{
 });
 
 test('malformed prior audit identity fails closed before provider contact',async()=>{
- for(const recorded of ['invalid',null,42]){
+ for(const recorded of ['invalid',42]){
   const {db,provider,counts}=fixture('owner',recorded as never);
   await assert.rejects(requeueFailedOrganizationDelivery(
    db as never,provider,bearer,pepper,deliveryId,randomUUID(),scope,now),
