@@ -91,6 +91,16 @@ export async function cancelGuestRequestIdempotently(
        !Number.isSafeInteger(result.version)||
        (result.version as number)<=cmd.expectedVersion)
       throw new GuestCancellationRejected('conflict');
+    // A stored success is not authority to report a stale state after any
+    // later request mutation. Verify the authoritative row under a lock.
+    const current=await db.query<{status:string;version:number}>(`
+      SELECT status::text,version FROM service_requests
+      WHERE id=$1::uuid FOR UPDATE
+    `,[cmd.requestId]);
+    if(current.rows.length!==1||
+       current.rows[0].status!=='CANCELLED_BY_CUSTOMER'||
+       current.rows[0].version!==result.version)
+      throw new GuestCancellationRejected('conflict');
     return {id:cmd.requestId,state:'cancelled_by_customer',
       version:result.version as number};
   }
