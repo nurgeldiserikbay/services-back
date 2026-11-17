@@ -13,8 +13,7 @@ test('idempotent cancellation service rejects missing, malformed or shared signi
   const priorPepper=process.env.GUEST_REQUEST_HMAC_KEY;
   const priorLedger=process.env.GUEST_CANCEL_LEDGER_HMAC_KEY;
   let calls=0;
-  const db=({transaction:async()=>{calls++;throw new Error('must_not_query_db');}}
-    as unknown as DatabasePool);
+  const db={transaction:async()=>{calls++;throw new Error('must_not_query_db');}} as unknown as DatabasePool;
   const service=new GuestCancellationService(db);
   const valid=randomBytes(32).toString('base64');
   try{
