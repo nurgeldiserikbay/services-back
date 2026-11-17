@@ -37,6 +37,10 @@ This is **not yet a PostgreSQL ledger implementation**: before enabling an HTTP 
 
 This is **not yet a mounted guest cancellation HTTP route**, nor does it establish the caller's HTTP cookie/Origin/CSRF itself. The HTTP adapter must authenticate/resolve a fresh request-scoped proof and the server-only ledger secret, then run `parseCancellationPreflight` and the ledger-backed operation in a single correctly managed database transaction. Multi-client concurrency, expiry/cleanup and key-rotation, network-error replay, full authenticated HTTP E2E and staging acceptance remain required. A failure to insert a notification MUST rollback the idempotency record as well.
 
+## Two-connection ledger reservation collision test (unmounted)
+
+`guest-cancel-ledger-two-client-db.test.ts` runs two distinct PostgreSQL connections against the existing `idempotency_records` unique index. One connection holds an uncommitted guest-cancellation-scoped ledger reservation; the other cannot silently claim it (a short server-side statement timeout confirms that it blocks). When the owner rolls back, the second client can claim the same key without observing a falsely committed response. Both transactions then roll back, leaving zero records. This verifies the **PostgreSQL ledger uniqueness and rollback primitive**, not the complete authenticated guest cancellation race: an end-to-end two-client test of `cancelGuestRequestIdempotently` and the actual HTTP adapter is still required before release.
+
 ## Mandatory integration sequence (not yet implemented)
 
 1. Verify account session or request-scoped guest capability. Determine the
