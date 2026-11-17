@@ -25,6 +25,8 @@ test('rejects actor/seller/reliability overrides, malformed and replay-unsafe bo
     {expectedVersion:1,customerPenaltySuspended:true},
     {expectedVersion:1,approvalId:'FAKE'},
     {expectedVersion:1,reliabilityWeight:0},
+    {expectedVersion:2147483647},
+    {expectedVersion:Number.MAX_SAFE_INTEGER},
   ]){
     assert.throws(()=>parseCancellationCommand(request,body,key),
       CancellationCommandRejected);
@@ -97,7 +99,7 @@ test('raw cancellation JSON allows only one bounded positive integer version',()
   for(const [raw,version] of [
     ['{"expectedVersion":1}',1],
     [' \t\r\n{ "expectedVersion" : 42 }\n',42],
-    ['{"expectedVersion":9007199254740991}',Number.MAX_SAFE_INTEGER],
+    ['{"expectedVersion":2147483646}',2147483646],
   ] as const){
     assert.deepEqual(parseCancellationRawJsonBody(request,raw,key),{
       requestId:request,expectedVersion:version,idempotencyKey:key,
@@ -123,6 +125,9 @@ test('raw cancellation JSON denies duplicate names and escaped property aliases'
     '{"expectedVersion":01}',
     '{"expectedVersion":-1}',
     '{"expectedVersion":0}',
+    '{"expectedVersion":2147483647}',
+    '{"expectedVersion":2147483648}',
+    '{"expectedVersion":9007199254740991}',
     '{"expectedVersion":9007199254740992}',
     '{"expectedVersion":999999999999999999999999999999}',
     '{"expectedVersion":1}\\u00a0',
