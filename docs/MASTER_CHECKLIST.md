@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend guest cancellation ledger expiry fail-closed replay (2026-11-17): Prepared in PR. Completed ledger is valid only when expires_at is later than live PostgreSQL clock_timestamp(), not frozen transaction-start now(); PostgreSQL regression proves expired completed result cannot replay and no duplicate cancellation event appears. Branch/PR CI pending; no public HTTP route or release acceptance enabled.
+
 Backend cancellation saved replay JSON shape (2026-11-17): Prepared in this PR. Only the exact {id,state,version} JSON object is accepted from a COMPLETED idempotency record; arrays, missing and extra fields are rejected. PostgreSQL replay regression added. Branch/PR CI pending; HTTP/staging acceptance remains open.
 
 Backend guest cancellation replay final proof lock (2026-11-17): Prepared in this PR. After ledger and request locks, replay revalidates active READ_CANCEL guest capability and verified unexpired contact with PostgreSQL FOR SHARE row locks; test covers contact expiration and denies replay despite COMPLETED ledger. CI and staging acceptance pending. No public route enabled or release checkbox marked complete.
