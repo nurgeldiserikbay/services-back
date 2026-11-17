@@ -23,6 +23,7 @@ export async function acknowledgeExternalAlertReceiverIngress(
   UPDATE notification_alert_receiver_ingress
   SET state='ACKED'
   WHERE id=$1::uuid AND receiver_scope=$2 AND state='PENDING'
+   AND lease_token IS NULL AND lease_expires_at IS NULL
   RETURNING id
  `,[ingressId,receiverScope]);
  if(!Array.isArray(changed.rows)||changed.rows.length>1)
