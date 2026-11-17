@@ -31,41 +31,63 @@ export function parseRequeueHttpPreflight(input:Readonly<{
  transportProtocol:unknown;
 }>):RequeueHttpCommand{
  const reject=():never=>{throw new RequeueHttpPreflightRejected();};
- if(!input||typeof input!=='object'||
-    typeof input.deliveryId!=='string'||!UUID.test(input.deliveryId)||
-    typeof input.requeueKeyHeader!=='string'||!UUID.test(input.requeueKeyHeader)||
-    typeof input.rawBody!=='string'||
-    Buffer.byteLength(input.rawBody,'utf8')>32||
-    !/^[ \t\r\n]*\{[ \t\r\n]*\}[ \t\r\n]*$/.test(input.rawBody)||
-    typeof input.expectedOrigin!=='string'||input.expectedOrigin.length>255||
-    typeof input.origin!=='string'||input.origin.length>255||
-    input.fetchSite!=='same-origin'||
-    input.transportProtocol!=='https:'||
-    typeof input.contentType!=='string'||
-    !/^application\/json(?:;\s*charset=utf-8)?$/i.test(input.contentType))
+ // Snapshot only own data properties. Never invoke attacker-controlled
+ // getters or inherit a forged CSRF/transport value from a prototype.
+ if(!input||typeof input!=='object')reject();
+ const fields=[
+  'deliveryId','requeueKeyHeader','rawBody','csrfHeader',
+  'sessionExpectedCsrf','expectedOrigin','origin','fetchSite',
+  'contentType','transportProtocol',
+ ] as const;
+ const data:Record<string,unknown>=Object.create(null);
+ try{
+  const prototype=Object.getPrototypeOf(input);
+  if(prototype!==Object.prototype&&prototype!==null)reject();
+  const descriptors=Object.getOwnPropertyDescriptors(input);
+  const names=Reflect.ownKeys(descriptors);
+  if(names.length!==fields.length||
+     names.some(name=>typeof name!=='string'||
+      !(fields as readonly string[]).includes(name)))reject();
+  for(const field of fields){
+   const descriptor=descriptors[field];
+   if(!descriptor||!Object.hasOwn(descriptor,'value'))reject();
+   data[field]=descriptor.value;
+  }
+ }catch{reject();}
+ if(typeof data.deliveryId!=='string'||!UUID.test(data.deliveryId)||
+    typeof data.requeueKeyHeader!=='string'||!UUID.test(data.requeueKeyHeader)||
+    typeof data.rawBody!=='string'||
+    Buffer.byteLength(data.rawBody,'utf8')>32||
+    !/^[ \t\r\n]*\{[ \t\r\n]*\}[ \t\r\n]*$/.test(data.rawBody)||
+    typeof data.expectedOrigin!=='string'||data.expectedOrigin.length>255||
+    typeof data.origin!=='string'||data.origin.length>255||
+    data.fetchSite!=='same-origin'||
+    data.transportProtocol!=='https:'||
+    typeof data.contentType!=='string'||
+    !/^application\/json(?:;\s*charset=utf-8)?$/i.test(data.contentType))
   reject();
  let origin:URL;
- try{origin=new URL(input.expectedOrigin as string);}
+ try{origin=new URL(data.expectedOrigin as string);}
  catch{reject();return undefined as never;}
- if(origin.protocol!=='https:'||origin.origin!==input.expectedOrigin||
+ if(origin.protocol!=='https:'||origin.origin!==data.expectedOrigin||
     origin.username||origin.password||origin.pathname!=='/'||
-    origin.search||origin.hash||input.origin!==origin.origin)
+    origin.search||origin.hash||data.origin!==origin.origin)
   reject();
- if(typeof input.csrfHeader!=='string'||
-    typeof input.sessionExpectedCsrf!=='string'||
-    !CSRF.test(input.csrfHeader)||!CSRF.test(input.sessionExpectedCsrf))
+ if(typeof data.csrfHeader!=='string'||
+    typeof data.sessionExpectedCsrf!=='string'||
+    !CSRF.test(data.csrfHeader)||!CSRF.test(data.sessionExpectedCsrf))
   reject();
- const a=Buffer.from(input.csrfHeader as string,'base64url');
- const b=Buffer.from(input.sessionExpectedCsrf as string,'base64url');
+ const a=Buffer.from(data.csrfHeader as string,'base64url');
+ const b=Buffer.from(data.sessionExpectedCsrf as string,'base64url');
  if(a.length!==32||b.length!==32||
-    a.toString('base64url')!==input.csrfHeader||
-    b.toString('base64url')!==input.sessionExpectedCsrf||
+    a.toString('base64url')!==data.csrfHeader||
+    b.toString('base64url')!==data.sessionExpectedCsrf||
     !timingSafeEqual(a,b))
   reject();
  // No user-supplied actor, organization scope, provider verdict or retry
  // state ever crosses this boundary.
  return Object.freeze({
-  deliveryId:(input.deliveryId as string).toLowerCase(),
-  requeueKey:(input.requeueKeyHeader as string).toLowerCase(),
+  deliveryId:(data.deliveryId as string).toLowerCase(),
+  requeueKey:(data.requeueKeyHeader as string).toLowerCase(),
  });
 }
