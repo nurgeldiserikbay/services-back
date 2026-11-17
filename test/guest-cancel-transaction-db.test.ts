@@ -108,6 +108,20 @@ test('wrong, foreign-contact or expired proof cannot cancel or query other guest
     assert.equal(row.rows[0].status,'PENDING');
   });
 });
+test('unverified guest contact cannot authorize a fresh cancellation',async()=>{
+  await withFixture(async(db,f)=>{
+    await db.query('UPDATE guest_contacts SET verified_at=NULL WHERE id=$1',[f.guest]);
+    await assert.rejects(
+      cancelVerifiedGuestRequest(db,f.request,f.valid,1,secret),
+      (error:unknown)=>error instanceof GuestCancellationRejected&&
+        error.reason==='unavailable');
+    const result=await db.query<{status:string;version:number}>(`
+      SELECT status::text,version FROM service_requests WHERE id=$1
+    `,[f.request]);
+    assert.deepEqual(result.rows,[{status:'PENDING',version:1}]);
+  });
+});
+
 test('expired READ_CANCEL proof during one long transaction cannot cancel',async()=>{
   await withFixture(async(db,f)=>{
     await db.query(`
