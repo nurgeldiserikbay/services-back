@@ -19,7 +19,7 @@ const db=()=>({query:async()=>({rows:[Object.fromEntries(cols.map(k=>
 
 test('explicit HTTPS sink serializes only allowlisted count metrics and blocks redirects',async()=>{
  let calls=0;
- const request=(async(input:RequestInfo|URL,init?:RequestInit)=>{
+ const request=(async(input:Parameters<typeof fetch>[0],init?:RequestInit)=>{
   calls++;
   assert.equal(String(input),approved().endpoint);
   assert.equal(init?.method,'POST');
