@@ -287,6 +287,32 @@ test('guest cancellation replay rejects changed request status at same version',
   });
 });
 
+test('completed guest cancellation ledger rejects extended and array response bodies',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000013';
+    const replay=()=>cancelGuestRequestIdempotently(
+      db,f.request,f.valid,1,key,secret,ledgerSecret);
+    const done=await replay();
+    assert.deepEqual(await replay(),done);
+    for(const payload of [
+      {...done,actor:'ADMIN'},
+      [done],
+      {id:done.id,state:done.state},
+    ]){
+      await db.query(`
+        UPDATE idempotency_records SET response_body=$2::jsonb
+        WHERE route=$1
+      `,['/v1/requests/'+f.request+'/cancel',JSON.stringify(payload)]);
+      await assert.rejects(replay(),(error:unknown)=>
+        error instanceof GuestCancellationRejected&&error.reason==='conflict');
+    }
+    const events=await db.query<{n:string}>(`
+      SELECT count(*)::text n FROM cancellation_events WHERE request_id=$1
+    `,[f.request]);
+    assert.equal(events.rows[0].n,'1');
+  });
+});
+
 test('failed guest cancellation ledger and state changes roll back together',async()=>{
   await withFixture(async(db,f)=>{
     const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000003';
