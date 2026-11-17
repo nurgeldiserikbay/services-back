@@ -23,7 +23,6 @@ type SnapshotRow={
   scheduled_start_at:Date;free_cancel_until:Date;
   accepted_at:Date;policy_revision:number;timezone:string;
 };
-type GuestContact={channel:string};
 type SellerPerson={person_id:string};
 export type GuestCancellationResult=Readonly<{
   id:string;state:'cancelled_by_customer';version:number;
@@ -71,12 +70,16 @@ export async function cancelVerifiedGuestRequest(
     throw new GuestCancellationRejected('unavailable');
   // Recheck the proof after taking the request lock. A revoked, expired or
   // foreign contact capability must never authorize a state transition.
-  const active=await db.query<{id:string}>(`
-    SELECT id::text FROM guest_capabilities
-    WHERE request_id=$1::uuid AND guest_contact_id=$2::uuid
-      AND token_hash=$3 AND scope='READ_CANCEL'
-      AND consumed_at IS NULL AND expires_at>clock_timestamp()
+  const active=await db.query<{channel:string}>(`
+    SELECT g.channel::text AS channel
+    FROM guest_capabilities c
+    JOIN guest_contacts g ON g.id=c.guest_contact_id
+    WHERE c.request_id=$1::uuid AND c.guest_contact_id=$2::uuid
+      AND c.token_hash=$3 AND c.scope='READ_CANCEL'
+      AND c.consumed_at IS NULL AND c.expires_at>clock_timestamp()
+      AND g.verified_at IS NOT NULL AND g.expires_at>clock_timestamp()
     LIMIT 1
+    FOR SHARE OF c,g
   `,[requestId.toLowerCase(),request.guest_contact_id,proofHash]);
   if(!active.rows[0])throw new GuestCancellationRejected('unavailable');
   if(request.version!==expectedVersion)
@@ -86,12 +89,7 @@ export async function cancelVerifiedGuestRequest(
   if(request.scheduled_start_at!==null||request.scheduled_end_at!==null)
     throw new GuestCancellationRejected('conflict');
 
-  const guest=await db.query<GuestContact>(`
-    SELECT channel::text FROM guest_contacts
-    WHERE id=$1::uuid AND verified_at IS NOT NULL AND expires_at>clock_timestamp()
-    LIMIT 1
-  `,[request.guest_contact_id]);
-  const guestChannel=guest.rows[0]?.channel?.toUpperCase();
+  const guestChannel=active.rows[0].channel?.toUpperCase();
   if(guestChannel!=='EMAIL'&&guestChannel!=='SMS')
     throw new GuestCancellationRejected('unavailable');
 
