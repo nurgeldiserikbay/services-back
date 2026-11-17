@@ -53,7 +53,7 @@ export async function cancelVerifiedGuestRequest(
   const access=await db.query<{id:string}>(`
     SELECT id::text FROM guest_capabilities
     WHERE request_id=$1::uuid AND token_hash=$2 AND scope='READ_CANCEL'
-      AND consumed_at IS NULL AND expires_at>now()
+      AND consumed_at IS NULL AND expires_at>clock_timestamp()
     LIMIT 1
   `,[requestId.toLowerCase(),proofHash]);
   if(!access.rows[0])throw new GuestCancellationRejected('unavailable');
@@ -75,7 +75,7 @@ export async function cancelVerifiedGuestRequest(
     SELECT id::text FROM guest_capabilities
     WHERE request_id=$1::uuid AND guest_contact_id=$2::uuid
       AND token_hash=$3 AND scope='READ_CANCEL'
-      AND consumed_at IS NULL AND expires_at>now()
+      AND consumed_at IS NULL AND expires_at>clock_timestamp()
     LIMIT 1
   `,[requestId.toLowerCase(),request.guest_contact_id,proofHash]);
   if(!active.rows[0])throw new GuestCancellationRejected('unavailable');
@@ -88,7 +88,7 @@ export async function cancelVerifiedGuestRequest(
 
   const guest=await db.query<GuestContact>(`
     SELECT channel::text FROM guest_contacts
-    WHERE id=$1::uuid AND verified_at IS NOT NULL AND expires_at>now()
+    WHERE id=$1::uuid AND verified_at IS NOT NULL AND expires_at>clock_timestamp()
     LIMIT 1
   `,[request.guest_contact_id]);
   const guestChannel=guest.rows[0]?.channel?.toUpperCase();
