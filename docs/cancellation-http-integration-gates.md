@@ -25,6 +25,12 @@ flags from a browser. Inputs are untrusted even when syntactically valid.
 
 `parseCancellationPreflight` combines the previously independent strict trusted HTTPS/Origin/Fetch Metadata/media-type checks, canonical session-bound CSRF comparison, strict single idempotency header and raw one-field JSON body validation. This is a **pure, unmounted** input boundary that returns a frozen command only after every check passes. It does **not** establish or verify an account/guest identity itself: `sessionExpectedCsrf`, the expected origin and trusted TLS state must be provided by an authenticated server-side context and trusted deployment configuration. An actual adapter still needs identity authorization, a principal-scoped PostgreSQL idempotency ledger, request lock, atomic mutation and HTTP/rollback E2E before route exposure.
 
+## Guest-scoped idempotency identity (unmounted)
+
+`deriveGuestCancellationIdempotency` deterministically derives an opaque HMAC-SHA256 ledger key from a **database-verified guest contact**, the POST method, the canonical cancellation request route and the caller's validated idempotency key. Separately, it hashes the canonical body (`expectedVersion`). Repeating the original key/body matches both digests; repeating the same key with a changed version keeps the ledger key but changes the body hash, allowing the eventual durable ledger to reject contradictory retries. Different verified guest contacts, request IDs or keys have distinct ledger identities. The HMAC secret must be a server-owned 32-byte key with controlled rotation, and **the verified guest identity must come from the active READ_CANCEL proof checked in PostgreSQL**, never browser JSON. Hashes are opaque transport-independent identities, not authorization or persistence.
+
+This is **not yet a PostgreSQL ledger implementation**: before enabling an HTTP route the server must atomically reserve/serialize the scoped key, reject body-hash mismatch, replay only a committed matching response, lock and authorize the request, and commit the cancellation + outbox + two notifications + ledger result together. Test rollback, concurrent replays and secret-rotation behavior before release.
+
 ## Mandatory integration sequence (not yet implemented)
 
 1. Verify account session or request-scoped guest capability. Determine the

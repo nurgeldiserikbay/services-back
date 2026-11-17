@@ -7,7 +7,7 @@
  * durable PostgreSQL idempotency ledger entry (scope+method+route+key+body
  * hash), lock the request and invoke exactly one authorized transaction.
  */
-import {timingSafeEqual} from 'node:crypto';
+import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 
 export class CancellationCommandRejected extends Error {
   constructor(readonly reason:'invalid_request'|'missing_idempotency_key') {
@@ -161,4 +161,41 @@ export function parseCancellationPreflight(input:Readonly<{
     input.idempotencyHeader);
   return parseCancellationRawJsonBody(input.requestId,input.rawBody,
     idempotencyKey);
+}
+
+/**
+ * Derive opaque persistence identities for the FUTURE guest cancellation
+ * idempotency ledger. The guest contact MUST have been verified against an
+ * active request-scoped READ_CANCEL proof inside the DB transaction first.
+ * Never accept this identity from the browser, and never log raw proofs/keys.
+ *
+ * Same principal + method + request route + idempotency key produce the same
+ * ledger identity. The body hash is separate so that a repeated key with a
+ * changed expectedVersion conflicts instead of falsely replaying success.
+ * This helper does NOT reserve a key or execute a cancellation.
+ */
+export function deriveGuestCancellationIdempotency(input:Readonly<{
+  command:CancellationCommand;
+  verifiedGuestContactId:unknown;
+  serverSecret:unknown;
+}>):Readonly<{ledgerKey:string;bodyHash:string}>{
+  if(!input||typeof input!=='object'||
+     typeof input.verifiedGuestContactId!=='string'||
+     !UUID.test(input.verifiedGuestContactId)||
+     !Buffer.isBuffer(input.serverSecret)||input.serverSecret.length!==32)
+    throw new CancellationCommandRejected('invalid_request');
+  const cmd=parseCancellationCommand(input.command?.requestId,
+    {expectedVersion:input.command?.expectedVersion},
+    input.command?.idempotencyKey);
+  const contact=input.verifiedGuestContactId.toLowerCase();
+  const context='guest:'+contact+'\\nPOST\\n/v1/requests/'+cmd.requestId+'/cancel';
+  const ledgerKey=createHmac('sha256',input.serverSecret)
+    .update('services-guest-cancel-ledger:v1\\0')
+    .update(context,'utf8').update('\\0')
+    .update(cmd.idempotencyKey,'utf8').digest('hex');
+  const bodyHash=createHash('sha256')
+    .update('services-guest-cancel-body:v1\\0')
+    .update(JSON.stringify({expectedVersion:cmd.expectedVersion}),'utf8')
+    .digest('hex');
+  return Object.freeze({ledgerKey,bodyHash});
 }

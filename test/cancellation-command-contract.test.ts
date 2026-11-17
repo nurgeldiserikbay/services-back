@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {CancellationCommandRejected,parseCancellationCommand,
   parseCancellationIdempotencyHeader,parseCancellationRawJsonBody,
   assertCancellationTransportHeaders,assertCancellationSessionCsrf,
-  parseCancellationPreflight} from
+  parseCancellationPreflight,deriveGuestCancellationIdempotency} from
   '../src/modules/requests/cancellation-command-contract.js';
 
 const request='11111111-1111-4111-8111-111111111111';
@@ -239,4 +239,62 @@ test('unmounted cancellation preflight composes all security boundary checks',()
   }
   assert.throws(()=>parseCancellationPreflight(null as never),
     CancellationCommandRejected);
+});
+
+test('guest cancellation idempotency identity is stable, scoped and payload-sensitive',()=>{
+  const contact='22222222-2222-4222-8222-222222222222';
+  const anotherContact='33333333-3333-4333-8333-333333333333';
+  const secret=randomBytes(32);
+  const cmd=parseCancellationCommand(request,{expectedVersion:1},key);
+  const derive=(command=cmd,verifiedGuestContactId=contact,serverSecret=secret)=>
+    deriveGuestCancellationIdempotency({
+      command,verifiedGuestContactId,serverSecret,
+    });
+  const first=derive();
+  assert.match(first.ledgerKey,/^[0-9a-f]{64}$/);
+  assert.match(first.bodyHash,/^[0-9a-f]{64}$/);
+  assert.equal(Object.isFrozen(first),true);
+  assert.deepEqual(derive(),first);
+  assert.ok(!JSON.stringify(first).includes(key));
+  assert.ok(!JSON.stringify(first).includes(contact));
+  assert.ok(!JSON.stringify(first).includes(request));
+  const changedVersion=derive(parseCancellationCommand(request,
+    {expectedVersion:2},key));
+  assert.equal(changedVersion.ledgerKey,first.ledgerKey,
+    'changed payload under the same key must conflict in durable ledger');
+  assert.notEqual(changedVersion.bodyHash,first.bodyHash);
+  const changedKey=derive(parseCancellationCommand(request,
+    {expectedVersion:1},'Different_idempotency_key_2026'));
+  assert.notEqual(changedKey.ledgerKey,first.ledgerKey);
+  assert.equal(changedKey.bodyHash,first.bodyHash);
+  const changedRequest=derive(parseCancellationCommand(
+    anotherContact,{expectedVersion:1},key));
+  assert.notEqual(changedRequest.ledgerKey,first.ledgerKey);
+  assert.equal(changedRequest.bodyHash,first.bodyHash);
+  const changedActor=derive(cmd,anotherContact);
+  assert.notEqual(changedActor.ledgerKey,first.ledgerKey);
+  assert.equal(changedActor.bodyHash,first.bodyHash);
+  assert.notEqual(derive(cmd,contact,randomBytes(32)).ledgerKey,
+    first.ledgerKey);
+  assert.deepEqual(derive(cmd,contact.toUpperCase()),first);
+});
+test('guest cancellation ledger derivation denies client-controlled malformed identity',()=>{
+  const secret=randomBytes(32);
+  const cmd=parseCancellationCommand(request,{expectedVersion:1},key);
+  for(const invalid of [null,undefined,[],{},'', 'guest:123',
+    request+'extra','../'+request]){
+    assert.throws(()=>deriveGuestCancellationIdempotency({
+      command:cmd,verifiedGuestContactId:invalid,serverSecret:secret,
+    }),CancellationCommandRejected);
+  }
+  for(const invalidSecret of [null,undefined,'secret',
+    Buffer.alloc(16),Buffer.alloc(64)]){
+    assert.throws(()=>deriveGuestCancellationIdempotency({
+      command:cmd,verifiedGuestContactId:request,serverSecret:invalidSecret,
+    }),CancellationCommandRejected);
+  }
+  assert.throws(()=>deriveGuestCancellationIdempotency({
+    command:{...cmd,expectedVersion:0},
+    verifiedGuestContactId:request,serverSecret:secret,
+  }),CancellationCommandRejected);
 });
