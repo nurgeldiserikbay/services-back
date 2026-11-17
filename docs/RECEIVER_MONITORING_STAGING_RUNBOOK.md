@@ -16,6 +16,14 @@ The repository provides `createReceiverMonitorHttpsTransport(config, request?)` 
 
 **Security limit:** hostname string validation alone does not establish DNS/IP routing safety. Before any real destination is approved, restrict outbound network access to the approved provider, audit DNS and proxy resolution, enforce TLS/credential scope and egress firewalls, verify provider authentication and test request failures. Treat operator-approved URLs as privileged configuration, never as user input. Do not use this adapter against arbitrary customer-supplied or public URLs.
 
+## Optional one-shot staging HTTPS dispatch (no scheduler)
+
+`pnpm monitor:receiver:send:staging` is an **explicit one-shot send**, not the read-only preview. It may transmit a count-only alert to a real configured recipient, so it must only run in a controlled staging environment after a transport owner has approved the exact HTTPS host and egress network policy. Do not invoke it with production credentials, a production database or a production destination. This command does not make the system production-ready.
+
+The operator must supply environment variables securely: `DATABASE_URL` (staging-only, least-privilege read access), `RECEIVER_MONITOR_ENVIRONMENT=staging`, `RECEIVER_MONITOR_SCOPE`, all four `RECEIVER_MONITOR_*` threshold strings used in preview, `RECEIVER_MONITOR_PREVIEW_ACK=READ_ONLY_STAGING`, **separate** `RECEIVER_MONITOR_SEND_ACK=SEND_ONCE_STAGING`, `RECEIVER_MONITOR_ENDPOINT`, `RECEIVER_MONITOR_APPROVED_HOSTNAME`, `RECEIVER_MONITOR_BEARER_TOKEN` and `RECEIVER_MONITOR_TIMEOUT_MS` (1000–10000). The exact endpoint must be HTTPS and its hostname must match the approved value; credentials belong in a secret manager, not command arguments or logs.
+
+The parser validates everything before connecting to PostgreSQL. An empty breach list does not send any HTTP request. A nonempty breach list generates one bounded HTTPS POST with only `code`, `observed` and `threshold`. Output on success is only `{"mode":"one-shot-staging-send","breachCount":N}` and on any failure only `receiver_monitor_staging_send_failed` on stderr with nonzero exit. **Success indicates a 2xx response, not durable delivery, paging, acknowledgment, deduplication or on-call acceptance.** DNS/IP egress controls and live provider acceptance are external preconditions.
+
 ## Pre-activation gates (all required)
 
 1. **Data owner:** approve receiver deployment scope and verify no guest/public user can supply or override it. Record an owner, environment and code SHA; never put credentials, tokens, user identifiers, message payloads or actual alerts in evidence.
