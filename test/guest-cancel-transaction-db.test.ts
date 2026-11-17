@@ -108,6 +108,50 @@ test('wrong, foreign-contact or expired proof cannot cancel or query other guest
     assert.equal(row.rows[0].status,'PENDING');
   });
 });
+test('expired READ_CANCEL proof during one long transaction cannot cancel',async()=>{
+  await withFixture(async(db,f)=>{
+    await db.query(`
+      UPDATE guest_capabilities
+      SET expires_at=clock_timestamp()+interval '100 milliseconds'
+      WHERE request_id=$1 AND token_hash IS NOT NULL
+    `,[f.request]);
+    // PostgreSQL now() is frozen at BEGIN; the security check must use
+    // live clock time after this delay, even on the same connection.
+    await db.query('SELECT pg_sleep(0.20)');
+    await assert.rejects(
+      cancelVerifiedGuestRequest(db,f.request,f.valid,1,secret),
+      (error:unknown)=>error instanceof GuestCancellationRejected&&
+        error.reason==='unavailable');
+    const rows=await db.query<{state:string}>(`
+      SELECT status::text AS state FROM service_requests WHERE id=$1
+    `,[f.request]);
+    assert.equal(rows.rows[0].state,'PENDING');
+  });
+});
+
+test('expired proof in long transaction denies completed cancellation ledger replay',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000015';
+    const replay=()=>cancelGuestRequestIdempotently(
+      db,f.request,f.valid,1,key,secret,ledgerSecret);
+    const done=await replay();
+    assert.equal(done.version,2);
+    await db.query(`
+      UPDATE guest_capabilities
+      SET expires_at=clock_timestamp()+interval '100 milliseconds'
+      WHERE request_id=$1
+    `,[f.request]);
+    await db.query('SELECT pg_sleep(0.20)');
+    await assert.rejects(replay(),(error:unknown)=>
+      error instanceof GuestCancellationRejected&&error.reason==='unavailable');
+    const events=await db.query<{n:string}>(`
+      SELECT count(*)::text AS n FROM cancellation_events
+      WHERE request_id=$1
+    `,[f.request]);
+    assert.equal(events.rows[0].n,'1');
+  });
+});
+
 test('stale expected version and duplicate cancellation cannot create extra events',async()=>{
   await withFixture(async(db,f)=>{
     await assert.rejects(cancelVerifiedGuestRequest(db,f.request,f.valid,2,secret),
