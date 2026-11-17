@@ -230,6 +230,27 @@ test('guest cancel ledger atomically records one cancellation and replays same k
     assert.equal(outbox.rows[0].n,'1');
   });
 });
+test('guest cancellation ledger replay rejects stale authoritative request version',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000009';
+    const replay=()=>cancelGuestRequestIdempotently(
+      db,f.request,f.valid,1,key,secret,ledgerSecret);
+    const done=await replay();
+    assert.equal(done.version,2);
+    assert.deepEqual(await replay(),done);
+    // Even a previously completed record cannot attest to a later version.
+    await db.query('UPDATE service_requests SET version=version+1 WHERE id=$1',
+      [f.request]);
+    await assert.rejects(replay(),(error:unknown)=>
+      error instanceof GuestCancellationRejected&&error.reason==='conflict');
+    const ledger=await db.query<{state:string}>(`
+      SELECT state FROM idempotency_records
+      WHERE route=$1
+    `,['/v1/requests/'+f.request+'/cancel']);
+    assert.deepEqual(ledger.rows,[{state:'COMPLETED'}]);
+  });
+});
+
 test('failed guest cancellation ledger and state changes roll back together',async()=>{
   await withFixture(async(db,f)=>{
     const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000003';
