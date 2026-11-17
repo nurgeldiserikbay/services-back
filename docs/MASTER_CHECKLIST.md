@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend two-connection requeue PostgreSQL concurrency E2E (2026-11-17): Prepared CI-only integration test `test/dead-letter-requeue-concurrent-db.test.ts` that holds one requeue transaction after audit insertion, issues a matching request on a second client, then verifies a single durable audit row and ALREADY_REQUEUED after COMMIT. Explicitly gated to CI disposable `services_test` database because append-only audits prohibit cleanup; CI and production acceptance pending. Notification audit logs remains unchecked.
+
 Backend requeue preflight audit race (2026-11-17): [PR #223](https://github.com/nurgeldiserikbay/services-back/pull/223) passed [branch CI #44110065133](https://github.com/nurgeldiserikbay/services-back/actions/runs/44110065133) and [PR CI #44110110061](https://github.com/nurgeldiserikbay/services-back/actions/runs/44110110061) at head `f6df99ae`. Scoped audit is rechecked if FAILED target disappears before provider reconciliation, with cases for matching, foreign, absent, invalid and duplicate audits. Notification audit operational acceptance remains open.
 
 Backend cancellation raw JSON guard passed main CI (2026-11-17): [services-back PR #222](https://github.com/nurgeldiserikbay/services-back/pull/222) merged as [8b6bf3bf](https://github.com/nurgeldiserikbay/services-back/commit/8b6bf3bf7170336a92ae6f11cb937d73575e8248), exact post-merge [main CI #44109685101 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/44109685101). Confirms integrated strict unmounted cancellation JSON raw body parser on the deployed-code branch. This does not enable HTTP cancellation, scoped identity proof, CSRF or atomic idempotent cancellation; staging and release gates still open.
