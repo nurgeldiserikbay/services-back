@@ -84,13 +84,19 @@ export function createExternalDeliveryWebhookTransport(
     seen.add(code as string);
     return {code,severity,observed,threshold};
    });
-   const response=await request(destination,{
+   let response:Response;
+   try{
+    response=await request(destination,{
     method:'POST',
     headers:{'content-type':'application/json','authorization':authorization},
     body:JSON.stringify({alerts:safe}),
     redirect:'error',
     signal:AbortSignal.timeout(timeout),
    });
+   }catch{
+    // Never surface fetch errors: they can contain credentials or target URLs.
+    throw new Error('external_alert_webhook_transport_failed');
+   }
    if(!response.ok)throw new Error('external_alert_webhook_delivery_failed');
   },
  } satisfies ExternalDeliveryAlertTransport);
