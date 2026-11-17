@@ -88,7 +88,7 @@ export function assertCancellationTransportHeaders(input:Readonly<{
   contentType:unknown;
   requestProtocol:unknown;
 }>):void{
-  const fail=()=>{throw new CancellationCommandRejected('invalid_request');};
+  const fail=():never=>{throw new CancellationCommandRejected('invalid_request');};
   if(!input||typeof input!=='object'||
      typeof input.expectedOrigin!=='string'||input.expectedOrigin.length>255||
      typeof input.origin!=='string'||input.origin.length>255||
