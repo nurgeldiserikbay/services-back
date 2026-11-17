@@ -2,6 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createExternalDeliveryWebhookTransport}
  from '../src/modules/notifications/external-delivery-alert-webhook.js';
+import {dispatchExternalDeliveryQueueAlerts}
+ from '../src/modules/notifications/external-delivery-alert-dispatch.js';
 
 const valid={
  endpoint:'https://alerts.example.com/receiver',
@@ -48,6 +50,23 @@ test('HTTPS receiver configuration is explicit and restricted to approved endpoi
  }
 });
 
+
+test('webhook configuration rejects inherited and accessor-backed keys without executing getters',()=>{
+ let getterCalls=0;
+ for(const key of ['endpoint','approvedHostname','bearerToken','timeoutMs'] as const){
+  const accessor=Object.defineProperty({...valid},key,{
+   get(){getterCalls++;throw new Error('unsafe getter executed');},
+  });
+  assert.throws(()=>createExternalDeliveryWebhookTransport(accessor),
+   /invalid_external_alert_webhook_config/);
+  const inherited=Object.assign(Object.create({[key]:valid[key]}),valid);
+  delete inherited[key];
+  assert.throws(()=>createExternalDeliveryWebhookTransport(inherited),
+   /invalid_external_alert_webhook_config/);
+ }
+ assert.equal(getterCalls,0);
+});
+
 test('webhook rejects extra fields and accessor-backed alerts without sending',async()=>{
  let calls=0,reads=0;
  const transport=createExternalDeliveryWebhookTransport(valid,
@@ -74,4 +93,34 @@ test('non-2xx responses and fetch failures are propagated, not treated as succes
  const failed=createExternalDeliveryWebhookTransport(valid,
   (async()=>{throw failure;}) as typeof fetch);
  await assert.rejects(failed.send([backlog]),error=>error===failure);
+});
+
+test('integration: SQL snapshot dispatches to HTTPS transport only above approved policy',async()=>{
+ let sends=0;
+ const bodies:unknown[]=[];
+ const transport=createExternalDeliveryWebhookTransport(valid,
+  (async(_input:string|URL|Request,init?:RequestInit)=>{
+   sends++;
+   bodies.push(JSON.parse(String(init?.body)));
+   return {ok:true} as Response;
+  }) as typeof fetch);
+ const policy={pendingDueThreshold:2,expiredLeaseThreshold:2,terminalFailedThreshold:2};
+ const empty={
+  pending_due:'0',pending_scheduled:'0',leased_active:'0',
+  leased_expired:'0',terminal_failed:'0',provider_accepted:'0',
+  inconsistent:'0',total:'0',
+ };
+ await dispatchExternalDeliveryQueueAlerts({
+  query:async()=>({rows:[empty]}),
+ } as never,policy,transport);
+ assert.equal(sends,0);
+ const alerts=await dispatchExternalDeliveryQueueAlerts({
+  query:async()=>({rows:[{...empty,pending_due:'2',total:'2'}]}),
+ } as never,policy,transport);
+ assert.equal(sends,1);
+ assert.deepEqual(bodies,[{alerts:[{
+  code:'DUE_BACKLOG',severity:'warning',observed:2,threshold:2,
+ }]}]);
+ assert.deepEqual(alerts,bodies.length===1?
+  (bodies[0] as {alerts:typeof alerts}).alerts:[]);
 });

@@ -22,10 +22,17 @@ export function createExternalDeliveryWebhookTransport(
 ):ExternalDeliveryAlertTransport{
  if(!config||typeof config!=='object')
   throw new Error('invalid_external_alert_webhook_config');
- const {endpoint,approvedHostname,bearerToken,timeoutMs}=config;
+ const fields=['endpoint','approvedHostname','bearerToken','timeoutMs'] as const;
+ const values=fields.map(key=>{
+  const property=Object.getOwnPropertyDescriptor(config,key);
+  if(!property||!Object.hasOwn(property,'value'))
+   throw new Error('invalid_external_alert_webhook_config');
+  return property.value as unknown;
+ });
+ const [endpoint,approvedHostname,bearerToken,timeoutMs]=values;
  if(typeof endpoint!=='string'||typeof approvedHostname!=='string'||
-    typeof bearerToken!=='string'||!Number.isSafeInteger(timeoutMs)||
-    timeoutMs<1000||timeoutMs>30000)
+    typeof bearerToken!=='string'||typeof timeoutMs!=='number'||
+    !Number.isSafeInteger(timeoutMs)||timeoutMs<1000||timeoutMs>30000)
   throw new Error('invalid_external_alert_webhook_config');
  let url:URL;
  try{url=new URL(endpoint);}
