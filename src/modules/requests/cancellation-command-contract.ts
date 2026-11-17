@@ -7,6 +7,8 @@
  * durable PostgreSQL idempotency ledger entry (scope+method+route+key+body
  * hash), lock the request and invoke exactly one authorized transaction.
  */
+import {timingSafeEqual} from 'node:crypto';
+
 export class CancellationCommandRejected extends Error {
   constructor(readonly reason:'invalid_request'|'missing_idempotency_key') {
     super('cancellation_command_rejected');
@@ -103,4 +105,29 @@ export function assertCancellationTransportHeaders(input:Readonly<{
      expected.username||expected.password||expected.pathname!=='/'||
      expected.search||expected.hash||input.origin!==expected.origin)
     fail();
+}
+
+/**
+ * Verify a session-bound CSRF proof for a FUTURE cancellation adapter.
+ * The expected token MUST come from an authenticated, server-verified
+ * session (or an equivalent authenticated per-request server proof);
+ * never derive it from a browser cookie/header or accept a public fixed key.
+ * No identity or transaction is established by this pure function.
+ */
+export function assertCancellationSessionCsrf(
+  submitted:unknown,sessionExpected:unknown,
+):void{
+  // Token strings are unpadded base64url representations of 32 random bytes.
+  const token=/^[A-Za-z0-9_-]{43}$/;
+  if(typeof submitted!=='string'||typeof sessionExpected!=='string'||
+     !token.test(submitted)||!token.test(sessionExpected))
+    throw new CancellationCommandRejected('invalid_request');
+  // Avoid timing-sensitive native string equality for secret comparison.
+  const a=Buffer.from(submitted,'base64url');
+  const b=Buffer.from(sessionExpected,'base64url');
+  if(a.length!==32||b.length!==32||
+     a.toString('base64url')!==submitted||
+     b.toString('base64url')!==sessionExpected||
+     !timingSafeEqual(a,b))
+    throw new CancellationCommandRejected('invalid_request');
 }

@@ -17,6 +17,10 @@ flags from a browser. Inputs are untrusted even when syntactically valid.
 
 `assertCancellationTransportHeaders` accepts only a configured canonical HTTPS origin, an exact matching `Origin` header, `Sec-Fetch-Site: same-origin`, a trusted TLS protocol indicator (`https:`), and an allowlisted JSON Content-Type (`application/json` with optional UTF-8 charset). Header arrays, cross-site requests, unexpected media parameters and a mismatched/malformed configured origin are denied. The expected origin must come from trusted deployment configuration, not the incoming Host/X-Forwarded-Host headers; TLS information must come from the trusted server/proxy configuration, not untrusted X-Forwarded-Proto. This pure helper is **not mounted** and does not implement session-bound CSRF, capability authorization, idempotency or mutations. An actual adapter must also bound raw body bytes before decoding and call `parseCancellationRawJsonBody`.
 
+## Unmounted session-bound CSRF comparison
+
+`assertCancellationSessionCsrf` requires two canonical unpadded base64url 256-bit values and compares their decoded bytes in constant time. The **expected** value must come from an independently authenticated, server-verified session or an equivalent server-side request proof, not an attacker-controlled cookie/header; the submitted value is untrusted. Missing, forged and noncanonical token representations are rejected. This pure helper neither issues CSRF tokens nor authenticates a session, and must not be used as a standalone double-submit-cookie gate. The future adapter must call it only after verifying the principal and correctly binding the expected token to that principal.
+
 ## Mandatory integration sequence (not yet implemented)
 
 1. Verify account session or request-scoped guest capability. Determine the
