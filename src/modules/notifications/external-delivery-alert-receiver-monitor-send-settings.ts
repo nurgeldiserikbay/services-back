@@ -31,6 +31,7 @@ export function readReceiverMonitorSendSettings(
  };
  // Never let the dry-run acknowledgment alone authorize outbound delivery.
  if(read('RECEIVER_MONITOR_SEND_ACK')!=='SEND_ONCE_STAGING')return invalid();
+ if(read('RECEIVER_MONITOR_ENVIRONMENT')!=='staging')return invalid();
  if(read('NODE_ENV')==='production')return invalid();
  let receiverScope:string;
  let thresholds:ReturnType<typeof readReceiverMonitorPreviewSettings>['thresholds'];
