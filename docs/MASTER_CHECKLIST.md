@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend cancellation service preflight with live PostgreSQL (2026-11-17): Prepared in this PR. Real fixture verifies malformed Origin, CSRF and raw JSON are rejected before any transaction, valid preflight cancels once with a stable replay, one cancellation event and two notification intents. Caller-supplied transport in this test represents preverified BFF context; no HTTP route, actual session binding or staging acceptance is claimed. Branch/PR CI pending.
+
 Backend cancellation service BFF preflight composition (2026-11-17): Prepared in this PR. Internal, unmounted GuestCancellationService.cancelWithPreflight composes strict transport/Origin/CSRF/raw JSON validation with transaction-backed idempotent cancellation. Unit regressions refuse malformed/cross-site requests before SQL and exercise the valid delegation path; requires trusted server session context, never browser-supplied sessionExpectedCsrf, expectedOrigin or requestProtocol. Authenticated HTTP E2E, frontend sealed capability, staging and operational acceptance remain open. Branch/PR CI pending.
 
 Backend cancellation Nest service PostgreSQL delegation (2026-11-17): Prepared in this PR. Live DB fixture invokes GuestCancellationService.cancelIdempotently twice through caller-owned transaction adapter and asserts one cancellation event, two notice intents and a stable replay; a foreign READ_CANCEL capability is rejected. Branch/PR CI pending. This does not represent mounted/authenticated HTTP E2E or staging acceptance.
