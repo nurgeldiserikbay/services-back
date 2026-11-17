@@ -313,6 +313,27 @@ test('completed guest cancellation ledger rejects extended and array response bo
   });
 });
 
+test('expired cancellation ledger never replays completed success',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000014';
+    const replay=()=>cancelGuestRequestIdempotently(
+      db,f.request,f.valid,1,key,secret,ledgerSecret);
+    const done=await replay();
+    assert.equal(done.version,2);
+    await db.query(`
+      UPDATE idempotency_records
+      SET expires_at=clock_timestamp()-interval '1 second'
+      WHERE route=$1
+    `,['/v1/requests/'+f.request+'/cancel']);
+    await assert.rejects(replay(),(error:unknown)=>
+      error instanceof GuestCancellationRejected&&error.reason==='conflict');
+    const events=await db.query<{n:string}>(`
+      SELECT count(*)::text n FROM cancellation_events WHERE request_id=$1
+    `,[f.request]);
+    assert.equal(events.rows[0].n,'1');
+  });
+});
+
 test('failed guest cancellation ledger and state changes roll back together',async()=>{
   await withFixture(async(db,f)=>{
     const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000003';
