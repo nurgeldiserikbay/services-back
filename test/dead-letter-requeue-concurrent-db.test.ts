@@ -98,7 +98,7 @@ test('two PostgreSQL clients serialize requeue and keep a single immutable audit
    [ids.staff,ids.user]);
   await observer.query("INSERT INTO platform_admin_sessions(id,staff_id,token_hash,mfa_verified_at,expires_at) VALUES($1,$2,$3,now()-interval '1 minute',now()+interval '1 hour')",
    [ids.session,ids.staff,tokenHash]);
-  await observer.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'test-concurrent-envelope','test',now()-interval '4 minutes',now()-interval '3 minutes')",
+  await observer.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'encrypted-test-envelope-placeholder-not-real','test',now()-interval '4 minutes',now()-interval '3 minutes')",
    [ids.staff]);
   await observer.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [ids.grant,ids.staff,scope]);
