@@ -329,6 +329,7 @@ jobs:
           node --import tsx --test \
             test/pending-cancellation-db.test.ts \
             test/guest-cancel-transaction-db.test.ts \
+            test/guest-cancel-ledger-two-client-db.test.ts \
             test/accepted-early-cancellation-db.test.ts \
             test/accepted-late-cancellation-db.test.ts
       - name: Seller authority parity outbox and competing decisions PostgreSQL (fail fast)
