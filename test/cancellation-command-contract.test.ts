@@ -74,6 +74,25 @@ test('unmounted cancellation command rejects exotic prototypes and accessors',()
   });
 });
 
+test('cancellation command rejects hidden, symbol and non-enumerable fields',()=>{
+  const hidden=Object.defineProperty({expectedVersion:1},'actor',{
+    value:'ADMIN',enumerable:false,
+  });
+  const symbol=Object.assign({expectedVersion:1},{
+    [Symbol('scope')]:'all',
+  });
+  const nonEnumerableVersion=Object.defineProperty({},'expectedVersion',{
+    value:1,enumerable:false,
+  });
+  for(const body of [hidden,symbol,nonEnumerableVersion]){
+    assert.throws(()=>parseCancellationCommand(request,body,key),
+      CancellationCommandRejected);
+  }
+  const accepted=Object.assign(Object.create(null) as Record<string,number>,
+    {expectedVersion:1});
+  assert.equal(parseCancellationCommand(request,accepted,key).expectedVersion,1);
+});
+
 test('raw cancellation JSON allows only one bounded positive integer version',()=>{
   for(const [raw,version] of [
     ['{"expectedVersion":1}',1],
