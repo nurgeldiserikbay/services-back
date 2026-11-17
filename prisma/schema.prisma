@@ -992,3 +992,17 @@ model PlatformAdminSecurityEvent {
   @@index([targetStaffId,occurredAt],map:"platform_admin_security_events_target_occurred_idx")
   @@map("platform_admin_security_events")
 }
+
+
+/** Optional count-only suppression watermark for manual receiver monitoring.
+ * No provider response, token, message, personal data or HTTP destination.
+ * Updated only after an explicitly reported successful transport send.
+ */
+model NotificationReceiverMonitorDeliveryState {
+ receiverScope String @map("receiver_scope")
+ code String
+ lastThreshold BigInt @map("last_threshold")
+ lastDeliveredAt DateTime @default(now()) @map("last_delivered_at") @db.Timestamptz(3)
+ @@id([receiverScope,code])
+ @@map("notification_receiver_monitor_delivery_state")
+}
