@@ -174,7 +174,7 @@
 
 ## Evidence log
 
-Backend cancellation HTTP command own-property hardening (2026-11-17): Prepared in this change; `parseCancellationCommand` now rejects non-enumerable and symbol-keyed extra fields, and non-enumerable `expectedVersion`, without invoking accessors. Regression tests added. This remains an unmounted pure contract; PR CI and post-merge main CI pending, no authorization or production release checkbox changed.
+Backend cancellation HTTP command own-property hardening (2026-11-17): Prepared in this change; `parseCancellationCommand` now rejects non-enumerable and symbol-keyed extra fields, and non-enumerable `expectedVersion`; composed preflight also snapshots exactly ten own data fields, rejecting inherited/accessor/hidden transport and CSRF properties without invoking getters. Regression tests added. This remains an unmounted pure contract; PR CI and post-merge main CI pending, no authorization or production release checkbox changed.
 
 
 Backend notification requeue HTTP own-data preflight hardening (2026-11-17): [PR #236](https://github.com/nurgeldiserikbay/services-back/pull/236) branch [CI #44126080456](https://github.com/nurgeldiserikbay/services-back/actions/runs/44126080456) PASS and [PR CI #44126093415](https://github.com/nurgeldiserikbay/services-back/actions/runs/44126093415) PASS on `64e3ab63`. Requeue preflight snapshots exact ten own data fields; rejects inherited, getter-backed, extra and symbol fields without invoking untrusted getters. Privileged HTTP route remains unmounted; real authorization/provider staging acceptance pending.
