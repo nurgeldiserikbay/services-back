@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend guest cancellation live capability expiry across PostgreSQL transaction waits (2026-11-17): Prepared in PR. All READ_CANCEL capability and verified guest contact expiry checks in fresh and replay transaction paths use PostgreSQL clock_timestamp() rather than BEGIN-frozen now(). PostgreSQL long-transaction regressions reject expired proofs before a fresh transition and on completed replay without duplicate cancellation event. CI pending; authenticated HTTP/staging acceptance remains open.
+
 Backend guest cancellation PostgreSQL version bound (2026-11-17): Prepared in this PR. Cancellation expectedVersion is bounded to 1..2147483646 because service_requests.version is PostgreSQL signed int4, and successful cancellation increments it exactly once. Raw JSON, direct command and service input regressions reject int4 overflow before DB transaction; existing last valid version is preserved. CI, authenticated HTTP E2E and staging acceptance remain open.
 
 Backend guest cancellation service pre-DB command and proof validation (2026-11-17): Prepared in this PR. GuestCancellationService.cancelIdempotently rejects malformed request IDs, unsafe expectedVersion, invalid idempotency headers and noncanonical 32-byte READ_CANCEL tokens before taking a pool connection; database transaction still revalidates proof and state. Unit regressions assert zero transactions on malformed submissions. No public endpoint, trusted BFF session or staging acceptance is added; CI pending.
