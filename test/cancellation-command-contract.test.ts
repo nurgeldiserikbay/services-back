@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {CancellationCommandRejected,parseCancellationCommand,
-  parseCancellationIdempotencyHeader} from
+  parseCancellationIdempotencyHeader,parseCancellationRawJsonBody} from
   '../src/modules/requests/cancellation-command-contract.js';
 
 const request='11111111-1111-4111-8111-111111111111';
@@ -69,4 +69,55 @@ test('unmounted cancellation command rejects exotic prototypes and accessors',()
   assert.deepEqual(parseCancellationCommand(request,nullProto,key),{
     requestId:request,expectedVersion:1,idempotencyKey:key,
   });
+});
+
+test('raw cancellation JSON allows only one bounded positive integer version',()=>{
+  for(const [raw,version] of [
+    ['{"expectedVersion":1}',1],
+    [' \t\r\n{ "expectedVersion" : 42 }\n',42],
+    ['{"expectedVersion":9007199254740991}',Number.MAX_SAFE_INTEGER],
+  ] as const){
+    assert.deepEqual(parseCancellationRawJsonBody(request,raw,key),{
+      requestId:request,expectedVersion:version,idempotencyKey:key,
+    });
+  }
+});
+test('raw cancellation JSON denies duplicate names and escaped property aliases',()=>{
+  for(const raw of [
+    '{"expectedVersion":1,"expectedVersion":2}',
+    '{"expectedVersion":1,"actor":"CUSTOMER"}',
+    '{"expectedVersion":1,"\\u0061ctor":"SELLER"}',
+    '{"expectedVersion":1,"\\u0065xpectedVersion":2}',
+    '{"\\u0065xpectedVersion":1}',
+    '{"expectedVersion":1,}',
+    '{"expectedVersion":1}{"expectedVersion":2}',
+    '{"expectedVersion":1}garbage',
+    '{"expectedVersion":1}\\nnull',
+    '[{"expectedVersion":1}]',
+    '{"expectedVersion":true}',
+    '{"expectedVersion":"1"}',
+    '{"expectedVersion":1.0}',
+    '{"expectedVersion":1e2}',
+    '{"expectedVersion":01}',
+    '{"expectedVersion":-1}',
+    '{"expectedVersion":0}',
+    '{"expectedVersion":9007199254740992}',
+    '{"expectedVersion":999999999999999999999999999999}',
+    '{"expectedVersion":1}\\u00a0',
+    ' \\u00a0{"expectedVersion":1}',
+    '{"expectedVersion":1}'.padEnd(129,' '),
+  ]){
+    assert.throws(()=>parseCancellationRawJsonBody(request,raw,key),
+      CancellationCommandRejected,raw);
+  }
+  for(const input of [null,[],{},1,new Uint8Array([123]),undefined]){
+    assert.throws(()=>parseCancellationRawJsonBody(request,input,key),
+      CancellationCommandRejected);
+  }
+});
+test('wire parser rejects invalid idempotency header and malformed request ID',()=>{
+  assert.throws(()=>parseCancellationRawJsonBody(
+    request,'{"expectedVersion":1}', 'bad'),CancellationCommandRejected);
+  assert.throws(()=>parseCancellationRawJsonBody(
+    '../invalid','{"expectedVersion":1}',key),CancellationCommandRejected);
 });
