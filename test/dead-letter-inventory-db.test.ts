@@ -60,3 +60,36 @@ test('dead-letter inventory rejects unsafe paging input before SQL',async()=>{
   /invalid_dead_letter_cursor/);
  assert.equal(calls,0);
 });
+
+test('dead-letter inventory rejects duplicate, unsorted and stale-cursor rows',async()=>{
+ const lower='11111111-1111-4111-8111-111111111111';
+ const higher='22222222-2222-4222-8222-222222222222';
+ const intent=randomUUID();
+ const row=(delivery_id:string)=>({
+  delivery_id,intent_id:intent,channel:'EMAIL',attempt_count:3,
+ });
+ for(const rows of [[row(lower),row(lower)],
+  [row(higher),row(lower)]]){
+  const fake={query:async()=>({rows})};
+  await assert.rejects(listFailedExternalDeliveries(fake as never,10),
+   /invalid_dead_letter_inventory/);
+ }
+ const fake={query:async()=>({rows:[row(lower)]})};
+ await assert.rejects(listFailedExternalDeliveries(fake as never,10,lower),
+  /invalid_dead_letter_inventory/);
+ await assert.rejects(listFailedExternalDeliveries(fake as never,10,higher),
+  /invalid_dead_letter_inventory/);
+});
+
+test('dead-letter inventory accepts increasing UUIDs after uppercase cursor',async()=>{
+ const lower='11111111-1111-4111-8111-111111111111';
+ const higher='22222222-2222-4222-8222-222222222222';
+ const intent=randomUUID();
+ const fake={query:async()=>({rows:[{
+  delivery_id:higher,intent_id:intent,channel:'SMS',attempt_count:2,
+ }]})};
+ assert.deepEqual(await listFailedExternalDeliveries(fake as never,10,
+  lower.toUpperCase()),[{
+  deliveryId:higher,intentId:intent,channel:'SMS',attempts:2,
+ }]);
+});
