@@ -4,6 +4,7 @@ This is a design gate, not an enabled API. The new
 `cancellation-command-contract.ts` parser only accepts:
 - request UUID from a trusted route match;
 - JSON object containing **only** `expectedVersion` as positive safe integer;
+- a plain or null-prototype record with an **own data property** `expectedVersion` (never invoke getters or trust inherited/class properties);
 - single `Idempotency-Key` header containing 16–128 ASCII alphanumeric,
   underscore or hyphen characters.
 

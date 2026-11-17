@@ -29,14 +29,20 @@ export function parseCancellationCommand(
      !body||typeof body!=='object'||Array.isArray(body))
     throw new CancellationCommandRejected('invalid_request');
   const data=body as Record<string,unknown>;
-  if(Object.keys(data).length!==1||
-     !Object.hasOwn(data,'expectedVersion')||
-     !Number.isSafeInteger(data.expectedVersion)||
-     (data.expectedVersion as number)<1)
+  // Only a decoded JSON object is valid transport input. Reject class
+  // instances and accessors: reading an untrusted getter can execute code,
+  // and a prototype property must never supply the expected version.
+  const prototype=Object.getPrototypeOf(data);
+  if(prototype!==Object.prototype&&prototype!==null)
+    throw new CancellationCommandRejected('invalid_request');
+  const descriptor=Object.getOwnPropertyDescriptor(data,'expectedVersion');
+  if(Object.keys(data).length!==1||!descriptor||
+     !Object.hasOwn(descriptor,'value')||
+     !Number.isSafeInteger(descriptor.value)||descriptor.value<1)
     throw new CancellationCommandRejected('invalid_request');
   return Object.freeze({
     requestId:requestId.toLowerCase(),
-    expectedVersion:data.expectedVersion as number,
+    expectedVersion:descriptor.value as number,
     idempotencyKey,
   });
 }

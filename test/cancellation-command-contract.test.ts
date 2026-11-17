@@ -43,3 +43,30 @@ test('request must be a canonical UUID, no fallback from body',()=>{
       value,{expectedVersion:1},key),CancellationCommandRejected);
   }
 });
+
+test('unmounted cancellation command rejects exotic prototypes and accessors',()=>{
+  let getterCalled=false;
+  const getter=Object.defineProperty({},'expectedVersion',{
+    enumerable:true,configurable:true,get(){
+      getterCalled=true;
+      throw new Error('untrusted getter must not run');
+    },
+  });
+  assert.throws(()=>parseCancellationCommand(request,getter,key),
+    (error:unknown)=>error instanceof CancellationCommandRejected&&
+      error.reason==='invalid_request');
+  assert.equal(getterCalled,false);
+  const inherited=Object.create({expectedVersion:1}) as Record<string,unknown>;
+  assert.throws(()=>parseCancellationCommand(request,inherited,key),
+    CancellationCommandRejected);
+  class Body {expectedVersion=1;}
+  assert.throws(()=>parseCancellationCommand(request,new Body(),key),
+    CancellationCommandRejected);
+  assert.throws(()=>parseCancellationCommand(request,new Date(),key),
+    CancellationCommandRejected);
+  const nullProto=Object.assign(Object.create(null) as Record<string,number>,
+    {expectedVersion:1});
+  assert.deepEqual(parseCancellationCommand(request,nullProto,key),{
+    requestId:request,expectedVersion:1,idempotencyKey:key,
+  });
+});
