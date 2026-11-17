@@ -101,6 +101,22 @@ export async function cancelGuestRequestIdempotently(
        current.rows[0].status!=='CANCELLED_BY_CUSTOMER'||
        current.rows[0].version!==result.version)
       throw new GuestCancellationRejected('conflict');
+    // Revalidate and lock the capability/contact after any wait on the
+    // ledger/request locks. A revoked or expired proof cannot authorize
+    // a previously completed response from an earlier database snapshot.
+    const liveProof=await db.query<{id:string}>(`
+      SELECT c.id::text
+      FROM guest_capabilities c
+      JOIN guest_contacts g ON g.id=c.guest_contact_id
+      WHERE c.request_id=$1::uuid AND c.guest_contact_id=$2::uuid
+        AND c.scope='READ_CANCEL' AND c.token_hash=$3
+        AND c.consumed_at IS NULL AND c.expires_at>now()
+        AND g.verified_at IS NOT NULL AND g.expires_at>now()
+      FOR SHARE OF c,g
+      LIMIT 1
+    `,[cmd.requestId,guestContactId,tokenHash]);
+    if(!liveProof.rows[0])
+      throw new GuestCancellationRejected('unavailable');
     return {id:cmd.requestId,state:'cancelled_by_customer',
       version:result.version as number};
   }
