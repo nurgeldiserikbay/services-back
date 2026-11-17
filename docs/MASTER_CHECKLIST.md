@@ -91,7 +91,7 @@
 - [ ] Retry and dead-letter handling — Prepared: fenced retry/acknowledgement, reconciliation, audited requeue, bounded worker and queue monitoring (PR #113–127); PostgreSQL lease E2E and schedule/COMMIT guards (PR #128–133); opt-in polling and staged delivery cycle (PR #134–136); two-connection PostgreSQL staging-to-SENT E2E (PR #137, branch CI #43848576260 PASS). Real provider, production scheduler, admin HTTP/CSRF, alert transport and operational acceptance remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
-- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open
+- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open; receiver count-only threshold evaluator source and tests landed on main (ce199469, 14ad399), post-merge CI pending
 
 ### Admin
 
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Receiver policy threshold evaluation (2026-11-17): PR #181 push CI #44034722338 and PR CI #44034746788 both PASS. Concurrent edits to MASTER_CHECKLIST repeatedly blocked PR merges despite CI-green heads (#180/#181). Source and test files, byte-identical to tested #181, landed directly on main in commits `ce199469` and `14ad399`; main CI after these writes is pending verification. This is an offline count-only threshold evaluator only. No production transport, approved thresholds, scheduler, on-call or staging sign-off. Delivery monitoring remains unchecked.
 
 Frontend search clear-all accessibility PR #78 and error-state recovery PR #79 (2026-11-17): [services-front PR #78](https://github.com/nurgeldiserikbay/services-front/pull/78) passed [push CI #44034202060](https://github.com/nurgeldiserikbay/services-front/actions/runs/44034202060) and [PR CI #44034221739](https://github.com/nurgeldiserikbay/services-front/actions/runs/44034221739), merged into `main` as [`beb4311`](https://github.com/nurgeldiserikbay/services-front/commit/beb43112e5668700d7c0ae8d62102c34d3610995). Chrome verifies reset link's 44×44 CSS-pixel target and localized accessible name for both kk/ru; PR #77 post-merge main [CI #44034140728 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44034140728). [Frontend PR #79](https://github.com/nurgeldiserikbay/services-front/pull/79), head [`0d7b214`](https://github.com/nurgeldiserikbay/services-front/commit/0d7b21468df6c081c79481f2667e210a4bf4f12a), adds a localized native keyboard-accessible retry link when search backend fails, preserving normalized filters and adding source regression; **CI and merge pending.** Full device/screen-reader/staging acceptance remains unchecked.
 
