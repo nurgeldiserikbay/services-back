@@ -76,7 +76,27 @@ export async function requeueFailedOrganizationDelivery(
     AND d.lease_token IS NULL AND d.lease_expires_at IS NULL
     AND d.next_attempt_at IS NULL AND n.next_attempt_at IS NULL
  `,[deliveryId,organizationId]);
- if(target.rows.length!==1)return 'DENIED';
+ if(target.rows.length!==1){
+  if(target.rows.length>1)
+   throw new Error('notification_dead_letter_inconsistent');
+  // A competing transaction may have committed between the first audit
+  // lookup and this FAILED-row preflight. Check the immutable scoped audit
+  // once more, without contacting the external provider.
+  const raced=await db.query<{delivery_id:string}>(`
+   SELECT a.delivery_id::text
+   FROM notification_requeue_audit a
+   JOIN notification_intents n ON n.id=a.intent_id
+   WHERE a.requeue_key=$1::uuid AND n.recipient_org_id=$2::uuid
+  `,[requeueKey,organizationId]);
+  if(!Array.isArray(raced.rows)||raced.rows.length>1)
+   throw new Error('notification_dead_letter_audit_conflict');
+  if(raced.rows.length===0)return 'DENIED';
+  const recorded=raced.rows[0]?.delivery_id;
+  if(typeof recorded!=='string'||!UUID.test(recorded))
+   throw new Error('notification_dead_letter_audit_conflict');
+  return recorded.toLowerCase()===deliveryId.toLowerCase()?
+   'ALREADY_REQUEUED':'DENIED';
+ }
  const item=target.rows[0];
  if(!UUID.test(item.intent_id)||(item.channel!=='EMAIL'&&item.channel!=='SMS'))
   throw new Error('invalid_dead_letter_target');
