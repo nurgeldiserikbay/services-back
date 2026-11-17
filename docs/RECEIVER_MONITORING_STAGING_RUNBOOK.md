@@ -26,6 +26,12 @@ The command holds a PostgreSQL session advisory lock for the configured receiver
 
 The parser validates everything before connecting to PostgreSQL. An empty breach list does not send any HTTP request. A nonempty breach list generates one bounded HTTPS POST with only `code`, `observed` and `threshold`. Output on success is only `{"mode":"one-shot-staging-send","breachCount":N}` and on any failure only `receiver_monitor_staging_send_failed` on stderr with nonzero exit. **Success indicates a 2xx response, not durable delivery, paging, acknowledgment, deduplication or on-call acceptance.** DNS/IP egress controls and live provider acceptance are external preconditions.
 
+## Durable cooldown watermark foundation (NOT activated)
+
+The migration `notification_receiver_monitor_delivery_state` and helpers `selectReceiverMonitoringDueBreaches` / `recordReceiverMonitoringDelivered` provide a **prepared, opt-in** PostgreSQL suppression watermark scoped to receiver scope and allowlisted breach code. An explicit 60–86400-second suppression window is required; changing the threshold permits a fresh alert. The table stores only receiver scope, aggregate code, numeric threshold and the last *successfully reported* delivery time.
+
+**Not wired to the staging CLI or production dispatcher yet.** A future integration must hold the same-scope advisory lock across observation, selection, HTTPS send and watermark update, and only call `recordReceiverMonitoringDelivered` after the transport reports a successful HTTP send. Failed or uncertain sends must remain eligible. Neither a provider 2xx nor this watermark proves durable receipt or on-call acknowledgment. The operational owner must approve the cooldown, re-page and incident escalation policy before activation.
+
 ## Pre-activation gates (all required)
 
 1. **Data owner:** approve receiver deployment scope and verify no guest/public user can supply or override it. Record an owner, environment and code SHA; never put credentials, tokens, user identifiers, message payloads or actual alerts in evidence.
