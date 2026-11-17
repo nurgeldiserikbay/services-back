@@ -84,6 +84,28 @@ test('webhook rejects extra fields and accessor-backed alerts without sending',a
  assert.equal(reads,0);
 });
 
+
+test('webhook rejects duplicate codes and alerts below declared thresholds',async()=>{
+ let sends=0;
+ const transport=createExternalDeliveryWebhookTransport(valid,
+  (async()=>{sends++;return {ok:true} as Response;}) as typeof fetch);
+ for(const alerts of [
+  [backlog,backlog],
+  [{...backlog,observed:1}],
+  [{...backlog,threshold:4}],
+  [{code:'QUEUE_INCONSISTENT',severity:'critical',observed:0,threshold:1}],
+  [{code:'QUEUE_INCONSISTENT',severity:'critical',observed:1,threshold:2}],
+ ]){
+  await assert.rejects(transport.send(alerts as never),
+   /invalid_external_alert_webhook_payload/);
+ }
+ assert.equal(sends,0);
+ await transport.send([backlog,{
+  code:'EXPIRED_LEASES',severity:'warning',observed:1,threshold:1,
+ }]);
+ assert.equal(sends,1);
+});
+
 test('non-2xx responses and fetch failures are propagated, not treated as success',async()=>{
  const transport=createExternalDeliveryWebhookTransport(valid,
   (async()=>({ok:false,status:503} as Response)) as typeof fetch);
