@@ -249,3 +249,69 @@ test('failed guest cancellation ledger and state changes roll back together',asy
     assert.deepEqual(request.rows[0],{status:'PENDING',version:1});
   });
 });
+
+test('completed guest cancellation replay requires a still-active verified proof',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000004';
+    const replay=()=>cancelGuestRequestIdempotently(
+      db,f.request,f.valid,1,key,secret,ledgerSecret);
+    const done=await replay();
+    assert.equal(done.version,2);
+    await db.query(`
+      UPDATE guest_capabilities SET consumed_at=now()
+      WHERE request_id=$1 AND scope='READ_CANCEL'
+    `,[f.request]);
+    await assert.rejects(replay(),
+      (error:unknown)=>error instanceof GuestCancellationRejected&&
+        error.reason==='unavailable');
+    const stored=await db.query<{state:string;response_status:number}>(`
+      SELECT state,response_status FROM idempotency_records
+      WHERE route=$1
+    `,['/v1/requests/'+f.request+'/cancel']);
+    assert.deepEqual(stored.rows,[{state:'COMPLETED',response_status:200}]);
+    const events=await db.query<{n:string}>(`
+      SELECT count(*)::text n FROM cancellation_events
+      WHERE request_id=$1
+    `,[f.request]);
+    assert.equal(events.rows[0].n,'1');
+  });
+});
+test('notification failure rolls back guest cancellation and ledger result together',async()=>{
+  await withFixture(async(db,f)=>{
+    const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000005';
+    // A duplicate mandatory counterparty intent makes notification insert fail
+    // after cancellation state/outbox have already been attempted.
+    const priorEvent=id();
+    await db.query(`
+      INSERT INTO domain_outbox_events
+        (id,topic,subject_kind,subject_id,safe_payload)
+      VALUES($1,'test.cancellation_conflict','ServiceRequest',$2,'{}'::jsonb)
+    `,[priorEvent,f.request]);
+    await db.query(`
+      INSERT INTO notification_intents
+        (id,domain_event_id,recipient_org_id,audience,channel,dedupe_key)
+      VALUES($1,$2,$3,'COUNTERPARTY','IN_APP',$4)
+    `,[id(),priorEvent,f.org,'cancel:counterparty:'+f.request]);
+    await db.query('SAVEPOINT ledger_attempt');
+    await assert.rejects(cancelGuestRequestIdempotently(
+      db,f.request,f.valid,1,key,secret,ledgerSecret));
+    await db.query('ROLLBACK TO SAVEPOINT ledger_attempt');
+    const request=await db.query<{status:string;version:number}>(`
+      SELECT status::text,version FROM service_requests WHERE id=$1
+    `,[f.request]);
+    assert.deepEqual(request.rows[0],{status:'PENDING',version:1});
+    const ledger=await db.query<{n:string}>(`
+      SELECT count(*)::text n FROM idempotency_records WHERE route=$1
+    `,['/v1/requests/'+f.request+'/cancel']);
+    assert.equal(ledger.rows[0].n,'0');
+    const events=await db.query<{n:string}>(`
+      SELECT count(*)::text n FROM cancellation_events WHERE request_id=$1
+    `,[f.request]);
+    assert.equal(events.rows[0].n,'0');
+    const outbox=await db.query<{n:string}>(`
+      SELECT count(*)::text n FROM domain_outbox_events
+      WHERE topic='service_request.cancelled' AND subject_id=$1
+    `,[f.request]);
+    assert.equal(outbox.rows[0].n,'0');
+  });
+});
