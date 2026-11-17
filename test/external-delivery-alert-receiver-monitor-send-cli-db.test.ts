@@ -37,7 +37,7 @@ test('one-shot staging HTTPS CLI with healthy PostgreSQL scope does not contact 
  assert.equal(child.status,0,'healthy scope should not attempt HTTP');
  assert.equal(child.stderr,'');
  assert.deepEqual(JSON.parse(child.stdout),{
-  mode:'one-shot-staging-send',breachCount:0,
+  mode:'one-shot-staging-send',breachCount:0,sentCount:0,
  });
  assert.equal(child.stdout.split('\n').length,2);
  for(const secret of [scope,token,connectionString,'alerts.example.org'])
