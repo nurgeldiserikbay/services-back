@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend cancellation Nest service PostgreSQL delegation (2026-11-17): Prepared in this PR. Live DB fixture invokes GuestCancellationService.cancelIdempotently twice through caller-owned transaction adapter and asserts one cancellation event, two notice intents and a stable replay; a foreign READ_CANCEL capability is rejected. Branch/PR CI pending. This does not represent mounted/authenticated HTTP E2E or staging acceptance.
+
 Backend guest cancellation idempotent Nest service wiring (2026-11-17): Prepared in this PR. Internal GuestCancellationService.cancelIdempotently invokes existing PostgreSQL atomic cancellation ledger within DatabasePool.transaction, fails closed without canonical distinct 256-bit guest capability pepper and independent ledger HMAC secret. Unit tests verify configuration rejection before DB and transaction invocation. No HTTP endpoint mounted; CI, provider delivery and staging acceptance remain open.
 
 Backend guest cancellation ledger expiry fail-closed replay (2026-11-17): Prepared in PR. Completed ledger is valid only when expires_at is later than live PostgreSQL clock_timestamp(), not frozen transaction-start now(); PostgreSQL regression proves expired completed result cannot replay and no duplicate cancellation event appears. Branch/PR CI pending; no public HTTP route or release acceptance enabled.
