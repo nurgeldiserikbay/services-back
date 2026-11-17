@@ -156,7 +156,7 @@ test('idempotency window gives stable keys across retries and alert order, then 
  const headers:Record<string,string>[]=[];
  let now=180000;
  const transport=createExternalDeliveryWebhookTransport({
-  ...valid,idempotencyWindowMs:60000,
+  ...valid,idempotencyWindowMs:60000,idempotencyScope:'staging-kz',
  },(async(_input:string|URL|Request,init?:RequestInit)=>{
   headers.push(init?.headers as Record<string,string>);
   return {ok:true} as Response;
@@ -166,7 +166,7 @@ test('idempotency window gives stable keys across retries and alert order, then 
  now=181000;
  await transport.send([warning,backlog]);
  assert.equal(headers.length,2);
- assert.match(headers[0]['idempotency-key'],/^services-alert-v1-[a-f0-9]{64}$/);
+ assert.match(headers[0]['idempotency-key'],/^services-alert-v2-[a-f0-9]{64}$/);
  assert.equal(headers[0]['idempotency-key'],headers[1]['idempotency-key']);
  now=240000;
  await transport.send([backlog,warning]);
@@ -186,7 +186,7 @@ test('idempotency stays opt-in and rejects invalid window or clock without sendi
  await noWindow.send([backlog]);
  for(const idempotencyWindowMs of [0,59999,3600001,1.5,NaN,Infinity]){
   assert.throws(()=>createExternalDeliveryWebhookTransport({
-   ...valid,idempotencyWindowMs,
+   ...valid,idempotencyWindowMs,idempotencyScope:'staging-kz',
   }),/invalid_external_alert_webhook_config/);
  }
  let getterCalls=0;
@@ -197,12 +197,50 @@ test('idempotency stays opt-in and rejects invalid window or clock without sendi
   /invalid_external_alert_webhook_config/);
  assert.equal(getterCalls,0);
  const invalidClock=createExternalDeliveryWebhookTransport({
-  ...valid,idempotencyWindowMs:60000,
+  ...valid,idempotencyWindowMs:60000,idempotencyScope:'staging-kz',
  },(async()=>{sends++;return {ok:true} as Response;}) as typeof fetch,
  ()=>NaN);
  await assert.rejects(invalidClock.send([backlog]),
   /invalid_external_alert_webhook_clock/);
  assert.equal(sends,1);
+});
+
+
+test('idempotency keys are scoped to each deployment and reject ambiguous scope',async()=>{
+ const keys:string[]=[];
+ const fetchStub=(async(_input:string|URL|Request,init?:RequestInit)=>{
+  keys.push((init?.headers as Record<string,string>)['idempotency-key']);
+  return {ok:true} as Response;
+ }) as typeof fetch;
+ const windowMs=60000;
+ for(const idempotencyScope of ['prod-kz','staging-kz','prod-kz']){
+  const transport=createExternalDeliveryWebhookTransport({
+   ...valid,idempotencyWindowMs:windowMs,idempotencyScope,
+  },fetchStub,()=>180000);
+  await transport.send([backlog]);
+ }
+ assert.equal(keys[0],keys[2]);
+ assert.notEqual(keys[0],keys[1]);
+ for(const config of [
+  {...valid,idempotencyWindowMs:windowMs},
+  {...valid,idempotencyWindowMs:windowMs,idempotencyScope:''},
+  {...valid,idempotencyWindowMs:windowMs,idempotencyScope:'PROD'},
+  {...valid,idempotencyWindowMs:windowMs,idempotencyScope:'prod space'},
+  {...valid,idempotencyWindowMs:windowMs,idempotencyScope:'x'.repeat(65)},
+  {...valid,idempotencyScope:'prod-kz'},
+ ]){
+  assert.throws(()=>createExternalDeliveryWebhookTransport(config),
+   /invalid_external_alert_webhook_config/);
+ }
+ let called=0;
+ const trap=Object.defineProperty({
+  ...valid,idempotencyWindowMs:windowMs,
+ },'idempotencyScope',{
+  get(){called++;throw new Error('unsafe getter');},
+ });
+ assert.throws(()=>createExternalDeliveryWebhookTransport(trap),
+  /invalid_external_alert_webhook_config/);
+ assert.equal(called,0);
 });
 
 test('webhook does not leak tokens or target URLs from rejected fetch exceptions',async()=>{
