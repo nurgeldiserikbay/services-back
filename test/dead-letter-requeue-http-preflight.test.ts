@@ -72,3 +72,43 @@ test('requeue preflight denies untrusted or missing verified session proof',()=>
   }),/invalid_requeue_http_preflight/);
  }
 });
+
+test('requeue preflight never invokes accessor-backed or inherited transport fields',()=>{
+ for(const field of ['deliveryId','requeueKeyHeader','rawBody','csrfHeader',
+  'sessionExpectedCsrf','expectedOrigin','origin','fetchSite',
+  'contentType','transportProtocol'] as const){
+  const input=fixture();
+  let getterCalls=0;
+  Object.defineProperty(input,field,{
+   enumerable:true,configurable:true,
+   get(){getterCalls++;throw Error('untrusted_getter_executed');},
+  });
+  assert.throws(()=>parseRequeueHttpPreflight(input),
+   RequeueHttpPreflightRejected,field);
+  assert.equal(getterCalls,0,field);
+ }
+ const inherited=Object.create(fixture()) as ReturnType<typeof fixture>;
+ assert.throws(()=>parseRequeueHttpPreflight(inherited),
+  RequeueHttpPreflightRejected);
+ const derived=Object.assign(Object.create({evil:true}),fixture());
+ assert.throws(()=>parseRequeueHttpPreflight(derived),
+  RequeueHttpPreflightRejected);
+});
+
+test('requeue preflight rejects extra fields and accepts plain null prototype data',()=>{
+ const input=fixture();
+ assert.throws(()=>parseRequeueHttpPreflight({
+  ...input,actor:'admin',
+ }),RequeueHttpPreflightRejected);
+ assert.throws(()=>parseRequeueHttpPreflight({
+  ...input,organizationScope:'organization:any',
+ }),RequeueHttpPreflightRejected);
+ const extraSymbol=Object.assign({},input);
+ Object.defineProperty(extraSymbol,Symbol('hidden'),{value:true});
+ assert.throws(()=>parseRequeueHttpPreflight(extraSymbol),
+  RequeueHttpPreflightRejected);
+ const plain=Object.assign(Object.create(null),input);
+ const command=parseRequeueHttpPreflight(plain);
+ assert.equal(command.deliveryId,input.deliveryId.toLowerCase());
+ assert.equal(command.requeueKey,input.requeueKeyHeader.toLowerCase());
+});
