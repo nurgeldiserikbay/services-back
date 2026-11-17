@@ -186,3 +186,14 @@ test('requeue update row identity mismatch must not be reported successful',asyn
   assert.equal(counts().audits,0);
  }
 });
+
+test('uppercase input UUID matches PostgreSQL canonical delivery identity',async()=>{
+ const {db,provider,counts}=fixture();
+ const uppercaseDeliveryId=deliveryId.toUpperCase();
+ assert.equal(await requeueFailedOrganizationDelivery(
+  db as never,provider,bearer,pepper,uppercaseDeliveryId,randomUUID(),scope,now),
+  'REQUEUED');
+ assert.equal(counts().updates,2);
+ assert.equal(counts().audits,1);
+ assert.equal(counts().providerCalls,1);
+});
