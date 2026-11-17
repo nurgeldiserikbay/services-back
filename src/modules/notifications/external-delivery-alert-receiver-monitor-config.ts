@@ -24,7 +24,7 @@ export function parseReceiverMonitorThresholds(
   if(!descriptor||!Object.hasOwn(descriptor,'value'))
    throw new Error('invalid_external_alert_receiver_monitor_config');
   const value:unknown=descriptor.value;
-  if(typeof value!=='string'||! /^[1-9][0-9]*$/.test(value)||
+  if(typeof value!=='string'||!/^[1-9][0-9]*$/.test(value)||
      value.length>16)
    throw new Error('invalid_external_alert_receiver_monitor_config');
   const parsed=Number(value);
