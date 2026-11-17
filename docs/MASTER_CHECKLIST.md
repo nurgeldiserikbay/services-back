@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend cancellation service BFF preflight composition (2026-11-17): Prepared in this PR. Internal, unmounted GuestCancellationService.cancelWithPreflight composes strict transport/Origin/CSRF/raw JSON validation with transaction-backed idempotent cancellation. Unit regressions refuse malformed/cross-site requests before SQL and exercise the valid delegation path; requires trusted server session context, never browser-supplied sessionExpectedCsrf, expectedOrigin or requestProtocol. Authenticated HTTP E2E, frontend sealed capability, staging and operational acceptance remain open. Branch/PR CI pending.
+
 Backend cancellation Nest service PostgreSQL delegation (2026-11-17): Prepared in this PR. Live DB fixture invokes GuestCancellationService.cancelIdempotently twice through caller-owned transaction adapter and asserts one cancellation event, two notice intents and a stable replay; a foreign READ_CANCEL capability is rejected. Branch/PR CI pending. This does not represent mounted/authenticated HTTP E2E or staging acceptance.
 
 Backend guest cancellation idempotent Nest service wiring (2026-11-17): Prepared in this PR. Internal GuestCancellationService.cancelIdempotently invokes existing PostgreSQL atomic cancellation ledger within DatabasePool.transaction, fails closed without canonical distinct 256-bit guest capability pepper and independent ledger HMAC secret. Unit tests verify configuration rejection before DB and transaction invocation. No HTTP endpoint mounted; CI, provider delivery and staging acceptance remain open.
