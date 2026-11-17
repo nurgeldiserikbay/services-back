@@ -91,7 +91,7 @@
 - [ ] Retry and dead-letter handling — Prepared: fenced retry/acknowledgement, reconciliation, audited requeue, bounded worker and queue monitoring (PR #113–127); PostgreSQL lease E2E and schedule/COMMIT guards (PR #128–133); opt-in polling and staged delivery cycle (PR #134–136); two-connection PostgreSQL staging-to-SENT E2E (PR #137, branch CI #43848576260 PASS). Real provider, production scheduler, admin HTTP/CSRF, alert transport and operational acceptance remain open
 - [x] Deduplication — Verified by notification pipeline PostgreSQL CI #43745179540 (2026-11-15); repeated batch produces no duplicate delivery/inbox entries
 - [ ] Notification audit logs — Pending verification
-- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open; receiver count-only threshold evaluator source and tests landed on main (ce199469, 14ad399), post-merge CI pending
+- [ ] Delivery monitoring — Prepared: own-field validation for queue alert telemetry and policy, regression tests and serialized shared-PostgreSQL full test runner committed; production alert transport, approved SLO and staging drill remain open; receiver count-only threshold evaluator source and tests landed on main (ce199469, 14ad399), post-merge CI pending; deployment-scoped DB observation composition and PostgreSQL regression prepared in branch backend/receiver-monitor-observe-20261117; CI and acceptance pending
 
 ### Admin
 
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+Receiver monitoring observation DB composition (2026-11-17): branch `backend/receiver-monitor-observe-20261117` adds opt-in internal count-only PostgreSQL observation, pre-query operator threshold validation and scoped PostgreSQL regression for isolation/absence/PII exclusion; no scheduler, route, transport, on-call or thresholds are activated. **Prepared: branch and PR CI pending.** Delivery monitoring remains unchecked.
 
 Frontend search retry PR #79 merged and invalid cursor regression PR #80 (2026-11-17): [frontend PR #79](https://github.com/nurgeldiserikbay/services-front/pull/79) passed [push CI #44034779512](https://github.com/nurgeldiserikbay/services-front/actions/runs/44034779512) and [PR CI #44034802970](https://github.com/nurgeldiserikbay/services-front/actions/runs/44034802970), merged into front `main` as [`512cd54`](https://github.com/nurgeldiserikbay/services-front/commit/512cd5407b6cc6a772d7469179d0a283a4442c4a); previous front main [CI #44034643084 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44034643084). Follow-up [frontend PR #80](https://github.com/nurgeldiserikbay/services-front/pull/80), head [`5770729`](https://github.com/nurgeldiserikbay/services-front/commit/5770729f89333ba444d8c9ff0aba2bc718ab39d4), corrects an error recovery loop: backend rejects syntactically accepted but invalid pagination cursor with HTTP 400; retry now drops only the cursor while preserving locale/query/search filters. Real backend Next.js E2E verifies kk/ru failed-search state, retry link and recovered response; **CI and merge pending**. Physical device, screen-reader, staging and full frontend loading/error acceptance remain unchecked.
 
