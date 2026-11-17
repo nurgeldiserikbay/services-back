@@ -5,6 +5,7 @@ This is a design gate, not an enabled API. The new
 - request UUID from a trusted route match;
 - JSON object containing **only** `expectedVersion` as positive safe integer;
 - a plain or null-prototype record with an **own data property** `expectedVersion` (never invoke getters or trust inherited/class properties);
+- an optional **raw wire-level parser** `parseCancellationRawJsonBody`: UTF-8 text at most 128 bytes, JSON object with one literal `"expectedVersion"` key and one positive safe integer. It rejects duplicate JSON names (which `JSON.parse` would otherwise overwrite), escaped property aliases, extra keys and numeric ambiguities. A future adapter must bound bytes **before** decoding and invoke this parser before any authorization or state change;
 - single `Idempotency-Key` header containing 16–128 ASCII alphanumeric,
   underscore or hyphen characters.
 
