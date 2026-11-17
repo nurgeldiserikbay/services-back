@@ -10,6 +10,12 @@ Status: **PREPARED / NOT ACTIVATED**. This runbook is an acceptance plan, not ev
 - Explicit dispatch: `dispatchExternalAlertReceiverMonitoring(db, receiverScope, thresholds, transport)` sends ONLY `{code,observed,threshold}` breach records to a caller-provided transport. No send occurs on a healthy snapshot. SQL or transport failures propagate.
 - None of these primitives creates a background scheduler, binds an HTTP route, provisions a provider, or chooses thresholds.
 
+## Optional HTTPS adapter — not activated
+
+The repository provides `createReceiverMonitorHttpsTransport(config, request?)` as an **opt-in** adapter for operator-owned monitoring dispatch. There is no default endpoint, scheduler, token, threshold policy or active binding. The operator must supply an explicit exact HTTPS URL, matching approved hostname, a secret bearer token from the secret manager and a bounded request timeout (1–10 seconds). It transmits only the validated `breaches` array containing `code`, `observed` and `threshold`; errors are redacted and propagated. Non-2xx results and redirects are failures. The unit tests inject an HTTP substitute and **do not prove provider connectivity**.
+
+**Security limit:** hostname string validation alone does not establish DNS/IP routing safety. Before any real destination is approved, restrict outbound network access to the approved provider, audit DNS and proxy resolution, enforce TLS/credential scope and egress firewalls, verify provider authentication and test request failures. Treat operator-approved URLs as privileged configuration, never as user input. Do not use this adapter against arbitrary customer-supplied or public URLs.
+
 ## Pre-activation gates (all required)
 
 1. **Data owner:** approve receiver deployment scope and verify no guest/public user can supply or override it. Record an owner, environment and code SHA; never put credentials, tokens, user identifiers, message payloads or actual alerts in evidence.
