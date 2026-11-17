@@ -3,7 +3,8 @@ import {randomBytes} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {CancellationCommandRejected,parseCancellationCommand,
   parseCancellationIdempotencyHeader,parseCancellationRawJsonBody,
-  assertCancellationTransportHeaders,assertCancellationSessionCsrf} from
+  assertCancellationTransportHeaders,assertCancellationSessionCsrf,
+  parseCancellationPreflight} from
   '../src/modules/requests/cancellation-command-contract.js';
 
 const request='11111111-1111-4111-8111-111111111111';
@@ -192,4 +193,50 @@ test('unmounted cancellation CSRF requires canonical session-bound 256-bit proof
     assert.throws(()=>assertCancellationSessionCsrf(invalidLastByte,bound),
       CancellationCommandRejected);
   }
+});
+
+test('unmounted cancellation preflight composes all security boundary checks',()=>{
+  const csrf=randomBytes(32).toString('base64url');
+  const valid={
+    requestId:request,
+    rawBody:'{"expectedVersion":3}',
+    idempotencyHeader:key,
+    csrfHeader:csrf,
+    sessionExpectedCsrf:csrf,
+    expectedOrigin:'https://services.example.test',
+    origin:'https://services.example.test',
+    fetchSite:'same-origin',
+    contentType:'application/json',
+    requestProtocol:'https:',
+  };
+  assert.deepEqual(parseCancellationPreflight(valid),{
+    requestId:request,expectedVersion:3,idempotencyKey:key,
+  });
+  assert.equal(Object.isFrozen(parseCancellationPreflight(valid)),true);
+  for(const changed of [
+    {requestId:'../cross-request'},
+    {rawBody:'{"expectedVersion":3,"expectedVersion":4}'},
+    {rawBody:'{"expectedVersion":3,"actor":"SELLER"}'},
+    {rawBody:'{"expectedVersion":0}'},
+    {rawBody:'{"expectedVersion":1}'.padEnd(129,' ')},
+    {idempotencyHeader:'invalid'},
+    {idempotencyHeader:[''+key]},
+    {csrfHeader:randomBytes(32).toString('base64url')},
+    {csrfHeader:undefined},
+    {sessionExpectedCsrf:undefined},
+    {sessionExpectedCsrf:randomBytes(32).toString('base64url')},
+    {expectedOrigin:'https://evil.invalid'},
+    {origin:'https://evil.invalid'},
+    {origin:undefined},
+    {fetchSite:'cross-site'},
+    {fetchSite:undefined},
+    {contentType:'text/plain'},
+    {contentType:'application/json; debug=true'},
+    {requestProtocol:'http:'},
+  ]){
+    assert.throws(()=>parseCancellationPreflight({...valid,...changed}),
+      CancellationCommandRejected,JSON.stringify(changed));
+  }
+  assert.throws(()=>parseCancellationPreflight(null as never),
+    CancellationCommandRejected);
 });
