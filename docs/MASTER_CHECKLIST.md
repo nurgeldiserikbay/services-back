@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend dead-letter requeue uppercase UUID normalization (2026-11-17): PR pending makes UPDATE RETURNING delivery UUID comparison case-insensitive while still requiring a valid string and exact identity; regression covers uppercase caller UUID against canonical PostgreSQL lower-case response. CI, final PR merge and broader notification audit acceptance pending; no acceptance checkbox changed.
+
 Frontend consumed guest proof post-merge main CI (2026-11-17): services-front [PR #109](https://github.com/nurgeldiserikbay/services-front/pull/109), merged at [f38608ff](https://github.com/nurgeldiserikbay/services-front/commit/f38608ff92269d2f82cef1a0006b60c041e80518), passed [post-merge main CI #44088031282](https://github.com/nurgeldiserikbay/services-front/actions/runs/44088031282) at the exact merge SHA. This confirms integrated CI coverage for consumed CREATE_REQUEST + fresh idempotency-key denial alongside same-key committed replay. This does not approve the default-off guest cancellation HTTP adapter, real provider OTP or delivery, staging or on-device validation. Acceptance gates remain unchecked.
 
 Backend notification requeue audit rollback PostgreSQL E2E (2026-11-17): [PR #217](https://github.com/nurgeldiserikbay/services-back/pull/217) passed [branch CI #44087970367](https://github.com/nurgeldiserikbay/services-back/actions/runs/44087970367) and [PR CI #44087980558](https://github.com/nurgeldiserikbay/services-back/actions/runs/44087980558) at head `2c05e359`. Simulated audit INSERT failure after updates rolls back FAILED rows and audit row; full notification audit acceptance remains unchecked.
