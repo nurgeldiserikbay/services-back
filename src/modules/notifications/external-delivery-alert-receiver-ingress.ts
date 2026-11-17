@@ -73,7 +73,10 @@ export async function acceptExternalDeliveryAlertIngress(
  `,[receiverScope,key]);
  if(!Array.isArray(prior.rows)||prior.rows.length!==1)
   throw new Error('invalid_external_alert_receiver_database');
- const property=Object.getOwnPropertyDescriptor(prior.rows[0],'body_digest');
+ const existing=prior.rows[0];
+ if(!existing||typeof existing!=='object')
+  throw new Error('invalid_external_alert_receiver_database');
+ const property=Object.getOwnPropertyDescriptor(existing,'body_digest');
  if(!property||!Object.hasOwn(property,'value')||
     typeof property.value!=='string')
   throw new Error('invalid_external_alert_receiver_database');
