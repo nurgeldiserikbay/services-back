@@ -45,8 +45,7 @@ test('idempotent cancellation service rejects missing, malformed or shared signi
 
 test('guest cancellation service preflight rejects untrusted transport before DB',async()=>{
   let calls=0;
-  const db={transaction:async()=>{calls++;throw new Error('unexpected_database_access');}}
-    as unknown as DatabasePool;
+  const db={transaction:async()=>{calls++;throw new Error('unexpected_database_access');}} as unknown as DatabasePool;
   const service=new GuestCancellationService(db);
   const csrf=randomBytes(32).toString('base64url');
   const valid={
