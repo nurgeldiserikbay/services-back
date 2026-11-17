@@ -17,6 +17,8 @@ export type ExternalDeliveryWebhookConfig=Readonly<{
  timeoutMs:number;
  /** Optional approved bucket for receiver-side idempotency, 60s–1h. */
  idempotencyWindowMs?:number;
+ /** Nonsecret, deployment-specific scope (e.g. prod-kz), required with a window. */
+ idempotencyScope?:string;
 }>;
 
 export function createExternalDeliveryWebhookTransport(
@@ -38,6 +40,10 @@ export function createExternalDeliveryWebhookTransport(
  if(dedupeField&&!Object.hasOwn(dedupeField,'value'))
   throw new Error('invalid_external_alert_webhook_config');
  const idempotencyWindowMs:unknown=dedupeField?.value;
+ const scopeField=Object.getOwnPropertyDescriptor(config,'idempotencyScope');
+ if(scopeField&&!Object.hasOwn(scopeField,'value'))
+  throw new Error('invalid_external_alert_webhook_config');
+ const idempotencyScope:unknown=scopeField?.value;
  if(typeof endpoint!=='string'||typeof approvedHostname!=='string'||
     typeof bearerToken!=='string'||typeof timeoutMs!=='number'||
     !Number.isSafeInteger(timeoutMs)||timeoutMs<1000||timeoutMs>30000)
@@ -57,6 +63,10 @@ export function createExternalDeliveryWebhookTransport(
      (typeof idempotencyWindowMs!=='number'||
       !Number.isSafeInteger(idempotencyWindowMs)||
       idempotencyWindowMs<60000||idempotencyWindowMs>3600000))||
+    (idempotencyWindowMs!==undefined&&
+     (typeof idempotencyScope!=='string'||
+      !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(idempotencyScope)))||
+    (idempotencyWindowMs===undefined&&idempotencyScope!==undefined)||
     typeof request!=='function'||typeof clock!=='function')
   throw new Error('invalid_external_alert_webhook_config');
  // Do not capture the mutable user-owned config or allow config getter
@@ -65,6 +75,7 @@ export function createExternalDeliveryWebhookTransport(
  const authorization='Bearer '+bearerToken;
  const timeout=timeoutMs;
  const dedupeWindow=idempotencyWindowMs as number|undefined;
+ const dedupeScope=idempotencyScope as string|undefined;
  return Object.freeze({
   async send(alerts:ReadonlyArray<ExternalDeliveryAlert>):Promise<void>{
    if(!Array.isArray(alerts)||alerts.length===0||alerts.length>4)
@@ -108,8 +119,8 @@ export function createExternalDeliveryWebhookTransport(
     // use the same key across workers; the receiver must enforce deduplication.
     const canonical=[...safe].sort((a,b)=>String(a.code).localeCompare(String(b.code)));
     const bucket=Math.floor(timestamp/dedupeWindow);
-    const digest=createHash('sha256').update(JSON.stringify({v:1,bucket,alerts:canonical})).digest('hex');
-    headers['idempotency-key']='services-alert-v1-'+digest;
+    const digest=createHash('sha256').update(JSON.stringify({v:2,scope:dedupeScope,bucket,alerts:canonical})).digest('hex');
+    headers['idempotency-key']='services-alert-v2-'+digest;
    }
    let response:Response;
    try{
