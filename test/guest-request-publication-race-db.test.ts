@@ -8,7 +8,7 @@ import {issueGuestCapability} from '../src/modules/guest-requests/guest-request.
 
 /** Independent committed clients: a profile transition must invalidate a guest
  * create attempt waiting on its profile lock, even if offer pre-check passed. */
-test('guest personal request rejects a competing profile transition after profile-lock wait',async()=>{
+test('guest personal request rejects a competing profile transition after profile-lock wait',{skip:process.env.CI!=='true'},async()=>{
  const a=new Client({connectionString:process.env.DATABASE_URL});
  const b=new Client({connectionString:process.env.DATABASE_URL});
  const pepper=randomBytes(32),encryptionKey=randomBytes(32);
@@ -18,6 +18,8 @@ test('guest personal request rejects a competing profile transition after profil
  let created=false;
  try{
   await Promise.all([a.connect(),b.connect()]);
+  const dbName=(await a.query<{name:string}>('SELECT current_database() AS name')).rows[0]?.name;
+  assert.equal(dbName,'services_test','Committed race fixture may only run on isolated CI test database');
   await a.query('BEGIN');
   await a.query('INSERT INTO users(id) VALUES($1)',[user]);
   await a.query('INSERT INTO persons(id,user_id) VALUES($1,$2)',[person,user]);
@@ -34,6 +36,10 @@ test('guest personal request rejects a competing profile transition after profil
   await a.query('BEGIN');
   await a.query("UPDATE professional_profiles SET status='PAUSED' WHERE id=$1",[profile]);
   await b.query('BEGIN');
+  // Bound server-side lock waits: a missed synchronization point must fail
+  // in seconds rather than exhaust the 25-minute CI job timeout.
+  await b.query("SET LOCAL lock_timeout = '8s'");
+  await b.query("SET LOCAL statement_timeout = '12s'");
   let atProfileLock!:()=>void;
   const entering=new Promise<void>(resolve=>{atProfileLock=resolve;});
   const wrapped={query:async(sql:string,params:unknown[])=>{
@@ -66,19 +72,23 @@ test('guest personal request rejects a competing profile transition after profil
   assert.equal((await a.query('SELECT count(*)::int AS count FROM service_requests WHERE offer_id=$1',[offer])).rows[0].count,0);
   assert.equal((await a.query('SELECT consumed_at FROM guest_capabilities WHERE id=$1',[cap])).rows[0].consumed_at,null);
  }finally{
-  await b.query('ROLLBACK').catch(()=>{});
+  // Release the profile row lock on A FIRST. Otherwise B's queued ROLLBACK
+  // cannot execute while its profile SELECT is still blocked by A, causing
+  // a permanent JS-level deadlock during a failed concurrency assertion.
   await a.query('ROLLBACK').catch(()=>{});
+  await b.query('ROLLBACK').catch(()=>{});
   if(created){
    await a.query('BEGIN');
    try{
     await a.query('DELETE FROM guest_capabilities WHERE id=$1',[cap]);
     await a.query('DELETE FROM guest_contacts WHERE id=$1',[contact]);
     await a.query('DELETE FROM service_offers WHERE id=$1',[offer]);
-    await a.query('DELETE FROM professional_profiles WHERE id=$1',[profile]);
-    await a.query('DELETE FROM service_definitions WHERE id=$1',[definition]);
-    await a.query('DELETE FROM professions WHERE id=$1',[profession]);
-    await a.query('DELETE FROM persons WHERE id=$1',[person]);
-    await a.query('DELETE FROM users WHERE id=$1',[user]);
+    // PUBLISHED profiles have append-only revisions protected by ON DELETE
+    // RESTRICT. Keep that immutable historical record intact; archive the
+    // synthetic professional so it cannot be discovered. The tiny synthetic
+    // owner/profession identity survives only in the disposable CI database.
+    // Never bypass the immutable revision trigger to delete test fixtures.
+    await a.query("UPDATE professional_profiles SET status='ARCHIVED' WHERE id=$1",[profile]);
     await a.query('COMMIT');
    }catch{
     await a.query('ROLLBACK').catch(()=>{});
