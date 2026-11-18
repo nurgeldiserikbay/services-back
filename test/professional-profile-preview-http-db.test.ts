@@ -68,7 +68,7 @@ test('live profile preview enforces owner and retains published snapshot after e
   });
   await db.query("UPDATE professional_profiles SET title='First public',status='PUBLISHED' WHERE id=$1",[ownProfile]);
   const firstPublic=await preview(own.token,ownProfile);
-  assert.deepEqual((await firstPublic.json()).published,{title:'First public',about:null,version:1});
+  assert.deepEqual((await firstPublic.json() as {published:unknown}).published,{title:'First public',about:null,version:1});
   const update=(token:string,id:string,version:string,body:unknown)=>fetch(url+'/'+id,{
    method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','If-Match':version},
    body:JSON.stringify(body),
