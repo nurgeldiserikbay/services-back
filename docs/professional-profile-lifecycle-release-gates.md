@@ -71,3 +71,8 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - The owner publication transaction checks for a closed professional moderation case with immutable **APPROVE** evidence for exactly the locked draft version. A case marked `closed` without an APPROVE decision, a prior-version approval, or any competing `REJECT` for that draft version fails closed before snapshot/audit writes.
 - A reviewer decision locks the same professional row `FOR SHARE` that publication locks `FOR UPDATE`. A current draft edit increments the version and invalidates older approval evidence. Retrying publication requires a new explicit decision for the edited version.
 - This guard does not approve the production rollout, seller eligibility rules, appeal semantics, or staging end-to-end acceptance. The independent moderation decision and publication feature flags remain default-off.
+
+## Appeals and moderation-case/publication serialization (2026-11-18)
+- Creating a non-closed professional moderation case, or re-opening/retargeting one, takes a PostgreSQL `FOR SHARE` lock on an existing target profile. Owner publication takes `FOR UPDATE` on that same row, so a newly opened appeal cannot slip into the publication check under an older snapshot.
+- Once a case has an immutable APPROVE/REJECT decision, its resource, subject and state cannot be changed. An appeal must be a **separate** open `professional:{uuid}` case: the preexisting publication guard rejects it while state differs from `closed`.
+- These constraints do not define who may file or resolve an appeal, appeal deadlines, seller eligibility, retention, or visibility transitions. Keep all publication and moderation decision flags OFF until product/legal/security and staging E2E sign-off.
