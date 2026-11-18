@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {Module,UnauthorizedException} from '@nestjs/common';
+import {json as expressJson} from 'express';
 import {NestFactory} from '@nestjs/core';
 import {DatabasePool} from '../src/platform/database/database.pool.js';
 import {PlatformProfessionalAppealAdminController} from '../src/modules/admin/admin-professional-appeal-http.controller.js';
@@ -30,10 +31,12 @@ test('unregistered private appeal transport denies default-off, browser origin a
   // Future private transport would register this filter at the Nest HTTP boundary.
   // Express pre-parser middleware must be registered before app.listen/init.
   app.use(privateAppealCharsetPreflight);
+  // Isolated pre-parser chain: a scoped Express JSON decoder and its
+  // four-argument error handler must precede Nest's own body parser.
+  app.use(expressJson({type:'application/json'}));
+  app.use(privateAppealParserErrorMiddleware);
   app.useGlobalFilters(new PlatformAppealHttpErrorFilter());
   app.setGlobalPrefix('v1');
-  await app.init(); // Register Nest/body-parser routes first.
-  app.use(privateAppealParserErrorMiddleware); // Express four-argument error handler.
   await app.listen(0,'127.0.0.1');
   const base=(await app.getUrl())+'/v1/admin/moderation/appeals/'+appeal;
   const validShape=():string=>'Bearer '+randomBytes(32).toString('base64url');
