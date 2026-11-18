@@ -60,3 +60,22 @@ $$;
 CREATE TRIGGER professional_moderation_appeal_decision_immutable
  BEFORE UPDATE OR DELETE ON professional_moderation_appeal_decisions
  FOR EACH ROW EXECUTE FUNCTION reject_professional_moderation_appeal_decision_mutation();
+
+-- A finalized appeal case must remain tied to its immutable outcome.
+-- No state/scope/type changes (including a no-op update) after evidence exists.
+CREATE FUNCTION reject_decided_professional_appeal_case_mutation()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF EXISTS(
+  SELECT 1 FROM professional_moderation_appeals a
+  JOIN professional_moderation_appeal_decisions d ON d.appeal_id=a.id
+  WHERE a.case_id=OLD.id
+ ) THEN
+  RAISE EXCEPTION 'Decided appeal case is immutable' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END;
+$$;
+CREATE TRIGGER decided_professional_appeal_case_immutable
+ BEFORE UPDATE OF state,resource_scope,subject_kind ON platform_moderation_cases
+ FOR EACH ROW EXECUTE FUNCTION reject_decided_professional_appeal_case_mutation();
