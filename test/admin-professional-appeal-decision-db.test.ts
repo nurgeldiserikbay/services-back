@@ -46,7 +46,11 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   await assert.rejects(decide(),UnauthorizedException);
   await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '1 minute' WHERE id=$1",[session]);
   // The original decision actor must not adjudicate its own appeal.
-  await db.query('UPDATE professional_moderation_decisions SET actor_staff_id=$1 WHERE id=$2',[reviewer,rejection]).catch(()=>{});
+  await db.query('SAVEPOINT immutable_actor');
+  await assert.rejects(db.query('UPDATE professional_moderation_decisions SET actor_staff_id=$1 WHERE id=$2',[reviewer,rejection]),
+   (error:unknown)=>(error as {code?:string}).code==='23514');
+  await db.query('ROLLBACK TO SAVEPOINT immutable_actor');
+  await db.query('RELEASE SAVEPOINT immutable_actor');
   // Above immutable evidence cannot be rewritten. The original actor stays independent.
   assert.equal((await db.query('SELECT actor_staff_id::text FROM professional_moderation_decisions WHERE id=$1',[rejection])).rows[0].actor_staff_id,actor);
   const receipt=await decide();
