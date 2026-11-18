@@ -55,3 +55,8 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - Forward migration adds a PostgreSQL trigger on `service_assignments` inserts/reactivation (and professional re-assignment) that locks the referenced professional row `FOR SHARE`. The publication transaction already locks the same row `FOR UPDATE` before checking for `PROPOSED` or `ACCEPTED` assignments.
 - Assignment creation/reactivation and publication cannot pass each other without observing the serialized committed state. This does not change permitted business transitions or authorize publication.
 - Remaining launch gates: positive moderation decision model, seller eligibility, production DB concurrency exercise and cross-repository E2E acceptance. Publication flags remain disabled.
+
+## Append-only moderation decision evidence (2026-11-18)
+- `professional_moderation_decisions` is an append-only database record of `APPROVE` or `REJECT`, tied to an exact professional profile version, closed matching case, and actor platform-admin staff ID. Database trigger enforces case scope/type/state and current version under row locks, and rejects later edits/deletes.
+- **This is evidence storage only.** No public or privileged HTTP endpoint can create a decision through this change; no existing `closed` moderation case is retroactively treated as an approval. Publication remains default-off and is NOT permitted to infer approval from the table until a separately reviewed decision workflow enforces active MFA, `moderation.decide` grants, scope, idempotency, audit, revocation and appeal semantics.
+- Decision retention and legal hold rules require separate product/legal approval. Never insert fabricated approvals in production.
