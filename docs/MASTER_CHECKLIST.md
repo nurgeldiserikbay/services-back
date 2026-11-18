@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+2026-11-18 reconciliation: obsolete [PR #259](https://github.com/nurgeldiserikbay/services-back/pull/259) closed as superseded by merged #262; original account-me implementation and tests preserved. [PR #265](https://github.com/nurgeldiserikbay/services-back/pull/265) merged at 7888def; [CI #44251101476](https://github.com/nurgeldiserikbay/services-back/actions/runs/44251101476) PASS. Profile creation #266 in progress; no top-level checkbox closed.
+
+
 2026-11-18 own professional profile inventory PR #264 merged d1f93ec, CI #44250433561 PASS; docs route snapshot synced 334c144. Prepared live HTTP/PostgreSQL tests for owner isolation, draft/paused visibility, expired/revoked/suspended denial. Schema gap: profile version/about and hidden/deletion states not present; mutation lifecycle remains pending. No checkbox closed.
 
 2026-11-18: service definitions PR #263 merged 668320d, CI #44248878235 PASS; docs snapshot synced 8d9e534. Prepared own professional profile GET inventory with live bearer/person ownership, public-offer projection and unit regressions. Full profile create/update/lifecycle and HTTP/PostgreSQL acceptance remain open; no checkbox closed.
