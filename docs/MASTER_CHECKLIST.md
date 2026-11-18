@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+2026-11-18 admin MFA handoff: [services-admin PR #18](https://github.com/nurgeldiserikbay/services-admin/pull/18), [8cea9f1](https://github.com/nurgeldiserikbay/services-admin/commit/8cea9f1d25eec3daef0d7256099b90f0d9a8727d), prepares elapsed-time-aware cookie expiry with fail-closed clock regression tests. [CI #44248072534](https://github.com/nurgeldiserikbay/services-admin/actions/runs/44248072534) queued; full admin login, vault and staging acceptance remain open. No checkbox closed.
+
+
 2026-11-18 account delivery: [backend PR #262](https://github.com/nurgeldiserikbay/services-back/pull/262) merged at [e3ce51f](https://github.com/nurgeldiserikbay/services-back/commit/e3ce51f051ea38936f746c36c8994b5dc2cb7afc), [PR CI #44246548477](https://github.com/nurgeldiserikbay/services-back/actions/runs/44246548477) PASS. Docs [f5f1d46](https://github.com/nurgeldiserikbay/services/commit/f5f1d466609de735ee03a67e3d4ca9dc2e6d3c1f) syncs 30 route declarations. Frontend [PR #137](https://github.com/nurgeldiserikbay/services-front/pull/137) prepares default-off authenticated account home and live GET /me transport with tests; CI and browser/staging evidence pending. No top-level checkbox closed.
 
 
