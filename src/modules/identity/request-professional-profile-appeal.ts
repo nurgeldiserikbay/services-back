@@ -45,13 +45,19 @@ export async function requestOwnProfileAppeal(
  if(decision.rows.length!==1)throw new ConflictException('Rejection evidence unavailable');
  // Unique original_decision_id is the idempotency boundary. Replaying the same
  // rejection cannot create another case; this also denies duplicate open appeals.
- const existing=await db.query<{case_id:string}>(`
-  SELECT case_id::text FROM professional_moderation_appeals
-  WHERE original_decision_id=$1::uuid AND profile_id=$2::uuid
-    AND submitted_by_person_id=$3::uuid AND profile_version=$4
+ const existing=await db.query<{case_id:string;state:string}>(`
+  SELECT a.case_id::text AS case_id,c.state
+  FROM professional_moderation_appeals AS a
+  JOIN platform_moderation_cases AS c ON c.id=a.case_id
+  WHERE a.original_decision_id=$1::uuid AND a.profile_id=$2::uuid
+    AND a.submitted_by_person_id=$3::uuid AND a.profile_version=$4
+  FOR SHARE OF a,c
  `,[cmd.decisionId,cmd.id,actor.person_id,cmd.version]);
- if(existing.rows.length===1&&existing.rows[0])
+ if(existing.rows.length===1&&existing.rows[0]){
+  if(existing.rows[0].state!=='appeal')
+   throw new ConflictException('Appeal already moved to review');
   return {case_id:existing.rows[0].case_id,profile_id:cmd.id,profile_version:cmd.version,state:'appeal'};
+ }
  if(existing.rows.length!==0)throw new ConflictException('Appeal unavailable');
  // Only one unresolved professional moderation case can be open. This
  // prevents appeals silently bypassing other active review/hold records.
