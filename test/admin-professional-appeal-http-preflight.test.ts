@@ -7,6 +7,7 @@ import {NestFactory} from '@nestjs/core';
 import {DatabasePool} from '../src/platform/database/database.pool.js';
 import {PlatformProfessionalAppealAdminController} from '../src/modules/admin/admin-professional-appeal-http.controller.js';
 import {PlatformProfessionalAppealAdminService} from '../src/modules/admin/admin-professional-appeal-http.service.js';
+import {PlatformAppealHttpErrorFilter} from '../src/modules/admin/admin-professional-appeal-http-error.filter.js';
 
 test('unregistered private appeal transport denies default-off, browser origin and invalid admin proof before DB',async()=>{
  const assignFlag='SERVICES_ENABLE_PLATFORM_APPEAL_ASSIGN_HTTP';
@@ -24,6 +25,8 @@ test('unregistered private appeal transport denies default-off, browser origin a
  process.env.PLATFORM_ADMIN_SESSION_HMAC_KEY=pepper.toString('base64');
  try{
   app=await NestFactory.create(IsolatedTestModule,{logger:false});
+  // Future private transport would register this filter at the Nest HTTP boundary.
+  app.useGlobalFilters(new PlatformAppealHttpErrorFilter());
   app.setGlobalPrefix('v1');
   await app.listen(0,'127.0.0.1');
   const base=(await app.getUrl())+'/v1/admin/moderation/appeals/'+appeal;
@@ -47,10 +50,18 @@ test('unregistered private appeal transport denies default-off, browser origin a
    assert.equal((await request(route,{'Sec-Fetch-Site':'cross-site'})).status,401);
    assert.equal((await request(route,{'Sec-Fetch-Site':'same-origin'})).status,401);
    assert.equal((await request(route,{'Content-Type':'text/plain'})).status,401);
-   // Nest's JSON parser may reject unsupported charset before controller
-   // preflight runs. Either way, no unsupported payload reaches the DB.
    const unsupported=await request(route,{'Content-Type':'application/json; charset=iso-8859-1'});
-   assert.ok(unsupported.status>=400,'unsupported charset must fail closed');
+   assert.equal(unsupported.status,415,'unsupported charset must normalize to HTTP 415');
+   assert.deepEqual(await unsupported.json(),{statusCode:415,message:'Unsupported Media Type'});
+   assert.match(unsupported.headers.get('cache-control')??'',/no-store/);
+   assert.equal(unsupported.headers.get('x-content-type-options'),'nosniff');
+   const malformed=await fetch(base+'/'+route,{
+    method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:validShape()},
+    body:'{"broken":',redirect:'manual',
+   });
+   assert.equal(malformed.status,400,'invalid JSON must not reach controller or DB');
+   assert.deepEqual(await malformed.json(),{statusCode:400,message:'Bad Request'});
    assert.equal((await request(route,{Authorization:'Basic invalid'})).status,401);
    const bad=await request(route,{Authorization:'Bearer invalid'});
    assert.equal(bad.status,401);
