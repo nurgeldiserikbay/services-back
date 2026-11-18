@@ -58,6 +58,14 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   await assert.rejects(decide(),UnauthorizedException);
   await db.query('UPDATE platform_admin_sessions SET revoked_at=NULL WHERE id=$1',[session]);
   assert.equal((await db.query('SELECT count(*)::int AS count FROM professional_moderation_appeal_decisions WHERE appeal_id=$1',[appeal])).rows[0].count,0);
+  // A scoped, MFA-verified reviewer alone cannot decide before independent
+  // three-party assignment evidence is recorded.
+  await assert.rejects(decide(),ConflictException);
+  const assignerUser=randomUUID(),assigner=randomUUID();
+  await db.query('INSERT INTO users(id) VALUES($1)',[assignerUser]);
+  await db.query("INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'admin')",[assigner,assignerUser]);
+  await db.query('INSERT INTO professional_appeal_review_assignments(appeal_id,reviewer_staff_id,assigned_by_staff_id) VALUES($1,$2,$3)',
+   [appeal,reviewer,assigner]);
   // A separately authenticated and granted initial decision actor still
   // cannot adjudicate their own rejection, even with fresh activated MFA.
   const actorToken=issueAdminSessionToken(pepper);
