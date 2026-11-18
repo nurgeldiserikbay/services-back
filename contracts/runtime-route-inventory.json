@@ -26,6 +26,7 @@
     "POST /guest-requests/{requestId}/schedule-access/challenges",
     "POST /guest-requests/{requestId}/schedule-access/challenges/{challengeId}/verify",
     "POST /requests/{id}/accept",
+    "POST /requests/{id}/cancel",
     "POST /requests/{id}/decline",
     "POST /requests/{id}/schedule-proposals",
     "POST /requests/{id}/schedule-proposals/{proposalId}/confirm",
