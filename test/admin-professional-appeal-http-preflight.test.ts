@@ -9,6 +9,7 @@ import {PlatformProfessionalAppealAdminController} from '../src/modules/admin/ad
 import {PlatformProfessionalAppealAdminService} from '../src/modules/admin/admin-professional-appeal-http.service.js';
 import {PlatformAppealHttpErrorFilter} from '../src/modules/admin/admin-professional-appeal-http-error.filter.js';
 import {privateAppealCharsetPreflight} from '../src/modules/admin/admin-professional-appeal-http-charset.middleware.js';
+import {privateAppealParserErrorMiddleware} from '../src/modules/admin/admin-professional-appeal-http-parser-error.middleware.js';
 
 test('unregistered private appeal transport denies default-off, browser origin and invalid admin proof before DB',async()=>{
  const assignFlag='SERVICES_ENABLE_PLATFORM_APPEAL_ASSIGN_HTTP';
@@ -31,6 +32,8 @@ test('unregistered private appeal transport denies default-off, browser origin a
   app.use(privateAppealCharsetPreflight);
   app.useGlobalFilters(new PlatformAppealHttpErrorFilter());
   app.setGlobalPrefix('v1');
+  await app.init(); // Register Nest/body-parser routes first.
+  app.use(privateAppealParserErrorMiddleware); // Express four-argument error handler.
   await app.listen(0,'127.0.0.1');
   const base=(await app.getUrl())+'/v1/admin/moderation/appeals/'+appeal;
   const validShape=():string=>'Bearer '+randomBytes(32).toString('base64url');
