@@ -88,3 +88,8 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - Response is strictly minimal `{profile_id,profile_version,decision_id}` when a current-version immutable REJECT decision is eligible; `null` means no eligible decision. Does not expose staff identity, moderation evidence, contact data or reason. Foreign profile IDs remain 404.
 - Cases with prior appeal intake or any unresolved professional moderation case are not eligible. This read is advisory; the POST intake transaction revalidates all conditions, so a stale lookup grants no authority.
 - **Not approved for production:** moderation appeal time windows, owner notification and legal review, browser BFF/CSRF and complete staging test evidence remain mandatory.
+
+## Separate appeal adjudication gate (2026-11-18)
+- The generic `POST /admin/moderation/cases/{id}/decision` MUST reject cases recorded in immutable `professional_moderation_appeals`, regardless of whether their current state has since been moved to `decision`.
+- An appeal cannot use the same initial decision path to bypass reviewer separation, initial actor exclusion, statutory timing or appeal outcome semantics. A separate audited endpoint and policy review are still mandatory.
+- If the appeal evidence lookup fails or returns a malformed row, the generic decision transaction fails closed. Publication and appeals remain disabled in production.

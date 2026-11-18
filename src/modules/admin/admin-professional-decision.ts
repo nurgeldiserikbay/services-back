@@ -76,6 +76,16 @@ export async function decideProfessionalModerationCase(
  const row=moderation?.rows[0];
  if(!row||row.resource_scope!==scope||row.subject_kind!=='professional')
   throw new ConflictException('Moderation case unavailable');
+ // An appeal case is NEVER an ordinary first-instance moderation decision.
+ // A separate reviewer-separation and appeal adjudication contract is required.
+ // Check this before any case transition, even if the appeal was moved to
+ // "decision" by a privileged triage workflow.
+ const appeal=await db.query<{blocked:boolean}>(`
+  SELECT EXISTS(
+   SELECT 1 FROM professional_moderation_appeals WHERE case_id=$1::uuid
+  ) AS blocked`,[cmd.caseId]);
+ if(appeal.rows.length!==1||appeal.rows[0]?.blocked!==false)
+  throw new ConflictException('Appeal requires independent review');
  if(row.state==='closed'){
   const prior=await db.query<{decision:string;profile_version:number;actor_staff_id:string}>(
    'SELECT decision,profile_version,actor_staff_id::text FROM professional_moderation_decisions WHERE case_id=$1::uuid',[cmd.caseId]);

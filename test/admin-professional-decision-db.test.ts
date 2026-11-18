@@ -35,6 +35,30 @@ test('professional moderation decision requires scoped fresh MFA and writes one 
   assert.deepEqual(recorded.rows,[{decision:'APPROVE',profile_version:1,actor:staff}]);
   assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[caseId])).rows[0].state,'closed');
   await assert.rejects(decide({...body,decision:'REJECT'}),ConflictException);
+  // This is a genuine owner rejection followed by immutable appeal intake.
+  // A later triage move to "decision" MUST NOT let the ordinary moderator
+  // endpoint close the appeal or produce approval evidence.
+  const rejectionCase=randomUUID(),appealCase=randomUUID(),appealId=randomUUID();
+  await db.query("INSERT INTO platform_moderation_cases(id,resource_scope,subject_kind,state) VALUES($1,$2,'professional','decision')",
+   [rejectionCase,'professional:'+profile]);
+  await decideProfessionalModerationCase(db,token.token,pepper,rejectionCase,{...body,decision:'REJECT'});
+  const rejectedEvidence=await db.query<{id:string}>(
+   'SELECT id::text FROM professional_moderation_decisions WHERE case_id=$1',[rejectionCase]);
+  assert.equal(rejectedEvidence.rows.length,1);
+  await db.query("INSERT INTO platform_moderation_cases(id,resource_scope,subject_kind,state) VALUES($1,$2,'professional','appeal')",
+   [appealCase,'professional:'+profile]);
+  await db.query(
+   "INSERT INTO professional_moderation_appeals(id,original_decision_id,case_id,profile_id,profile_version,submitted_by_person_id) VALUES($1,$2,$3,$4,1,$5)",
+   [appealId,rejectedEvidence.rows[0]!.id,appealCase,profile,person]);
+  await db.query("UPDATE platform_moderation_cases SET state='decision' WHERE id=$1",[appealCase]);
+  const before=(await db.query('SELECT count(*)::int AS total FROM professional_moderation_decisions WHERE case_id=$1',[appealCase])).rows[0].total;
+  assert.equal(before,0);
+  await assert.rejects(
+   decideProfessionalModerationCase(db,token.token,pepper,appealCase,{...body,decision:'APPROVE'}),
+   ConflictException);
+  assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[appealCase])).rows[0].state,'decision');
+  assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_moderation_decisions WHERE case_id=$1',[appealCase])).rows[0].total,0);
+
   await db.query("UPDATE platform_admin_staff SET role='auditor' WHERE id=$1",[staff]);
   await assert.rejects(decide(),UnauthorizedException);
   await db.query("UPDATE platform_admin_staff SET role='operator' WHERE id=$1",[staff]);
