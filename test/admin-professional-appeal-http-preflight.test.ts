@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
+import {request as rawHttpRequest} from 'node:http';
 import {Module,UnauthorizedException} from '@nestjs/common';
 import {createRequire} from 'node:module';
 const expressJson=(createRequire(process.cwd()+'/package.json')('express') as {
@@ -62,7 +63,21 @@ test('unregistered private appeal transport denies default-off, browser origin a
    assert.equal((await request(route,{'Sec-Fetch-Site':'cross-site'})).status,401);
    assert.equal((await request(route,{'Sec-Fetch-Site':'same-origin'})).status,401);
    assert.equal((await request(route,{'Sec-Fetch-Site':'none'})).status,401,'browser navigation metadata');
-   assert.equal((await request(route,{'Sec-Fetch-Mode':'navigate'})).status,401);
+   // Undici's fetch constructor treats Sec-Fetch-Mode as a protected fetch
+   // option. Send this raw request to exercise the actual server guard.
+   const navigateStatus=await new Promise<number>((resolve,reject)=>{
+    const payload=JSON.stringify(route==='assignment'
+     ?{profile_id:profile,profile_version:1,reviewer_staff_id:reviewer}
+     :{profile_id:profile,profile_version:1,outcome:'UPHOLD_REJECTION'});
+    const req=rawHttpRequest(base+'/'+route,{
+     method:'POST',headers:{
+      'Content-Type':'application/json',Authorization:validShape(),
+      'Sec-Fetch-Mode':'navigate','Content-Length':Buffer.byteLength(payload),
+     },
+    },res=>{res.resume();res.on('end',()=>resolve(res.statusCode??0));});
+    req.on('error',reject);req.end(payload);
+   });
+   assert.equal(navigateStatus,401);
    assert.equal((await request(route,{'Sec-Fetch-Dest':'document'})).status,401);
    assert.equal((await request(route,{'Sec-Fetch-User':'?1'})).status,401);
    assert.equal((await request(route,{Cookie:'session=not-trusted'})).status,401);
