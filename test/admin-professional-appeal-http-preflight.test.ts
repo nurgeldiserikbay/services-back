@@ -61,6 +61,14 @@ test('unregistered private appeal transport denies default-off, browser origin a
    assert.equal((await request(route,{Origin:'https://evil.example'})).status,401);
    assert.equal((await request(route,{'Sec-Fetch-Site':'cross-site'})).status,401);
    assert.equal((await request(route,{'Sec-Fetch-Site':'same-origin'})).status,401);
+   assert.equal((await request(route,{'Sec-Fetch-Site':'none'})).status,401,'browser navigation metadata');
+   assert.equal((await request(route,{'Sec-Fetch-Mode':'navigate'})).status,401);
+   assert.equal((await request(route,{'Sec-Fetch-Dest':'document'})).status,401);
+   assert.equal((await request(route,{'Sec-Fetch-User':'?1'})).status,401);
+   assert.equal((await request(route,{Cookie:'session=not-trusted'})).status,401);
+   assert.equal((await request(route,{Referer:'https://admin.example/appeal'})).status,401);
+   assert.equal((await request(route,{Origin:'null'})).status,401);
+
    assert.equal((await request(route,{'Content-Type':'text/plain'})).status,401);
    const unsupported=await request(route,{'Content-Type':'application/json; charset=iso-8859-1'});
    assert.equal(unsupported.status,415,'unsupported charset must normalize to HTTP 415');
@@ -81,10 +89,15 @@ test('unregistered private appeal transport denies default-off, browser origin a
    assert.equal(bad.headers.get('x-content-type-options'),'nosniff');
   }
   const controller=app.get(PlatformProfessionalAppealAdminController);
-  assert.throws(()=>controller.assign('Bearer invalid',undefined,'none',
-   'application/json; charset=iso-8859-1',appeal,{}),UnauthorizedException);
-  assert.throws(()=>controller.decide('Bearer invalid',undefined,'none',
-   'application/json; charset=iso-8859-1',appeal,{}),UnauthorizedException);
+  for(const execute of [
+   (headers:Record<string,unknown>)=>controller.assign(headers,appeal,{}),
+   (headers:Record<string,unknown>)=>controller.decide(headers,appeal,{}),
+  ]){
+   assert.throws(()=>execute({'authorization':'Bearer invalid',
+    'content-type':'application/json; charset=iso-8859-1'}),UnauthorizedException);
+   assert.throws(()=>execute({'authorization':'Bearer invalid',
+    'content-type':'application/json','cookie':''}),UnauthorizedException);
+  }
   assert.equal(dbCalls,0,'preflight and proof errors must never reach DB');
  }finally{
   await app?.close();
