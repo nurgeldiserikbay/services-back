@@ -971,6 +971,19 @@ model ProfessionalModerationAppeal {
 
 /** Prepared immutable appeal review evidence; does not authorize publication. */
 /** Prepared immutable, three-party independent appeal reviewer allocation. */
+/** Immutable audit events emitted by PostgreSQL on appeal allocation and decision. */
+model ProfessionalAppealAuditEvent {
+ appealId String @map("appeal_id") @db.Uuid
+ eventKind String @map("event_kind") @db.VarChar(32)
+ actorStaffId String @map("actor_staff_id") @db.Uuid
+ reviewerStaffId String @map("reviewer_staff_id") @db.Uuid
+ outcome String? @db.VarChar(24)
+ occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(3)
+ @@id([appealId,eventKind])
+ @@index([actorStaffId,occurredAt],map:"professional_appeal_audit_actor_occurred_idx")
+ @@map("professional_appeal_audit_events")
+}
+
 model ProfessionalAppealReviewAssignment {
  appealId String @id @map("appeal_id") @db.Uuid
  reviewerStaffId String @map("reviewer_staff_id") @db.Uuid
