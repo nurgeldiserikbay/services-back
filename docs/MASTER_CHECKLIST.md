@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+2026-11-18 profile creation: Prepared bearer-owned POST /me/professional-profiles, strict canonical command, one draft per profession enforced by existing unique constraints, principal-scoped atomic idempotency ledger and unit tests. CI and committed PostgreSQL concurrency/HTTP acceptance pending; profile update/lifecycle schema gaps remain. No checkbox closed.
+
 2026-11-18 own professional profile inventory PR #264 merged d1f93ec, CI #44250433561 PASS; docs route snapshot synced 334c144. Prepared live HTTP/PostgreSQL tests for owner isolation, draft/paused visibility, expired/revoked/suspended denial. Schema gap: profile version/about and hidden/deletion states not present; mutation lifecycle remains pending. No checkbox closed.
 
 2026-11-18: service definitions PR #263 merged 668320d, CI #44248878235 PASS; docs snapshot synced 8d9e534. Prepared own professional profile GET inventory with live bearer/person ownership, public-offer projection and unit regressions. Full profile create/update/lifecycle and HTTP/PostgreSQL acceptance remain open; no checkbox closed.
