@@ -23,7 +23,7 @@
 - [ ] PWA and mobile architecture — Prepared; verification pending
 - [ ] Redis and background processing — Pending verification
 - [ ] Dev/staging/prod configuration — Pending verification
-- [ ] API contract parity — Pending verification
+- [ ] API contract parity — Prepared: pinned route inventory in [services docs](https://github.com/nurgeldiserikbay/services/blob/ca20220444e8aa101fb9d7b251204f2d09f90499/docs/api-runtime-route-inventory-2026-11-18.md); 65 design operations, 28 controller declarations, 23 method/path matches, 42 unmatched design operations and 5 runtime-only declarations; DTO/auth/client/live HTTP verification pending
 - [ ] Structured error handling and sanitized logs — Pending verification
 - [ ] Production infrastructure review — Pending verification
 
@@ -173,6 +173,8 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+2026-11-18 cross-repository API route inventory: [services docs commit ca2022044](https://github.com/nurgeldiserikbay/services/commit/ca20220444e8aa101fb9d7b251204f2d09f90499) compares the pinned design OpenAPI with directly imported backend controllers at f306742. Source-only method/path comparison; no contract acceptance checkbox closed. Backend PR #255 merged at f306742 after [CI #44236875241](https://github.com/nurgeldiserikbay/services-back/actions/runs/44236875241) PASS; frontend notification lifecycle PR #130 merged after [CI #44237032375](https://github.com/nurgeldiserikbay/services-front/actions/runs/44237032375) PASS on 477e15a. Post-merge current-head CI remains separately unverified.
 
 Backend legacy guest cancellation service fail-fast guard (2026-11-18): Prepared in replacement PR; original PR #253 had green push and PR CI but conflicted after #254 merged. The internal GuestCancellationService.cancel path now validates canonical request UUID, PostgreSQL int4 expectedVersion increment range, and canonical 32-byte READ_CANCEL bearer before leasing a DB transaction, matching the idempotent service's fail-fast boundary. Unit regressions verify zero SQL for malformed input and one transaction delegation for valid input. This does not expose an HTTP endpoint; CI, session authentication and staging acceptance remain open.
 
