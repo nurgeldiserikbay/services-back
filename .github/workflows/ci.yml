@@ -814,6 +814,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/professional-moderation-appeal-race-db.test.ts
       - name: Owner appeal intake HTTP and immutable PostgreSQL regressions (fail fast)
         run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/professional-appeal-intake-http-db.test.ts
+      - name: Independent appeal outcome evidence PostgreSQL constraints (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/professional-appeal-decision-evidence-db.test.ts
       - name: Unit and integration tests (after database migrations)
         id: full_tests
         run: npm test

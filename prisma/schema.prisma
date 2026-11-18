@@ -969,6 +969,17 @@ model ProfessionalModerationAppeal {
  @@map("professional_moderation_appeals")
 }
 
+/** Prepared immutable appeal review evidence; does not authorize publication. */
+model ProfessionalModerationAppealDecision {
+ id String @id @db.Uuid
+ appealId String @unique @map("appeal_id") @db.Uuid
+ reviewerStaffId String @map("reviewer_staff_id") @db.Uuid
+ outcome String @db.VarChar(24)
+ decidedAt DateTime @default(now()) @map("decided_at") @db.Timestamptz(3)
+ @@index([reviewerStaffId,decidedAt],map:"professional_appeal_decisions_reviewer_idx")
+ @@map("professional_moderation_appeal_decisions")
+}
+
 model ProfessionalModerationDecision {
  id String @id @db.Uuid
  caseId String @unique @map("case_id") @db.Uuid

@@ -103,3 +103,8 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - Exact-owner duplicate POST returns the prior receipt only while the linked moderation case remains in `appeal` state. The existing case and immutable link are locked and checked together.
 - If triage already moved the case to another state, the same POST returns a conflict rather than an incorrect `state: appeal` receipt; no second case is created. A separate reviewed adjudication path remains necessary.
 - Activation flags remain OFF pending policy, reviewer independence, CSRF/BFF, and staging E2E.
+
+## Prepared independent appeal outcome evidence (2026-11-18)
+- A separate immutable `professional_moderation_appeal_decisions` table permits one `UPHOLD_REJECTION` or `OVERTURN_REJECTION` evidence record per appeal. The original `professional_moderation_decisions` evidence is never rewritten.
+- PostgreSQL checks matching original immutable REJECT, reviewer staff ID distinct from initial decision actor, a matching **closed** appeal case, and the exact current professional profile version. SQLSTATE `23514` blocks invalid insertions. Rows cannot be updated/deleted, and a decided appeal moderation case cannot subsequently be reopened, retargeted or rewritten (including a no-op state update).
+- This is **prepared evidence storage only**, not an API or authorization mechanism. An overturn never grants publication. Independent reviewer authority/MFA, decision workflow, appeals outcome semantics, time windows, audited notifications, staged concurrency E2E, legal/product/security review and BFF/CSRF remain open. All profile publication/moderation/appeal feature flags must remain disabled.
