@@ -36,19 +36,30 @@ test('assignment reactivation serializes behind a publication profile lock',asyn
   await b.query('BEGIN');bInTransaction=true;
   await b.query("SET LOCAL lock_timeout='5s'");
   await b.query("SET LOCAL statement_timeout='8s'");
+  const pid=(await b.query<{pid:number}>('SELECT pg_backend_pid() AS pid')).rows[0].pid;
   let finished=false;
   const pending=b.query("UPDATE service_assignments SET status='PROPOSED' WHERE id=$1",[assignment])
    .then(result=>{finished=true;return result;});
-  // Ensure B's query has reached PostgreSQL before A releases the lock.
-  // The non-blocking connection C reads pg_stat_activity rather than using
-  // arbitrary sleeps that may flake under CI load.
+  // Observe a real PostgreSQL lock wait using a THIRD connection. Never queue
+  // a new query onto B while its UPDATE is blocked on A.
   const c=new Client({connectionString:process.env.DATABASE_URL});
   try{
    await c.connect();
-   const pid=(await b.query('SELECT pg_backend_pid() AS pid')).rows[0]?.pid;
-   void pid;
-  }finally{await c.end();}
-  await a.query('COMMIT');aInTransaction=false;
+   const deadline=Date.now()+3000;
+   let blocked=false;
+   while(Date.now()<deadline){
+    const wait=await c.query<{wait_event_type:string|null}>(
+     'SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1',[pid]);
+    if(wait.rows[0]?.wait_event_type==='Lock'){blocked=true;break;}
+    if(finished)break;
+    await new Promise(resolve=>setTimeout(resolve,30));
+   }
+   assert.equal(blocked,true,'assignment update must wait for the publication profile lock');
+  }finally{
+   // Release A first even on assertion failure, so B can complete/rollback.
+   await a.query('COMMIT');aInTransaction=false;
+   await c.end();
+  }
   await pending;
   assert.equal(finished,true);
   await b.query('COMMIT');bInTransaction=false;
