@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
-import {Module} from '@nestjs/common';
+import {Module,UnauthorizedException} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {DatabasePool} from '../src/platform/database/database.pool.js';
 import {PlatformProfessionalAppealAdminController} from '../src/modules/admin/admin-professional-appeal-http.controller.js';
@@ -47,13 +47,21 @@ test('unregistered private appeal transport denies default-off, browser origin a
    assert.equal((await request(route,{'Sec-Fetch-Site':'cross-site'})).status,401);
    assert.equal((await request(route,{'Sec-Fetch-Site':'same-origin'})).status,401);
    assert.equal((await request(route,{'Content-Type':'text/plain'})).status,401);
-   assert.equal((await request(route,{'Content-Type':'application/json; charset=iso-8859-1'})).status,401);
+   // Nest's JSON parser may reject unsupported charset before controller
+   // preflight runs. Either way, no unsupported payload reaches the DB.
+   const unsupported=await request(route,{'Content-Type':'application/json; charset=iso-8859-1'});
+   assert.ok(unsupported.status>=400,'unsupported charset must fail closed');
    assert.equal((await request(route,{Authorization:'Basic invalid'})).status,401);
    const bad=await request(route,{Authorization:'Bearer invalid'});
    assert.equal(bad.status,401);
    assert.match(bad.headers.get('cache-control')??'',/no-store/);
    assert.equal(bad.headers.get('x-content-type-options'),'nosniff');
   }
+  const controller=app.get(PlatformProfessionalAppealAdminController);
+  assert.throws(()=>controller.assign('Bearer invalid',undefined,'none',
+   'application/json; charset=iso-8859-1',appeal,{}),UnauthorizedException);
+  assert.throws(()=>controller.decide('Bearer invalid',undefined,'none',
+   'application/json; charset=iso-8859-1',appeal,{}),UnauthorizedException);
   assert.equal(dbCalls,0,'preflight and proof errors must never reach DB');
  }finally{
   await app?.close();
