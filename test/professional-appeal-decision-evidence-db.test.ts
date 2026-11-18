@@ -29,6 +29,9 @@ test('appeal outcome requires a separate reviewer and remains immutable without 
    await assert.rejects(work(),(err:unknown)=>(err as {code?:string}).code===code);
    await db.query('ROLLBACK TO SAVEPOINT fail');await db.query('RELEASE SAVEPOINT fail');
   };
+  await reject(()=>db.query(
+   "INSERT INTO professional_appeal_audit_events(appeal_id,event_kind,actor_staff_id,reviewer_staff_id,outcome) VALUES($1,'APPEAL_DECIDED',$2,$2,'OVERTURN_REJECTION')",
+   [appeal,reviewer]),'23514');
   await reject(()=>add(originalStaff),'23514');
   await reject(()=>add(reviewer),'23514'); // appeal is still open
   // Database insertion must reject outcomes until immutable reviewer allocation.
