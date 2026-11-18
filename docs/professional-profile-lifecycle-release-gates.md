@@ -44,3 +44,9 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - Fail closed when an own seller/performer service request is `PENDING` or `ACCEPTED`.
 - Both checks execute in the publication transaction after the owner profile row is locked, before snapshot and audit writes.
 - **Not concurrency-safe for inserts from independent request-creation transactions without shared locking.** Product owner must also approve which active status, assignment and moderation resolution semantics permit a publication. Keep `SERVICES_ENABLE_PROFILE_PUBLISH` disabled.
+
+## Service assignment conservative publication guard (2026-11-18)
+- Publication refuses any `service_assignments` row for the owner professional in `PROPOSED` or `ACCEPTED` state, even if no pending/accepted service request exists.
+- Query executes after the owner profile row is locked and before public snapshot and audit writes. Unexpected or missing database response fails closed.
+- An assignment becoming `REVOKED` is not itself a moderation approval or permission to override other restrictions.
+- **Activation remains blocked:** product/security approval of moderation resolution, seller eligibility, transition policy, and synchronization of concurrent assignment creation are still outstanding. Do not enable publication flags.

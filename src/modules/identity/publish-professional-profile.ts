@@ -51,6 +51,15 @@ export async function publishOwnProfessionalProfile(db:Db,token:unknown,pepper:B
   ) AS blocked`,[command.id]);
  if(activity.rows[0]?.blocked!==false)
   throw new ConflictException('Profile has active requests');
+ // Assignments can exist before a customer request is created. A PROPOSED or
+ // ACCEPTED assignment is still an unresolved operational obligation.
+ const assignments=await db.query<{blocked:boolean}>(`
+  SELECT EXISTS(
+   SELECT 1 FROM service_assignments
+   WHERE professional_id=$1::uuid AND status IN ('PROPOSED','ACCEPTED')
+  ) AS blocked`,[command.id]);
+ if(assignments.rows[0]?.blocked!==false)
+  throw new ConflictException('Profile has active assignments');
  // These guards do not override unresolved seller eligibility, moderation
  // approval policy, assignment rules or cross-command concurrency requirements.
  // Keep the endpoint disabled until independent activation review.
