@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+2026-11-18 account identity: Prepared replacement for conflicting PR #259, preserves existing cancellation declaration, adds bearer-scoped GET /me, explicit Nest injection, unit and PostgreSQL HTTP regression. CI and coordinated docs/front acceptance pending; no checkbox closed.
+
 2026-11-18 coordinated delivery: backend guest cancellation default-off registration [PR #261](https://github.com/nurgeldiserikbay/services-back/pull/261), merged [5b457ef](https://github.com/nurgeldiserikbay/services-back/commit/5b457ef9ad08b3604c9c3849bc78dcd27c056dd9), [PR CI #44245132229](https://github.com/nurgeldiserikbay/services-back/actions/runs/44245132229) PASS; frontend OTP elapsed-time expiry [PR #136](https://github.com/nurgeldiserikbay/services-front/pull/136), merged [90b20e6](https://github.com/nurgeldiserikbay/services-front/commit/90b20e6b0ad3ebcd3ef4e896cb12b56431fe571f), [PR CI #44245048027](https://github.com/nurgeldiserikbay/services-front/actions/runs/44245048027) PASS. Docs [2f31471](https://github.com/nurgeldiserikbay/services/commit/2f3147196a126b232ee2256d52d121aaecbe43eb) syncs the 29-route declaration snapshot (shared blob b21afe31b4857cfb7d75c91fbe5deff6f92f249e). Current main CI and full BFF/staging acceptance pending; no top-level checkbox closed.
 
 
