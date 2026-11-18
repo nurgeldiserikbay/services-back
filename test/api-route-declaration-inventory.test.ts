@@ -83,18 +83,22 @@ function discover(root:string,read:ReadSource){
  return [...routes].sort();
 }
 
-const expected=[
- 'GET /health','GET /search','GET /professions','GET /professionals/{slug}',
- 'GET /organizations/{id}','GET /geo/countries','GET /geo/areas','GET /geo/cities',
- 'GET /service-offers/{id}','POST /requests/{id}/accept','POST /requests/{id}/decline',
- 'POST /requests/{id}/schedule-proposals','POST /requests/{id}/schedule-proposals/{proposalId}/decline',
- 'POST /requests/{id}/schedule-proposals/{proposalId}/confirm','GET /me/seller-requests',
- 'GET /requests/{id}','POST /guest-requests','GET /auth/sessions','DELETE /auth/sessions/{id}',
- 'POST /auth/logout','POST /guest-requests/{requestId}/schedule-access/challenges',
- 'POST /guest-requests/{requestId}/schedule-access/challenges/{challengeId}/verify',
- 'GET /me/notifications','POST /auth/private/account/verify','POST /guest-requests/challenges',
- 'POST /guest-requests/challenges/{id}/verify','GET /admin/moderation/cases','POST /admin/session/logout',
-].sort();
+function readInventory(file:string):string[]{
+ const data:unknown=JSON.parse(readFileSync(file,'utf8'));
+ assert.ok(data&&typeof data==='object'&&!Array.isArray(data),'invalid inventory object');
+ const record=data as Record<string,unknown>;
+ assert.equal(record.schemaVersion,1,'unsupported inventory schema');
+ assert.ok(Array.isArray(record.routes),'missing routes');
+ const routes:unknown[]=record.routes;
+ const result=routes.map(route=>{
+  assert.ok(typeof route==='string'&&/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|SEARCH) \/\S*$/.test(route),'invalid route');
+  return route;
+ });
+ assert.equal(new Set(result).size,result.length,'duplicate inventory route');
+ assert.ok(result.length>0,'empty inventory');
+ return result.sort();
+}
+const expected=readInventory(resolve('contracts/runtime-route-inventory.json'));
 
 test('AppModule route declarations match reviewed inventory (update docs on intentional drift)',()=>{
  assert.deepEqual(discover(resolve('src/modules/app.module.ts'),f=>readFileSync(f,'utf8')),expected);
