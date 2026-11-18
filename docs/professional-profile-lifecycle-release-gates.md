@@ -30,3 +30,11 @@ Design sources: services/docs/ru/02-identities-lifecycle.md, services/docs/domai
 | erase | pending deletion to erased | legal approval and retention/anonymization |
 
 No lifecycle HTTP endpoint is enabled by this document. Existing unique identity constraint remains intact.
+
+## Prepared gated publication API (2026-11-18)
+- `POST /v1/me/professional-profiles/{id}/publish`, `SERVICES_ENABLE_PROFILE_PUBLISH=enabled` only. **Must remain disabled by default and in production until product, legal and security owners approve activation.**
+- Owner-only active bearer, locked row and strong If-Match version, exact empty JSON request body, no implicit replay.
+- Conservative minimum: nonblank title (3+ chars), about (20+ chars), at least one published offer; only DRAFT or PUBLISHED. PAUSED/ARCHIVED rejected.
+- Successful command bumps version, updates public snapshot, and creates an immutable revision and append-only audit row in the same transaction.
+- Remaining launch blockers: moderation hold lookup/override, active requests and assignments guard, legal and product publication completeness decisions, committed-client concurrency proof, actual HTTP/PostgreSQL test, frontend UX and runtime metrics.
+- Do not treat this code path as permission to enable publication in a deployed environment.
