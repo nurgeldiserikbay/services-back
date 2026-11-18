@@ -41,6 +41,35 @@ export async function publishOwnProfessionalProfile(db:Db,token:unknown,pepper:B
   ) AS blocked`,['professional:'+command.id]);
  if(moderation.rows[0]?.blocked!==false)
   throw new ConflictException('Profile has unresolved moderation');
+ // Publication needs a POSITIVE, version-specific decision. A closed case
+ // alone is never approval. Reject mixed APPROVE/REJECT evidence for the same
+ // version; decisions for older drafts cannot authorize an edited draft.
+ // The professional profile is locked FOR UPDATE above, serializing with the
+ // moderator's FOR SHARE profile lock while a decision is committed.
+ const approval=await db.query<{approved:boolean;rejected:boolean}>(`
+  SELECT
+   EXISTS(
+    SELECT 1 FROM professional_moderation_decisions AS decision
+    JOIN platform_moderation_cases AS moderation_case ON moderation_case.id=decision.case_id
+    WHERE decision.profile_id=$1::uuid AND decision.profile_version=$2
+      AND decision.decision='APPROVE'
+      AND moderation_case.subject_kind='professional'
+      AND moderation_case.resource_scope=$3
+      AND moderation_case.state='closed'
+   ) AS approved,
+   EXISTS(
+    SELECT 1 FROM professional_moderation_decisions AS decision
+    JOIN platform_moderation_cases AS moderation_case ON moderation_case.id=decision.case_id
+    WHERE decision.profile_id=$1::uuid AND decision.profile_version=$2
+      AND decision.decision='REJECT'
+      AND moderation_case.subject_kind='professional'
+      AND moderation_case.resource_scope=$3
+      AND moderation_case.state='closed'
+   ) AS rejected
+ `,[command.id,command.version,'professional:'+command.id]);
+ if(approval.rows.length!==1||approval.rows[0]?.approved!==true||
+    approval.rows[0]?.rejected!==false)
+  throw new ConflictException('Profile requires an explicit current moderation approval');
  // Guard existing incomplete requests; concurrent request creation still needs
  // a reviewed common locking protocol before this endpoint can be enabled.
  const activity=await db.query<{blocked:boolean}>(`
@@ -60,8 +89,8 @@ export async function publishOwnProfessionalProfile(db:Db,token:unknown,pepper:B
   ) AS blocked`,[command.id]);
  if(assignments.rows[0]?.blocked!==false)
   throw new ConflictException('Profile has active assignments');
- // These guards do not override unresolved seller eligibility, moderation
- // approval policy, assignment rules or cross-command concurrency requirements.
+ // This explicit approval does not override unresolved seller eligibility,
+ // appeal policy, assignment rules or broader cross-command release gates.
  // Keep the endpoint disabled until independent activation review.
  const updated=await db.query<{id:string;version:number;published_version:number}>(
   "UPDATE professional_profiles SET status='PUBLISHED',version=version+1,published_title=title,published_about=about,published_version=version+1 WHERE id=$1::uuid AND person_id=$2::uuid AND version=$3 AND status IN ('DRAFT','PUBLISHED') RETURNING id::text,version,published_version",

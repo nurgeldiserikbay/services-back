@@ -66,3 +66,8 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - Requires server-to-server admin bearer, live active user/staff/activated MFA (15-minute freshness), exact `professional:{profile_id}` grant and role `owner/admin/operator`. Origin-bearing browser mutation requests are rejected.
 - Under a PostgreSQL transaction, rechecks current grants/session/factor under row locks; requires case `state='decision'` and exact profile version, atomically closes the case and records one immutable APPROVE or REJECT decision. Only exact same-actor, same-version, same-decision replays succeed; other duplicates conflict.
 - **Do not enable** until approved moderation workflow, appeal handling, admin BFF origin/CSRF controls, observability and staging E2E are complete. It is NOT connected to professional publication authorization.
+
+## Publication requires version-matched positive moderation (2026-11-18)
+- The owner publication transaction checks for a closed professional moderation case with immutable **APPROVE** evidence for exactly the locked draft version. A case marked `closed` without an APPROVE decision, a prior-version approval, or any competing `REJECT` for that draft version fails closed before snapshot/audit writes.
+- A reviewer decision locks the same professional row `FOR SHARE` that publication locks `FOR UPDATE`. A current draft edit increments the version and invalidates older approval evidence. Retrying publication requires a new explicit decision for the edited version.
+- This guard does not approve the production rollout, seller eligibility rules, appeal semantics, or staging end-to-end acceptance. The independent moderation decision and publication feature flags remain default-off.
