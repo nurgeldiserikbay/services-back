@@ -5,6 +5,7 @@ import {Client} from 'pg';
 import {BadRequestException,ConflictException,UnauthorizedException} from '@nestjs/common';
 import {issueAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
 import {decideProfessionalAppeal,parseProfessionalAppealDecision} from '../src/modules/admin/admin-professional-appeal-decision.js';
+import {assignProfessionalAppealReviewer,parseAppealReviewerAssignment} from '../src/modules/admin/admin-professional-appeal-assignment.js';
 
 test('independent appeal core enforces scoped fresh MFA, reviewer separation, exact version and immutable outcome',async()=>{
  const db=new Client({connectionString:process.env.DATABASE_URL});
@@ -64,8 +65,36 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   const assignerUser=randomUUID(),assigner=randomUUID();
   await db.query('INSERT INTO users(id) VALUES($1)',[assignerUser]);
   await db.query("INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'admin')",[assigner,assignerUser]);
-  await db.query('INSERT INTO professional_appeal_review_assignments(appeal_id,reviewer_staff_id,assigned_by_staff_id) VALUES($1,$2,$3)',
-   [appeal,reviewer,assigner]);
+  const assignToken=issueAdminSessionToken(pepper);
+  const assignSession=randomUUID(),assignGrant=randomUUID();
+  const assignmentBody={profile_id:profile,profile_version:1,reviewer_staff_id:reviewer};
+  assert.deepEqual(parseAppealReviewerAssignment(appeal,assignmentBody),
+   {appealId:appeal,profileId:profile,profileVersion:1,reviewerStaffId:reviewer});
+  for(const invalid of [null,{},[],{...assignmentBody,extra:true},{...assignmentBody,profile_version:0}]){
+   assert.throws(()=>parseAppealReviewerAssignment(appeal,invalid),BadRequestException);
+  }
+  const assign=(input:unknown=assignmentBody)=>assignProfessionalAppealReviewer(
+   db,assignToken.token,pepper,appeal,input);
+  await assert.rejects(assign(),UnauthorizedException,'assigner needs live scoped session');
+  await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [assignGrant,assigner,'professional:'+profile]);
+  await db.query("INSERT INTO platform_admin_sessions(id,staff_id,token_hash,mfa_verified_at,expires_at) VALUES($1,$2,$3,now()-interval '1 minute',now()+interval '1 hour')",
+   [assignSession,assigner,assignToken.tokenHash]);
+  await db.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'integration-test-placeholder-encrypted-envelope','test-v1',now()-interval '4 minutes',now()-interval '3 minutes')",[assigner]);
+  await assert.rejects(assign({...assignmentBody,reviewer_staff_id:assigner}),ConflictException);
+  await assert.rejects(assign({...assignmentBody,reviewer_staff_id:actor}),ConflictException);
+  await assert.rejects(assign({...assignmentBody,profile_version:2}),ConflictException);
+  await db.query("UPDATE platform_admin_staff SET role='operator' WHERE id=$1",[assigner]);
+  await assert.rejects(assign(),UnauthorizedException);
+  await db.query("UPDATE platform_admin_staff SET role='admin' WHERE id=$1",[assigner]);
+  await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '16 minutes' WHERE id=$1",[assignSession]);
+  await assert.rejects(assign(),UnauthorizedException);
+  await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '1 minute' WHERE id=$1",[assignSession]);
+  const assignment={appeal_id:appeal,reviewer_staff_id:reviewer,assigned_by_staff_id:assigner};
+  assert.deepEqual(await assign(),assignment);
+  assert.deepEqual(await assign(),assignment,'exact same assignment is idempotent');
+  await assert.rejects(assign({...assignmentBody,reviewer_staff_id:actor}),ConflictException);
+  assert.equal((await db.query('SELECT count(*)::int AS count FROM professional_appeal_review_assignments WHERE appeal_id=$1',[appeal])).rows[0].count,1);
   // A separately authenticated and granted initial decision actor still
   // cannot adjudicate their own rejection, even with fresh activated MFA.
   const actorToken=issueAdminSessionToken(pepper);
