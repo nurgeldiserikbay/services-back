@@ -29,6 +29,9 @@ test('appeal outcome requires a separate reviewer and remains immutable without 
    await assert.rejects(work(),(err:unknown)=>(err as {code?:string}).code===code);
    await db.query('ROLLBACK TO SAVEPOINT fail');await db.query('RELEASE SAVEPOINT fail');
   };
+  await reject(()=>db.query(
+   "INSERT INTO professional_appeal_audit_events(appeal_id,event_kind,actor_staff_id,reviewer_staff_id,outcome) VALUES($1,'APPEAL_DECIDED',$2,$2,'OVERTURN_REJECTION')",
+   [appeal,reviewer]),'23514');
   await reject(()=>add(originalStaff),'23514');
   await reject(()=>add(reviewer),'23514'); // appeal is still open
   // Database insertion must reject outcomes until immutable reviewer allocation.
@@ -42,6 +45,13 @@ test('appeal outcome requires a separate reviewer and remains immutable without 
   await reject(()=>add(originalStaff),'23514');
   await reject(()=>add(reviewer,randomUUID(),'INVALID'),'23514');
   await add(reviewer,outcome);
+  assert.deepEqual((await db.query(
+   'SELECT event_kind,actor_staff_id::text AS actor,reviewer_staff_id::text AS reviewer,outcome FROM professional_appeal_audit_events WHERE appeal_id=$1 ORDER BY event_kind',[appeal])).rows,[
+    {event_kind:'APPEAL_DECIDED',actor:reviewer,reviewer,outcome:'OVERTURN_REJECTION'},
+    {event_kind:'REVIEWER_ASSIGNED',actor:assigner,reviewer,outcome:null},
+   ]);
+  await reject(()=>db.query("UPDATE professional_appeal_audit_events SET outcome='UPHOLD_REJECTION' WHERE appeal_id=$1 AND event_kind='APPEAL_DECIDED'",[appeal]),'23514');
+
   await reject(()=>add(reviewer),'23505');
   await reject(()=>db.query("UPDATE professional_moderation_appeal_decisions SET outcome='UPHOLD_REJECTION' WHERE id=$1",[outcome]),'23514');
   await reject(()=>db.query('DELETE FROM professional_moderation_appeal_decisions WHERE id=$1',[outcome]),'23514');

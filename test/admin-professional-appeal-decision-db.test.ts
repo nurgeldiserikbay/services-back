@@ -100,6 +100,10 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   const assignment={appeal_id:appeal,reviewer_staff_id:reviewer,assigned_by_staff_id:assigner};
   assert.deepEqual(await assign(),assignment);
   assert.deepEqual(await assign(),assignment,'exact same assignment is idempotent');
+  assert.deepEqual((await db.query(
+   "SELECT event_kind,actor_staff_id::text AS actor,reviewer_staff_id::text AS reviewer,outcome FROM professional_appeal_audit_events WHERE appeal_id=$1 ORDER BY event_kind",
+   [appeal])).rows,[{event_kind:'REVIEWER_ASSIGNED',actor:assigner,reviewer,outcome:null}]);
+
   await assert.rejects(assign({...assignmentBody,reviewer_staff_id:actor}),ConflictException);
   assert.equal((await db.query('SELECT count(*)::int AS count FROM professional_appeal_review_assignments WHERE appeal_id=$1',[appeal])).rows[0].count,1);
   // A separately authenticated and granted initial decision actor still
@@ -116,6 +120,18 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   const receipt=await decide();
   assert.deepEqual(receipt,{appeal_id:appeal,profile_id:profile,profile_version:1,outcome:'OVERTURN_REJECTION'});
   assert.deepEqual(await decide(),receipt);
+  assert.deepEqual((await db.query(
+   "SELECT event_kind,actor_staff_id::text AS actor,reviewer_staff_id::text AS reviewer,outcome FROM professional_appeal_audit_events WHERE appeal_id=$1 ORDER BY event_kind",
+   [appeal])).rows,[
+    {event_kind:'APPEAL_DECIDED',actor:reviewer,reviewer,outcome:'OVERTURN_REJECTION'},
+    {event_kind:'REVIEWER_ASSIGNED',actor:assigner,reviewer,outcome:null},
+   ]);
+  await db.query('SAVEPOINT audit_immutable');
+  await assert.rejects(db.query("DELETE FROM professional_appeal_audit_events WHERE appeal_id=$1",[appeal]),
+   (error:unknown)=>(error as {code?:string}).code==='23514');
+  await db.query('ROLLBACK TO SAVEPOINT audit_immutable');
+  await db.query('RELEASE SAVEPOINT audit_immutable');
+
   await assert.rejects(decide({...body,outcome:'UPHOLD_REJECTION'}),ConflictException);
   assert.equal((await db.query('SELECT count(*)::int AS count FROM professional_moderation_appeal_decisions WHERE appeal_id=$1',[appeal])).rows[0].count,1);
   assert.equal((await db.query('SELECT status FROM professional_profiles WHERE id=$1',[profile])).rows[0].status,'DRAFT');
