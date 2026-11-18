@@ -7,6 +7,7 @@ import {
 } from './account-session-management.js';
 import {revokeCurrentAccountSession} from './session-revocation.js';
 import {resolveActiveUserSession} from './session-proof.js';
+import {readAccountMe,type AccountMe} from './account-me.js';
 
 /**
  * Bearer-only transport integration. This is not a login issuer.
@@ -19,6 +20,15 @@ export class AccountBearerSessionService{
 
   private getPepper():Buffer{
     return requireSecret(process.env.ACCOUNT_SESSION_HMAC_KEY);
+  }
+
+  async me(token:string):Promise<AccountMe>{
+    const pepper=this.getPepper();
+    return this.db.transaction(async client=>{
+      const me=await readAccountMe(client,token,pepper);
+      if(!me)throw new UnauthorizedException('Authentication required');
+      return me;
+    });
   }
 
   async list(token:string):Promise<{items:AccountSessionSummary[]}>{
