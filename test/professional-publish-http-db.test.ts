@@ -43,6 +43,14 @@ test('publication HTTP creates immutable revisions and audit only after readines
   assert.equal((await publish(own.token,'"1"')).status,409,'offer is mandatory');
   assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_publication_audit WHERE profile_id=$1',[id])).rows[0].total,0);
   await db.query("INSERT INTO service_offers(id,definition_id,professional_id,title,status,delivery_mode,contacts) VALUES($1,$2,$3,'Electrical repairs','PUBLISHED','online','{}'::jsonb)",[offer,service,id]);
+  assert.equal((await publish(own.token,'"1"')).status,409,'published offer alone is not moderation approval');
+  const reviewer=randomUUID(),approvalCase=randomUUID(),approvalEvidence=randomUUID();
+  await db.query("INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'admin')",[reviewer,outsider]);
+  await db.query("INSERT INTO platform_moderation_cases(id,resource_scope,subject_kind,state) VALUES($1,$2,'professional','closed')",[approvalCase,'professional:'+id]);
+  assert.equal((await publish(own.token,'"1"')).status,409,'a closed moderation case alone cannot authorize publication');
+  await db.query(
+   "INSERT INTO professional_moderation_decisions(id,case_id,profile_id,profile_version,actor_staff_id,decision) VALUES($1,$2,$3,1,$4,'APPROVE')",
+   [approvalEvidence,approvalCase,id,reviewer]);
   // Simulate audit insert failure after snapshot UPDATE; rollback must restore
   // profile state and must not leave an immutable published revision.
   await db.query('SAVEPOINT injected_publication_audit');
@@ -78,6 +86,12 @@ test('publication HTTP creates immutable revisions and audit only after readines
    headers:{Authorization:'Bearer '+own.token,'If-Match':'"2"','Content-Type':'application/json'},
    body:JSON.stringify({title:'Updated electrician'})});
   assert.equal(edit.status,200);
+  assert.equal((await publish(own.token,'"3"')).status,409,'approval for draft v1 must not authorize edited draft v3');
+  const newCase=randomUUID(),newEvidence=randomUUID();
+  await db.query("INSERT INTO platform_moderation_cases(id,resource_scope,subject_kind,state) VALUES($1,$2,'professional','closed')",[newCase,'professional:'+id]);
+  await db.query(
+   "INSERT INTO professional_moderation_decisions(id,case_id,profile_id,profile_version,actor_staff_id,decision) VALUES($1,$2,$3,3,$4,'APPROVE')",
+   [newEvidence,newCase,id,reviewer]);
   const next=await publish(own.token,'"3"');
   assert.equal(next.status,201);assert.deepEqual(await next.json(),{id,lifecycle_status:'published',version:4,published_version:4});
   const history=(await db.query('SELECT version,title,about FROM professional_published_revisions WHERE profile_id=$1 ORDER BY version',[id])).rows;
