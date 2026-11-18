@@ -11,6 +11,7 @@
     "GET /health",
     "GET /me",
     "GET /me/notifications",
+    "GET /me/professional-profiles",
     "GET /me/seller-requests",
     "GET /organizations/{id}",
     "GET /professionals/{slug}",
