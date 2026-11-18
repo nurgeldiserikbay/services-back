@@ -31,6 +31,13 @@ test('appeal outcome requires a separate reviewer and remains immutable without 
   };
   await reject(()=>add(originalStaff),'23514');
   await reject(()=>add(reviewer),'23514'); // appeal is still open
+  // Database insertion must reject outcomes until immutable reviewer allocation.
+  const assignerUser=randomUUID(),assigner=randomUUID();
+  await db.query('INSERT INTO users(id) VALUES($1)',[assignerUser]);
+  await db.query("INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'admin')",[assigner,assignerUser]);
+  await db.query('INSERT INTO professional_appeal_review_assignments(appeal_id,reviewer_staff_id,assigned_by_staff_id) VALUES($1,$2,$3)',
+   [appeal,reviewer,assigner]);
+  await reject(()=>db.query("UPDATE professional_appeal_review_assignments SET reviewer_staff_id=$2 WHERE appeal_id=$1",[appeal,originalStaff]),'23514');
   await db.query("UPDATE platform_moderation_cases SET state='closed' WHERE id=$1",[appealCase]);
   await reject(()=>add(originalStaff),'23514');
   await reject(()=>add(reviewer,randomUUID(),'INVALID'),'23514');
