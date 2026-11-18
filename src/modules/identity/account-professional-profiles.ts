@@ -4,7 +4,7 @@ import type {PublicOffer} from '../catalog/public-profile.repository.js';
 
 type ProfileStatus='draft'|'published'|'paused'|'archived';
 export type OwnProfessionalProfile={
- id:string;profession_id:string;lifecycle_status:ProfileStatus;slug:string;title:string|null;offers:PublicOffer[];
+ id:string;profession_id:string;lifecycle_status:ProfileStatus;slug:string;title:string|null;offers:PublicOffer[];version?:number;about?:string|null;
 };
 type ProfileRow=Omit<OwnProfessionalProfile,'offers'>;
 
@@ -15,7 +15,7 @@ export async function listOwnProfessionalProfiles(
  const actor=await readAccountMe(db,token,pepper);
  if(!actor)return null;
  const profiles=await db.query<ProfileRow>(`
-  SELECT id::text,profession_id::text,lower(status::text) AS lifecycle_status,slug,title
+  SELECT id::text,profession_id::text,lower(status::text) AS lifecycle_status,slug,title,version,about
   FROM professional_profiles
   WHERE person_id=$1::uuid
   ORDER BY slug COLLATE "C",id
@@ -35,5 +35,5 @@ export async function listOwnProfessionalProfiles(
   group.push({id:o.id,title:o.title,delivery_mode:o.delivery_mode,price_label:o.price_label});
   grouped.set(o.professional_id,group);
  }
- return profiles.rows.map(p=>({id:p.id,profession_id:p.profession_id,lifecycle_status:p.lifecycle_status,slug:p.slug,title:p.title,offers:grouped.get(p.id)??[]}));
+ return profiles.rows.map(p=>({id:p.id,profession_id:p.profession_id,lifecycle_status:p.lifecycle_status,slug:p.slug,title:p.title,version:p.version,about:p.about,offers:grouped.get(p.id)??[]}));
 }

@@ -20,6 +20,7 @@
     "GET /search",
     "GET /service-definitions",
     "GET /service-offers/{id}",
+    "PATCH /me/professional-profiles/{id}",
     "POST /admin/session/logout",
     "POST /auth/logout",
     "POST /auth/private/account/verify",

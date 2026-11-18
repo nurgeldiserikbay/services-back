@@ -47,10 +47,10 @@ test('live profile inventory returns only own profiles and denies invalid, expir
   assert.equal(first.status,200);
   assert.match(first.headers.get('cache-control')??'',/no-store/);
   assert.equal(first.headers.get('pragma'),'no-cache');
-  assert.deepEqual(await first.json(),[{id:ownProfile,profession_id:profession,lifecycle_status:'draft',slug:ownProfile,title:null,offers:[]}]);
+  assert.deepEqual(await first.json(),[{id:ownProfile,profession_id:profession,lifecycle_status:'draft',slug:ownProfile,title:null,version:1,about:null,offers:[]}]);
   const second=await request(foreign.token);
   assert.equal(second.status,200);
-  assert.deepEqual(await second.json(),[{id:foreignProfile,profession_id:profession,lifecycle_status:'paused',slug:foreignProfile,title:null,offers:[]}]);
+  assert.deepEqual(await second.json(),[{id:foreignProfile,profession_id:profession,lifecycle_status:'paused',slug:foreignProfile,title:null,version:1,about:null,offers:[]}]);
   await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
   assert.equal((await request(own.token)).status,401);
   assert.equal((await request(foreign.token)).status,200);
