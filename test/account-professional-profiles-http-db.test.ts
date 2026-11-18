@@ -51,7 +51,20 @@ test('live profile inventory returns only own profiles and denies invalid, expir
   const second=await request(foreign.token);
   assert.equal(second.status,200);
   assert.deepEqual(await second.json(),[{id:foreignProfile,profession_id:profession,lifecycle_status:'paused',slug:foreignProfile,title:null,version:1,about:null,offers:[]}]);
+  const update=(token:string,id:string,version:string,body:unknown)=>fetch(url+'/'+id,{
+   method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','If-Match':version},
+   body:JSON.stringify(body),
+  });
+  assert.equal((await update(foreign.token,ownProfile,'"1"',{title:'foreign'})).status,403);
+  assert.equal((await update(own.token,ownProfile,'W/"1"',{title:'weak'})).status,400);
+  const edited=await update(own.token,ownProfile,'"1"',{title:'My profession',about:'Қызмет сипаттамасы'});
+  assert.equal(edited.status,200);
+  assert.deepEqual(await edited.json(),{id:ownProfile,profession_id:profession,lifecycle_status:'draft',slug:ownProfile,title:'My profession',about:'Қызмет сипаттамасы',version:2,offers:[]});
+  assert.equal((await update(own.token,ownProfile,'"1"',{title:'stale'})).status,409);
+  const after=await request(own.token);
+  assert.deepEqual(await after.json(),[{id:ownProfile,profession_id:profession,lifecycle_status:'draft',slug:ownProfile,title:'My profession',about:'Қызмет сипаттамасы',version:2,offers:[]}]);
   await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
+  assert.equal((await update(own.token,ownProfile,'"2"',{title:'revoked'})).status,401);
   assert.equal((await request(own.token)).status,401);
   assert.equal((await request(foreign.token)).status,200);
   await db.query("UPDATE users SET status='SUSPENDED' WHERE id=$1",[other]);
