@@ -34,6 +34,21 @@ test('professional moderation decision evidence binds closed case and exact prof
    'SELECT profile_version,decision,actor_staff_id::text FROM professional_moderation_decisions WHERE id=$1',[decisionId])).rows,
    [{profile_version:1,decision:'APPROVE',actor_staff_id:staff}]);
   await rejected(()=>insert(caseId,1,'REJECT',randomUUID()),'23505');
+  // An appeal is a distinct case with an immutable link to a REJECT.
+  // Even if triage closes that case, raw SQL cannot forge a first-instance
+  // approval in professional_moderation_decisions.
+  const rejectionCase=randomUUID(),rejectionId=randomUUID(),appealCase=randomUUID();
+  await db.query("INSERT INTO platform_moderation_cases(id,resource_scope,subject_kind,state) VALUES($1,$2,'professional','closed')",
+   [rejectionCase,'professional:'+profile]);
+  await insert(rejectionCase,1,'REJECT',rejectionId);
+  await db.query("INSERT INTO platform_moderation_cases(id,resource_scope,subject_kind,state) VALUES($1,$2,'professional','appeal')",
+   [appealCase,'professional:'+profile]);
+  await db.query(
+   'INSERT INTO professional_moderation_appeals(id,original_decision_id,case_id,profile_id,profile_version,submitted_by_person_id) VALUES($1,$2,$3,$4,1,$5)',
+   [randomUUID(),rejectionId,appealCase,profile,person]);
+  await db.query("UPDATE platform_moderation_cases SET state='closed' WHERE id=$1",[appealCase]);
+  await rejected(()=>insert(appealCase,1,'APPROVE',randomUUID()),'23514');
+  assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_moderation_decisions WHERE case_id=$1',[appealCase])).rows[0].total,0);
   await rejected(()=>db.query("UPDATE professional_moderation_decisions SET decision='REJECT' WHERE id=$1",[decisionId]),'23514');
   await rejected(()=>db.query('DELETE FROM professional_moderation_decisions WHERE id=$1',[decisionId]),'23514');
  }finally{
