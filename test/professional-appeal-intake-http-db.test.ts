@@ -70,6 +70,12 @@ test('appeal intake binds the owner, REJECT, exact version and immutable case in
   assert.deepEqual(records,[{decision,case_id:result.case_id,profile,owner:person}]);
   assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[sourceCase])).rows[0].state,'closed');
   assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[result.case_id])).rows[0].state,'appeal');
+  // Replayed intake must not claim an appeal is still open once triage moves
+  // its linked case into a distinct review state. No second case is created.
+  await db.query("UPDATE platform_moderation_cases SET state='decision' WHERE id=$1",[result.case_id]);
+  assert.equal((await request(own.token,'"1"')).status,409,'advanced appeal is not intake-idempotent');
+  assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_moderation_appeals WHERE original_decision_id=$1',[decision])).rows[0].total,1);
+  assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[result.case_id])).rows[0].state,'decision');
   await db.query('SAVEPOINT deny');
   await assert.rejects(db.query('DELETE FROM professional_moderation_appeals WHERE case_id=$1',[result.case_id]),
    (e:unknown)=>(e as {code?:string}).code==='23514');
