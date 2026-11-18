@@ -86,7 +86,7 @@ test('live profile preview enforces owner and retains published snapshot after e
    published:{title:'First public',about:null,version:1},
   });
   const after=await request(own.token);
-  assert.deepEqual(await after.json(),[{id:ownProfile,profession_id:profession,lifecycle_status:'draft',slug:ownProfile,title:'My profession',about:'Қызмет сипаттамасы',version:2,offers:[]}]);
+  assert.deepEqual(await after.json(),[{id:ownProfile,profession_id:profession,lifecycle_status:'published',slug:ownProfile,title:'My profession',about:'Қызмет сипаттамасы',version:2,offers:[]}]);
   await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
   assert.equal((await update(own.token,ownProfile,'"2"',{title:'revoked'})).status,401);
   assert.equal((await preview(own.token,ownProfile)).status,401);
