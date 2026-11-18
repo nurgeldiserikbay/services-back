@@ -46,7 +46,7 @@ CREATE TRIGGER professional_appeal_decision_audit
 -- A direct INSERT cannot claim an event that does not match committed
 -- source evidence. The AFTER triggers above are the ordinary writers.
 CREATE FUNCTION guard_professional_appeal_audit_insert()
-RETURNS trigger LANGUAGE plpgsql AS $
+RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.event_kind='REVIEWER_ASSIGNED' THEN
   PERFORM 1 FROM professional_appeal_review_assignments a
@@ -65,7 +65,7 @@ BEGIN
  END IF;
  RETURN NEW;
 END;
-$;
+$$;
 CREATE TRIGGER professional_appeal_audit_insert_guard
  BEFORE INSERT ON professional_appeal_audit_events
  FOR EACH ROW EXECUTE FUNCTION guard_professional_appeal_audit_insert();
