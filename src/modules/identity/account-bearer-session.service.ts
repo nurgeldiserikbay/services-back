@@ -8,6 +8,7 @@ import {
 import {revokeCurrentAccountSession} from './session-revocation.js';
 import {resolveActiveUserSession} from './session-proof.js';
 import {readAccountMe,type AccountMe} from './account-me.js';
+import {listOwnProfessionalProfiles,type OwnProfessionalProfile} from './account-professional-profiles.js';
 
 /**
  * Bearer-only transport integration. This is not a login issuer.
@@ -28,6 +29,15 @@ export class AccountBearerSessionService{
       const me=await readAccountMe(client,token,pepper);
       if(!me)throw new UnauthorizedException('Authentication required');
       return me;
+    });
+  }
+
+  async professionalProfiles(token:string):Promise<OwnProfessionalProfile[]>{
+    const pepper=this.getPepper();
+    return this.db.transaction(async client=>{
+      const profiles=await listOwnProfessionalProfiles(client,token,pepper);
+      if(profiles===null)throw new UnauthorizedException('Authentication required');
+      return profiles;
     });
   }
 

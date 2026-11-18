@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+2026-11-18: service definitions PR #263 merged 668320d, CI #44248878235 PASS; docs snapshot synced 8d9e534. Prepared own professional profile GET inventory with live bearer/person ownership, public-offer projection and unit regressions. Full profile create/update/lifecycle and HTTP/PostgreSQL acceptance remain open; no checkbox closed.
+
 2026-11-18 catalog: Prepared GET /service-definitions with optional profession UUID relation filter, parameterized public taxonomy query, unit and PostgreSQL HTTP regression. Frontend navigation PR #138 merged at 1c0624e; PR CI #44248387237 PASS. Catalog CI, docs snapshot and frontend consumption pending; no top-level checkbox closed.
 
 2026-11-18 account workspace delivery: frontend [PR #137](https://github.com/nurgeldiserikbay/services-front/pull/137) merged at [4c44618](https://github.com/nurgeldiserikbay/services-front/commit/4c446180bd725bcb25b2a9e2985702b392107d56), [CI #44247975535](https://github.com/nurgeldiserikbay/services-front/actions/runs/44247975535) PASS; admin [PR #18](https://github.com/nurgeldiserikbay/services-admin/pull/18) merged at [74cbbd2](https://github.com/nurgeldiserikbay/services-admin/commit/74cbbd24208358a6f314540573c8f8146dcd6080), [CI #44248072534](https://github.com/nurgeldiserikbay/services-admin/actions/runs/44248072534) PASS. Frontend [PR #138](https://github.com/nurgeldiserikbay/services-front/pull/138) prepares gated navigation linking account home, seller requests, notifications and device management, with source regressions. CI, authenticated account-home browser acceptance and staging pending; no top-level checkbox closed.

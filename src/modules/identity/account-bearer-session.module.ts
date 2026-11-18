@@ -4,8 +4,10 @@ import {AccountBearerSessionService} from './account-bearer-session.service.js';
 
 import {AccountMeController} from './account-me.controller.js';
 
+import {AccountProfessionalProfilesController} from './account-professional-profiles.controller.js';
+
 @Module({
-  controllers:[AccountBearerSessionController,AccountMeController],
+  controllers:[AccountBearerSessionController,AccountMeController,AccountProfessionalProfilesController],
   providers:[AccountBearerSessionService],
 })
 export class AccountBearerSessionModule{}
