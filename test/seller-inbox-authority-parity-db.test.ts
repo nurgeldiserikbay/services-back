@@ -411,6 +411,12 @@ test('PostgreSQL serializes competing seller decisions with one winning transiti
     }
     const profile=await setup.query(`
      SELECT person_id,profession_id FROM professional_profiles WHERE id=$1`,[ids.profileId]);
+    // Committed concurrency fixture only. The production immutable history
+    // guard remains active outside this transactional, exclusive-lock cleanup.
+    await setup.query('LOCK TABLE professional_published_revisions IN ACCESS EXCLUSIVE MODE');
+    await setup.query('ALTER TABLE professional_published_revisions DISABLE TRIGGER professional_revision_immutable');
+    await setup.query('DELETE FROM professional_published_revisions WHERE profile_id=$1',[ids.profileId]);
+    await setup.query('ALTER TABLE professional_published_revisions ENABLE TRIGGER professional_revision_immutable');
     await setup.query('DELETE FROM professional_profiles WHERE id=$1',[ids.profileId]);
     if(profile.rows[0]){
      await setup.query('DELETE FROM professions WHERE id=$1',[profile.rows[0].profession_id]);
