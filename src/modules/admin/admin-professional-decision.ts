@@ -76,14 +76,6 @@ export async function decideProfessionalModerationCase(
  const row=moderation?.rows[0];
  if(!row||row.resource_scope!==scope||row.subject_kind!=='professional')
   throw new ConflictException('Moderation case unavailable');
- if(row.state==='closed'){
-  const prior=await db.query<{decision:string;profile_version:number;actor_staff_id:string}>(
-   'SELECT decision,profile_version,actor_staff_id::text FROM professional_moderation_decisions WHERE case_id=$1::uuid',[cmd.caseId]);
-  if(prior?.rows.length===1&&prior.rows[0]?.decision===cmd.decision&&
-   prior.rows[0].profile_version===cmd.profileVersion&&prior.rows[0].actor_staff_id===staffId)
-   return {case_id:cmd.caseId,profile_id:cmd.profileId,profile_version:cmd.profileVersion,decision:cmd.decision};
-  throw new ConflictException('Moderation case already decided');
- }
  // An appeal case is NEVER an ordinary first-instance moderation decision.
  // A separate reviewer-separation and appeal adjudication contract is required.
  // Check this before any case transition, even if the appeal was moved to
@@ -94,6 +86,14 @@ export async function decideProfessionalModerationCase(
   ) AS blocked`,[cmd.caseId]);
  if(appeal.rows.length!==1||appeal.rows[0]?.blocked!==false)
   throw new ConflictException('Appeal requires independent review');
+ if(row.state==='closed'){
+  const prior=await db.query<{decision:string;profile_version:number;actor_staff_id:string}>(
+   'SELECT decision,profile_version,actor_staff_id::text FROM professional_moderation_decisions WHERE case_id=$1::uuid',[cmd.caseId]);
+  if(prior?.rows.length===1&&prior.rows[0]?.decision===cmd.decision&&
+   prior.rows[0].profile_version===cmd.profileVersion&&prior.rows[0].actor_staff_id===staffId)
+   return {case_id:cmd.caseId,profile_id:cmd.profileId,profile_version:cmd.profileVersion,decision:cmd.decision};
+  throw new ConflictException('Moderation case already decided');
+ }
  if(row.state!=='decision')throw new ConflictException('Moderation case is not ready for decision');
  const result=await db.query(
   "UPDATE platform_moderation_cases SET state='closed' WHERE id=$1::uuid AND state='decision'",
