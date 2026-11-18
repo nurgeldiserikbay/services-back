@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
+import {request as rawHttpRequest} from 'node:http';
 import {Module,UnauthorizedException} from '@nestjs/common';
 import {createRequire} from 'node:module';
 const expressJson=(createRequire(process.cwd()+'/package.json')('express') as {
@@ -61,6 +62,28 @@ test('unregistered private appeal transport denies default-off, browser origin a
    assert.equal((await request(route,{Origin:'https://evil.example'})).status,401);
    assert.equal((await request(route,{'Sec-Fetch-Site':'cross-site'})).status,401);
    assert.equal((await request(route,{'Sec-Fetch-Site':'same-origin'})).status,401);
+   assert.equal((await request(route,{'Sec-Fetch-Site':'none'})).status,401,'browser navigation metadata');
+   // Undici's fetch constructor treats Sec-Fetch-Mode as a protected fetch
+   // option. Send this raw request to exercise the actual server guard.
+   const navigateStatus=await new Promise<number>((resolve,reject)=>{
+    const payload=JSON.stringify(route==='assignment'
+     ?{profile_id:profile,profile_version:1,reviewer_staff_id:reviewer}
+     :{profile_id:profile,profile_version:1,outcome:'UPHOLD_REJECTION'});
+    const req=rawHttpRequest(base+'/'+route,{
+     method:'POST',headers:{
+      'Content-Type':'application/json',Authorization:validShape(),
+      'Sec-Fetch-Mode':'navigate','Content-Length':Buffer.byteLength(payload),
+     },
+    },res=>{res.resume();res.on('end',()=>resolve(res.statusCode??0));});
+    req.on('error',reject);req.end(payload);
+   });
+   assert.equal(navigateStatus,401);
+   assert.equal((await request(route,{'Sec-Fetch-Dest':'document'})).status,401);
+   assert.equal((await request(route,{'Sec-Fetch-User':'?1'})).status,401);
+   assert.equal((await request(route,{Cookie:'session=not-trusted'})).status,401);
+   assert.equal((await request(route,{Referer:'https://admin.example/appeal'})).status,401);
+   assert.equal((await request(route,{Origin:'null'})).status,401);
+
    assert.equal((await request(route,{'Content-Type':'text/plain'})).status,401);
    const unsupported=await request(route,{'Content-Type':'application/json; charset=iso-8859-1'});
    assert.equal(unsupported.status,415,'unsupported charset must normalize to HTTP 415');
@@ -81,10 +104,15 @@ test('unregistered private appeal transport denies default-off, browser origin a
    assert.equal(bad.headers.get('x-content-type-options'),'nosniff');
   }
   const controller=app.get(PlatformProfessionalAppealAdminController);
-  assert.throws(()=>controller.assign('Bearer invalid',undefined,'none',
-   'application/json; charset=iso-8859-1',appeal,{}),UnauthorizedException);
-  assert.throws(()=>controller.decide('Bearer invalid',undefined,'none',
-   'application/json; charset=iso-8859-1',appeal,{}),UnauthorizedException);
+  for(const execute of [
+   (headers:Record<string,unknown>)=>controller.assign(headers,appeal,{}),
+   (headers:Record<string,unknown>)=>controller.decide(headers,appeal,{}),
+  ]){
+   assert.throws(()=>execute({'authorization':'Bearer invalid',
+    'content-type':'application/json; charset=iso-8859-1'}),UnauthorizedException);
+   assert.throws(()=>execute({'authorization':'Bearer invalid',
+    'content-type':'application/json','cookie':''}),UnauthorizedException);
+  }
   assert.equal(dbCalls,0,'preflight and proof errors must never reach DB');
  }finally{
   await app?.close();
