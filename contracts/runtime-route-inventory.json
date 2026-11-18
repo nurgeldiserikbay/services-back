@@ -31,6 +31,7 @@
     "POST /guest-requests/{requestId}/schedule-access/challenges",
     "POST /guest-requests/{requestId}/schedule-access/challenges/{challengeId}/verify",
     "POST /me/professional-profiles",
+    "POST /me/professional-profiles/{id}/publish",
     "POST /requests/{id}/accept",
     "POST /requests/{id}/cancel",
     "POST /requests/{id}/decline",
