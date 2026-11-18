@@ -8,6 +8,7 @@ import {DatabasePool} from '../src/platform/database/database.pool.js';
 import {PlatformProfessionalAppealAdminController} from '../src/modules/admin/admin-professional-appeal-http.controller.js';
 import {PlatformProfessionalAppealAdminService} from '../src/modules/admin/admin-professional-appeal-http.service.js';
 import {PlatformAppealHttpErrorFilter} from '../src/modules/admin/admin-professional-appeal-http-error.filter.js';
+import {privateAppealCharsetPreflight} from '../src/modules/admin/admin-professional-appeal-http-charset.middleware.js';
 
 test('unregistered private appeal transport denies default-off, browser origin and invalid admin proof before DB',async()=>{
  const assignFlag='SERVICES_ENABLE_PLATFORM_APPEAL_ASSIGN_HTTP';
@@ -26,6 +27,8 @@ test('unregistered private appeal transport denies default-off, browser origin a
  try{
   app=await NestFactory.create(IsolatedTestModule,{logger:false});
   // Future private transport would register this filter at the Nest HTTP boundary.
+  // Express pre-parser middleware must be registered before app.listen/init.
+  app.use(privateAppealCharsetPreflight);
   app.useGlobalFilters(new PlatformAppealHttpErrorFilter());
   app.setGlobalPrefix('v1');
   await app.listen(0,'127.0.0.1');
