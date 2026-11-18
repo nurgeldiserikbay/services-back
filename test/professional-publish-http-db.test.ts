@@ -43,6 +43,20 @@ test('publication HTTP creates immutable revisions and audit only after readines
   assert.equal((await publish(own.token,'"1"')).status,409,'offer is mandatory');
   assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_publication_audit WHERE profile_id=$1',[id])).rows[0].total,0);
   await db.query("INSERT INTO service_offers(id,definition_id,professional_id,title,status,delivery_mode,contacts) VALUES($1,$2,$3,'Electrical repairs','PUBLISHED','online','{}'::jsonb)",[offer,service,id]);
+  // Simulate audit insert failure after snapshot UPDATE; rollback must restore
+  // profile state and must not leave an immutable published revision.
+  await db.query('SAVEPOINT injected_publication_audit');
+  await db.query(
+   "INSERT INTO professional_publication_audit(profile_id,actor_person_id,from_status,from_version,to_version) VALUES($1,$2,'DRAFT',1,2)",
+   [id,person]);
+  await db.query('SAVEPOINT attempted_publication');
+  assert.equal((await publish(own.token,'"1"')).status,500,'duplicate audit record must abort the transaction');
+  await db.query('ROLLBACK TO SAVEPOINT attempted_publication');
+  const notCommitted=(await db.query('SELECT status,version,published_version FROM professional_profiles WHERE id=$1',[id])).rows[0];
+  assert.deepEqual(notCommitted,{status:'DRAFT',version:1,published_version:null});
+  assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_published_revisions WHERE profile_id=$1',[id])).rows[0].total,0);
+  await db.query('ROLLBACK TO SAVEPOINT injected_publication_audit');
+  await db.query('RELEASE SAVEPOINT injected_publication_audit');
   assert.equal((await publish(own.token,'"2"')).status,409,'stale version must fail');
   const first=await publish(own.token,'"1"');
   assert.equal(first.status,201);
