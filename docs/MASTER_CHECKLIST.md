@@ -902,10 +902,20 @@ Private MFA HTTP database-outage follow-up (2026-11-16): [`0bf3569`](https://git
 
 No additional acceptance checkbox is closed by these workflow-level results alone. Verify individual job coverage and E2E evidence before changing completion counts.
 
+### 2026-11-18 — cross-repository job-level evidence review
+
+Inspected actual job and step conclusions for the three recorded runs above (historical SHAs, not current HEAD). All listed substantive steps below succeeded.
+
+- Backend [#44088086157](https://github.com/nurgeldiserikbay/services-back/actions/runs/44088086157): build-and-test and dependency-audit passed; migrated PostgreSQL, OTP/session and admin authorization, live privileged moderation HTTP, guest request and cancellation lifecycle, authenticated seller OTP-to-decision, notification lease/outbox/retry/requeue E2E, isolated logical backup/restore and production high-severity dependency audit.
+- Frontend [#44088031282](https://github.com/nurgeldiserikbay/services-front/actions/runs/44088031282): web job passed against pinned backend and migrated PostgreSQL; security lint, unit, typecheck/build, live security headers, signed session/revocation, guest creation with scoped status cookie, foreign-request denial, CSRF/provider isolation, search-to-profile, mobile Chrome keyboard/landmarks, Lighthouse report capture, real service-worker offline/private-cache isolation and production dependency audit. Lighthouse capture is not an approved performance threshold; full authenticated browser journeys and staging acceptance remain open.
+- Admin [#43854510440](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43854510440): typecheck, lint, test, build, production liveness, missing/forged session denial and production dependency audit passed. Comprehensive semantic lint and authenticated browser/admin-to-backend journeys are not established by these steps.
+
+No new acceptance checkbox is closed by this evidence-only review; existing top-level checkbox count is reconciled from the Acceptance items section. Do not infer current HEAD or docs CI status, real provider delivery, or staging sign-off from historical runs.
+
 ## Next acceptance gates
 
-1. Inspect the recorded passing backend/frontend/admin main workflow jobs for exact coverage; add missing integration and E2E evidence before closing acceptance items.
+1. Recorded historical workflow job coverage inspected (2026-11-18); verify current HEADs and add missing authenticated browser/admin E2E evidence before closing acceptance items.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 17 (15 backend checks + 2 frontend CI-verified checks). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 18 (actual top-level checked acceptance items; evidence-only review did not close any). This strict checkbox count is not the project's historical functional-readiness estimate.
