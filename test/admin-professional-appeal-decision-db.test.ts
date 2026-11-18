@@ -90,6 +90,13 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '16 minutes' WHERE id=$1",[assignSession]);
   await assert.rejects(assign(),UnauthorizedException);
   await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '1 minute' WHERE id=$1",[assignSession]);
+  await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',[assignSession]);
+  await assert.rejects(assign(),UnauthorizedException);
+  await db.query('UPDATE platform_admin_sessions SET revoked_at=NULL WHERE id=$1',[assignSession]);
+  await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[assignGrant]);
+  await assert.rejects(assign(),UnauthorizedException);
+  await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [assignGrant,assigner,'professional:'+profile]);
   const assignment={appeal_id:appeal,reviewer_staff_id:reviewer,assigned_by_staff_id:assigner};
   assert.deepEqual(await assign(),assignment);
   assert.deepEqual(await assign(),assignment,'exact same assignment is idempotent');
