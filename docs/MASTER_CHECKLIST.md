@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+2026-11-18 own professional profile inventory PR #264 merged d1f93ec, CI #44250433561 PASS; docs route snapshot synced 334c144. Prepared live HTTP/PostgreSQL tests for owner isolation, draft/paused visibility, expired/revoked/suspended denial. Schema gap: profile version/about and hidden/deletion states not present; mutation lifecycle remains pending. No checkbox closed.
+
 2026-11-18: service definitions PR #263 merged 668320d, CI #44248878235 PASS; docs snapshot synced 8d9e534. Prepared own professional profile GET inventory with live bearer/person ownership, public-offer projection and unit regressions. Full profile create/update/lifecycle and HTTP/PostgreSQL acceptance remain open; no checkbox closed.
 
 2026-11-18 catalog: Prepared GET /service-definitions with optional profession UUID relation filter, parameterized public taxonomy query, unit and PostgreSQL HTTP regression. Frontend navigation PR #138 merged at 1c0624e; PR CI #44248387237 PASS. Catalog CI, docs snapshot and frontend consumption pending; no top-level checkbox closed.
