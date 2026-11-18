@@ -17,6 +17,7 @@
     "GET /professions",
     "GET /requests/{id}",
     "GET /search",
+    "GET /service-definitions",
     "GET /service-offers/{id}",
     "POST /admin/session/logout",
     "POST /auth/logout",
