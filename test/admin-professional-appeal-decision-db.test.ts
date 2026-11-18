@@ -53,6 +53,17 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   await db.query('RELEASE SAVEPOINT immutable_actor');
   // Above immutable evidence cannot be rewritten. The original actor stays independent.
   assert.equal((await db.query('SELECT actor_staff_id::text FROM professional_moderation_decisions WHERE id=$1',[rejection])).rows[0].actor_staff_id,actor);
+  // A separately authenticated and granted initial decision actor still
+  // cannot adjudicate their own rejection, even with fresh activated MFA.
+  const actorToken=issueAdminSessionToken(pepper);
+  await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [randomUUID(),actor,'professional:'+profile]);
+  await db.query("INSERT INTO platform_admin_sessions(id,staff_id,token_hash,mfa_verified_at,expires_at) VALUES($1,$2,$3,now()-interval '1 minute',now()+interval '1 hour')",
+   [randomUUID(),actor,actorToken.tokenHash]);
+  await db.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'test-encrypted-envelope','test-v1',now()-interval '4 minutes',now()-interval '3 minutes')",[actor]);
+  await assert.rejects(
+   decideProfessionalAppeal(db,actorToken.token,pepper,appeal,body),ConflictException);
+  assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[appealCase])).rows[0].state,'decision');
   const receipt=await decide();
   assert.deepEqual(receipt,{appeal_id:appeal,profile_id:profile,profile_version:1,outcome:'OVERTURN_REJECTION'});
   assert.deepEqual(await decide(),receipt);
