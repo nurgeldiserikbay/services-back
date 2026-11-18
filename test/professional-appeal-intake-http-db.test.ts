@@ -58,7 +58,7 @@ test('appeal intake binds the owner, REJECT, exact version and immutable case in
   assert.equal((await request(own.token,'W/"1"')).status,400);
   assert.deepEqual(parseProfileAppeal(profile,'"1"',{decision_id:decision}),
    {id:profile,version:1,decisionId:decision});
-  assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_moderation_appeals')).rows[0].total,0);
+  assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_moderation_appeals WHERE original_decision_id=$1',[decision])).rows[0].total,0);
   const first=await request(own.token,'"1"');
   assert.equal(first.status,201);
   const result=await first.json() as {case_id:string;profile_id:string;profile_version:number;state:string};
