@@ -808,6 +808,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/professional-moderation-decisions-db.test.ts
       - name: Admin professional moderation decision PostgreSQL authorization (fail fast)
         run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/admin-professional-decision-db.test.ts
+      - name: Admin moderation decision HTTP preflight (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 30s node --import tsx --test test/admin-professional-decision-http.test.ts
       - name: Unit and integration tests (after database migrations)
         id: full_tests
         run: npm test
