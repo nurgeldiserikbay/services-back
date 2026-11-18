@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend guest cancellation ledger TTL live-time insert (2026-11-18): Prepared in this PR. PostgreSQL idempotency reservation now sets expires_at to clock_timestamp()+1 day instead of transaction-start now()+1 day, matching live-clock replay expiry. Regression holds a transaction open before cancellation and asserts full TTL from reservation time; CI pending, no authenticated HTTP/staging acceptance claimed.
+
 Backend direct guest cancellation int4 boundary (2026-11-18): Prepared in this PR. The legacy internal cancelVerifiedGuestRequest transaction rejects expectedVersion outside 1..2147483646 before any SQL, matching idempotent/preflight cancellation, and regression checks invalid numeric boundaries with zero DB calls. CI pending; no HTTP BFF/staging acceptance claimed.
 
 Backend guest contact expiry regressions (2026-11-18): Prepared in this PR. PostgreSQL fixtures test expiration of verified guest contact during an already open transaction before fresh cancellation and after completed idempotent cancellation; both must reject the expired contact by live database time and preserve request state/event/notification counts. CI pending; no authenticated HTTP or staging acceptance claimed.

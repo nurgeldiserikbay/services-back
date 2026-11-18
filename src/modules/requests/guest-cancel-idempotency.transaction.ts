@@ -68,7 +68,7 @@ export async function cancelGuestRequestIdempotently(
     INSERT INTO idempotency_records
       (id,actor_scope,method,route,key,request_hash,state,expires_at)
     VALUES($1,$2,'POST',$3,'guest-cancel-v1',$4,'PROCESSING',
-      now()+interval '1 day')
+      clock_timestamp()+interval '1 day')
     ON CONFLICT (actor_scope,method,route,key) DO NOTHING
     RETURNING id::text
   `,[randomUUID(),actorScope,route,bodyHash]);

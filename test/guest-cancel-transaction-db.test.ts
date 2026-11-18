@@ -410,6 +410,28 @@ test('guest cancellation preflight and PostgreSQL transaction compose without du
   });
 });
 
+test('cancellation ledger TTL starts at insert, not at transaction BEGIN',async()=>{
+  await withFixture(async(db,f)=>{
+    // A long-running transaction has a frozen now(), but the idempotency
+    // reservation must have a full day from the actual insert time.
+    await db.query('SELECT pg_sleep(0.25)');
+    const measured=await db.query<{stamp:Date}>(
+      'SELECT clock_timestamp() AS stamp');
+    const ledgerSecret=randomBytes(32);
+    const result=await cancelGuestRequestIdempotently(db,f.request,f.valid,1,
+      'GuestCancel_TTL_2026_00000017',secret,ledgerSecret);
+    assert.equal(result.version,2);
+    const rows=await db.query<{expires_at:Date}>(`
+      SELECT expires_at FROM idempotency_records
+      WHERE route=$1
+    `,['/v1/requests/'+f.request+'/cancel']);
+    assert.equal(rows.rows.length,1);
+    assert.ok(rows.rows[0].expires_at.getTime()>=
+      measured.rows[0].stamp.getTime()+86400000-100,
+      'TTL must be calculated from the actual reservation, not BEGIN');
+  });
+});
+
 test('guest cancel ledger atomically records one cancellation and replays same key',async()=>{
   await withFixture(async(db,f)=>{
     const ledgerSecret=randomBytes(32),key='GuestCancel_2026_00000001';
