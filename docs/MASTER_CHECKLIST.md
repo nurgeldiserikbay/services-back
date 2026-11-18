@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+2026-11-18 backend public snapshot #269 merged ace333a CI #44256314732 PASS; frontend owner profile list #139 merged 60b9d44 CI #44256697690 PASS. Prepared immutable published content revision storage, backfill, database mutation protection and PostgreSQL regressions. Owner publication, preview/rollback, legal erasure and concurrent acceptance pending; no checkbox closed.
+
 2026-11-18 profile PATCH HTTP #268 merged 169b16a CI #44255498337 PASS. Prepared forward public snapshot migration, backfill and capture on trusted status transitions; public search/profile use snapshot title rather than owner draft. PostgreSQL regressions cover null title and draft confidentiality. Historical immutable revisions, republish workflow, lifecycle guards and staging pending; no checkbox closed.
 
 2026-11-18 profile edit #267 merged 0ec1614, CI #44252806689 PASS; docs snapshot a6d8f1b. Prepared real HTTP/PostgreSQL PATCH owner/version/revocation regression and lifecycle release-gate analysis, including paused visibility and published revision conflicts. Lifecycle mutation not exposed; no top-level checkbox closed.
