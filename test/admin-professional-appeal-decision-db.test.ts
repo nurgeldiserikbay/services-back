@@ -6,6 +6,7 @@ import {BadRequestException,ConflictException,UnauthorizedException} from '@nest
 import {issueAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
 import {decideProfessionalAppeal,parseProfessionalAppealDecision} from '../src/modules/admin/admin-professional-appeal-decision.js';
 import {assignProfessionalAppealReviewer,parseAppealReviewerAssignment} from '../src/modules/admin/admin-professional-appeal-assignment.js';
+import {readProfessionalAppealAudit} from '../src/modules/admin/admin-professional-appeal-audit-read.js';
 
 test('independent appeal core enforces scoped fresh MFA, reviewer separation, exact version and immutable outcome',async()=>{
  const db=new Client({connectionString:process.env.DATABASE_URL});
@@ -171,6 +172,47 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
     {event_kind:'APPEAL_DECIDED',actor:reviewer,reviewer,outcome:'OVERTURN_REJECTION'},
     {event_kind:'REVIEWER_ASSIGNED',actor:assigner,reviewer,outcome:null},
    ]);
+  // Scoped auditor can only read the immutable minimal appeal event projection.
+  // Operator, revoked session, stale MFA and wrong-profile scope must fail closed.
+  const auditorUser=randomUUID(),auditor=randomUUID(),auditorSession=randomUUID();
+  const auditorGrant=randomUUID(),auditorToken=issueAdminSessionToken(pepper);
+  await db.query('INSERT INTO users(id) VALUES($1)',[auditorUser]);
+  await db.query("INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'auditor')",[auditor,auditorUser]);
+  await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [auditorGrant,auditor,'professional:'+profile]);
+  await db.query("INSERT INTO platform_admin_sessions(id,staff_id,token_hash,mfa_verified_at,expires_at) VALUES($1,$2,$3,now()-interval '1 minute',now()+interval '1 hour')",
+   [auditorSession,auditor,auditorToken.tokenHash]);
+  await db.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'integration-test-placeholder-encrypted-envelope','test-v1',now()-interval '4 minutes',now()-interval '3 minutes')",[auditor]);
+  const auditRead=(appealId:unknown=appeal,profileId:unknown=profile)=>
+   readProfessionalAppealAudit(db,auditorToken.token,pepper,appealId,profileId);
+  assert.deepEqual((await auditRead()).events.map(x=>({
+   kind:x.event_kind,actor:x.actor_staff_id,reviewer:x.reviewer_staff_id,outcome:x.outcome,
+  })),[
+   {kind:'REVIEWER_ASSIGNED',actor:assigner,reviewer,outcome:null},
+   {kind:'APPEAL_DECIDED',actor:reviewer,reviewer,outcome:'OVERTURN_REJECTION'},
+  ]);
+  const auditReceipt=await auditRead();
+  assert.equal(auditReceipt.appeal_id,appeal);
+  assert.equal(auditReceipt.profile_version,1);
+  assert.ok(auditReceipt.events.every(x=>!Number.isNaN(Date.parse(x.occurred_at))));
+  await assert.rejects(auditRead(appeal,randomUUID()),UnauthorizedException);
+  await assert.rejects(auditRead(randomUUID(),profile),UnauthorizedException);
+  await assert.rejects(auditRead('invalid-uuid',profile),BadRequestException);
+  await db.query("UPDATE platform_admin_staff SET role='operator' WHERE id=$1",[auditor]);
+  await assert.rejects(auditRead(),UnauthorizedException);
+  await db.query("UPDATE platform_admin_staff SET role='auditor' WHERE id=$1",[auditor]);
+  await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '16 minutes' WHERE id=$1",[auditorSession]);
+  await assert.rejects(auditRead(),UnauthorizedException);
+  await db.query("UPDATE platform_admin_sessions SET mfa_verified_at=now()-interval '1 minute' WHERE id=$1",[auditorSession]);
+  await db.query("UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1",[auditorSession]);
+  await assert.rejects(auditRead(),UnauthorizedException);
+  await db.query("UPDATE platform_admin_sessions SET revoked_at=NULL WHERE id=$1",[auditorSession]);
+  await db.query('DELETE FROM platform_admin_grants WHERE id=$1',[auditorGrant]);
+  await assert.rejects(auditRead(),UnauthorizedException);
+  await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
+   [auditorGrant,auditor,'professional:'+profile]);
+  assert.equal((await auditRead()).events.length,2);
+
   await db.query('SAVEPOINT audit_immutable');
   await assert.rejects(db.query("DELETE FROM professional_appeal_audit_events WHERE appeal_id=$1",[appeal]),
    (error:unknown)=>(error as {code?:string}).code==='23514');
