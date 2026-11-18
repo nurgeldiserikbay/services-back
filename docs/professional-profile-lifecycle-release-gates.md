@@ -98,3 +98,8 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - Forward-only PostgreSQL migration disallows ordinary `professional_moderation_decisions` INSERT for any case linked in immutable `professional_moderation_appeals`, even when an appeal case is later marked closed. This protects the database boundary, not only the admin HTTP handler.
 - The regression exercises raw SQL insertion against a closed, linked appeal and expects SQLSTATE `23514` with no first-instance decision created.
 - A separate, reviewed, independently staffed appeal adjudication model, policy and evidence schema remain outstanding; this does not authorize adjudication or production rollout. All publication and appeal feature flags remain off.
+
+## Appeal intake replay and triage state (2026-11-18)
+- Exact-owner duplicate POST returns the prior receipt only while the linked moderation case remains in `appeal` state. The existing case and immutable link are locked and checked together.
+- If triage already moved the case to another state, the same POST returns a conflict rather than an incorrect `state: appeal` receipt; no second case is created. A separate reviewed adjudication path remains necessary.
+- Activation flags remain OFF pending policy, reviewer independence, CSRF/BFF, and staging E2E.
