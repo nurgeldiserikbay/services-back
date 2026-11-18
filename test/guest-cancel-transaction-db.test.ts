@@ -1,3 +1,8 @@
+import 'reflect-metadata';
+import {Module} from '@nestjs/common';
+import {NestFactory} from '@nestjs/core';
+import {createHmac} from 'node:crypto';
+import {GuestCancelHttpController} from '../src/modules/requests/guest-cancel-http.controller.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
@@ -55,6 +60,87 @@ async function withFixture(fn:(db:Client,f:Awaited<ReturnType<typeof fixtures>>)
   try{await fn(db,await fixtures(db));}
   finally{await db.query('ROLLBACK').catch(()=>{});await db.end();}
 }
+test('signed Nest HTTP cancellation reaches real PostgreSQL and replays once',async()=>{
+  await withFixture(async(db,f)=>{
+    const names=['SERVICES_ENABLE_GUEST_CANCEL_HTTP','GUEST_CANCEL_BFF_HMAC_KEY',
+      'GUEST_REQUEST_HMAC_KEY','GUEST_CANCEL_LEDGER_HMAC_KEY'] as const;
+    const previous=names.map(name=>process.env[name]);
+    const signingKey=randomBytes(32),ledgerKey=randomBytes(32);
+    const key='GuestCancel_HTTP_DB_2026_12345';
+    const database={transaction:async<T>(work:(client:Client)=>Promise<T>)=>{
+      // The fixture owns the outer rollback-only transaction. Each HTTP
+      // attempt has a savepoint to emulate atomic rollback on domain errors.
+      await db.query('SAVEPOINT http_guest_cancel');
+      try{
+        const result=await work(db);
+        await db.query('RELEASE SAVEPOINT http_guest_cancel');
+        return result;
+      }catch(error){
+        await db.query('ROLLBACK TO SAVEPOINT http_guest_cancel');
+        await db.query('RELEASE SAVEPOINT http_guest_cancel');
+        throw error;
+      }
+    }} as unknown as DatabasePool;
+    @Module({controllers:[GuestCancelHttpController],
+      providers:[{provide:GuestCancellationService,
+        useValue:new GuestCancellationService(database)}]})
+    class HttpTestModule{}
+    let app:Awaited<ReturnType<typeof NestFactory.create>>|undefined;
+    try{
+      process.env[names[0]]='enabled';
+      process.env[names[1]]=signingKey.toString('base64');
+      process.env[names[2]]=secret.toString('base64');
+      process.env[names[3]]=ledgerKey.toString('base64');
+      app=await NestFactory.create(HttpTestModule,{logger:false,rawBody:true});
+      app.setGlobalPrefix('v1');
+      await app.listen(0,'127.0.0.1');
+      const address=app.getHttpServer().address();
+      assert.ok(address&&typeof address!=='string');
+      const route='/v1/requests/'+f.request+'/cancel';
+      const url='http://127.0.0.1:'+address.port+route;
+      const post=(version:number,capability:string,sign=true)=>{
+        const rawBody=JSON.stringify({expectedVersion:version});
+        const timestamp=String(Date.now());
+        const headers:Record<string,string>={'Content-Type':'application/json',
+          'Guest-Capability':capability,'Idempotency-Key':key};
+        if(sign)headers['X-Services-Guest-Cancel-Proof']='v1.'+timestamp+'.'+
+          createHmac('sha256',signingKey).update(JSON.stringify([
+            'services-guest-cancel-bff:v1',timestamp,'POST',route,rawBody,key,capability
+          ]),'utf8').digest('hex');
+        return fetch(url,{method:'POST',headers,body:rawBody,redirect:'manual'});
+      };
+      assert.equal((await post(1,f.valid,false)).status,404);
+      assert.equal((await post(1,f.foreign)).status,404);
+      const pending=await db.query<{status:string;version:number}>(
+        'SELECT status,version FROM service_requests WHERE id=$1',[f.request]);
+      assert.deepEqual(pending.rows,[{status:'PENDING',version:1}]);
+      const first=await post(1,f.valid);
+      assert.equal(first.status,200);
+      const result=await first.json();
+      assert.deepEqual(result,{id:f.request,state:'cancelled_by_customer',version:2});
+      const replay=await post(1,f.valid);
+      assert.equal(replay.status,200);
+      assert.deepEqual(await replay.json(),result);
+      assert.equal((await post(2,f.valid)).status,409);
+      assert.equal((await post(1,f.foreign)).status,404);
+      const counts=await db.query<{events:string;notices:string;ledgers:string;outbox:string}>(`
+        SELECT
+          (SELECT count(*) FROM cancellation_events WHERE request_id=$1)::text events,
+          (SELECT count(*) FROM notification_intents WHERE dedupe_key LIKE $2)::text notices,
+          (SELECT count(*) FROM idempotency_records WHERE route=$3 AND state='COMPLETED')::text ledgers,
+          (SELECT count(*) FROM domain_outbox_events WHERE subject_id=$1 AND topic='service_request.cancelled')::text outbox
+      `,[f.request,'cancel:%:'+f.request,route]);
+      assert.deepEqual(counts.rows,[{events:'1',notices:'2',ledgers:'1',outbox:'1'}]);
+    }finally{
+      await app?.close();
+      names.forEach((name,i)=>{
+        if(previous[i]===undefined)delete process.env[name];
+        else process.env[name]=previous[i];
+      });
+    }
+  });
+});
+
 test('verified guest pending cancel is a single transition with exactly two notice intents',async()=>{
   await withFixture(async(db,f)=>{
     const result=await cancelVerifiedGuestRequest(db,f.request,f.valid,1,secret);
