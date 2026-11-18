@@ -93,3 +93,8 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - The generic `POST /admin/moderation/cases/{id}/decision` MUST reject cases recorded in immutable `professional_moderation_appeals`, regardless of whether their current state has since been moved to `decision`.
 - An appeal cannot use the same initial decision path to bypass reviewer separation, initial actor exclusion, statutory timing or appeal outcome semantics. A separate audited endpoint and policy review are still mandatory.
 - If the appeal evidence lookup fails or returns a malformed row, the generic decision transaction fails closed. Publication and appeals remain disabled in production.
+
+## Database guard for appeal decision evidence (2026-11-18)
+- Forward-only PostgreSQL migration disallows ordinary `professional_moderation_decisions` INSERT for any case linked in immutable `professional_moderation_appeals`, even when an appeal case is later marked closed. This protects the database boundary, not only the admin HTTP handler.
+- The regression exercises raw SQL insertion against a closed, linked appeal and expects SQLSTATE `23514` with no first-instance decision created.
+- A separate, reviewed, independently staffed appeal adjudication model, policy and evidence schema remain outstanding; this does not authorize adjudication or production rollout. All publication and appeal feature flags remain off.
