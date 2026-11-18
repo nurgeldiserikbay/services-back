@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend AST route declaration gate (2026-11-18): [f6b004f](https://github.com/nurgeldiserikbay/services-back/commit/f6b004fde2a2c7c10b0bb66abd706ce49898424a) adds a TypeScript AST test traversing AppModule static imports and controllers, comparing 28 reviewed route declarations, with fixture coverage for unregistered controllers and unsupported dynamic declarations. Included by the existing test/*.test.ts glob. CI/typecheck execution not yet verified; no runtime HTTP exposure, DTO/auth parity or release acceptance claimed. Review both backend snapshot and docs inventory on intentional route changes.
+
 2026-11-18 API route inventory consistency gate: [services 4daf617](https://github.com/nurgeldiserikbay/services/commit/4daf617cf963d622c9b3832afcaa813e72207e56) introduces dependency-free Python design/inventory drift checker, six regression scenarios and path-filtered GitHub Actions. CI execution pending verification. This gate compares OpenAPI to the documented pinned controller inventory only; automatic live controller discovery, DTO/auth parity and cross-repository E2E remain open. No acceptance checkbox closed.
 
 2026-11-18 API gap sequencing: [services docs d337b0c](https://github.com/nurgeldiserikbay/services/commit/d337b0c07e2d9d82c76a1704cc1aa88477281d2b) categorizes all 42 unmatched design operations into 38 P0 and 4 P1 delivery items; no scope removal or deferral approved. Five runtime-only routes have proposed contract dispositions. Implementation, DTO/auth parity, automated drift and live E2E remain pending.
