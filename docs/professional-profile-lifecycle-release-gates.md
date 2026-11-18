@@ -38,3 +38,9 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - Successful command bumps version, updates public snapshot, and creates an immutable revision and append-only audit row in the same transaction.
 - Remaining launch blockers: moderation hold lookup/override, active requests and assignments guard, legal and product publication completeness decisions, committed-client concurrency proof, actual HTTP/PostgreSQL test, frontend UX and runtime metrics.
 - Do not treat this code path as permission to enable publication in a deployed environment.
+
+## Conservative runtime blockers (prepared, not approved)
+- Fail closed when an unresolved `professional:{uuid}` moderation case exists (`state <> closed`); `closed` does not prove positive approval.
+- Fail closed when an own seller/performer service request is `PENDING` or `ACCEPTED`.
+- Both checks execute in the publication transaction after the owner profile row is locked, before snapshot and audit writes.
+- **Not concurrency-safe for inserts from independent request-creation transactions without shared locking.** Product owner must also approve which active status, assignment and moderation resolution semantics permit a publication. Keep `SERVICES_ENABLE_PROFILE_PUBLISH` disabled.

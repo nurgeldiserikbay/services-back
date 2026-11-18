@@ -32,8 +32,28 @@ export async function publishOwnProfessionalProfile(db:Db,token:unknown,pepper:B
   "SELECT EXISTS(SELECT 1 FROM service_offers WHERE professional_id=$1::uuid AND status='PUBLISHED') AS present",
   [command.id]);
  if(offers.rows[0]?.present!==true)throw new ConflictException('Published service offer required');
- // This deliberately does not override moderation, bookings or seller eligibility.
- // Endpoint stays disabled until activation prerequisites are independently approved.
+ // Conservative release guard: open moderation cases must block publication.
+ // A closed case alone does NOT certify an explicit approval; activation remains gated.
+ const moderation=await db.query<{blocked:boolean}>(`
+  SELECT EXISTS(
+   SELECT 1 FROM platform_moderation_cases
+   WHERE resource_scope=$1 AND subject_kind='professional' AND state<>'closed'
+  ) AS blocked`,['professional:'+command.id]);
+ if(moderation.rows[0]?.blocked!==false)
+  throw new ConflictException('Profile has unresolved moderation');
+ // Guard existing incomplete requests; concurrent request creation still needs
+ // a reviewed common locking protocol before this endpoint can be enabled.
+ const activity=await db.query<{blocked:boolean}>(`
+  SELECT EXISTS(
+   SELECT 1 FROM service_requests
+   WHERE (seller_professional_id=$1::uuid OR performer_professional_id=$1::uuid)
+     AND status IN ('PENDING','ACCEPTED')
+  ) AS blocked`,[command.id]);
+ if(activity.rows[0]?.blocked!==false)
+  throw new ConflictException('Profile has active requests');
+ // These guards do not override unresolved seller eligibility, moderation
+ // approval policy, assignment rules or cross-command concurrency requirements.
+ // Keep the endpoint disabled until independent activation review.
  const updated=await db.query<{id:string;version:number;published_version:number}>(
   "UPDATE professional_profiles SET status='PUBLISHED',version=version+1,published_title=title,published_about=about,published_version=version+1 WHERE id=$1::uuid AND person_id=$2::uuid AND version=$3 AND status IN ('DRAFT','PUBLISHED') RETURNING id::text,version,published_version",
   [command.id,actor.person_id,command.version]);
