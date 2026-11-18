@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {Module,UnauthorizedException} from '@nestjs/common';
-import {json as expressJson} from 'express';
+import {createRequire} from 'node:module';
+const expressJson=(createRequire(process.cwd()+'/package.json')('express') as {
+ json:(options:{type:string})=>(...args:unknown[])=>unknown;
+}).json;
 import {NestFactory} from '@nestjs/core';
 import {DatabasePool} from '../src/platform/database/database.pool.js';
 import {PlatformProfessionalAppealAdminController} from '../src/modules/admin/admin-professional-appeal-http.controller.js';
