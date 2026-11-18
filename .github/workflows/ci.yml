@@ -830,6 +830,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 45s node --import tsx --test test/admin-professional-appeal-decision-db.test.ts
       - name: Isolated private appeal audit HTTP deny-before-DB preflight (fail fast)
         run: timeout --signal=TERM --kill-after=5s 30s node --import tsx --test test/admin-professional-appeal-audit-http.test.ts
+      - name: Isolated appeal audit HTTP authorization PostgreSQL journey (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 60s node --import tsx --test test/admin-professional-appeal-http-postgres-journey.test.ts
       - name: Unit and integration tests (after database migrations)
         id: full_tests
         run: npm test
