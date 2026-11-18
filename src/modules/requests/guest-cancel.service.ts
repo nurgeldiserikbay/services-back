@@ -72,6 +72,22 @@ export class GuestCancellationService{
   cancel(
     requestId:string,readCancelProof:string,expectedVersion:number,
   ):Promise<GuestCancellationResult>{
+    // This legacy internal path does not use an idempotency key. Validate
+    // the exact same request/version and canonical capability constraints
+    // before leasing a PostgreSQL connection.
+    try{
+      parseCancellationCommand(requestId,{expectedVersion},
+        'InternalGuestCancelLegacyV1');
+      if(typeof readCancelProof!=='string'||
+         !/^[A-Za-z0-9_-]{43}$/.test(readCancelProof))
+        throw new Error('invalid_guest_capability');
+      const decoded=Buffer.from(readCancelProof,'base64url');
+      if(decoded.length!==32||
+         decoded.toString('base64url')!==readCancelProof)
+        throw new Error('invalid_guest_capability');
+    }catch{
+      throw new GuestCancellationRejected('unavailable');
+    }
     let pepper:Buffer;
     try{pepper=requireSecret(process.env.GUEST_REQUEST_HMAC_KEY);}
     catch{throw new GuestCancellationRejected('unavailable');}

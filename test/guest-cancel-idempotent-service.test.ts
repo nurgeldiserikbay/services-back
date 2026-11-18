@@ -65,6 +65,45 @@ test('guest cancellation service rejects malformed command and proof before DB',
   assert.equal(calls,0);
 });
 
+test('legacy internal cancellation service rejects malformed input before connection',async()=>{
+  let calls=0;
+  const db={transaction:async()=>{calls++;throw new Error('unexpected_db');}} as unknown as DatabasePool;
+  const service=new GuestCancellationService(db);
+  for(const [id,token,version] of [
+    ['invalid',proof,1],
+    [requestId,'invalid',1],
+    [requestId,proof+'=',1],
+    [requestId,proof,0],
+    [requestId,proof,2147483647],
+    [requestId,proof,Number.MAX_SAFE_INTEGER],
+    [requestId,proof,1.1],
+  ] as const){
+    await assert.rejects(async()=>service.cancel(id,token,version),
+      (error:unknown)=>error instanceof GuestCancellationRejected&&
+        error.reason==='unavailable');
+  }
+  assert.equal(calls,0);
+});
+
+test('legacy cancellation delegates valid request to the transaction',async()=>{
+  const original=process.env.GUEST_REQUEST_HMAC_KEY;
+  let calls=0;
+  const db={transaction:async(work:(client:{query:()=>Promise<never>})=>Promise<unknown>)=>{
+    calls++;
+    return work({query:async()=>{throw new Error('db_read_reached');}});
+  }} as unknown as DatabasePool;
+  try{
+    process.env.GUEST_REQUEST_HMAC_KEY=randomBytes(32).toString('base64');
+    await assert.rejects(
+      async()=>new GuestCancellationService(db).cancel(requestId,proof,1),
+      /db_read_reached/);
+    assert.equal(calls,1);
+  }finally{
+    if(original===undefined)delete process.env.GUEST_REQUEST_HMAC_KEY;
+    else process.env.GUEST_REQUEST_HMAC_KEY=original;
+  }
+});
+
 test('guest cancellation service preflight rejects untrusted transport before DB',async()=>{
   let calls=0;
   const db={transaction:async()=>{calls++;throw new Error('unexpected_database_access');}} as unknown as DatabasePool;
