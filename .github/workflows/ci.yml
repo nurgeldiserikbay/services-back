@@ -824,6 +824,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/professional-appeal-concurrent-assignment-db.test.ts
       - name: Unregistered private appeal HTTP origin and default-off preflight (fail fast)
         run: timeout --signal=TERM --kill-after=5s 30s node --import tsx --test test/admin-professional-appeal-http-preflight.test.ts
+      - name: Isolated admin appeal HTTP PostgreSQL authorization journey (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 50s node --import tsx --test test/admin-professional-appeal-http-postgres-journey.test.ts
       - name: Unit and integration tests (after database migrations)
         id: full_tests
         run: npm test
