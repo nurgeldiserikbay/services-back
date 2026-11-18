@@ -961,6 +961,14 @@ Inspected actual job and step conclusions for the three recorded runs above (his
 
 No new acceptance checkbox is closed by this evidence-only review; existing top-level checkbox count is reconciled from the Acceptance items section. Do not infer current HEAD or docs CI status, real provider delivery, or staging sign-off from historical runs.
 
+### 2026-11-18 — professional appeal defensive security evidence
+
+- [PR #291](https://github.com/nurgeldiserikbay/services-back/pull/291) added a fail-closed application-level prohibition on deciding owner appeal cases via the ordinary privileged moderation endpoint; [Backend foundation CI #44304783995](https://github.com/nurgeldiserikbay/services-back/actions/runs/44304783995) **PASS** on PR head.
+- [PR #292](https://github.com/nurgeldiserikbay/services-back/pull/292) tested malformed appeal evidence; [Backend foundation CI #44305539402](https://github.com/nurgeldiserikbay/services-back/actions/runs/44305539402) **PASS** on PR head.
+- [PR #293](https://github.com/nurgeldiserikbay/services-back/pull/293) tested missing, duplicate and failed appeal evidence lookups; [Backend foundation CI #44306689858](https://github.com/nurgeldiserikbay/services-back/actions/runs/44306689858) **PASS** on PR head.
+- [PR #294](https://github.com/nurgeldiserikbay/services-back/pull/294), [merge commit `c3c02bb`](https://github.com/nurgeldiserikbay/services-back/commit/c3c02bb14884ec6e92bc7284256966c86fabde14), guards ordinary moderation decision evidence inserts into appeal cases at PostgreSQL boundary; [Backend foundation CI #44307600024](https://github.com/nurgeldiserikbay/services-back/actions/runs/44307600024) **PASS** on PR head.
+- **Still open:** approved independent reviewer/adjudication contract, appeal audit semantics, browser BFF/CSRF, production policy/legal review, staging concurrency E2E, post-merge main CI. No professional lifecycle checkbox is newly verified by this evidence alone; publication and appeal activation flags stay disabled.
+
 ## Next acceptance gates
 
 1. Recorded historical workflow job coverage inspected (2026-11-18); verify current HEADs and add missing authenticated browser/admin E2E evidence before closing acceptance items.
