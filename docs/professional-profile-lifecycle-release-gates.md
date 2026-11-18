@@ -82,3 +82,9 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - Only a matching immutable `REJECT` decision in a closed professional moderation case can be appealed. New `appeal` case records its link in append-only `professional_moderation_appeals`, with foreign keys, unique original decision, exact owner and profile version validated by DB triggers. The original decision is never mutated. No raw reason/contact data is accepted.
 - Repeat same-owner same-decision submissions return the existing case. Concurrent duplicates may produce a unique violation; no second case can commit. Previously open moderation cases conservatively block new intake.
 - Opening an appeal blocks publication under the open moderation guard. This is **intake only**, not an approved appeal review, adjudication or public release workflow. Appeal deadlines, reviewer separation and appeals resolution need legal/product/security policy and staging E2E before activation.
+
+## Owner-only appealable rejection lookup (2026-11-18)
+- Prepared default-off `GET /v1/me/professional-profiles/{id}/appealable-rejection` using the existing `SERVICES_ENABLE_PROFILE_APPEALS` flag. Authenticated owner session is checked in a DB transaction and an owned profile row is locked `FOR SHARE`.
+- Response is strictly minimal `{profile_id,profile_version,decision_id}` when a current-version immutable REJECT decision is eligible; `null` means no eligible decision. Does not expose staff identity, moderation evidence, contact data or reason. Foreign profile IDs remain 404.
+- Cases with prior appeal intake or any unresolved professional moderation case are not eligible. This read is advisory; the POST intake transaction revalidates all conditions, so a stale lookup grants no authority.
+- **Not approved for production:** moderation appeal time windows, owner notification and legal review, browser BFF/CSRF and complete staging test evidence remain mandatory.
