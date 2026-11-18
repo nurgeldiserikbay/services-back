@@ -50,3 +50,8 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 - Query executes after the owner profile row is locked and before public snapshot and audit writes. Unexpected or missing database response fails closed.
 - An assignment becoming `REVOKED` is not itself a moderation approval or permission to override other restrictions.
 - **Activation remains blocked:** product/security approval of moderation resolution, seller eligibility, transition policy, and synchronization of concurrent assignment creation are still outstanding. Do not enable publication flags.
+
+## Assignment versus publication serialization (2026-11-18)
+- Forward migration adds a PostgreSQL trigger on `service_assignments` inserts/reactivation (and professional re-assignment) that locks the referenced professional row `FOR SHARE`. The publication transaction already locks the same row `FOR UPDATE` before checking for `PROPOSED` or `ACCEPTED` assignments.
+- Assignment creation/reactivation and publication cannot pass each other without observing the serialized committed state. This does not change permitted business transitions or authorize publication.
+- Remaining launch gates: positive moderation decision model, seller eligibility, production DB concurrency exercise and cross-repository E2E acceptance. Publication flags remain disabled.
