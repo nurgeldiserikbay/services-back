@@ -91,6 +91,22 @@ test('professional moderation decision requires scoped fresh MFA and writes one 
    assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_moderation_decisions WHERE case_id=$1',[appealCase])).rows[0].total,0);
   }
 
+  // A failed evidence lookup must also stop the decision transaction before
+  // any state change or approval insert. The real PostgreSQL client is used
+  // for all other queries, so postconditions are verified against the DB.
+  const failedEvidenceDb={
+   query:async(sql:string,params?:unknown[])=>{
+    if(sql.includes('FROM professional_moderation_appeals WHERE case_id'))
+     throw new Error('appeal evidence lookup unavailable');
+    return db.query(sql,params);
+   },
+  } as unknown as Parameters<typeof decideProfessionalModerationCase>[0];
+  await assert.rejects(
+   decideProfessionalModerationCase(failedEvidenceDb,token.token,pepper,appealCase,{...body,decision:'APPROVE'}),
+   /appeal evidence lookup unavailable/);
+  assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[appealCase])).rows[0].state,'decision');
+  assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_moderation_decisions WHERE case_id=$1',[appealCase])).rows[0].total,0);
+
   await db.query("UPDATE platform_admin_staff SET role='auditor' WHERE id=$1",[staff]);
   await assert.rejects(decide(),UnauthorizedException);
   await db.query("UPDATE platform_admin_staff SET role='operator' WHERE id=$1",[staff]);
