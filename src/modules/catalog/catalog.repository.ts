@@ -16,7 +16,7 @@ export class CatalogRepository {
     const query = `
       WITH published_offers AS (
         SELECT o.id AS offer_id, o.title AS offer_title, o.professional_id, o.organization_id,
-               p.title AS professional_title, p.slug AS professional_slug,
+               p.published_title AS professional_title, p.slug AS professional_slug,
                org.name AS organization_title
         FROM service_offers o
         LEFT JOIN professional_profiles p ON p.id = o.professional_id
@@ -24,7 +24,7 @@ export class CatalogRepository {
         LEFT JOIN locations loc ON loc.id = o.location_id
         LEFT JOIN cities c ON c.id = COALESCE(o.city_id, loc.city_id)
         WHERE o.status = 'PUBLISHED'
-          AND ( (p.id IS NOT NULL AND p.status = 'PUBLISHED') OR
+          AND ( (p.id IS NOT NULL AND p.status = 'PUBLISHED' AND p.published_version IS NOT NULL) OR
                 (org.id IS NOT NULL AND org.status = 'ACTIVE') )
           AND (o.location_id IS NULL OR loc.active = true)
           AND ($3::text = 'any' OR o.delivery_mode = $3::text)

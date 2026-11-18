@@ -286,6 +286,9 @@ model ProfessionalProfile {
   title         String?                   @db.VarChar(180)
   about         String?                   @db.VarChar(3000)
   version       Int                       @default(1)
+  publishedTitle String?                  @map("published_title") @db.VarChar(180)
+  publishedAbout String?                  @map("published_about") @db.VarChar(3000)
+  publishedVersion Int?                   @map("published_version")
   person        Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
   profession    Profession                @relation(fields: [professionId], references: [id], onDelete: Restrict)
   affiliations  Affiliation[]
