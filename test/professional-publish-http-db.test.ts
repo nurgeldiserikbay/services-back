@@ -63,6 +63,11 @@ test('publication HTTP creates immutable revisions and audit only after readines
   assert.equal((await publish(own.token,'"1"')).status,409,'unresolved moderation blocks publication');
   assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_publication_audit WHERE profile_id=$1',[id])).rows[0].total,0);
   await db.query("UPDATE platform_moderation_cases SET state='closed' WHERE id=$1",[moderationId]);
+  const assignmentId=randomUUID();
+  await db.query("INSERT INTO service_assignments(id,offer_id,professional_id,status) VALUES($1,$2,$3,'PROPOSED')",[assignmentId,offer,id]);
+  assert.equal((await publish(own.token,'"1"')).status,409,'proposed service assignment blocks publish');
+  assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_publication_audit WHERE profile_id=$1',[id])).rows[0].total,0);
+  await db.query("UPDATE service_assignments SET status='REVOKED' WHERE id=$1",[assignmentId]);
   const first=await publish(own.token,'"1"');
   assert.equal(first.status,201);
   assert.match(first.headers.get('cache-control')??'',/no-store/);
