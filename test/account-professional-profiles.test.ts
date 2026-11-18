@@ -15,9 +15,9 @@ function fixture(results:unknown[][]){
 }
 test('owner profile inventory includes draft state and allowlisted published offers only',async()=>{
  const {db,calls}=fixture([[{user_id:user,session_id:randomUUID()}],[{person_id:person}],
- [{id:profile,profession_id:profession,lifecycle_status:'draft',slug:'draft',title:null,private_value:'secret'}],
+ [{id:profile,profession_id:profession,lifecycle_status:'draft',slug:'draft',title:null,version:1,about:null,private_value:'secret'}],
  [{id:offer,professional_id:profile,title:'Offer',delivery_mode:'online',price_label:null,contacts:'secret'}]]);
- assert.deepEqual(await listOwnProfessionalProfiles(db,token,pepper),[{id:profile,profession_id:profession,lifecycle_status:'draft',slug:'draft',title:null,offers:[{id:offer,title:'Offer',delivery_mode:'online',price_label:null}]}]);
+ assert.deepEqual(await listOwnProfessionalProfiles(db,token,pepper),[{id:profile,profession_id:profession,lifecycle_status:'draft',slug:'draft',title:null,version:1,about:null,offers:[{id:offer,title:'Offer',delivery_mode:'online',price_label:null}]}]);
  assert.deepEqual(calls[2].params,[person]);assert.deepEqual(calls[3].params,[person,[profile]]);
  assert.match(calls[2].sql,/WHERE person_id=\$1::uuid/);
  assert.match(calls[3].sql,/p.person_id=\$1::uuid AND o.status='PUBLISHED'/);

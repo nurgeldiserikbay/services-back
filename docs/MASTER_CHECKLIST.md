@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+2026-11-18 profile create #266 merged a531a32, CI #44251986580 PASS; docs sync 7dede23. Prepared forward-only about/version migration and owner-scoped PATCH /me/professional-profiles/{id} using strong If-Match and row lock, unit tests, GET version exposure. HTTP/concurrency acceptance and lifecycle states pending. No checkbox closed.
+
 2026-11-18 profile creation: Prepared bearer-owned POST /me/professional-profiles, strict canonical command, one draft per profession enforced by existing unique constraints, principal-scoped atomic idempotency ledger and unit tests. CI and committed PostgreSQL concurrency/HTTP acceptance pending; profile update/lifecycle schema gaps remain. No checkbox closed.
 
 2026-11-18 reconciliation: obsolete [PR #259](https://github.com/nurgeldiserikbay/services-back/pull/259) closed as superseded by merged #262; original account-me implementation and tests preserved. [PR #265](https://github.com/nurgeldiserikbay/services-back/pull/265) merged at 7888def; [CI #44251101476](https://github.com/nurgeldiserikbay/services-back/actions/runs/44251101476) PASS. Profile creation #266 in progress; no top-level checkbox closed.
