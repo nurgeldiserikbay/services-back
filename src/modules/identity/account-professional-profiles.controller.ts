@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Header,Headers,Inject,Param,Patch,Post} from '@nestjs/common';
+import {Body,Controller,Get,Header,NotFoundException,Headers,Inject,Param,Patch,Post} from '@nestjs/common';
 import {requireBearerSession} from '../requests/seller-inbox.contract.js';
 import {AccountBearerSessionService} from './account-bearer-session.service.js';
 
@@ -18,6 +18,14 @@ export class AccountProfessionalProfilesController{
  @Header('X-Robots-Tag','noindex, nofollow')
  create(@Headers('authorization') authorization:unknown,@Headers('idempotency-key') key:unknown,@Body() body:unknown){
   return this.sessions.createProfessionalProfile(requireBearerSession(authorization),body,key);
+ }
+ @Get(':id/preview')
+ @Header('Cache-Control','private, no-store')
+ @Header('Pragma','no-cache')
+ @Header('X-Robots-Tag','noindex, nofollow')
+ preview(@Headers('authorization') authorization:unknown,@Param('id') id:unknown){
+  if(process.env.SERVICES_ENABLE_PROFILE_PREVIEW!=='enabled')throw new NotFoundException('Profile unavailable');
+  return this.sessions.previewProfessionalProfile(requireBearerSession(authorization),id);
  }
  @Patch(':id')
  @Header('Cache-Control','private, no-store')
