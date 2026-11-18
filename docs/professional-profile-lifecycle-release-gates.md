@@ -7,7 +7,7 @@ Design sources: services/docs/ru/02-identities-lifecycle.md, services/docs/domai
 - GET and POST own profiles, PATCH with owner-scoped strong version precondition.
 - Database supports DRAFT, PUBLISHED, PAUSED, ARCHIVED; version and about added by forward migration.
 - Public catalogue/profile readers currently require PUBLISHED.
-- PATCH currently edits the profile row directly, not an immutable published revision. Do not claim published revision/preview/rollback acceptance.
+- PATCH changes the owner draft fields only; public snapshot is separate. The new forward migration records immutable content history on snapshot capture. No owner publication/rollback HTTP workflow or legal erasure procedure is enabled.
 
 ## Required sequence
 1. Resolve published revision model and minimum publication completeness with product/security owners. Preserve public snapshots and separate draft changes from published content.
