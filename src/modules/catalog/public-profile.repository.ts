@@ -36,9 +36,9 @@ export class PublicProfileRepository {
 
   async professional(slug: string): Promise<PublicProfessional> {
     const {rows} = await this.db.query<ProfessionalRow>(`
-      SELECT id::text, profession_id::text, slug, title
+      SELECT id::text, profession_id::text, slug, published_title AS title
       FROM professional_profiles
-      WHERE slug = $1 AND status = 'PUBLISHED'
+      WHERE slug = $1 AND status = 'PUBLISHED' AND published_version IS NOT NULL
       LIMIT 1
     `,[slug]);
     const profile=rows[0];

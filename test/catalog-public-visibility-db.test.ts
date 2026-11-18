@@ -126,6 +126,12 @@ test('public catalog search composes profession and city filters and hides unpub
     assert.equal(result.items.find((item) => item.kind === 'professional')?.slug,
       'catalog-visible-' + suffix);
 
+    await db.query("UPDATE professional_profiles SET title='Unpublished draft title',version=version+1 WHERE id=$1",[professionalId]);
+    const publicAfterEdit=await repo.search(normalizeSearchFilters({kind:'professional',profession_id:professionId}));
+    assert.equal(publicAfterEdit.items.find(item=>item.id===professionalId)?.title,'Visible specialist');
+    const hiddenDraft=await repo.search(normalizeSearchFilters({kind:'professional',q:'Unpublished draft title'}));
+    assert.ok(!hiddenDraft.items.some(item=>item.id===professionalId));
+
     const textResult = await repo.search(normalizeSearchFilters({
       scope: 'city',
       city_id: astana.id,

@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+2026-11-18 profile PATCH HTTP #268 merged 169b16a CI #44255498337 PASS. Prepared forward public snapshot migration, backfill and capture on trusted status transitions; public search/profile use snapshot title rather than owner draft. PostgreSQL regressions cover null title and draft confidentiality. Historical immutable revisions, republish workflow, lifecycle guards and staging pending; no checkbox closed.
+
 2026-11-18 profile edit #267 merged 0ec1614, CI #44252806689 PASS; docs snapshot a6d8f1b. Prepared real HTTP/PostgreSQL PATCH owner/version/revocation regression and lifecycle release-gate analysis, including paused visibility and published revision conflicts. Lifecycle mutation not exposed; no top-level checkbox closed.
 
 2026-11-18 profile create #266 merged a531a32, CI #44251986580 PASS; docs sync 7dede23. Prepared forward-only about/version migration and owner-scoped PATCH /me/professional-profiles/{id} using strong If-Match and row lock, unit tests, GET version exposure. HTTP/concurrency acceptance and lifecycle states pending. No checkbox closed.
