@@ -43,7 +43,7 @@ test('isolated appeal audit GET is default-off and rejects browser credentials b
    {Cookie:'session=forged'},
    {Authorization:'Basic bad'},
    {Authorization:'Bearer invalid'},
-  ]){
+  ] as Record<string,string>[]){
    const denied=await read(headers);
    assert.equal(denied.status,401);
    assert.match(denied.headers.get('cache-control')??'',/no-store/);
