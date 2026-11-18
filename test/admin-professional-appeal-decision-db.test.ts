@@ -102,11 +102,11 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   await db.query('SAVEPOINT before_assignment_audit_failure');
   await db.query(`
    CREATE FUNCTION pg_temp.reject_professional_appeal_assignment_audit()
-   RETURNS trigger LANGUAGE plpgsql AS $
+   RETURNS trigger LANGUAGE plpgsql AS $$
    BEGIN
     RAISE EXCEPTION 'test_assignment_audit_failure' USING ERRCODE='23514';
    END;
-   $`);
+   $$`);
   await db.query(`
    CREATE TRIGGER zz_test_reject_professional_appeal_assignment_audit
    BEFORE INSERT ON professional_appeal_audit_events
@@ -144,11 +144,11 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   await db.query('SAVEPOINT before_audit_failure');
   await db.query(`
    CREATE FUNCTION pg_temp.reject_professional_appeal_audit()
-   RETURNS trigger LANGUAGE plpgsql AS $
+   RETURNS trigger LANGUAGE plpgsql AS $$
    BEGIN
     RAISE EXCEPTION 'test_appeal_audit_failure' USING ERRCODE='23514';
    END;
-   $`);
+   $$`);
   await db.query(`
    CREATE TRIGGER zz_test_reject_professional_appeal_audit
    BEFORE INSERT ON professional_appeal_audit_events
