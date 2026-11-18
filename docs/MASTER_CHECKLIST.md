@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+2026-11-18 profile edit #267 merged 0ec1614, CI #44252806689 PASS; docs snapshot a6d8f1b. Prepared real HTTP/PostgreSQL PATCH owner/version/revocation regression and lifecycle release-gate analysis, including paused visibility and published revision conflicts. Lifecycle mutation not exposed; no top-level checkbox closed.
+
 2026-11-18 profile create #266 merged a531a32, CI #44251986580 PASS; docs sync 7dede23. Prepared forward-only about/version migration and owner-scoped PATCH /me/professional-profiles/{id} using strong If-Match and row lock, unit tests, GET version exposure. HTTP/concurrency acceptance and lifecycle states pending. No checkbox closed.
 
 2026-11-18 profile creation: Prepared bearer-owned POST /me/professional-profiles, strict canonical command, one draft per profession enforced by existing unique constraints, principal-scoped atomic idempotency ledger and unit tests. CI and committed PostgreSQL concurrency/HTTP acceptance pending; profile update/lifecycle schema gaps remain. No checkbox closed.
