@@ -970,6 +970,16 @@ model ProfessionalModerationAppeal {
 }
 
 /** Prepared immutable appeal review evidence; does not authorize publication. */
+/** Prepared immutable, three-party independent appeal reviewer allocation. */
+model ProfessionalAppealReviewAssignment {
+ appealId String @id @map("appeal_id") @db.Uuid
+ reviewerStaffId String @map("reviewer_staff_id") @db.Uuid
+ assignedByStaffId String @map("assigned_by_staff_id") @db.Uuid
+ assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(3)
+ @@index([reviewerStaffId,assignedAt],map:"professional_appeal_assignment_reviewer_idx")
+ @@map("professional_appeal_review_assignments")
+}
+
 model ProfessionalModerationAppealDecision {
  id String @id @db.Uuid
  appealId String @unique @map("appeal_id") @db.Uuid

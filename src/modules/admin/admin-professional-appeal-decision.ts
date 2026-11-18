@@ -77,6 +77,13 @@ export async function decideProfessionalAppeal(
   a.profile_version!==cmd.profileVersion||a.original_decision!=='REJECT'||
   a.original_actor===staffId)
   throw new ConflictException('Independent appeal reviewer required');
+ // An explicit immutable, independent assignment is mandatory; a role plus
+ // resource grant alone never authorizes an appeal outcome.
+ const allocation=await db.query<{reviewer_staff_id:string}>(`
+  SELECT reviewer_staff_id::text FROM professional_appeal_review_assignments
+  WHERE appeal_id=$1::uuid FOR SHARE`,[cmd.appealId]);
+ if(allocation?.rows.length!==1||allocation.rows[0]?.reviewer_staff_id!==staffId)
+  throw new ConflictException('Independent appeal assignment required');
  const moderation=await db.query<{state:string;resource_scope:string;subject_kind:string}>(
   'SELECT state,resource_scope,subject_kind FROM platform_moderation_cases WHERE id=$1::uuid FOR UPDATE',[a.case_id]);
  const m=moderation?.rows[0];
