@@ -21,9 +21,9 @@ function singleHeader(request:RawRequest,name:string):string|undefined{
 }
 
 /**
- * Unmounted controller. Only a trusted BFF may sign after verifying the
- * sealed request session, CSRF and Origin. Production registration, raw-body
- * capture, private TLS ingress and BFF integration require release review.
+ * Disabled by default. Only a trusted BFF may sign after verifying the
+ * sealed request session, CSRF and Origin. Private TLS ingress and BFF
+ * integration require release review before enabling the feature.
  */
 @Controller('requests')
 export class GuestCancelHttpController{

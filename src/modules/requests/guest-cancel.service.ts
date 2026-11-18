@@ -1,4 +1,4 @@
-import {Injectable} from '@nestjs/common';
+import {Inject,Injectable} from '@nestjs/common';
 import {DatabasePool} from '../../platform/database/database.pool.js';
 import {requireSecret} from '../guest-requests/guest-request.security.js';
 import {cancelVerifiedGuestRequest,type GuestCancellationResult,
@@ -15,7 +15,7 @@ import {parseCancellationPreflight,parseCancellationCommand}
  */
 @Injectable()
 export class GuestCancellationService{
-  constructor(private readonly database:DatabasePool){}
+  constructor(@Inject(DatabasePool) private readonly database:DatabasePool){}
   /**
    * Internal transaction-scoped entry point for a future authenticated BFF.
    * The ledger key MUST be an independent 256-bit secret. No HTTP route

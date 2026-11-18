@@ -1,4 +1,6 @@
 import {Module} from '@nestjs/common';
+import {GuestCancelHttpController} from '../requests/guest-cancel-http.controller.js';
+import {GuestCancellationService} from '../requests/guest-cancel.service.js';
 import {GuestChallengeProofRepository} from './guest-challenge-proof.repository.js';
 import {GuestChallengeVerificationService} from './guest-challenge-verification.service.js';
 import {GuestChallengeIssuanceService} from './guest-challenge-issuance.service.js';
@@ -15,8 +17,9 @@ import {GuestScheduleAccessHttpController} from './guest-schedule-access-http.co
 /** Guest HTTP routes are disabled by default; explicit deployment gates required. */
 @Module({
   controllers:[GuestRequestStatusHttpController,GuestCreateHttpController,GuestOtpHttpController,
-    GuestScheduleAccessHttpController],
+    GuestScheduleAccessHttpController,GuestCancelHttpController],
   providers:[
+    GuestCancellationService,
     GuestChallengeProofRepository,GuestChallengeVerificationService,
     GuestChallengeIssuanceService,GuestOtpDispatchService,
     GuestRequestService,GuestVerifiedRequestFlow,GuestRequestStatusService,
