@@ -6,7 +6,8 @@ import { parseAllowedOrigins, parsePort } from './platform/config.js';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
     bodyParser: true,
-    rawBody: false,
+    // Capture exact signed JSON only in explicitly enabled deployments.
+    rawBody: process.env.SERVICES_ENABLE_GUEST_CANCEL_HTTP === 'enabled',
     bufferLogs: true,
   });
   app.setGlobalPrefix('v1');
