@@ -136,6 +136,21 @@ export async function createGuestRequestInTransaction(
   const seller=offerResult.rows[0];
   if(!seller)throw new GuestRequestRejected('unavailable_offer');
 
+  // Publication takes FOR UPDATE on the professional profile before checking
+  // existing requests. Acquire a compatible shared lock before creating a new
+  // personal request, so publication cannot miss this PENDING request in a
+  // concurrent transaction. Revalidate after waiting: the earlier offer
+  // EXISTS subquery did not itself lock the professional's lifecycle state.
+  if(seller.professional_id){
+    const profile=await client.query<{id:string}>(`
+      SELECT id::text FROM professional_profiles
+      WHERE id=$1::uuid AND status='PUBLISHED'
+      FOR SHARE
+    `,[seller.professional_id]);
+    if(profile.rows.length!==1 || !profile.rows[0])
+      throw new GuestRequestRejected('unavailable_offer');
+  }
+
   const id=randomUUID(),eventId=randomUUID();
   const source=seller.organization_id?'ORGANIZATION':'PERSONAL';
   await client.query(`
