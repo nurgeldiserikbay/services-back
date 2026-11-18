@@ -11,7 +11,7 @@ CREATE TABLE professional_appeal_audit_events (
  PRIMARY KEY (appeal_id,event_kind),
  CONSTRAINT professional_appeal_audit_shape CHECK (
   (event_kind='REVIEWER_ASSIGNED' AND outcome IS NULL) OR
-  (event_kind='APPEAL_DECIDED' AND outcome IN ('UPHOLD_REJECTION','OVERTURN_REJECTION'))
+  (event_kind='APPEAL_DECIDED' AND outcome IS NOT NULL AND outcome IN ('UPHOLD_REJECTION','OVERTURN_REJECTION'))
  )
 );
 CREATE INDEX professional_appeal_audit_actor_occurred_idx
@@ -42,6 +42,33 @@ $$;
 CREATE TRIGGER professional_appeal_decision_audit
  AFTER INSERT ON professional_moderation_appeal_decisions
  FOR EACH ROW EXECUTE FUNCTION audit_professional_appeal_decision();
+
+-- A direct INSERT cannot claim an event that does not match committed
+-- source evidence. The AFTER triggers above are the ordinary writers.
+CREATE FUNCTION guard_professional_appeal_audit_insert()
+RETURNS trigger LANGUAGE plpgsql AS $
+BEGIN
+ IF NEW.event_kind='REVIEWER_ASSIGNED' THEN
+  PERFORM 1 FROM professional_appeal_review_assignments a
+  WHERE a.appeal_id=NEW.appeal_id AND a.assigned_by_staff_id=NEW.actor_staff_id
+    AND a.reviewer_staff_id=NEW.reviewer_staff_id AND NEW.outcome IS NULL;
+ ELSIF NEW.event_kind='APPEAL_DECIDED' THEN
+  PERFORM 1 FROM professional_moderation_appeal_decisions d
+  WHERE d.appeal_id=NEW.appeal_id AND d.reviewer_staff_id=NEW.actor_staff_id
+    AND d.reviewer_staff_id=NEW.reviewer_staff_id AND d.outcome=NEW.outcome;
+ ELSE
+  RAISE EXCEPTION 'Invalid appeal audit event' USING ERRCODE='23514';
+ END IF;
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'Appeal audit event lacks matching source evidence'
+   USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END;
+$;
+CREATE TRIGGER professional_appeal_audit_insert_guard
+ BEFORE INSERT ON professional_appeal_audit_events
+ FOR EACH ROW EXECUTE FUNCTION guard_professional_appeal_audit_insert();
 
 CREATE FUNCTION reject_professional_appeal_audit_mutation()
 RETURNS trigger LANGUAGE plpgsql AS $$
