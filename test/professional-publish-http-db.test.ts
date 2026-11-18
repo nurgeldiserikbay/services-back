@@ -58,6 +58,11 @@ test('publication HTTP creates immutable revisions and audit only after readines
   await db.query('ROLLBACK TO SAVEPOINT injected_publication_audit');
   await db.query('RELEASE SAVEPOINT injected_publication_audit');
   assert.equal((await publish(own.token,'"2"')).status,409,'stale version must fail');
+  const moderationId=randomUUID();
+  await db.query("INSERT INTO platform_moderation_cases(id,resource_scope,subject_kind,state) VALUES($1,$2,'professional','triage')",[moderationId,'professional:'+id]);
+  assert.equal((await publish(own.token,'"1"')).status,409,'unresolved moderation blocks publication');
+  assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_publication_audit WHERE profile_id=$1',[id])).rows[0].total,0);
+  await db.query("UPDATE platform_moderation_cases SET state='closed' WHERE id=$1",[moderationId]);
   const first=await publish(own.token,'"1"');
   assert.equal(first.status,201);
   assert.match(first.headers.get('cache-control')??'',/no-store/);

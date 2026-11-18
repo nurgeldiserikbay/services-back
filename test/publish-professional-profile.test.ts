@@ -20,12 +20,14 @@ test('publish body and version are strict',()=>{
  for(const m of ['2','W/"2"','"0"','"2147483646"'])assert.throws(()=>parsePublishRequest(id,m,{}),BadRequestException);
 });
 test('publish locks owner row, enforces offer and writes audit after snapshot',async()=>{
- const f=fixture([...auth(),[ready],[{present:true}],[{id,version:3,published_version:3}],[]]);
+ const f=fixture([...auth(),[ready],[{present:true}],[{blocked:false}],[{blocked:false}],[{id,version:3,published_version:3}],[]]);
  assert.deepEqual(await publishOwnProfessionalProfile(f.db,token,pepper,id,'"2"',{}),{id,lifecycle_status:'published',version:3,published_version:3});
  assert.match(f.calls[2].sql,/person_id=\$2::uuid FOR UPDATE/);
- assert.match(f.calls[4].sql,/published_title=title/);
- assert.match(f.calls[5].sql,/professional_publication_audit/);
- assert.deepEqual(f.calls[5].params,[id,person,'DRAFT',2,3]);
+ assert.match(f.calls[4].sql,/platform_moderation_cases/);
+ assert.match(f.calls[5].sql,/service_requests/);
+ assert.match(f.calls[6].sql,/published_title=title/);
+ assert.match(f.calls[7].sql,/professional_publication_audit/);
+ assert.deepEqual(f.calls[7].params,[id,person,'DRAFT',2,3]);
 });
 test('stale, foreign, incomplete and no-offer profiles cannot publish',async()=>{
  let f=fixture([...auth(),[]]);await assert.rejects(publishOwnProfessionalProfile(f.db,token,pepper,id,'"2"',{}),NotFoundException);
@@ -33,6 +35,21 @@ test('stale, foreign, incomplete and no-offer profiles cannot publish',async()=>
  f=fixture([...auth(),[{...ready,title:'  '}]]);await assert.rejects(publishOwnProfessionalProfile(f.db,token,pepper,id,'"2"',{}),ConflictException);
  f=fixture([...auth(),[ready],[{present:false}]]);await assert.rejects(publishOwnProfessionalProfile(f.db,token,pepper,id,'"2"',{}),ConflictException);
  assert.equal(f.calls.length,4);
+});
+test('unresolved moderation and active requests fail closed without a write',async()=>{
+ let f=fixture([...auth(),[ready],[{present:true}],[{blocked:true}]]);
+ await assert.rejects(publishOwnProfessionalProfile(f.db,token,pepper,id,'"2"',{}),ConflictException);
+ assert.equal(f.calls.length,5);
+ assert.deepEqual(f.calls[4].params,['professional:'+id]);
+ f=fixture([...auth(),[ready],[{present:true}],[{blocked:false}],[{blocked:true}]]);
+ await assert.rejects(publishOwnProfessionalProfile(f.db,token,pepper,id,'"2"',{}),ConflictException);
+ assert.equal(f.calls.length,6);
+ assert.deepEqual(f.calls[5].params,[id]);
+ for(const broken of [[],[{blocked:null}]]) {
+  f=fixture([...auth(),[ready],[{present:true}],broken]);
+  await assert.rejects(publishOwnProfessionalProfile(f.db,token,pepper,id,'"2"',{}),ConflictException);
+  assert.equal(f.calls.length,5);
+ }
 });
 test('invalid token and malformed path do not touch profile SQL',async()=>{
  let f=fixture([]);await assert.rejects(publishOwnProfessionalProfile(f.db,token,pepper,'bad','"2"',{}),BadRequestException);assert.equal(f.calls.length,0);
