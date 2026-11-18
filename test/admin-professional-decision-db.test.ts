@@ -74,6 +74,23 @@ test('professional moderation decision requires scoped fresh MFA and writes one 
   assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[appealCase])).rows[0].state,'decision');
   assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_moderation_decisions WHERE case_id=$1',[appealCase])).rows[0].total,0);
 
+  // Defensive adapter regression: SQL EXISTS normally returns exactly one
+  // boolean row. Missing or duplicated evidence must never authorize a write.
+  for(const evidenceRows of [[],[{blocked:false},{blocked:false}]]){
+   const invalidCardinalityDb={
+    query:async(sql:string,params?:unknown[])=>{
+     if(sql.includes('FROM professional_moderation_appeals WHERE case_id'))
+      return {rows:evidenceRows,rowCount:evidenceRows.length};
+     return db.query(sql,params);
+    },
+   } as unknown as Parameters<typeof decideProfessionalModerationCase>[0];
+   await assert.rejects(
+    decideProfessionalModerationCase(invalidCardinalityDb,token.token,pepper,appealCase,{...body,decision:'APPROVE'}),
+    ConflictException);
+   assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[appealCase])).rows[0].state,'decision');
+   assert.equal((await db.query('SELECT count(*)::int AS total FROM professional_moderation_decisions WHERE case_id=$1',[appealCase])).rows[0].total,0);
+  }
+
   await db.query("UPDATE platform_admin_staff SET role='auditor' WHERE id=$1",[staff]);
   await assert.rejects(decide(),UnauthorizedException);
   await db.query("UPDATE platform_admin_staff SET role='operator' WHERE id=$1",[staff]);
