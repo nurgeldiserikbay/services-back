@@ -66,8 +66,11 @@ test('guest personal request rejects a competing profile transition after profil
   assert.equal((await a.query('SELECT count(*)::int AS count FROM service_requests WHERE offer_id=$1',[offer])).rows[0].count,0);
   assert.equal((await a.query('SELECT consumed_at FROM guest_capabilities WHERE id=$1',[cap])).rows[0].consumed_at,null);
  }finally{
-  await b.query('ROLLBACK').catch(()=>{});
+  // Release the profile row lock on A FIRST. Otherwise B's queued ROLLBACK
+  // cannot execute while its profile SELECT is still blocked by A, causing
+  // a permanent JS-level deadlock during a failed concurrency assertion.
   await a.query('ROLLBACK').catch(()=>{});
+  await b.query('ROLLBACK').catch(()=>{});
   if(created){
    await a.query('BEGIN');
    try{
