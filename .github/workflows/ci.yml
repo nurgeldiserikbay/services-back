@@ -820,6 +820,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/admin-professional-appeal-decision-db.test.ts
       - name: Independent appeal adjudication committed two-client race (fail fast)
         run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/professional-appeal-concurrent-adjudication-db.test.ts
+      - name: Independent reviewer assignment committed two-client race (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/professional-appeal-concurrent-assignment-db.test.ts
       - name: Unit and integration tests (after database migrations)
         id: full_tests
         run: npm test
