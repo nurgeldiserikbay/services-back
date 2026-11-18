@@ -43,10 +43,12 @@ test('publication rejects a racing committed edit from another PostgreSQL client
    return b.query(sql,params);
   }} as unknown as Pick<PoolClient,'query'>;
   const publication=publishOwnProfessionalProfile(instrumented,proof.token,pepper,profile,'"1"',{});
+  // Observe the rejection from creation, before competing COMMIT can settle it.
+  const rejectsPublication=assert.rejects(publication,ConflictException);
   // Wait until B has reached its locking statement before A commits.
   await enteringProfileLock;
   await a.query('COMMIT');
-  await assert.rejects(publication,ConflictException);
+  await rejectsPublication;
   await b.query('ROLLBACK');
   const check=await a.query('SELECT version,status,published_version FROM professional_profiles WHERE id=$1',[profile]);
   assert.deepEqual(check.rows,[{version:2,status:'DRAFT',published_version:null}]);
