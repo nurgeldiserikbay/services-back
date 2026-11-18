@@ -9,6 +9,7 @@
     "GET /geo/cities",
     "GET /geo/countries",
     "GET /health",
+    "GET /me",
     "GET /me/notifications",
     "GET /me/seller-requests",
     "GET /organizations/{id}",

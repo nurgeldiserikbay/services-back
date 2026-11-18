@@ -1,4 +1,4 @@
-import {Injectable,UnauthorizedException} from '@nestjs/common';
+import {Inject,Injectable,UnauthorizedException} from '@nestjs/common';
 import {DatabasePool} from '../../platform/database/database.pool.js';
 import {requireSecret} from '../guest-requests/guest-request.security.js';
 import {
@@ -7,6 +7,7 @@ import {
 } from './account-session-management.js';
 import {revokeCurrentAccountSession} from './session-revocation.js';
 import {resolveActiveUserSession} from './session-proof.js';
+import {readAccountMe,type AccountMe} from './account-me.js';
 
 /**
  * Bearer-only transport integration. This is not a login issuer.
@@ -15,10 +16,19 @@ import {resolveActiveUserSession} from './session-proof.js';
  */
 @Injectable()
 export class AccountBearerSessionService{
-  constructor(private readonly db:DatabasePool){}
+  constructor(@Inject(DatabasePool) private readonly db:DatabasePool){}
 
   private getPepper():Buffer{
     return requireSecret(process.env.ACCOUNT_SESSION_HMAC_KEY);
+  }
+
+  async me(token:string):Promise<AccountMe>{
+    const pepper=this.getPepper();
+    return this.db.transaction(async client=>{
+      const me=await readAccountMe(client,token,pepper);
+      if(!me)throw new UnauthorizedException('Authentication required');
+      return me;
+    });
   }
 
   async list(token:string):Promise<{items:AccountSessionSummary[]}>{
