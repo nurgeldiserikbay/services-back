@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend guest cancellation signed HTTP adapter (2026-11-18): Replacement for PR #257, whose push and PR CI failed real Nest HTTP integration (expected 200, actual 404) and whose branch conflicted with main. Preserve all signed adapter and unit/loopback tests, add explicit Nest @Inject metadata for tsx runtime DI, and retain current checklist. New CI required; HTTP PostgreSQL E2E, frontend signer, production registration and staging remain open.
+
 Backend AST route declaration gate (2026-11-18): [f6b004f](https://github.com/nurgeldiserikbay/services-back/commit/f6b004fde2a2c7c10b0bb66abd706ce49898424a) adds a TypeScript AST test traversing AppModule static imports and controllers, comparing 28 reviewed route declarations, with fixture coverage for unregistered controllers and unsupported dynamic declarations. Included by the existing test/*.test.ts glob. CI/typecheck execution not yet verified; no runtime HTTP exposure, DTO/auth parity or release acceptance claimed. Review both backend snapshot and docs inventory on intentional route changes.
 
 2026-11-18 API route inventory consistency gate: [services 4daf617](https://github.com/nurgeldiserikbay/services/commit/4daf617cf963d622c9b3832afcaa813e72207e56) introduces dependency-free Python design/inventory drift checker, six regression scenarios and path-filtered GitHub Actions. CI execution pending verification. This gate compares OpenAPI to the documented pinned controller inventory only; automatic live controller discovery, DTO/auth parity and cross-repository E2E remain open. No acceptance checkbox closed.
