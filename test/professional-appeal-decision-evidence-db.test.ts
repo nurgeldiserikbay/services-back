@@ -38,6 +38,10 @@ test('appeal outcome requires a separate reviewer and remains immutable without 
   await reject(()=>add(reviewer),'23505');
   await reject(()=>db.query("UPDATE professional_moderation_appeal_decisions SET outcome='UPHOLD_REJECTION' WHERE id=$1",[outcome]),'23514');
   await reject(()=>db.query('DELETE FROM professional_moderation_appeal_decisions WHERE id=$1',[outcome]),'23514');
+  await reject(()=>db.query("UPDATE platform_moderation_cases SET state='appeal' WHERE id=$1",[appealCase]),'23514');
+  await reject(()=>db.query("UPDATE platform_moderation_cases SET state='closed' WHERE id=$1",[appealCase]),'23514');
+  await reject(()=>db.query("UPDATE platform_moderation_cases SET resource_scope=$2 WHERE id=$1",[appealCase,'professional:'+randomUUID()]),'23514');
+
   assert.deepEqual((await db.query('SELECT reviewer_staff_id::text AS reviewer,outcome FROM professional_moderation_appeal_decisions WHERE id=$1',[outcome])).rows,[{reviewer,outcome:'OVERTURN_REJECTION'}]);
   assert.equal((await db.query('SELECT status FROM professional_profiles WHERE id=$1',[profile])).rows[0].status,'DRAFT');
   assert.equal((await db.query('SELECT count(*)::int AS count FROM professional_moderation_decisions WHERE case_id=$1',[appealCase])).rows[0].count,0);
