@@ -21,7 +21,7 @@ test('professional moderation decision requires scoped fresh MFA and writes one 
   await db.query("INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'operator')",[staff,user]);
   await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',[grant,staff,'professional:'+profile]);
   await db.query("INSERT INTO platform_admin_sessions(id,staff_id,token_hash,mfa_verified_at,expires_at) VALUES($1,$2,$3,now()-interval '1 minute',now()+interval '1 hour')",[session,staff,token.tokenHash]);
-  await db.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'test-envelope','test-v1',now()-interval '4 minutes',now()-interval '3 minutes')",[staff]);
+  await db.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'integration-test-placeholder-encrypted-envelope','test-v1',now()-interval '4 minutes',now()-interval '3 minutes')",[staff]);
   await db.query("INSERT INTO platform_moderation_cases(id,resource_scope,subject_kind,state) VALUES($1,$2,'professional','decision')",[caseId,'professional:'+profile]);
   const decide=(value:unknown=body)=>decideProfessionalModerationCase(db,token.token,pepper,caseId,value);
   assert.deepEqual(parseProfessionalDecision(caseId,body),{caseId,profileId:profile,profileVersion:1,decision:'APPROVE'});
