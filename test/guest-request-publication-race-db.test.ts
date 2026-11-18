@@ -34,6 +34,10 @@ test('guest personal request rejects a competing profile transition after profil
   await a.query('BEGIN');
   await a.query("UPDATE professional_profiles SET status='PAUSED' WHERE id=$1",[profile]);
   await b.query('BEGIN');
+  // Bound server-side lock waits: a missed synchronization point must fail
+  // in seconds rather than exhaust the 25-minute CI job timeout.
+  await b.query("SET LOCAL lock_timeout = '8s'");
+  await b.query("SET LOCAL statement_timeout = '12s'");
   let atProfileLock!:()=>void;
   const entering=new Promise<void>(resolve=>{atProfileLock=resolve;});
   const wrapped={query:async(sql:string,params:unknown[])=>{
