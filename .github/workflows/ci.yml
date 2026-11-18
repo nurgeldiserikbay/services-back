@@ -804,6 +804,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/guest-request-publication-race-db.test.ts
       - name: Assignment activation versus profile publication PostgreSQL lock (fail fast)
         run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/service-assignment-publication-lock-db.test.ts
+      - name: Professional moderation decision evidence PostgreSQL constraints (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 40s node --import tsx --test test/professional-moderation-decisions-db.test.ts
       - name: Unit and integration tests (after database migrations)
         id: full_tests
         run: npm test
