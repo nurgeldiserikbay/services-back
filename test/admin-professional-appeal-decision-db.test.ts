@@ -97,6 +97,27 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   await assert.rejects(assign(),UnauthorizedException);
   await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',
    [assignGrant,assigner,'professional:'+profile]);
+  // Allocation and its audit must also be atomic. The temporary trigger is
+  // removed by rolling back the savepoint, with no assignment left behind.
+  await db.query('SAVEPOINT before_assignment_audit_failure');
+  await db.query(`
+   CREATE FUNCTION pg_temp.reject_professional_appeal_assignment_audit()
+   RETURNS trigger LANGUAGE plpgsql AS $$
+   BEGIN
+    RAISE EXCEPTION 'test_assignment_audit_failure' USING ERRCODE='23514';
+   END;
+   $$`);
+  await db.query(`
+   CREATE TRIGGER zz_test_reject_professional_appeal_assignment_audit
+   BEFORE INSERT ON professional_appeal_audit_events
+   FOR EACH ROW EXECUTE FUNCTION pg_temp.reject_professional_appeal_assignment_audit()`);
+  await assert.rejects(assign(),(error:unknown)=>
+   (error as {code?:string;message?:string}).code==='23514'&&
+   (error as {message?:string}).message==='test_assignment_audit_failure');
+  await db.query('ROLLBACK TO SAVEPOINT before_assignment_audit_failure');
+  await db.query('RELEASE SAVEPOINT before_assignment_audit_failure');
+  assert.equal((await db.query('SELECT count(*)::int AS count FROM professional_appeal_review_assignments WHERE appeal_id=$1',[appeal])).rows[0].count,0);
+  assert.equal((await db.query('SELECT count(*)::int AS count FROM professional_appeal_audit_events WHERE appeal_id=$1',[appeal])).rows[0].count,0);
   const assignment={appeal_id:appeal,reviewer_staff_id:reviewer,assigned_by_staff_id:assigner};
   assert.deepEqual(await assign(),assignment);
   assert.deepEqual(await assign(),assignment,'exact same assignment is idempotent');
@@ -117,6 +138,30 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   await assert.rejects(
    decideProfessionalAppeal(db,actorToken.token,pepper,appeal,body),ConflictException);
   assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[appealCase])).rows[0].state,'decision');
+  // Inject a transaction-local audit write failure. The appeal decision
+  // closes the case before its INSERT; the audit trigger must fail the entire
+  // caller transaction, never leave a closed case without an outcome.
+  await db.query('SAVEPOINT before_audit_failure');
+  await db.query(`
+   CREATE FUNCTION pg_temp.reject_professional_appeal_audit()
+   RETURNS trigger LANGUAGE plpgsql AS $$
+   BEGIN
+    RAISE EXCEPTION 'test_appeal_audit_failure' USING ERRCODE='23514';
+   END;
+   $$`);
+  await db.query(`
+   CREATE TRIGGER zz_test_reject_professional_appeal_audit
+   BEFORE INSERT ON professional_appeal_audit_events
+   FOR EACH ROW EXECUTE FUNCTION pg_temp.reject_professional_appeal_audit()`);
+  await assert.rejects(decide(),(error:unknown)=>
+   (error as {code?:string;message?:string}).code==='23514'&&
+   (error as {message?:string}).message==='test_appeal_audit_failure');
+  await db.query('ROLLBACK TO SAVEPOINT before_audit_failure');
+  await db.query('RELEASE SAVEPOINT before_audit_failure');
+  assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[appealCase])).rows[0].state,'decision');
+  assert.equal((await db.query('SELECT count(*)::int AS count FROM professional_moderation_appeal_decisions WHERE appeal_id=$1',[appeal])).rows[0].count,0);
+  assert.deepEqual((await db.query('SELECT event_kind FROM professional_appeal_audit_events WHERE appeal_id=$1',[appeal])).rows,
+   [{event_kind:'REVIEWER_ASSIGNED'}]);
   const receipt=await decide();
   assert.deepEqual(receipt,{appeal_id:appeal,profile_id:profile,profile_version:1,outcome:'OVERTURN_REJECTION'});
   assert.deepEqual(await decide(),receipt);
