@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+2026-11-18 API route inventory consistency gate: [services 4daf617](https://github.com/nurgeldiserikbay/services/commit/4daf617cf963d622c9b3832afcaa813e72207e56) introduces dependency-free Python design/inventory drift checker, six regression scenarios and path-filtered GitHub Actions. CI execution pending verification. This gate compares OpenAPI to the documented pinned controller inventory only; automatic live controller discovery, DTO/auth parity and cross-repository E2E remain open. No acceptance checkbox closed.
+
 2026-11-18 API gap sequencing: [services docs d337b0c](https://github.com/nurgeldiserikbay/services/commit/d337b0c07e2d9d82c76a1704cc1aa88477281d2b) categorizes all 42 unmatched design operations into 38 P0 and 4 P1 delivery items; no scope removal or deferral approved. Five runtime-only routes have proposed contract dispositions. Implementation, DTO/auth parity, automated drift and live E2E remain pending.
 
 2026-11-18 cross-repository API route inventory: [services docs commit ca2022044](https://github.com/nurgeldiserikbay/services/commit/ca20220444e8aa101fb9d7b251204f2d09f90499) compares the pinned design OpenAPI with directly imported backend controllers at f306742. Source-only method/path comparison; no contract acceptance checkbox closed. Backend PR #255 merged at f306742 after [CI #44236875241](https://github.com/nurgeldiserikbay/services-back/actions/runs/44236875241) PASS; frontend notification lifecycle PR #130 merged after [CI #44237032375](https://github.com/nurgeldiserikbay/services-front/actions/runs/44237032375) PASS on 477e15a. Post-merge current-head CI remains separately unverified.
