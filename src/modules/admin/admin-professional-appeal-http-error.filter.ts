@@ -1,6 +1,6 @@
 import {ArgumentsHost,Catch,ExceptionFilter,HttpException} from '@nestjs/common';
 
-type ParserError={type?:unknown;status?:unknown;statusCode?:unknown};
+type ParserError={type?:unknown};
 type ResponseLike={
  setHeader:(name:string,value:string)=>unknown;
  status:(code:number)=>{json:(value:unknown)=>unknown};
@@ -16,8 +16,6 @@ export class PlatformAppealHttpErrorFilter implements ExceptionFilter{
   const response=host.switchToHttp().getResponse<ResponseLike>();
   const parser=error as ParserError|null;
   const type=parser&&typeof parser.type==='string'?parser.type:null;
-  const status=parser&&typeof parser.status==='number'?parser.status:
-   parser&&typeof parser.statusCode==='number'?parser.statusCode:null;
   let code:number;
   if(error instanceof HttpException)code=error.getStatus();
   else if(type==='charset.unsupported'||type==='encoding.unsupported')code=415;
@@ -32,7 +30,6 @@ export class PlatformAppealHttpErrorFilter implements ExceptionFilter{
   response.setHeader('X-Content-Type-Options','nosniff');
   response.setHeader('X-Robots-Tag','noindex, nofollow');
   response.setHeader('Referrer-Policy','no-referrer');
-  void status;
   response.status(code).json({statusCode:code,message:code===500?'Internal server error':
    code===415?'Unsupported Media Type':code===413?'Payload Too Large':
    code===400?'Bad Request':code===401?'Unauthorized':code===409?'Conflict':'Request rejected'});
