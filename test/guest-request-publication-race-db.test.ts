@@ -43,7 +43,20 @@ test('guest personal request rejects a competing profile transition after profil
   const attempt=createGuestRequestInTransaction(wrapped,{
    serviceOfferId:offer,note:'Need assistance',consentToContact:true,
   },proof.token,'guest_profile_publish_race',pepper,encryptionKey);
-  await entering;
+  // Never hang CI if the request fails before reaching the lock.
+  // The attempt rejection is observed immediately, rather than leaving an
+  // unresolved barrier and a second unhandled promise behind.
+  let timeout:ReturnType<typeof setTimeout>|undefined;
+  try{
+   await Promise.race([
+    entering,
+    attempt.then(()=>{throw new Error('Request unexpectedly succeeded before profile lock');},
+     error=>{throw error;}),
+    new Promise<never>((_,reject)=>{
+     timeout=setTimeout(()=>reject(new Error('Guest request did not reach profile lock within 10 seconds')),10000);
+    }),
+   ]);
+  }finally{if(timeout)clearTimeout(timeout);}
   await a.query('COMMIT');
   await assert.rejects(attempt,(error:unknown)=>
    error instanceof GuestRequestRejected&&error.reason==='unavailable_offer');
