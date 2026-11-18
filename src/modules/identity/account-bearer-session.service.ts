@@ -8,6 +8,7 @@ import {
 import {revokeCurrentAccountSession} from './session-revocation.js';
 import {resolveActiveUserSession} from './session-proof.js';
 import {readAccountMe,type AccountMe} from './account-me.js';
+import {createOwnProfessionalProfile} from './create-professional-profile.js';
 import {listOwnProfessionalProfiles,type OwnProfessionalProfile} from './account-professional-profiles.js';
 
 /**
@@ -30,6 +31,11 @@ export class AccountBearerSessionService{
       if(!me)throw new UnauthorizedException('Authentication required');
       return me;
     });
+  }
+
+  async createProfessionalProfile(token:string,body:unknown,key:unknown):Promise<OwnProfessionalProfile>{
+    const pepper=this.getPepper();
+    return this.db.transaction(client=>createOwnProfessionalProfile(client,token,pepper,body,key));
   }
 
   async professionalProfiles(token:string):Promise<OwnProfessionalProfile[]>{
