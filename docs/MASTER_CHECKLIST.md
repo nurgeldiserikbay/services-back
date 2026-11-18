@@ -174,6 +174,8 @@
 
 ## Evidence log
 
+Backend guest cancellation signed BFF HTTP boundary (2026-11-18): Prepared in PR #256. New unmounted Nest controller requires an explicit disabled-by-default environment gate, strict raw JSON and single-valued headers, independent short-lived HMAC attestation bound to route/body/capability/idempotency key, and delegates only to idempotent cancellation; unit coverage includes malformed input, missing gate and tampering. Production router registration, trusted ingress, frontend signer, full HTTP/DB E2E and staging remain open. CI pending.
+
 Backend legacy guest cancellation service fail-fast guard (2026-11-18): Prepared in replacement PR; original PR #253 had green push and PR CI but conflicted after #254 merged. The internal GuestCancellationService.cancel path now validates canonical request UUID, PostgreSQL int4 expectedVersion increment range, and canonical 32-byte READ_CANCEL bearer before leasing a DB transaction, matching the idempotent service's fail-fast boundary. Unit regressions verify zero SQL for malformed input and one transaction delegation for valid input. This does not expose an HTTP endpoint; CI, session authentication and staging acceptance remain open.
 
 Backend guest cancellation ledger TTL live-time insert (2026-11-18): Prepared in this PR. PostgreSQL idempotency reservation now sets expires_at to clock_timestamp()+1 day instead of transaction-start now()+1 day, matching live-clock replay expiry. Regression holds a transaction open before cancellation and asserts full TTL from reservation time; CI pending, no authenticated HTTP/staging acceptance claimed.
