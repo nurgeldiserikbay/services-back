@@ -9,6 +9,7 @@ import {revokeCurrentAccountSession} from './session-revocation.js';
 import {resolveActiveUserSession} from './session-proof.js';
 import {readAccountMe,type AccountMe} from './account-me.js';
 import {publishOwnProfessionalProfile,type PublishReceipt} from './publish-professional-profile.js';
+import {requestOwnProfileAppeal,type AppealReceipt} from './request-professional-profile-appeal.js';
 import {readProfilePreview,type ProfilePreview} from './professional-profile-preview.js';
 import {updateOwnProfessionalProfile} from './update-professional-profile.js';
 import {createOwnProfessionalProfile} from './create-professional-profile.js';
@@ -39,6 +40,11 @@ export class AccountBearerSessionService{
   async publishProfessionalProfile(token:string,id:unknown,match:unknown,body:unknown):Promise<PublishReceipt>{
     const pepper=this.getPepper();
     return this.db.transaction(client=>publishOwnProfessionalProfile(client,token,pepper,id,match,body));
+  }
+
+  async appealProfessionalProfile(token:string,id:unknown,match:unknown,body:unknown):Promise<AppealReceipt>{
+    const pepper=this.getPepper();
+    return this.db.transaction(client=>requestOwnProfileAppeal(client,token,pepper,id,match,body));
   }
 
   async previewProfessionalProfile(token:string,id:unknown):Promise<ProfilePreview>{

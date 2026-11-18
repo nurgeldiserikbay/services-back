@@ -956,6 +956,19 @@ model PlatformAdminGrant {
 
 /** Internal moderation read projection; do not store case evidence or PII. */
 /** Append-only professional decision evidence. Not itself a moderation authorization gate. */
+/** Append-only owner rejection appeal intake; resolution handled separately. */
+model ProfessionalModerationAppeal {
+ id String @id @db.Uuid
+ originalDecisionId String @unique @map("original_decision_id") @db.Uuid
+ caseId String @unique @map("case_id") @db.Uuid
+ profileId String @map("profile_id") @db.Uuid
+ profileVersion Int @map("profile_version")
+ submittedByPersonId String @map("submitted_by_person_id") @db.Uuid
+ submittedAt DateTime @default(now()) @map("submitted_at") @db.Timestamptz(3)
+ @@index([profileId,submittedAt])
+ @@map("professional_moderation_appeals")
+}
+
 model ProfessionalModerationDecision {
  id String @id @db.Uuid
  caseId String @unique @map("case_id") @db.Uuid

@@ -35,6 +35,14 @@ export class AccountProfessionalProfilesController{
   if(process.env.SERVICES_ENABLE_PROFILE_PUBLISH!=='enabled')throw new NotFoundException('Profile unavailable');
   return this.sessions.publishProfessionalProfile(requireBearerSession(authorization),id,match,body);
  }
+ @Post(':id/appeals')
+ @Header('Cache-Control','private, no-store')
+ @Header('Pragma','no-cache')
+ @Header('X-Robots-Tag','noindex, nofollow')
+ appeal(@Headers('authorization') authorization:unknown,@Param('id') id:unknown,@Headers('if-match') match:unknown,@Body() body:unknown){
+  if(process.env.SERVICES_ENABLE_PROFILE_APPEALS!=='enabled')throw new NotFoundException('Profile unavailable');
+  return this.sessions.appealProfessionalProfile(requireBearerSession(authorization),id,match,body);
+ }
  @Patch(':id')
  @Header('Cache-Control','private, no-store')
  @Header('Pragma','no-cache')
