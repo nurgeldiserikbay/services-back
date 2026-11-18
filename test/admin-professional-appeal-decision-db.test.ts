@@ -24,7 +24,7 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
   await db.query("INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,'admin')",[reviewer,reviewerUser]);
   await db.query('INSERT INTO platform_admin_grants(id,staff_id,scope) VALUES($1,$2,$3)',[grant,reviewer,'professional:'+profile]);
   await db.query("INSERT INTO platform_admin_sessions(id,staff_id,token_hash,mfa_verified_at,expires_at) VALUES($1,$2,$3,now()-interval '1 minute',now()+interval '1 hour')",[session,reviewer,token.tokenHash]);
-  await db.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'test-encrypted-envelope','test-v1',now()-interval '4 minutes',now()-interval '3 minutes')",[reviewer]);
+  await db.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'integration-test-placeholder-encrypted-envelope','test-v1',now()-interval '4 minutes',now()-interval '3 minutes')",[reviewer]);
   await db.query("INSERT INTO platform_moderation_cases(id,resource_scope,subject_kind,state) VALUES($1,$2,'professional','closed')",[originalCase,'professional:'+profile]);
   await db.query("INSERT INTO professional_moderation_decisions(id,case_id,profile_id,profile_version,actor_staff_id,decision) VALUES($1,$2,$3,1,$4,'REJECT')",[rejection,originalCase,profile,actor]);
   await db.query("INSERT INTO platform_moderation_cases(id,resource_scope,subject_kind,state) VALUES($1,$2,'professional','appeal')",[appealCase,'professional:'+profile]);
@@ -65,7 +65,7 @@ test('independent appeal core enforces scoped fresh MFA, reviewer separation, ex
    [randomUUID(),actor,'professional:'+profile]);
   await db.query("INSERT INTO platform_admin_sessions(id,staff_id,token_hash,mfa_verified_at,expires_at) VALUES($1,$2,$3,now()-interval '1 minute',now()+interval '1 hour')",
    [randomUUID(),actor,actorToken.tokenHash]);
-  await db.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'test-encrypted-envelope','test-v1',now()-interval '4 minutes',now()-interval '3 minutes')",[actor]);
+  await db.query("INSERT INTO platform_admin_totp_factors(staff_id,encrypted_secret,key_version,created_at,activated_at) VALUES($1,'integration-test-placeholder-encrypted-envelope','test-v1',now()-interval '4 minutes',now()-interval '3 minutes')",[actor]);
   await assert.rejects(
    decideProfessionalAppeal(db,actorToken.token,pepper,appeal,body),ConflictException);
   assert.equal((await db.query('SELECT state FROM platform_moderation_cases WHERE id=$1',[appealCase])).rows[0].state,'decision');
