@@ -174,6 +174,9 @@
 
 ## Evidence log
 
+2026-11-18 account workspace delivery: frontend [PR #137](https://github.com/nurgeldiserikbay/services-front/pull/137) merged at [4c44618](https://github.com/nurgeldiserikbay/services-front/commit/4c446180bd725bcb25b2a9e2985702b392107d56), [CI #44247975535](https://github.com/nurgeldiserikbay/services-front/actions/runs/44247975535) PASS; admin [PR #18](https://github.com/nurgeldiserikbay/services-admin/pull/18) merged at [74cbbd2](https://github.com/nurgeldiserikbay/services-admin/commit/74cbbd24208358a6f314540573c8f8146dcd6080), [CI #44248072534](https://github.com/nurgeldiserikbay/services-admin/actions/runs/44248072534) PASS. Frontend [PR #138](https://github.com/nurgeldiserikbay/services-front/pull/138) prepares gated navigation linking account home, seller requests, notifications and device management, with source regressions. CI, authenticated account-home browser acceptance and staging pending; no top-level checkbox closed.
+
+
 2026-11-18 admin MFA handoff: [services-admin PR #18](https://github.com/nurgeldiserikbay/services-admin/pull/18), [8cea9f1](https://github.com/nurgeldiserikbay/services-admin/commit/8cea9f1d25eec3daef0d7256099b90f0d9a8727d), prepares elapsed-time-aware cookie expiry with fail-closed clock regression tests. [CI #44248072534](https://github.com/nurgeldiserikbay/services-admin/actions/runs/44248072534) queued; full admin login, vault and staging acceptance remain open. No checkbox closed.
 
 
