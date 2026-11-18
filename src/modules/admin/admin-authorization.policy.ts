@@ -5,7 +5,7 @@
  */
 export type PlatformRole='owner'|'admin'|'operator'|'auditor';
 export type AdminOperation=
-  |'moderation.read'|'moderation.decide'|'moderation.appeal.decide'|'audit.read'
+  |'moderation.read'|'moderation.decide'|'moderation.appeal.decide'|'moderation.appeal.assign'|'audit.read'
   |'taxonomy.read'|'taxonomy.publish'
   |'platform_roles.read'|'platform_roles.manage'
   |'notifications.requeue';
@@ -21,10 +21,10 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 const SCOPE=/^[a-z][a-z0-9_-]{0,31}:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_MFA_AGE_MS=15*60*1000;
 const ALLOWED:Readonly<Record<PlatformRole,readonly AdminOperation[]>>={
-  owner:['moderation.read','moderation.decide','moderation.appeal.decide','audit.read','taxonomy.read',
+  owner:['moderation.read','moderation.decide','moderation.appeal.decide','moderation.appeal.assign','audit.read','taxonomy.read',
     'taxonomy.publish','platform_roles.read','platform_roles.manage',
     'notifications.requeue'],
-  admin:['moderation.read','moderation.decide','moderation.appeal.decide','audit.read','taxonomy.read',
+  admin:['moderation.read','moderation.decide','moderation.appeal.decide','moderation.appeal.assign','audit.read','taxonomy.read',
     'taxonomy.publish','platform_roles.read','notifications.requeue'],
   operator:['moderation.read','moderation.decide','taxonomy.read'],
   auditor:['moderation.read','audit.read','taxonomy.read'],
