@@ -30,10 +30,10 @@ test('two-client PostgreSQL BFF admission serializes with privileged session rev
   }
   await a.query('CREATE TABLE users (id uuid PRIMARY KEY,status text NOT NULL)');
   await a.query('CREATE TABLE platform_admin_staff (id uuid PRIMARY KEY,user_id uuid NOT NULL,role text NOT NULL,disabled_at timestamptz)');
-  await a.query('CREATE TABLE platform_admin_sessions (staff_id uuid NOT NULL, token_hash char(64) NOT NULL, revoked_at timestamptz, created_at timestamptz NOT NULL, expires_at timestamptz NOT NULL, mfa_verified_at timestamptz NOT NULL)');
+  await a.query('CREATE TABLE platform_admin_sessions (id uuid NOT NULL DEFAULT gen_random_uuid(),staff_id uuid NOT NULL, token_hash char(64) NOT NULL, revoked_at timestamptz, created_at timestamptz NOT NULL, expires_at timestamptz NOT NULL, mfa_verified_at timestamptz NOT NULL)');
   await a.query('CREATE TABLE platform_admin_totp_factors (staff_id uuid NOT NULL,activated_at timestamptz,disabled_at timestamptz)');
   await a.query('CREATE TABLE platform_admin_grants (staff_id uuid NOT NULL,scope text NOT NULL)');
-  await a.query('CREATE TABLE platform_admin_appeal_browser_sessions (id uuid PRIMARY KEY,staff_id uuid NOT NULL,token_hash char(64) UNIQUE NOT NULL,expires_at timestamptz NOT NULL,revoked_at timestamptz)');
+  await a.query('CREATE TABLE platform_admin_appeal_browser_sessions (id uuid PRIMARY KEY,staff_id uuid NOT NULL,admin_session_id uuid NOT NULL,token_hash char(64) UNIQUE NOT NULL,expires_at timestamptz NOT NULL,revoked_at timestamptz)');
   const userId=randomUUID(),staffId=randomUUID(),pepper=randomBytes(32);
   const bearer=issueAdminSessionToken(pepper).token,scope='professional:'+randomUUID();
   const now=Date.now(),authHash=hashAdminSessionToken(bearer,pepper);

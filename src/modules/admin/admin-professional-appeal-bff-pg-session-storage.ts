@@ -19,9 +19,16 @@ export function createAppealBffPgSessionStorage(db:Db){
    if(!db||typeof db.query!=='function'||typeof hash!=='string'||!HASH.test(hash))
     return null;
    const result=await db.query<Row>(`
-    SELECT id::text AS id,expires_at,revoked_at
-    FROM platform_admin_appeal_browser_sessions
-    WHERE token_hash=$1 AND revoked_at IS NULL AND expires_at>now()
+    SELECT browser.id::text AS id,browser.expires_at,browser.revoked_at
+    FROM platform_admin_appeal_browser_sessions AS browser
+    JOIN platform_admin_sessions AS parent ON parent.id=browser.admin_session_id
+    JOIN platform_admin_staff AS staff ON staff.id=browser.staff_id
+      AND staff.id=parent.staff_id
+    JOIN users AS usr ON usr.id=staff.user_id
+    WHERE browser.token_hash=$1 AND browser.revoked_at IS NULL
+      AND browser.expires_at>now() AND parent.revoked_at IS NULL
+      AND parent.expires_at>now() AND staff.disabled_at IS NULL
+      AND usr.status='ACTIVE'
     LIMIT 2
    `,[hash]);
    if(!result||!Array.isArray(result.rows)||result.rows.length!==1)return null;

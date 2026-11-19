@@ -24,6 +24,8 @@ test('migrated appeal BFF browser session table has separate hash-only schema',{
   const map=new Map(columns.rows.map(r=>[r.column_name,r]));
   assert.equal(map.get('id')?.data_type,'uuid');
   assert.equal(map.get('staff_id')?.data_type,'uuid');
+  assert.equal(map.get('admin_session_id')?.data_type,'uuid');
+  assert.equal(map.get('admin_session_id')?.is_nullable,'NO');
   assert.equal(map.get('token_hash')?.data_type,'character');
   assert.equal(map.get('token_hash')?.is_nullable,'NO');
   assert.equal(map.get('expires_at')?.data_type,'timestamp with time zone');
@@ -44,6 +46,7 @@ test('migrated appeal BFF browser session table has separate hash-only schema',{
   `);
   assert.ok(constraints.rows.some(r=>r.contype==='p'&&r.columns==='id'));
   assert.ok(constraints.rows.some(r=>r.contype==='f'&&r.columns==='staff_id'));
+  assert.ok(constraints.rows.some(r=>r.contype==='f'&&r.columns==='admin_session_id'));
   const indexes=await db.query<{indexname:string;indexdef:string}>(`
    SELECT indexname,indexdef FROM pg_indexes
    WHERE schemaname='public' AND tablename='platform_admin_appeal_browser_sessions'
@@ -52,5 +55,7 @@ test('migrated appeal BFF browser session table has separate hash-only schema',{
    'platform_admin_appeal_browser_sessions_token_hash_key'&&r.indexdef.includes('UNIQUE')));
   assert.ok(indexes.rows.some(r=>r.indexname===
    'platform_admin_appeal_browser_sessions_staff_id_expires_at_idx'));
+  assert.ok(indexes.rows.some(r=>r.indexname===
+   'appeal_bff_admin_session_exp_idx'));
  }finally{await db.end();}
 });

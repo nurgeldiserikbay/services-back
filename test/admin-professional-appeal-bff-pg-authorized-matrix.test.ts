@@ -24,7 +24,7 @@ test('real PostgreSQL BFF issuance grants only active MFA-verified scoped admin 
    disabled_at timestamptz
   )`);
   await db.query(`CREATE TEMP TABLE platform_admin_sessions(
-   staff_id uuid NOT NULL,token_hash char(64) NOT NULL,
+   id uuid PRIMARY KEY,staff_id uuid NOT NULL,token_hash char(64) NOT NULL,
    revoked_at timestamptz,created_at timestamptz NOT NULL,
    expires_at timestamptz NOT NULL,mfa_verified_at timestamptz NOT NULL
   )`);
@@ -35,7 +35,7 @@ test('real PostgreSQL BFF issuance grants only active MFA-verified scoped admin 
    staff_id uuid NOT NULL,scope text NOT NULL
   )`);
   await db.query(`CREATE TEMP TABLE platform_admin_appeal_browser_sessions(
-   id uuid PRIMARY KEY,staff_id uuid NOT NULL,token_hash char(64) UNIQUE NOT NULL,
+   id uuid PRIMARY KEY,staff_id uuid NOT NULL,admin_session_id uuid NOT NULL,token_hash char(64) UNIQUE NOT NULL,
    expires_at timestamptz NOT NULL,revoked_at timestamptz
   )`);
   const userId=randomUUID(),staffId=randomUUID(),pepper=randomBytes(32);
@@ -45,9 +45,9 @@ test('real PostgreSQL BFF issuance grants only active MFA-verified scoped admin 
   await db.query('INSERT INTO platform_admin_staff(id,user_id,role) VALUES($1,$2,$3)',
    [staffId,userId,'admin']);
   await db.query(`INSERT INTO platform_admin_sessions
-   (staff_id,token_hash,created_at,expires_at,mfa_verified_at)
-   VALUES($1,$2,$3,$4,$5)`,[staffId,hashAdminSessionToken(bearer,pepper),
-   new Date(now-120_000),new Date(now+900_000),new Date(now-60_000)]);
+   (id,staff_id,token_hash,created_at,expires_at,mfa_verified_at)
+   VALUES($6,$1,$2,$3,$4,$5)`,[staffId,hashAdminSessionToken(bearer,pepper),
+   new Date(now-120_000),new Date(now+900_000),new Date(now-60_000),randomUUID()]);
   await db.query('INSERT INTO platform_admin_totp_factors(staff_id,activated_at) VALUES($1,$2)',
    [staffId,new Date(now-120_000)]);
   await db.query('INSERT INTO platform_admin_grants(staff_id,scope) VALUES($1,$2)',
