@@ -859,6 +859,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-session-resolver.test.ts
       - name: Prepared appeal BFF opaque session issuance commit gate (fail fast)
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-session-issuance.test.ts
+      - name: BFF PostgreSQL in-transaction MFA/grant/appeal authority (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 35s node --import tsx --test test/admin-professional-appeal-bff-pg-mutation-authority.test.ts
       - name: Prepared BFF PostgreSQL appeal-to-case scope resolver (fail fast)
         run: timeout --signal=TERM --kill-after=5s 30s node --import tsx --test test/admin-professional-appeal-bff-pg-appeal-scope.test.ts
       - name: Prepared appeal BFF per-appeal scoped request chain (fail fast)
