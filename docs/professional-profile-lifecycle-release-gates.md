@@ -321,3 +321,7 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 ## Prepared BFF network peer IPv6 identity hardening (2026-11-19)
 - The default-off Redis network rate gate canonicalizes valid socket IPv6 addresses before computing the per-peer HMAC key. Equivalent compressed/expanded/uppercase IPv6 forms share the same 20-per-minute budget, and IPv4-mapped IPv6 forms (dotted or hexadecimal) share the IPv4 budget. Invalid addresses fail closed without Redis. Isolated regressions cover both bypass variants.
 - **Not an activation or security signoff:** the BFF endpoint is still unregistered. A trusted ingress reverse-proxy rate gate, real staging concurrency checks, scoped session/user abuse quotas, secret custody, Redis availability and deployment review remain mandatory.
+
+## Prepared BFF Redis rate gate bounded wait (2026-11-19)
+- The unregistered appeal BFF network limiter now applies a 3-second upper bound to the Redis EVAL response wait. Stalled or never-settling Redis promises return generic no-store 503 without calling the privileged HTTP continuation, and delayed Redis successes cannot reactivate a rejected request. A deterministic stalled-client regression is part of the fail-fast rate gate suite.
+- The timeout does not cancel an in-flight Redis EVAL; operational Redis client socket/connection deadlines, shared ingress limits, production wiring, telemetry, capacity/latency tuning and staging browser tests must be independently reviewed before any live activation.

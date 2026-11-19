@@ -4,6 +4,7 @@ import {isIP} from 'node:net';
 const ROUTE=/^\/v1\/admin\/bff\/moderation\/appeals\/[^/]+\/(?:assignment|decision)(?:\/csrf)?\/?$/;
 const WINDOW_MS=60_000;
 const MAX_REQUESTS=20;
+const REDIS_DEADLINE_MS=3_000;
 /** Atomic, worker-shared fixed-window limiter. Only the digest is stored. */
 export const APPEAL_BFF_RATE_LUA=`
 local n = redis.call('INCR', KEYS[1])
@@ -78,14 +79,24 @@ export function createAppealBffRedisNetworkRateMiddleware(
   }
   const key='services:appeal-bff:net-rate:v1:'+
    createHmac('sha256',secret).update(ip).digest('hex');
-  void Promise.resolve().then(()=>redis.eval(APPEAL_BFF_RATE_LUA,{
+  // Bound time spent waiting on Redis: even a client that never settles
+  // cannot leave a protected HTTP request open indefinitely. Late responses
+  // never call next() after the timeout branch has denied the request.
+  let deadline:ReturnType<typeof setTimeout>|undefined;
+  const requestClaim=Promise.resolve().then(()=>redis.eval(APPEAL_BFF_RATE_LUA,{
    keys:[key],arguments:[String(WINDOW_MS)],
-  })).then(result=>{
+  }));
+  const timeout=new Promise<never>((_resolve,rejectTimeout)=>{
+   deadline=setTimeout(()=>rejectTimeout(new Error('Redis rate gate deadline')),REDIS_DEADLINE_MS);
+  });
+  void Promise.race([requestClaim,timeout]).then(result=>{
    if(!Number.isSafeInteger(result)||typeof result!=='number'||result<1){
     reject(response,503);return;
    }
    if(result>MAX_REQUESTS){reject(response,429);return;}
    next();
-  }).catch(()=>reject(response,503));
+  }).catch(()=>reject(response,503)).finally(()=>{
+   if(deadline!==undefined)clearTimeout(deadline);
+  });
  };
 }
