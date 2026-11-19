@@ -26,8 +26,8 @@ export function extractAppealBffSessionCookie(
   // duplicate cookie names, percent-decoding and delimiter confusion.
   if(!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name)||
    !/^[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*$/.test(value)||
-   names.has(name))return deny();
-  names.add(name);
+   names.has(name.toLowerCase()))return deny();
+  names.add(name.toLowerCase());
   if(name===cookieName){
    if(!/^[A-Za-z0-9_-]{16,512}$/.test(value))return deny();
    found=value;
