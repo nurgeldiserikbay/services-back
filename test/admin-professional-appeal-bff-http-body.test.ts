@@ -1,0 +1,103 @@
+import 'reflect-metadata';
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {randomBytes,randomUUID} from 'node:crypto';
+import {createRequire} from 'node:module';
+import {Module} from '@nestjs/common';
+import {NestFactory} from '@nestjs/core';
+import {APPEAL_BFF_HTTP_BOUNDARY,PlatformProfessionalAppealBffController} from
+ '../src/modules/admin/admin-professional-appeal-bff-http.controller.js';
+import {appealBffHttpBodyPreflight,appealBffHttpParserError,APPEAL_BFF_MAX_JSON_BYTES} from
+ '../src/modules/admin/admin-professional-appeal-bff-http-body.middleware.js';
+
+const expressJson=(createRequire(process.cwd()+'/package.json')('express') as {
+ json:(options:{type:string;limit:string;inflate:boolean})=>(...args:unknown[])=>unknown;
+}).json;
+
+test('isolated Nest BFF HTTP rejects oversized, malformed and compressed JSON before BFF adapters',async()=>{
+ const flag='SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP',previous=process.env[flag];
+ const origin='https://admin.example.kz',id=randomUUID();
+ const cookie='__Host-services-appeal-session='+randomBytes(32).toString('base64url');
+ let issued=0,mutated=0;
+ @Module({controllers:[PlatformProfessionalAppealBffController],providers:[{
+  provide:APPEAL_BFF_HTTP_BOUNDARY,
+  useValue:{
+   expectedOrigin:origin,
+   issueCsrf:async()=>{issued++;return {token:'test-only'};},
+   mutate:async()=>{mutated++;return {ok:true};},
+  },
+ }]})
+ class BffTestModule{}
+ const app=await NestFactory.create(BffTestModule,{logger:false});
+ try{
+  app.use(appealBffHttpBodyPreflight);
+  app.use(expressJson({type:'application/json',limit:APPEAL_BFF_MAX_JSON_BYTES+'b',inflate:false}));
+  app.use(appealBffHttpParserError);
+  app.setGlobalPrefix('v1');
+  await app.listen(0,'127.0.0.1');
+  const base=(await app.getUrl())+'/v1/admin/bff/moderation/appeals/'+id+'/decision/csrf';
+  const headers={Origin:origin,'Sec-Fetch-Site':'same-origin',Cookie:cookie,
+   'Content-Type':'application/json'};
+  const post=(body:string,h:Record<string,string>={})=>fetch(base,{
+   method:'POST',headers:{...headers,...h},body,redirect:'manual',
+  });
+  process.env[flag]='enabled';
+  const tooLarge=await post(JSON.stringify({payload:'x'.repeat(5000)}));
+  assert.equal(tooLarge.status,413);
+  assert.deepEqual(await tooLarge.json(),{statusCode:413,message:'Payload Too Large'});
+  assert.match(tooLarge.headers.get('cache-control')??'',/no-store/);
+  assert.equal(tooLarge.headers.get('x-content-type-options'),'nosniff');
+  const malformed=await post('{"broken":');
+  assert.equal(malformed.status,400);
+  assert.deepEqual(await malformed.json(),{statusCode:400,message:'Bad Request'});
+  const unsupported=await post('{}',{'Content-Encoding':'gzip'});
+  assert.equal(unsupported.status,415);
+  assert.deepEqual(await unsupported.json(),{statusCode:415,message:'Unsupported Media Type'});
+  const charset=await post('{}',{'Content-Type':'application/json; charset=iso-8859-1'});
+  assert.equal(charset.status,415);
+  const valid=await post('{}');
+  assert.equal(valid.status,200);
+  assert.deepEqual(await valid.json(),{token:'test-only'});
+  assert.equal(issued,1);
+  assert.equal(mutated,0);
+  process.env[flag]='disabled';
+  assert.equal((await post('{}')).status,401,'feature flag must still deny valid body');
+ }finally{
+  await app.close();
+  if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
+ }
+});
+
+test('BFF body middleware fails closed on invalid declared sizes and passes unrelated endpoints',()=>{
+ const seen:{status?:number;body?:unknown}={};
+ const headers:Record<string,string>={};
+ const res={
+  setHeader:(key:string,value:string)=>{headers[key]=value;},
+  status:(code:number)=>{seen.status=code;return {json:(body:unknown)=>{seen.body=body;}};},
+ };
+ let next=0;
+ const path='/v1/admin/bff/moderation/appeals/'+randomUUID()+'/decision';
+ const req=(extra:Record<string,string|string[]|undefined>,originalUrl=path)=>({
+  method:'POST',originalUrl,headers:{'content-type':'application/json',...extra},
+ });
+ const invalidCases:Array<[Record<string,string|string[]|undefined>,number]>=[
+  [{'content-length':'999999999'},413],
+  [{'content-length':'-1'},400],
+  [{'content-length':'4, 5'},400],
+  [{'content-length':['4','5']},400],
+  [{'content-encoding':'br'},415],
+  [{'content-type':'text/plain'},415],
+ ];
+ for(const [extra,expected] of invalidCases){
+  seen.status=undefined;
+  appealBffHttpBodyPreflight(req(extra),res,()=>{next++;});
+  assert.equal(seen.status,expected);
+ }
+ assert.equal(next,0);
+ appealBffHttpBodyPreflight(req({'content-length':'17'}),res,()=>{next++;});
+ appealBffHttpBodyPreflight(req({},'/v1/public/other'),res,()=>{next++;});
+ assert.equal(next,2);
+ let forwarded=0;
+ appealBffHttpParserError({type:'other'},req({}),res,()=>{forwarded++;});
+ assert.equal(forwarded,1,'unknown errors are never rewritten as parser problems');
+});
