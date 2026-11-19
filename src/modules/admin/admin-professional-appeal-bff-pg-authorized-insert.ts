@@ -22,8 +22,9 @@ type Context=Readonly<{
  * No controller, key management or trusted bearer provisioning is included.
  * Any ambiguous/failed insert returns false; SQL errors propagate fail closed.
  *
- * This statement does not replace per-operation authorization and cannot
- * guarantee revocation linearizability across a concurrent admin-session UPDATE.
+ * A row SHARE lock on the authorizing admin session serializes this single
+ * INSERT with concurrent UPDATE/DELETE of that admin session. Other staff,
+ * grant and MFA changes still require audited transaction/locking design.
  */
 export function createAppealBffPgAuthorizedSessionInsert(db:Db,context:Context){
  return async(tokenHash:string,expiresAt:number):Promise<boolean>=>{
@@ -67,6 +68,10 @@ export function createAppealBffPgAuthorizedSessionInsert(db:Db,context:Context){
        SELECT 1 FROM platform_admin_grants AS scoped_grant
        WHERE scoped_grant.staff_id=staff.id AND scoped_grant.scope=$5
      )
+   -- Lock the authoritative admin session through this INSERT statement so
+   -- a concurrent revocation UPDATE cannot commit between admission check
+   -- and the browser session insertion in PostgreSQL READ COMMITTED.
+   FOR SHARE OF auth
    RETURNING id::text AS id
   `,[id,tokenHash,expiresAt,adminHash,context.resourceScope,now]);
   return !!result&&Array.isArray(result.rows)&&result.rows.length===1&&
