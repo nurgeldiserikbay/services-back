@@ -988,6 +988,11 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 - **Backend framework and database foundation:** [package.json](https://github.com/nurgeldiserikbay/services-back/blob/main/package.json) declares NestJS 12, Prisma 6, PostgreSQL pg 8 and migration/schema smoke/build/typecheck/test scripts. [Backend CI #44568227986](https://github.com/nurgeldiserikbay/services-back/actions/runs/44568227986) passed the PostgreSQL migration/schema smoke and build/test gates. Production database operations, secrets and deployment remain pending.
 - Both narrowly scoped foundation entries had remained Prepared despite sufficient acceptance evidence. Verified count moves **18/117 → 20/117**, denominator unchanged. No browser journeys, staging or production checkboxes are closed.
 
+### 2026-11-20 — cross-module guest-to-seller lifecycle integration
+
+- New CI-gated real PostgreSQL test: verified guest capability, atomic request creation, idempotent replay, forbidden seller rejection, authorized accept or decline, stale version rejection, outbox and notification deduplication, and no guest PII in outbox. Coverage is in `test/guest-seller-cross-module-lifecycle-db.test.ts`.
+- Rollback-isolated database integration does **not** replace full HTTP/browser auth, external provider delivery, service completion, or staging acceptance. No new acceptance checkbox is closed before the new CI gate passes.
+
 ## Next acceptance gates
 
 1. Recorded historical workflow job coverage inspected (2026-11-18); verify current HEADs and add missing authenticated browser/admin E2E evidence before closing acceptance items.
