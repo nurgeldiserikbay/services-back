@@ -64,8 +64,8 @@ export function createAppealBffPgAuthorizedSessionInsert(db:Db,context:Context){
          AND factor.disabled_at IS NULL
      )
      AND EXISTS (
-       SELECT 1 FROM platform_admin_grants AS grant
-       WHERE grant.staff_id=staff.id AND grant.scope=$5
+       SELECT 1 FROM platform_admin_grants AS scoped_grant
+       WHERE scoped_grant.staff_id=staff.id AND scoped_grant.scope=$5
      )
    RETURNING id::text AS id
   `,[id,tokenHash,expiresAt,adminHash,context.resourceScope,now]);
