@@ -33,9 +33,16 @@ function canonicalSocketPeer(value:unknown):string|null{
  if(typeof value!=='string'||value.length>64)return null;
  if(isIP(value)===4)return value;
  if(isIP(value)!==6)return null;
- const mapped=/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(value);
- if(mapped&&isIP(mapped[1]!)===4)return mapped[1]!;
- return value.toLowerCase();
+ // WHATWG URL canonicalizes equivalent IPv6 spellings (compression, case,
+ // leading zero groups and dotted IPv4 suffixes) to the same 128-bit address.
+ // isIP checked the input first; remoteAddress is never a request header.
+ const canonical=new URL('http://['+value+']/').hostname.slice(1,-1);
+ const mapped=/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(canonical);
+ if(mapped){
+  const high=parseInt(mapped[1]!,16),low=parseInt(mapped[2]!,16);
+  return [high>>>8,high&255,low>>>8,low&255].join('.');
+ }
+ return canonical;
 }
 function reject(response:ResponseLike,status:number):void{
  if(response.headersSent)return;
