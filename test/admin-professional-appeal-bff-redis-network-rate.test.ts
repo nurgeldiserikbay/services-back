@@ -163,3 +163,29 @@ test('mapped IPv4 and plain IPv4 share one rate quota; malformed peers fail clos
   if(old===undefined)delete process.env[flag];else process.env[flag]=old;
  }
 });
+
+test('equivalent IPv6 encodings and mapped IPv4 hex form cannot split a quota',async()=>{
+ const flag='SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP',old=process.env[flag];
+ process.env[flag]='enabled';
+ try{
+  const {redis,hits}=createFakeRedis();
+  const gate=createAppealBffRedisNetworkRateMiddleware(redis,randomBytes(32));
+  const sameV6=[
+   '2001:db8::1','2001:0DB8:0000:0000:0000:0000:0000:0001',
+   '2001:DB8:0:0:0:0:0:1',
+  ];
+  const responses=await Promise.all(Array.from({length:24},(_,i)=>
+   invoke(gate,sameV6[i%sameV6.length]!)));
+  assert.equal(responses.filter(x=>x.next).length,20);
+  assert.equal(responses.filter(x=>x.status===429).length,4);
+  assert.equal(hits.size,1,'equivalent IPv6 strings share a Redis key');
+
+  const mapped=await Promise.all(Array.from({length:23},(_,i)=>invoke(gate,
+   ['203.0.113.9','::ffff:203.0.113.9','::FFFF:CB00:7109'][i%3]!)));
+  assert.equal(mapped.filter(x=>x.next).length,20);
+  assert.equal(mapped.filter(x=>x.status===429).length,3);
+  assert.equal(hits.size,2,'both mapped IPv6 spellings share the IPv4 quota');
+ }finally{
+  if(old===undefined)delete process.env[flag];else process.env[flag]=old;
+ }
+});
