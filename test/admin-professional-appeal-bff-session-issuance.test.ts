@@ -29,9 +29,11 @@ test('prepared issuance saves only a domain-separated hash before exposing secur
  assert.ok(!JSON.stringify(result).includes(savedHash));
  assert.equal(result.headers['Cache-Control'],'no-store');
  assert.equal(result.headers.Pragma,'no-cache');
+ const firstHash=savedHash;
  const second=await issue(),secondRaw=extractAppealBffSessionCookie(second.headers['Set-Cookie'].split(';')[0]);
  assert.notEqual(raw,secondRaw,'tokens must be cryptographically random per issuance');
- assert.notEqual(hashAppealBffSessionToken(secondRaw,pepper),savedHash+'x');
+ assert.notEqual(savedHash,firstHash,'hashed records must also differ');
+ assert.equal(hashAppealBffSessionToken(secondRaw,pepper),savedHash);
 });
 
 test('prepared issuance refuses invalid params before a storage write',async()=>{
