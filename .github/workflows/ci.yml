@@ -354,6 +354,8 @@ jobs:
             test/seller-inbox-db.test.ts \
             test/seller-decision-db.test.ts \
             test/seller-decision-idempotent-db.test.ts
+      - name: Registered customer completion PostgreSQL authorization and audit (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 45s node --import tsx --test test/customer-completion-db.test.ts
       - name: Cross-module guest request to seller decision PostgreSQL lifecycle (fail fast)
         run: timeout --signal=TERM --kill-after=5s 50s node --import tsx --test test/guest-seller-cross-module-lifecycle-db.test.ts
       - name: Guest request PostgreSQL transaction integration (fail fast)
