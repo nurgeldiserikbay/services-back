@@ -13,18 +13,25 @@ test('real PostgreSQL hash lookup, expiry and conditional revocation',{
  const db=new Client({connectionString:process.env.DATABASE_URL});
  await db.connect();
  try{
+  await db.query(`CREATE TEMP TABLE users(id uuid PRIMARY KEY,status text NOT NULL)`);
+  await db.query(`CREATE TEMP TABLE platform_admin_staff(id uuid PRIMARY KEY,user_id uuid NOT NULL,disabled_at timestamptz)`);
+  await db.query(`CREATE TEMP TABLE platform_admin_sessions(id uuid PRIMARY KEY,staff_id uuid NOT NULL,revoked_at timestamptz,expires_at timestamptz NOT NULL)`);
   await db.query(`
    CREATE TEMP TABLE platform_admin_appeal_browser_sessions(
-    id uuid PRIMARY KEY, token_hash char(64) NOT NULL UNIQUE,
+    id uuid PRIMARY KEY, staff_id uuid NOT NULL, admin_session_id uuid NOT NULL, token_hash char(64) NOT NULL UNIQUE,
     expires_at timestamptz NOT NULL, revoked_at timestamptz
    ) ON COMMIT PRESERVE ROWS
   `);
   const storage=createAppealBffPgSessionStorage(db);
   const pepper=randomBytes(32),proof=randomBytes(32).toString('base64url');
   const tokenHash=hashAppealBffSessionToken(proof,pepper),id=randomUUID();
+  const uid=randomUUID(),sid=randomUUID(),aid=randomUUID();
+  await db.query('INSERT INTO users(id,status) VALUES($1,$2)',[uid,'ACTIVE']);
+  await db.query('INSERT INTO platform_admin_staff(id,user_id) VALUES($1,$2)',[sid,uid]);
+  await db.query("INSERT INTO platform_admin_sessions(id,staff_id,expires_at) VALUES($1,$2,now()+interval '10 minutes')",[aid,sid]);
   await db.query(`INSERT INTO platform_admin_appeal_browser_sessions
-   (id,token_hash,expires_at) VALUES ($1,$2,now()+interval '5 minutes')`,
-   [id,tokenHash]);
+   (id,staff_id,admin_session_id,token_hash,expires_at) VALUES ($1,$2,$3,$4,now()+interval '5 minutes')`,
+   [id,sid,aid,tokenHash]);
   const session=await storage.findSessionByHash(tokenHash);
   assert.equal(session?.sessionId,id);
   assert.equal(session?.revokedAt,null);
@@ -37,8 +44,8 @@ test('real PostgreSQL hash lookup, expiry and conditional revocation',{
   assert.equal(await storage.revokeSessionByHash('bad'),false);
   const expired=randomBytes(32).toString('hex');
   await db.query(`INSERT INTO platform_admin_appeal_browser_sessions
-   (id,token_hash,expires_at) VALUES ($1,$2,now()-interval '1 second')`,
-   [randomUUID(),expired]);
+   (id,staff_id,admin_session_id,token_hash,expires_at) VALUES ($1,$2,$3,$4,now()-interval '1 second')`,
+   [randomUUID(),sid,aid,expired]);
   assert.equal(await storage.findSessionByHash(expired),null);
   assert.equal(await storage.revokeSessionByHash(expired),false);
  }finally{await db.end();}
@@ -51,7 +58,7 @@ test('real PostgreSQL concurrent conditional revocation produces one winner',{
  await db.connect();
  try{
   await db.query(`CREATE TEMP TABLE platform_admin_appeal_browser_sessions(
-   id uuid PRIMARY KEY,token_hash char(64) UNIQUE NOT NULL,
+   id uuid PRIMARY KEY,staff_id uuid NOT NULL,admin_session_id uuid NOT NULL,token_hash char(64) UNIQUE NOT NULL,
    expires_at timestamptz NOT NULL,revoked_at timestamptz
   )`);
   const id=randomUUID(),hash=randomBytes(32).toString('hex');
