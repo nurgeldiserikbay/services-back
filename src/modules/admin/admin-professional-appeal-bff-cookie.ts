@@ -25,7 +25,7 @@ export function extractAppealBffSessionCookie(
   // RFC cookie-octet subset: deny quotes, control characters, Unicode,
   // duplicate cookie names, percent-decoding and delimiter confusion.
   if(!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name)||
-   !/^[\x21-\x3A\x3C-\x7E]*$/.test(value)||
+   !/^[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*$/.test(value)||
    names.has(name))return deny();
   names.add(name);
   if(name===cookieName){
