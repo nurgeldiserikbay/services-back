@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {createRequire} from 'node:module';
+import {createConnection} from 'node:net';
 import {Module} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {APPEAL_BFF_HTTP_BOUNDARY,PlatformProfessionalAppealBffController} from
@@ -245,6 +246,73 @@ test('isolated Nest BFF network quota ignores spoofed forwarding headers',async(
   assert.equal(new Set(usedKeys).size,1,'all spoofed headers must share direct TCP peer quota');
   assert.match(usedKeys[0]!,/^services:appeal-bff:net-rate:v1:[a-f0-9]{64}$/);
   assert.equal(issued,0);
+ }finally{
+  await app.close();
+  if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
+ }
+});
+
+async function realRedisRateEval(script:string,options:{keys:string[];arguments:string[]}):Promise<number>{
+ const host=process.env.APPEAL_CSRF_REDIS_HOST??'127.0.0.1';
+ const port=Number(process.env.APPEAL_CSRF_REDIS_PORT??6379);
+ const args=['EVAL',script,String(options.keys.length),...options.keys,...options.arguments];
+ const command='*'+args.length+'\r\n'+args.map(arg=>
+  '$'+Buffer.byteLength(arg)+'\r\n'+arg+'\r\n').join('');
+ return new Promise<number>((resolve,reject)=>{
+  const socket=createConnection({host,port});
+  let finished=false,buffer='';
+  const finish=(error:Error|null,value?:number)=>{
+   if(finished)return;
+   finished=true;socket.destroy();
+   if(error)reject(error);else resolve(value!);
+  };
+  socket.setTimeout(3000,()=>finish(Error('Redis response timeout')));
+  socket.on('error',error=>finish(error));
+  socket.on('connect',()=>socket.write(command));
+  socket.on('data',(chunk:Buffer)=>{
+   buffer+=chunk.toString('utf8');
+   const end=buffer.indexOf('\r\n');
+   if(end<0)return;
+   const reply=buffer.slice(0,end);
+   if(/^:[0-9]+$/.test(reply))finish(null,Number(reply.slice(1)));
+   else finish(Error('Redis unexpected response'));
+  });
+  socket.on('end',()=>{if(!finished)finish(Error('Redis closed without response'));});
+ });
+}
+
+test('real Redis atomic quota applies to 30 concurrent Nest HTTP requests',async()=>{
+ const flag='SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP',previous=process.env[flag];
+ const origin='https://admin.example.kz',id=randomUUID();
+ let privilegedCalls=0;
+ @Module({controllers:[PlatformProfessionalAppealBffController],providers:[{
+  provide:APPEAL_BFF_HTTP_BOUNDARY,
+  useValue:{
+   expectedOrigin:origin,
+   issueCsrf:async()=>{privilegedCalls++;return {token:'test-only'};},
+   mutate:async()=>{privilegedCalls++;return {ok:true};},
+  },
+ }]})
+ class RealRedisHttpModule{}
+ const app=await NestFactory.create(RealRedisHttpModule,{logger:false});
+ try{
+  app.use(createAppealBffRedisNetworkRateMiddleware({eval:realRedisRateEval},randomBytes(32)));
+  app.use(appealBffHttpBodyPreflight);
+  app.use(expressJson({type:'application/json',limit:APPEAL_BFF_MAX_JSON_BYTES+'b',inflate:false}));
+  app.use(appealBffHttpParserError);
+  app.setGlobalPrefix('v1');
+  await app.listen(0,'127.0.0.1');
+  const url=(await app.getUrl())+'/v1/admin/bff/moderation/appeals/'+id+'/decision/csrf';
+  process.env[flag]='enabled';
+  const statuses=await Promise.all(Array.from({length:30},async()=>{
+   const response=await fetch(url,{method:'POST',headers:{
+    Origin:origin,'Sec-Fetch-Site':'same-origin','Content-Type':'application/json',
+   },body:'{"invalid":',redirect:'manual'});
+   return response.status;
+  }));
+  assert.equal(statuses.filter(status=>status===400).length,20);
+  assert.equal(statuses.filter(status=>status===429).length,10);
+  assert.equal(privilegedCalls,0,'invalid or limited requests cannot reach privileged adapters');
  }finally{
   await app.close();
   if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
