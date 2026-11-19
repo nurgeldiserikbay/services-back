@@ -373,6 +373,23 @@ test('isolated Nest HTTP enforces 4096-byte parser limit on chunked request with
   assert.equal(small.status,200,'small chunked JSON may pass the bounded parser');
   assert.deepEqual(JSON.parse(small.body),{token:'test-only'});
   assert.equal(issued,1);
+  const template='{"payload":""}';
+  const exact=JSON.stringify({payload:'x'.repeat(
+   APPEAL_BFF_MAX_JSON_BYTES-Buffer.byteLength(template),
+  )});
+  assert.equal(Buffer.byteLength(exact),APPEAL_BFF_MAX_JSON_BYTES);
+  const atLimit=await chunkedPost([exact.slice(0,9),exact.slice(9)]);
+  assert.equal(atLimit.status,200,'exactly 4096 UTF-8 bytes are within the limit');
+  assert.equal(issued,2);
+  const utf8Over=exact.replace('x','😀');
+  assert.equal(Buffer.byteLength(utf8Over),APPEAL_BFF_MAX_JSON_BYTES+3);
+  assert.equal(utf8Over.length,exact.length+1,'code units are not byte size');
+  const overLimit=await chunkedPost([utf8Over.slice(0,9),utf8Over.slice(9)]);
+  assert.equal(overLimit.status,413,'UTF-8 bytes, not string length, enforce the cap');
+  assert.deepEqual(JSON.parse(overLimit.body),
+   {statusCode:413,message:'Payload Too Large'});
+  assert.equal(issued,2,'over-limit Unicode request must not invoke CSRF issuer');
+  assert.equal(mutated,0);
  }finally{
   await app.close();
   if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
