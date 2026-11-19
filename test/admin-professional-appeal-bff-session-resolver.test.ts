@@ -39,7 +39,7 @@ test('expired, revoked and malformed browser sessions never resolve privilege',a
  ];
  let index=0;
  const resolver=createAppealBffHashSessionResolver({
-  findSessionByHash:async()=>rows[index++],
+  findSessionByHash:async()=>rows[index++] as {sessionId:string;expiresAt:number;revokedAt:number|null}|null,
   resolvePrivilegedBearer:async()=>{authority++;return 'forbidden';},
  },pepper,()=>now);
  for(const row of rows)assert.equal(await resolver(cookie),null,'reject '+JSON.stringify(row));
