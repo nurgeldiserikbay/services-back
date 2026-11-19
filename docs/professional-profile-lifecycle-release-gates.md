@@ -334,3 +334,7 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 
 ## Isolated BFF HTTP spoofed forwarding-header rate limit regression (2026-11-19)
 - A real HTTP Nest test sends 21 malformed-JSON POST attempts over the same direct TCP peer while varying X-Forwarded-For, X-Real-IP and standardized Forwarded headers. The first 20 requests return parser 400, the 21st returns rate gate 429, and all 21 Redis keys are identical HMACs of the socket peer. This verifies that untrusted forwarding headers cannot split the prepared per-socket rate quota; it does **not** replace ingress/proxy IP rate limiting, trusted topology review, or staging acceptance. Production BFF remains unregistered.
+
+## Prepared BFF concurrent HTTP requests against real Redis (2026-11-19)
+- A test-only Nest HTTP server connects to the CI Redis service through independent TCP EVAL clients. Thirty concurrent POSTs with malformed JSON from the same socket peer must yield exactly twenty parser 400 responses and ten 429 rate denials, with no privileged BFF adapter invocation. This adds real end-to-end Redis/HTTP contention evidence to the prepared, unregistered middleware without enabling any production route.
+- Still open: reviewed ingress/proxy network limits, infrastructure ACL/TLS and failover, real browser session lifecycle, staging HTTP/PostgreSQL acceptance, key custody, and security signoff.
