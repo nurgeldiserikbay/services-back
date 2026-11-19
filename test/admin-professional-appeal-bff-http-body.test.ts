@@ -80,14 +80,15 @@ test('BFF body middleware fails closed on invalid declared sizes and passes unre
  const req=(extra:Record<string,string|string[]|undefined>,originalUrl=path)=>({
   method:'POST',originalUrl,headers:{'content-type':'application/json',...extra},
  });
- for(const [extra,expected] of [
+ const invalidCases:Array<[Record<string,string|string[]|undefined>,number]>=[
   [{'content-length':'999999999'},413],
   [{'content-length':'-1'},400],
   [{'content-length':'4, 5'},400],
   [{'content-length':['4','5']},400],
   [{'content-encoding':'br'},415],
   [{'content-type':'text/plain'},415],
- ] as const){
+ ];
+ for(const [extra,expected] of invalidCases){
   seen.status=undefined;
   appealBffHttpBodyPreflight(req(extra),res,()=>{next++;});
   assert.equal(seen.status,expected);
