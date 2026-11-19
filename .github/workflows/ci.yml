@@ -843,6 +843,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 60s node --import tsx --test test/admin-professional-appeal-http-postgres-journey.test.ts
       - name: Prepared appeal BFF CSRF session-bound proof regression (fail fast)
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-csrf.test.ts
+      - name: Prepared BFF session PostgreSQL hash-lookup and revoke integration (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 30s node --import tsx --test test/admin-professional-appeal-bff-pg-session-storage.test.ts
       - name: Prepared appeal BFF hash session resolver expiry/revocation tests (fail fast)
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-session-resolver.test.ts
       - name: Prepared appeal BFF opaque session issuance commit gate (fail fast)
