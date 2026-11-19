@@ -341,3 +341,6 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 
 ## Prepared BFF chunked JSON byte-limit HTTP regression (2026-11-19)
 - A test-only Nest HTTP POST with Transfer-Encoding: chunked and **no Content-Length** sends a 5 KiB JSON body. The bounded Express parser must return generic no-store 413 before any BFF CSRF issuance or mutation adapter call, while a small chunked JSON body is accepted. This verifies the streaming byte limit rather than trusting a declared Content-Length preflight. The isolated controller remains **unregistered in production**; proxy limits, real browser acceptance, and security signoff remain pending.
+
+## Prepared BFF exact-byte and UTF-8 JSON streaming boundary (2026-11-19)
+- The isolated Nest HTTP chunked-body test now checks that precisely 4096 JSON UTF-8 bytes pass the bounded parser (then receive 401 because the CSRF controller separately requires an empty object), while replacing one ASCII byte with a four-byte Unicode code point pushes the same valid JSON beyond 4096 and produces a generic no-store 413 before reaching the controller. This prevents character-count-versus-byte-count regressions without changing the production-disabled BFF route; staging, deployment/ingress and security approval gates remain open.
