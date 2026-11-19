@@ -68,3 +68,33 @@ test('authorization and storage failures fail closed and cannot manufacture a va
  },pepper,()=>now);
  await assert.rejects(badAuthority(cookie),/grant lookup failed/);
 });
+
+test('async privilege lookup must not authorize a session expired during await',async()=>{
+ const pepper=randomBytes(32),cookie=randomBytes(32).toString('base64url');
+ const sessionId=randomUUID(),start=Date.UTC(2026,10,19,8);
+ const bearer=issueAdminSessionToken(randomBytes(32)).token;
+ for(const advanced of [start+1000,start+1001]){
+  let clock=start;
+  const resolver=createAppealBffHashSessionResolver({
+   findSessionByHash:async()=>({sessionId,expiresAt:start+1000,revokedAt:null}),
+   resolvePrivilegedBearer:async()=>{
+    await Promise.resolve();clock=advanced;return bearer;
+   },
+  },pepper,()=>clock);
+  assert.equal(await resolver(cookie),null,'never return expired privilege');
+ }
+});
+
+test('async authority result is rejected when the clock moves backwards or corrupts',async()=>{
+ const pepper=randomBytes(32),cookie=randomBytes(32).toString('base64url');
+ const sessionId=randomUUID(),start=Date.UTC(2026,10,19,8);
+ const bearer=issueAdminSessionToken(randomBytes(32)).token;
+ for(const advanced of [start-1,Number.NaN]){
+  let clock=start;
+  const resolver=createAppealBffHashSessionResolver({
+   findSessionByHash:async()=>({sessionId,expiresAt:start+1000,revokedAt:null}),
+   resolvePrivilegedBearer:async()=>{clock=advanced;return bearer;},
+  },pepper,()=>clock);
+  assert.equal(await resolver(cookie),null);
+ }
+});
