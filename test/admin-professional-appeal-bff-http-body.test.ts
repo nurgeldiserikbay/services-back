@@ -154,3 +154,51 @@ test('isolated Nest HTTP enforces shared Redis gate before body parsing and BFF 
   if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
  }
 });
+
+test('isolated Nest HTTP denies stalled Redis before parsing and cannot resume on late success',async()=>{
+ const flag='SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP',previous=process.env[flag];
+ const origin='https://admin.example.kz',id=randomUUID();
+ let issued=0,mutated=0;
+ let resolveRedis:((value:number)=>void)|undefined;
+ const unresolved=new Promise<number>(resolve=>{resolveRedis=resolve;});
+ @Module({controllers:[PlatformProfessionalAppealBffController],providers:[{
+  provide:APPEAL_BFF_HTTP_BOUNDARY,
+  useValue:{
+   expectedOrigin:origin,
+   issueCsrf:async()=>{issued++;return {token:'test-only'};},
+   mutate:async()=>{mutated++;return {ok:true};},
+  },
+ }]})
+ class StalledRedisModule{}
+ const app=await NestFactory.create(StalledRedisModule,{logger:false});
+ try{
+  app.use(createAppealBffRedisNetworkRateMiddleware({eval:()=>unresolved},randomBytes(32)));
+  app.use(appealBffHttpBodyPreflight);
+  app.use(expressJson({type:'application/json',limit:APPEAL_BFF_MAX_JSON_BYTES+'b',inflate:false}));
+  app.use(appealBffHttpParserError);
+  app.setGlobalPrefix('v1');
+  await app.listen(0,'127.0.0.1');
+  const url=(await app.getUrl())+'/v1/admin/bff/moderation/appeals/'+id+'/decision/csrf';
+  process.env[flag]='enabled';
+  const start=Date.now();
+  const response=await fetch(url,{method:'POST',headers:{
+   Origin:origin,'Sec-Fetch-Site':'same-origin',
+   'Content-Type':'application/json',
+  },body:'{"malformed":',redirect:'manual'});
+  const elapsed=Date.now()-start;
+  assert.equal(response.status,503,'Redis timeout must deny before malformed JSON parser');
+  assert.deepEqual(await response.json(),{statusCode:503,message:'Service Unavailable'});
+  assert.match(response.headers.get('cache-control')??'',/no-store/);
+  assert.ok(elapsed>=2_500,'request must be held until the rate gate deadline');
+  assert.ok(elapsed<10_000,'network request must not hang indefinitely');
+  assert.equal(issued,0);
+  assert.equal(mutated,0);
+  resolveRedis?.(1);
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal(issued,0,'late Redis success must never issue a CSRF proof');
+  assert.equal(mutated,0,'late Redis success must never mutate');
+ }finally{
+  await app.close();
+  if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
+ }
+});

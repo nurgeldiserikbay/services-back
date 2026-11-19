@@ -328,3 +328,6 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 
 ## Isolated BFF Redis HTTP ordering regression (2026-11-19)
 - A real, opt-in-only isolated Nest HTTP test wires the prepared Redis network gate before body preflight, the bounded Express JSON parser, and the BFF controller. Twenty malformed JSON requests reach the parser and return 400; the twenty-first returns the network quota 429 before parsing. An injected Redis failure returns generic 503; no privileged issuance adapter is called. These tests validate **only the isolated assembly order**, not a production module registration, reverse-proxy topology, browser E2E, or security sign-off.
+
+## Isolated Nest HTTP stalled Redis deadline regression (2026-11-19)
+- A real HTTP Nest test with an unregistered BFF test module and intentionally never-settling Redis EVAL verifies a generic no-store 503 after the bounded rate gate wait, even when the request carries malformed JSON. A late EVAL success must not reach CSRF issuance or mutation adapters. This extends the prepared middleware's unit-level deadline test to the actual isolated HTTP middleware ordering; it does not establish deployed Redis client transport timeouts or production deployment readiness.
