@@ -18,8 +18,8 @@
 
 ### Architecture & infrastructure
 
-- [ ] Separate backend/frontend/admin/docs repositories — Prepared; verification pending
-- [ ] NestJS Prisma PostgreSQL foundation — Prepared; verification pending
+- [x] Separate backend/frontend/admin/docs repositories — Verified 2026-11-20: four independent repositories have distinct application/docs entrypoints; backend CI #44568227986 PASS, frontend CI #43846475339 PASS, admin CI #43854510440 PASS. Staging acceptance remains open.
+- [x] NestJS Prisma PostgreSQL foundation — Verified 2026-11-20: backend package.json defines NestJS 12, Prisma 6, PostgreSQL pg 8 and build/typecheck/migrate/smoke scripts; PostgreSQL migrations, schema smoke, build/tests verified in backend CI #44568227986. Production DB acceptance remains open.
 - [ ] PWA and mobile architecture — Prepared; verification pending
 - [ ] Redis and background processing — Pending verification
 - [ ] Dev/staging/prod configuration — Pending verification
@@ -982,10 +982,16 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 - [PR #348](https://github.com/nurgeldiserikbay/services-back/pull/348), merged as [`b12487d`](https://github.com/nurgeldiserikbay/services-back/commit/b12487d32bde32d2af7e17f8ef499ba1fbfc0726); [CI #44552561704](https://github.com/nurgeldiserikbay/services-back/actions/runs/44552561704) **PASS on PR head**. An isolated Nest real-HTTP test verifies that the rate gate precedes JSON parsing and privileged adapters (400 on malformed allowed requests, 429 on excess, 503 on Redis outage).
 - **Scope:** these are prepared, unregistered BFF boundaries and CI evidence only. Deployed ingress rate limits and proxy topology, Redis transport/ACL/TLS/failover, browser E2E, staging acceptance, full security review, and production activation remain **open**. No acceptance checkbox or 117-item denominator changes; this is not proof of post-merge main CI.
 
+### 2026-11-20 — foundational acceptance evidence reconciliation
+
+- **Separate repositories:** Verified [backend](https://github.com/nurgeldiserikbay/services-back/blob/main/package.json), [frontend](https://github.com/nurgeldiserikbay/services-front/blob/main/package.json), [admin](https://github.com/nurgeldiserikbay/services-admin/blob/main/package.json) and [docs](https://github.com/nurgeldiserikbay/services/blob/main/README.md) as distinct repositories and entrypoints. Passed [backend CI #44568227986](https://github.com/nurgeldiserikbay/services-back/actions/runs/44568227986), [frontend CI #43846475339](https://github.com/nurgeldiserikbay/services-front/actions/runs/43846475339) and [admin CI #43854510440](https://github.com/nurgeldiserikbay/services-admin/actions/runs/43854510440). This verifies repository separation, **not** cross-repository release parity, docs deployment or staging.
+- **Backend framework and database foundation:** [package.json](https://github.com/nurgeldiserikbay/services-back/blob/main/package.json) declares NestJS 12, Prisma 6, PostgreSQL pg 8 and migration/schema smoke/build/typecheck/test scripts. [Backend CI #44568227986](https://github.com/nurgeldiserikbay/services-back/actions/runs/44568227986) passed the PostgreSQL migration/schema smoke and build/test gates. Production database operations, secrets and deployment remain pending.
+- Both narrowly scoped foundation entries had remained Prepared despite sufficient acceptance evidence. Verified count moves **18/117 → 20/117**, denominator unchanged. No browser journeys, staging or production checkboxes are closed.
+
 ## Next acceptance gates
 
 1. Recorded historical workflow job coverage inspected (2026-11-18); verify current HEADs and add missing authenticated browser/admin E2E evidence before closing acceptance items.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 18 (actual top-level checked acceptance items; evidence-only review did not close any). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 20 (verified top-level acceptance items; 2026-11-20 foundation evidence reconciliation). This strict checkbox count is not the project's historical functional-readiness estimate.
