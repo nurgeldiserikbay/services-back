@@ -41,8 +41,8 @@ export function createAppealBffPgAuthorizedSessionInsert(db:Db,context:Context){
   const id=randomUUID();
   const result=await db.query<{id:string}>(`
    INSERT INTO platform_admin_appeal_browser_sessions
-     (id,staff_id,token_hash,expires_at)
-   SELECT $1::uuid,staff.id,$2::char(64),
+     (id,staff_id,admin_session_id,token_hash,expires_at)
+   SELECT $1::uuid,staff.id,auth.id,$2::char(64),
      to_timestamp($3::double precision/1000.0)
    FROM platform_admin_sessions AS auth
    JOIN platform_admin_staff AS staff ON staff.id=auth.staff_id
