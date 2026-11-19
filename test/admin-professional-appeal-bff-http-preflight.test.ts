@@ -46,14 +46,15 @@ test('isolated Nest BFF HTTP boundary denies default-off and malformed browser i
   assert.equal(response.status,401);
   assert.equal(issued,0);assert.equal(mutated,0);
   process.env[flag]='enabled';
-  for(const h of [
+  const deniedHeaders:Record<string,string>[]=[
    {Origin:'https://evil.example'},
    {'Sec-Fetch-Site':'cross-site'},
    {Cookie:'session=unknown'},
    {Cookie:cookie+'; '+cookie},
    {Authorization:'Bearer '+randomBytes(32).toString('base64url')},
    {'Content-Type':'text/plain'},
-  ]){
+  ];
+  for(const h of deniedHeaders){
    response=await post('/decision/csrf',h);
    assert.equal(response.status,401,JSON.stringify(h));
   }
