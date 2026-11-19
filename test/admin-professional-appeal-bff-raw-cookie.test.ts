@@ -36,7 +36,9 @@ test('raw Cookie header binds issuance and one-use mutation to trusted session',
   contentType:'application/json',csrfToken:issued.token};
  assert.deepEqual(await executeAppealBffMutationFromRawCookie(request,deps),{ok:true});
  await assert.rejects(executeAppealBffMutationFromRawCookie(request,deps),UnauthorizedException);
- assert.equal(executions,1);assert.equal(claims,2);assert.equal(resolves,3);
+ assert.equal(executions,1);assert.equal(claims,2);
+ // Issuance + first mutation lookup + post-claim refresh + denied replay lookup.
+ assert.equal(resolves,4);
 });
 
 test('raw Cookie ambiguity stops both flows before live session resolution',async()=>{
