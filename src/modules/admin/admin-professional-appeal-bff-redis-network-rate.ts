@@ -1,4 +1,5 @@
 import {createHmac} from 'node:crypto';
+import {isIP} from 'node:net';
 
 const ROUTE=/^\/v1\/admin\/bff\/moderation\/appeals\/[^/]+\/(?:assignment|decision)(?:\/csrf)?\/?$/;
 const WINDOW_MS=60_000;
@@ -27,6 +28,15 @@ type ResponseLike={
  status:(status:number)=>{json:(body:unknown)=>unknown};
 };
 type Next=(error?:unknown)=>void;
+/** Socket peers may be presented as IPv4 or IPv4-mapped IPv6 by Node. */
+function canonicalSocketPeer(value:unknown):string|null{
+ if(typeof value!=='string'||value.length>64)return null;
+ if(isIP(value)===4)return value;
+ if(isIP(value)!==6)return null;
+ const mapped=/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(value);
+ if(mapped&&isIP(mapped[1]!)===4)return mapped[1]!;
+ return value.toLowerCase();
+}
 function reject(response:ResponseLike,status:number):void{
  if(response.headersSent)return;
  response.setHeader('Cache-Control','private, no-store, max-age=0');
@@ -54,9 +64,9 @@ export function createAppealBffRedisNetworkRateMiddleware(
    process.env.SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP!=='enabled'){
    next();return;
   }
-  const ip=request.socket?.remoteAddress;
+  const ip=canonicalSocketPeer(request.socket?.remoteAddress);
   if(!redis||typeof redis.eval!=='function'||!Buffer.isBuffer(secret)||
-   secret.length!==32||typeof ip!=='string'||ip.length<3||ip.length>64){
+   secret.length!==32||ip===null){
    reject(response,503);return;
   }
   const key='services:appeal-bff:net-rate:v1:'+
