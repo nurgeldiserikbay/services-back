@@ -323,6 +323,7 @@ test('real Redis atomic quota applies to 30 concurrent Nest HTTP requests',async
 test('isolated Nest HTTP enforces 4096-byte parser limit on chunked request without Content-Length',async()=>{
  const flag='SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP',previous=process.env[flag];
  const origin='https://admin.example.kz',id=randomUUID();
+ const cookie='__Host-services-appeal-session='+randomBytes(32).toString('base64url');
  let issued=0,mutated=0;
  @Module({controllers:[PlatformProfessionalAppealBffController],providers:[{
   provide:APPEAL_BFF_HTTP_BOUNDARY,
@@ -347,6 +348,7 @@ test('isolated Nest HTTP enforces 4096-byte parser limit on chunked request with
    new Promise((resolve,reject)=>{
     const req=httpRequest(destination,{method:'POST',headers:{
      Origin:origin,'Sec-Fetch-Site':'same-origin','Content-Type':'application/json',
+     Cookie:cookie,
      'Transfer-Encoding':'chunked',
     }},response=>{
      let body='';
