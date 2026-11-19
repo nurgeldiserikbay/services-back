@@ -189,3 +189,26 @@ test('equivalent IPv6 encodings and mapped IPv4 hex form cannot split a quota',a
   if(old===undefined)delete process.env[flag];else process.env[flag]=old;
  }
 });
+
+test('stalled Redis claim fails closed within a deadline; late success cannot forward',async()=>{
+ const flag='SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP',old=process.env[flag];
+ process.env[flag]='enabled';
+ try{
+  let finishRedis:((count:number)=>void)|undefined;
+  const unresolved=new Promise<number>(resolve=>{finishRedis=resolve;});
+  const gate=createAppealBffRedisNetworkRateMiddleware({eval:()=>unresolved},randomBytes(32));
+  const start=Date.now();
+  const denied=await invoke(gate,'192.0.2.41');
+  assert.equal(denied.status,503);
+  assert.equal(denied.next,false);
+  assert.deepEqual(denied.body,{statusCode:503,message:'Service Unavailable'});
+  assert.ok(Date.now()-start>=2_500,'must wait for Redis deadline');
+  assert.ok(Date.now()-start<10_000,'request must eventually complete');
+  finishRedis?.(1);
+  await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal(denied.next,false,'late success must never invoke next');
+  assert.equal(denied.status,503,'late response cannot overwrite failure');
+ }finally{
+  if(old===undefined)delete process.env[flag];else process.env[flag]=old;
+ }
+});
