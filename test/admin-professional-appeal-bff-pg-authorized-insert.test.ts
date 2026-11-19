@@ -19,6 +19,8 @@ test('prepared PostgreSQL issuance binds hash-only INSERT to session MFA, staff 
   calls++;
   assert.match(sql,/INSERT INTO platform_admin_appeal_browser_sessions/);
   assert.match(sql,/auth.revoked_at IS NULL/);
+  assert.match(sql,/FOR SHARE OF auth\s+RETURNING/i,
+   'lock authorizing admin session through the INSERT statement');
   assert.match(sql,/auth.expires_at>=to_timestamp/);
   assert.match(sql,/auth.mfa_verified_at>=to_timestamp/);
   assert.match(sql,/staff.disabled_at IS NULL/);
