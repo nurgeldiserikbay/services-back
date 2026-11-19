@@ -859,6 +859,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-session-resolver.test.ts
       - name: Prepared appeal BFF opaque session issuance commit gate (fail fast)
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-session-issuance.test.ts
+      - name: Prepared appeal BFF trusted HTTPS origin preflight (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-origin.test.ts
       - name: Prepared appeal BFF authoritative session logout regression (fail fast)
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-logout.test.ts
       - name: Prepared secure appeal BFF cookie issuance policy (fail fast)

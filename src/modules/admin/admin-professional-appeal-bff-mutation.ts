@@ -1,4 +1,5 @@
 import {UnauthorizedException} from '@nestjs/common';
+import {isTrustedAppealBffOrigin} from './admin-professional-appeal-bff-origin.js';
 import {createHash} from 'node:crypto';
 import {assertAppealBffCsrf,type AppealBffMutation} from './admin-professional-appeal-bff-csrf.js';
 import {extractAdminBearerToken} from './admin-bearer-proof.js';
@@ -47,7 +48,8 @@ export async function executeAppealBffMutation<T>(
   request.sessionCookie.length<16||request.sessionCookie.length>512||
   !/^[A-Za-z0-9_-]+$/.test(request.sessionCookie)||
   !['assignment','decision'].includes(request.action)||
-  request.method!=='POST'||request.requestOrigin!==request.expectedOrigin||
+  request.method!=='POST'||!isTrustedAppealBffOrigin(request.expectedOrigin)||
+  request.requestOrigin!==request.expectedOrigin||
   request.fetchSite!=='same-origin'||
   typeof request.csrfToken!=='string')
   return deny();

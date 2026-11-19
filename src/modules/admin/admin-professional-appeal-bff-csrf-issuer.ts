@@ -1,4 +1,5 @@
 import {UnauthorizedException} from '@nestjs/common';
+import {isTrustedAppealBffOrigin} from './admin-professional-appeal-bff-origin.js';
 import {issueAppealBffCsrf,type AppealBffMutation} from './admin-professional-appeal-bff-csrf.js';
 
 type Request=Readonly<{
@@ -29,7 +30,8 @@ export async function issueAppealBffCsrfForSession(
 ):Promise<IssuedAppealBffCsrf>{
  const deny=()=>{throw new UnauthorizedException('Authentication required');};
  if(!request||!deps||typeof deps.resolveSession!=='function'||
-  request.method!=='POST'||request.requestOrigin!==request.expectedOrigin||
+  request.method!=='POST'||!isTrustedAppealBffOrigin(request.expectedOrigin)||
+  request.requestOrigin!==request.expectedOrigin||
   request.fetchSite!=='same-origin'||
   typeof request.sessionCookie!=='string'||!COOKIE.test(request.sessionCookie)||
   typeof request.appealId!=='string'||!UUID.test(request.appealId)||
