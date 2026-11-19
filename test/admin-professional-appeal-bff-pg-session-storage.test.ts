@@ -38,6 +38,13 @@ test('real PostgreSQL hash lookup, expiry and conditional revocation',{
   assert.ok(session && session.expiresAt>Date.now());
   assert.equal(await storage.findSessionByHash('bad'),null);
   assert.equal(await storage.findSessionByHash('0'.repeat(64)),null);
+  await db.query('UPDATE platform_admin_sessions SET revoked_at=now() WHERE id=$1',[aid]);
+  assert.equal(await storage.findSessionByHash(tokenHash),null,'revoked parent invalidates browser proof');
+  await db.query('UPDATE platform_admin_sessions SET revoked_at=NULL WHERE id=$1',[aid]);
+  assert.ok(await storage.findSessionByHash(tokenHash),'restored parent allows lookup in test');
+  await db.query("UPDATE platform_admin_sessions SET expires_at=now()-interval '1 second' WHERE id=$1",[aid]);
+  assert.equal(await storage.findSessionByHash(tokenHash),null,'expired parent invalidates browser proof');
+  await db.query("UPDATE platform_admin_sessions SET expires_at=now()+interval '10 minutes' WHERE id=$1",[aid]);
   assert.equal(await storage.revokeSessionByHash(tokenHash),true);
   assert.equal(await storage.revokeSessionByHash(tokenHash),false,'second revoke cannot succeed');
   assert.equal(await storage.findSessionByHash(tokenHash),null,'revoked session denied');
@@ -63,7 +70,7 @@ test('real PostgreSQL concurrent conditional revocation produces one winner',{
   )`);
   const id=randomUUID(),hash=randomBytes(32).toString('hex');
   await db.query(`INSERT INTO platform_admin_appeal_browser_sessions
-   (id,token_hash,expires_at) VALUES($1,$2,now()+interval '1 minute')`,[id,hash]);
+   (id,staff_id,admin_session_id,token_hash,expires_at) VALUES($1,$2,$3,$4,now()+interval '1 minute')`,[id,randomUUID(),randomUUID(),hash]);
   const store=createAppealBffPgSessionStorage(db);
   const values=await Promise.all(Array.from({length:8},()=>store.revokeSessionByHash(hash)));
   assert.equal(values.filter(Boolean).length,1);
