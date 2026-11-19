@@ -75,6 +75,15 @@ export async function executeAppealBffMutation<T>(
  const proofDigest=createHash('sha256').update(request.csrfToken).digest('hex');
  const claimed=await deps.claimCsrfProof(session.sessionId,proofDigest,issuedAt+600_000);
  if(claimed!==true)return deny();
+ // Redis/DB proof claiming is asynchronous. A privileged session may be
+ // revoked, replaced or lose authority while that claim is in flight.
+ // Re-read authoritative session state before entering the transaction-only
+ // executor; it MUST also check fresh DB authority inside its transaction.
+ const revalidated=await deps.resolveSession(request.sessionCookie);
+ if(!revalidated||revalidated.sessionId!==session.sessionId||
+  revalidated.adminBearer!==session.adminBearer||
+  extractAdminBearerToken('Bearer '+revalidated.adminBearer)!==revalidated.adminBearer)
+  return deny();
  // Call only a trusted server-side executor with session-bound admin proof.
  // Existing privileged DB functions remain the final authorization authority.
  return deps.execute(request.action,session.adminBearer,request.appealId,request.body);
