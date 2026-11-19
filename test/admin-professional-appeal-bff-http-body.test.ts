@@ -7,6 +7,8 @@ import {Module} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {APPEAL_BFF_HTTP_BOUNDARY,PlatformProfessionalAppealBffController} from
  '../src/modules/admin/admin-professional-appeal-bff-http.controller.js';
+import {createAppealBffRedisNetworkRateMiddleware} from
+ '../src/modules/admin/admin-professional-appeal-bff-redis-network-rate.js';
 import {appealBffHttpBodyPreflight,appealBffHttpParserError,APPEAL_BFF_MAX_JSON_BYTES} from
  '../src/modules/admin/admin-professional-appeal-bff-http-body.middleware.js';
 
@@ -100,4 +102,55 @@ test('BFF body middleware fails closed on invalid declared sizes and passes unre
  let forwarded=0;
  appealBffHttpParserError({type:'other'},req({}),res,()=>{forwarded++;});
  assert.equal(forwarded,1,'unknown errors are never rewritten as parser problems');
+});
+
+test('isolated Nest HTTP enforces shared Redis gate before body parsing and BFF adapters',async()=>{
+ const flag='SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP',previous=process.env[flag];
+ const id=randomUUID(),origin='https://admin.example.kz';
+ let issued=0,redisCalls=0;
+ @Module({controllers:[PlatformProfessionalAppealBffController],providers:[{
+  provide:APPEAL_BFF_HTTP_BOUNDARY,
+  useValue:{
+   expectedOrigin:origin,
+   issueCsrf:async()=>{issued++;return {token:'test-only'};},
+   mutate:async()=>({ok:true}),
+  },
+ }]})
+ class RateTestModule{}
+ const app=await NestFactory.create(RateTestModule,{logger:false});
+ try{
+  const redis={eval:async()=>++redisCalls};
+  app.use(createAppealBffRedisNetworkRateMiddleware(redis,randomBytes(32)));
+  app.use(appealBffHttpBodyPreflight);
+  app.use(expressJson({type:'application/json',limit:APPEAL_BFF_MAX_JSON_BYTES+'b',inflate:false}));
+  app.use(appealBffHttpParserError);
+  app.setGlobalPrefix('v1');
+  await app.listen(0,'127.0.0.1');
+  const url=(await app.getUrl())+'/v1/admin/bff/moderation/appeals/'+id+'/decision/csrf';
+  const post=()=>fetch(url,{method:'POST',headers:{
+   Origin:origin,'Sec-Fetch-Site':'same-origin',
+   'Content-Type':'application/json',
+  },body:'{"malformed":',redirect:'manual'});
+  process.env[flag]='enabled';
+  for(let i=0;i<20;i++){
+   const response=await post();
+   assert.equal(response.status,400,'parser must handle allowed malformed JSON');
+  }
+  const exhausted=await post();
+  assert.equal(exhausted.status,429,'network gate must deny before parsing');
+  assert.deepEqual(await exhausted.json(),{statusCode:429,message:'Too Many Requests'});
+  assert.equal(exhausted.headers.get('retry-after'),'60');
+  assert.match(exhausted.headers.get('cache-control')??'',/no-store/);
+  assert.equal(redisCalls,21);
+  assert.equal(issued,0,'malformed and limited requests never reach privileged adapters');
+
+  redis.eval=async()=>{throw Error('test Redis unavailable');};
+  const unavailable=await post();
+  assert.equal(unavailable.status,503,'Redis outage must deny before parsing');
+  assert.deepEqual(await unavailable.json(),{statusCode:503,message:'Service Unavailable'});
+  assert.equal(issued,0);
+ }finally{
+  await app.close();
+  if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
+ }
 });
