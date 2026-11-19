@@ -3,6 +3,10 @@ import {test} from 'node:test';
 import {createConnection} from 'node:net';
 import {randomUUID,randomBytes,createHash} from 'node:crypto';
 import {createAppealBffRedisCsrfClaim} from '../src/modules/admin/admin-professional-appeal-bff-redis-claim.js';
+import {issueAppealBffCsrfForSession} from '../src/modules/admin/admin-professional-appeal-bff-csrf-issuer.js';
+import {executeAppealBffMutation} from '../src/modules/admin/admin-professional-appeal-bff-mutation.js';
+import {issueAdminSessionToken} from '../src/modules/admin/admin-session-token.js';
+import {UnauthorizedException} from '@nestjs/common';
 
 // Real Redis protocol transport for this isolated test only. Production
 // provisioning, TLS, ACLs and client lifecycle are separate release gates.
@@ -54,4 +58,45 @@ test('real Redis claim expires and can be reclaimed after its TTL',async()=>{
  assert.equal(await claim(id,digest,Date.now()+1500),false);
  await new Promise(resolve=>setTimeout(resolve,1800));
  assert.equal(await claim(id,digest,Date.now()+1500),true);
+});
+
+test('live Redis enforces one-use issued CSRF through BFF coordinator with session revocation',async()=>{
+ const origin='https://admin.example.kz',appealId=randomUUID(),sessionId=randomUUID();
+ const cookie=randomBytes(32).toString('base64url'),csrfKey=randomBytes(32);
+ const bearer=issueAdminSessionToken(randomBytes(32)).token;
+ const now=Date.now();
+ let active=true,executions=0;
+ const resolveSession=async(key:string)=>{
+  if(!active||key!==cookie)return null;
+  return {sessionId,adminBearer:bearer};
+ };
+ const issued=await issueAppealBffCsrfForSession({
+  sessionCookie:cookie,appealId,action:'decision',method:'POST',
+  requestOrigin:origin,fetchSite:'same-origin',expectedOrigin:origin,csrfKey,now,
+ },{resolveSession});
+ assert.equal(issued.headers['Cache-Control'],'no-store');
+ assert.equal(JSON.stringify(issued).includes(bearer),false);
+ assert.equal(JSON.stringify(issued).includes(sessionId),false);
+ const request={action:'decision' as const,appealId,body:{outcome:'uphold'},
+  sessionCookie:cookie,csrfToken:issued.token,csrfKey,method:'POST',
+  requestOrigin:origin,expectedOrigin:origin,fetchSite:'same-origin',
+  contentType:'application/json',now};
+ const claimCsrfProof=createAppealBffRedisCsrfClaim({set:redisSet},()=>now);
+ const deps={resolveSession,claimCsrfProof,execute:async(action:string,proof:string,id:string)=>{
+  assert.equal(action,'decision');assert.equal(proof,bearer);assert.equal(id,appealId);
+  executions++;return {accepted:true};
+ }};
+ const outcomes=await Promise.allSettled(Array.from({length:12},()=>executeAppealBffMutation(request,deps)));
+ assert.equal(outcomes.filter(x=>x.status==='fulfilled').length,1);
+ assert.equal(outcomes.filter(x=>x.status==='rejected').length,11);
+ assert.equal(executions,1,'real Redis allows exactly one privileged execution');
+ await assert.rejects(executeAppealBffMutation(request,deps),UnauthorizedException);
+ active=false;
+ const fresh=await issueAppealBffCsrfForSession({
+  sessionCookie:cookie,appealId,action:'decision',method:'POST',
+  requestOrigin:origin,fetchSite:'same-origin',expectedOrigin:origin,csrfKey,now,
+ },{resolveSession:async()=>({sessionId})});
+ await assert.rejects(executeAppealBffMutation({...request,csrfToken:fresh.token},deps),
+  UnauthorizedException);
+ assert.equal(executions,1,'revoked session prevents fresh signed proof execution');
 });
