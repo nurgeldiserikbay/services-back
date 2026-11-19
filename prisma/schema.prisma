@@ -922,6 +922,7 @@ model PlatformAdminStaff {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
   sessions  PlatformAdminSession[]
+  appealBrowserSessions PlatformAdminAppealBrowserSession[]
   grants    PlatformAdminGrant[]
   totpFactor PlatformAdminTotpFactor?
   totpReplay PlatformAdminTotpReplay?
@@ -942,6 +943,19 @@ model PlatformAdminSession {
   staff        PlatformAdminStaff @relation(fields: [staffId], references: [id], onDelete: Restrict)
   @@index([staffId, expiresAt])
   @@map("platform_admin_sessions")
+}
+
+/** Browser BFF sessions hold only a hashed opaque proof, never admin bearer. */
+model PlatformAdminAppealBrowserSession {
+  id        String @id @default(uuid()) @db.Uuid
+  staffId   String @map("staff_id") @db.Uuid
+  tokenHash String @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  staff     PlatformAdminStaff @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  @@index([staffId, expiresAt])
+  @@map("platform_admin_appeal_browser_sessions")
 }
 
 model PlatformAdminGrant {
