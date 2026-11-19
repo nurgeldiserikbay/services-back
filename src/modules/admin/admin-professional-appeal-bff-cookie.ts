@@ -10,7 +10,7 @@ export function extractAppealBffSessionCookie(
 ):string{
  const deny=():never=>{throw new UnauthorizedException('Authentication required');};
  if(typeof rawCookieHeader!=='string'||rawCookieHeader.length>4096||
-  rawCookieHeader.length===0||cookieName!=='__Host-services-appeal-session')
+  rawCookieHeader.length===0||/[\x00-\x1f\x7f]/.test(rawCookieHeader)||cookieName!=='__Host-services-appeal-session')
   return deny();
  const parts=rawCookieHeader.split(';');
  if(parts.length>32)return deny();
