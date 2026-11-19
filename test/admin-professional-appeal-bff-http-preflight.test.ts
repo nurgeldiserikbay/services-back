@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
-import {Module} from '@nestjs/common';
+import {Module,UnauthorizedException} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {
  APPEAL_BFF_HTTP_BOUNDARY,PlatformProfessionalAppealBffController,
@@ -83,7 +83,6 @@ test('isolated Nest BFF HTTP boundary denies default-off and malformed browser i
 });
 
 test('BFF controller direct preflight rejects missing, duplicated or forged raw headers before adapters',async()=>{
- const {UnauthorizedException}=await import('@nestjs/common');
  const origin='https://admin.example.kz',id=randomUUID();
  const cookie='__Host-services-appeal-session='+randomBytes(32).toString('base64url');
  const old=process.env.SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP;
