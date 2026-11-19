@@ -843,6 +843,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 60s node --import tsx --test test/admin-professional-appeal-http-postgres-journey.test.ts
       - name: Prepared appeal BFF CSRF session-bound proof regression (fail fast)
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-csrf.test.ts
+      - name: Two-connection PostgreSQL BFF issuance versus revocation race (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 45s node --import tsx --test test/admin-professional-appeal-bff-pg-revocation-race.test.ts
       - name: Real PostgreSQL BFF session authorization matrix (fail fast)
         run: timeout --signal=TERM --kill-after=5s 35s node --import tsx --test test/admin-professional-appeal-bff-pg-authorized-matrix.test.ts
       - name: Prepared PostgreSQL BFF privileged session issuance authorization (fail fast)
