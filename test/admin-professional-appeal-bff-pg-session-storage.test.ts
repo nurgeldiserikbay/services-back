@@ -1,0 +1,65 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {randomBytes,randomUUID} from 'node:crypto';
+import {Client} from 'pg';
+import {createAppealBffPgSessionStorage} from '../src/modules/admin/admin-professional-appeal-bff-pg-session-storage.js';
+import {hashAppealBffSessionToken} from '../src/modules/admin/admin-professional-appeal-bff-session-issuance.js';
+
+// Real PostgreSQL 16 CI integration using a connection-local TEMP table only.
+// Production schema/migration is a separate gated delivery. Never touch live data.
+test('real PostgreSQL hash lookup, expiry and conditional revocation',{
+ skip:!process.env.DATABASE_URL,
+},async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ try{
+  await db.query(`
+   CREATE TEMP TABLE platform_admin_appeal_browser_sessions(
+    id uuid PRIMARY KEY, token_hash char(64) NOT NULL UNIQUE,
+    expires_at timestamptz NOT NULL, revoked_at timestamptz
+   ) ON COMMIT PRESERVE ROWS
+  `);
+  const storage=createAppealBffPgSessionStorage(db);
+  const pepper=randomBytes(32),proof=randomBytes(32).toString('base64url');
+  const tokenHash=hashAppealBffSessionToken(proof,pepper),id=randomUUID();
+  await db.query(`INSERT INTO platform_admin_appeal_browser_sessions
+   (id,token_hash,expires_at) VALUES ($1,$2,now()+interval '5 minutes')`,
+   [id,tokenHash]);
+  const session=await storage.findSessionByHash(tokenHash);
+  assert.equal(session?.sessionId,id);
+  assert.equal(session?.revokedAt,null);
+  assert.ok(session && session.expiresAt>Date.now());
+  assert.equal(await storage.findSessionByHash('bad'),null);
+  assert.equal(await storage.findSessionByHash('0'.repeat(64)),null);
+  assert.equal(await storage.revokeSessionByHash(tokenHash),true);
+  assert.equal(await storage.revokeSessionByHash(tokenHash),false,'second revoke cannot succeed');
+  assert.equal(await storage.findSessionByHash(tokenHash),null,'revoked session denied');
+  assert.equal(await storage.revokeSessionByHash('bad'),false);
+  const expired=randomBytes(32).toString('hex');
+  await db.query(`INSERT INTO platform_admin_appeal_browser_sessions
+   (id,token_hash,expires_at) VALUES ($1,$2,now()-interval '1 second')`,
+   [randomUUID(),expired]);
+  assert.equal(await storage.findSessionByHash(expired),null);
+  assert.equal(await storage.revokeSessionByHash(expired),false);
+ }finally{await db.end();}
+});
+
+test('real PostgreSQL concurrent conditional revocation produces one winner',{
+ skip:!process.env.DATABASE_URL,
+},async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ try{
+  await db.query(`CREATE TEMP TABLE platform_admin_appeal_browser_sessions(
+   id uuid PRIMARY KEY,token_hash char(64) UNIQUE NOT NULL,
+   expires_at timestamptz NOT NULL,revoked_at timestamptz
+  )`);
+  const id=randomUUID(),hash=randomBytes(32).toString('hex');
+  await db.query(`INSERT INTO platform_admin_appeal_browser_sessions
+   (id,token_hash,expires_at) VALUES($1,$2,now()+interval '1 minute')`,[id,hash]);
+  const store=createAppealBffPgSessionStorage(db);
+  const values=await Promise.all(Array.from({length:8},()=>store.revokeSessionByHash(hash)));
+  assert.equal(values.filter(Boolean).length,1);
+  assert.equal(await store.findSessionByHash(hash),null);
+ }finally{await db.end();}
+});
