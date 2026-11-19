@@ -67,7 +67,7 @@ test('parent bearer validation uses only hash and denies malformed inputs before
   [randomUUID(),'bad',pepper],
   [randomUUID(),issued.token,Buffer.alloc(0)],
  ] as const){
-  await assert.rejects(assertAppealBffPgParentBearer(fake as never,...args),
+  await assert.rejects(assertAppealBffPgParentBearer(fake as never,args[0],args[1],args[2]),
    UnauthorizedException);
  }
  assert.equal(calls,1);
