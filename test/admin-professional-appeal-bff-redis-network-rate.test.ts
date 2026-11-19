@@ -153,11 +153,11 @@ test('mapped IPv4 and plain IPv4 share one rate quota; malformed peers fail clos
   assert.equal(combined.filter(x=>x.status===429).length,5);
   assert.equal(hits.size,1,'mapped and plain addresses use same Redis key');
   for(const peer of ['not-an-ip','203.0.113.999','203.0.113.9:80','fe80::invalid']){
-   const before=hits.size;
+   const priorCount: number=hits.size;
    const denied=await invoke(limit,peer);
    assert.equal(denied.status,503,peer);
    assert.equal(denied.next,false);
-   assert.equal(hits.size,before,'invalid peer must not reach Redis');
+   assert.equal(hits.size,priorCount,'invalid peer must not reach Redis');
   }
  }finally{
   if(old===undefined)delete process.env[flag];else process.env[flag]=old;
