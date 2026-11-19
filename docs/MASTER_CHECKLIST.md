@@ -993,6 +993,12 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 - New CI-gated real PostgreSQL test: verified guest capability, atomic request creation, idempotent replay, forbidden seller rejection, authorized accept or decline, stale version rejection, outbox and notification deduplication, and no guest PII in outbox. Coverage is in `test/guest-seller-cross-module-lifecycle-db.test.ts`.
 - Rollback-isolated database integration does **not** replace full HTTP/browser auth, external provider delivery, service completion, or staging acceptance. No new acceptance checkbox is closed before the new CI gate passes.
 
+### 2026-11-20 — prepared customer-confirmed completion transaction
+
+- Added `src/modules/requests/customer-completion.transaction.ts`: registered customer-owned, version-locked `ACCEPTED → COMPLETED` PostgreSQL transition, with one confirmed service experience, actor-scoped request audit event, private-safe outbox event and one seller IN_APP notification intent. The function is a **transaction core**, not an HTTP route, and requires a trusted authenticated customer identity from its caller.
+- Added a dedicated PostgreSQL CI gate `test/customer-completion-db.test.ts` to check completion effects, replay/version conflict, foreign actor denial, invalid starting states, and fail-closed guest handling. Treat this as **prepared until PR CI succeeds**; do not mark end-to-end request lifecycle, review permissions, HTTP authorization, or staging acceptance complete.
+- Guest completion remains deliberately unsupported pending independently verified guest capability proof and business-rule signoff. No production HTTP completion endpoint is enabled by this work.
+
 ## Next acceptance gates
 
 1. Recorded historical workflow job coverage inspected (2026-11-18); verify current HEADs and add missing authenticated browser/admin E2E evidence before closing acceptance items.
