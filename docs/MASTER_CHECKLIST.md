@@ -969,6 +969,11 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 - [PR #294](https://github.com/nurgeldiserikbay/services-back/pull/294), [merge commit `c3c02bb`](https://github.com/nurgeldiserikbay/services-back/commit/c3c02bb14884ec6e92bc7284256966c86fabde14), guards ordinary moderation decision evidence inserts into appeal cases at PostgreSQL boundary; [Backend foundation CI #44307600024](https://github.com/nurgeldiserikbay/services-back/actions/runs/44307600024) **PASS** on PR head.
 - **Still open:** approved independent reviewer/adjudication contract, appeal audit semantics, browser BFF/CSRF, production policy/legal review, staging concurrency E2E, post-merge main CI. No professional lifecycle checkbox is newly verified by this evidence alone; publication and appeal activation flags stay disabled.
 
+### 2026-11-19 — appeal BFF one-use CSRF and real Redis CI evidence
+
+- [PR #314](https://github.com/nurgeldiserikbay/services-back/pull/314), [merge commit `0a0a9e1`](https://github.com/nurgeldiserikbay/services-back/commit/0a0a9e173a978f5b32b2b48494211328859b7c43), [Backend foundation CI #44461907967](https://github.com/nurgeldiserikbay/services-back/actions/runs/44461907967): **PASS** on PR head (build-and-test and dependency-audit both successful). An unregistered, default-off BFF mutation coordinator requires a server-session-bound CSRF claim before executing privileged appeal actions. Redis `SET NX PX` tests cover atomic multi-client claim on a real Redis 7.4 CI service, replay denial, token TTL and fail-closed adapter contracts.
+- This evidence validates only the prepared code and isolated CI environment; **do not close** the platform-wide `XSS CSRF CORS CSP verification`, `Admin UI functional acceptance`, or deployment acceptance checkboxes. Real browser-session and cookie issuance, secure production Redis ACL/TLS and failover behavior, route integration, deployed staging, MFA/grant journey, legal/security policy and sign-off remain open. Do not activate appeal routes.
+
 ## Next acceptance gates
 
 1. Recorded historical workflow job coverage inspected (2026-11-18); verify current HEADs and add missing authenticated browser/admin E2E evidence before closing acceptance items.
