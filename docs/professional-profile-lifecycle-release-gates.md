@@ -331,3 +331,6 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 
 ## Isolated Nest HTTP stalled Redis deadline regression (2026-11-19)
 - A real HTTP Nest test with an unregistered BFF test module and intentionally never-settling Redis EVAL verifies a generic no-store 503 after the bounded rate gate wait, even when the request carries malformed JSON. A late EVAL success must not reach CSRF issuance or mutation adapters. This extends the prepared middleware's unit-level deadline test to the actual isolated HTTP middleware ordering; it does not establish deployed Redis client transport timeouts or production deployment readiness.
+
+## Isolated BFF HTTP spoofed forwarding-header rate limit regression (2026-11-19)
+- A real HTTP Nest test sends 21 malformed-JSON POST attempts over the same direct TCP peer while varying X-Forwarded-For, X-Real-IP and standardized Forwarded headers. The first 20 requests return parser 400, the 21st returns rate gate 429, and all 21 Redis keys are identical HMACs of the socket peer. This verifies that untrusted forwarding headers cannot split the prepared per-socket rate quota; it does **not** replace ingress/proxy IP rate limiting, trusted topology review, or staging acceptance. Production BFF remains unregistered.
