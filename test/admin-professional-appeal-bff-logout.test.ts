@@ -46,7 +46,7 @@ test('logout denies unsafe requests before invoking revocation',async()=>{
   {rawCookieHeader:name+'='+cookie+'; extra="quoted"'},
   {rawCookieHeader:name+'=bad'},{rawCookieHeader:undefined},
  ]){
-  await assert.rejects(logoutAppealBffSession({...base,...patch},deps),UnauthorizedException);
+  await assert.rejects(logoutAppealBffSession({...base,...patch} as typeof base,deps),UnauthorizedException);
  }
  assert.equal(count,0);
 });
