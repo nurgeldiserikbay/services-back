@@ -4,6 +4,7 @@ import {test} from 'node:test';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {createConnection} from 'node:net';
+import {request as httpRequest} from 'node:http';
 import {Module} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {APPEAL_BFF_HTTP_BOUNDARY,PlatformProfessionalAppealBffController} from
@@ -313,6 +314,65 @@ test('real Redis atomic quota applies to 30 concurrent Nest HTTP requests',async
   assert.equal(statuses.filter(status=>status===400).length,20);
   assert.equal(statuses.filter(status=>status===429).length,10);
   assert.equal(privilegedCalls,0,'invalid or limited requests cannot reach privileged adapters');
+ }finally{
+  await app.close();
+  if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
+ }
+});
+
+test('isolated Nest HTTP enforces 4096-byte parser limit on chunked request without Content-Length',async()=>{
+ const flag='SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP',previous=process.env[flag];
+ const origin='https://admin.example.kz',id=randomUUID();
+ const cookie='__Host-services-appeal-session='+randomBytes(32).toString('base64url');
+ let issued=0,mutated=0;
+ @Module({controllers:[PlatformProfessionalAppealBffController],providers:[{
+  provide:APPEAL_BFF_HTTP_BOUNDARY,
+  useValue:{
+   expectedOrigin:origin,
+   issueCsrf:async()=>{issued++;return {token:'test-only'};},
+   mutate:async()=>{mutated++;return {ok:true};},
+  },
+ }]})
+ class ChunkedBffTestModule{}
+ const app=await NestFactory.create(ChunkedBffTestModule,{logger:false});
+ try{
+  app.use(appealBffHttpBodyPreflight);
+  app.use(expressJson({type:'application/json',limit:APPEAL_BFF_MAX_JSON_BYTES+'b',inflate:false}));
+  app.use(appealBffHttpParserError);
+  app.setGlobalPrefix('v1');
+  await app.listen(0,'127.0.0.1');
+  const destination=new URL((await app.getUrl())+
+   '/v1/admin/bff/moderation/appeals/'+id+'/decision/csrf');
+  process.env[flag]='enabled';
+  const chunkedPost=(parts:string[]):Promise<{status:number;body:string;headers:Record<string,string|string[]|undefined>}>=>
+   new Promise((resolve,reject)=>{
+    const req=httpRequest(destination,{method:'POST',headers:{
+     Origin:origin,'Sec-Fetch-Site':'same-origin','Content-Type':'application/json',
+     Cookie:cookie,
+     'Transfer-Encoding':'chunked',
+    }},response=>{
+     let body='';
+     response.setEncoding('utf8');
+     response.on('data',(part:string)=>{body+=part;});
+     response.on('end',()=>resolve({
+      status:response.statusCode??0,body,headers:response.headers,
+     }));
+     response.on('error',reject);
+    });
+    req.on('error',reject);
+    for(const part of parts)req.write(part);
+    req.end();
+   });
+  const oversized=await chunkedPost(['{"payload":"','x'.repeat(5000),'"}']);
+  assert.equal(oversized.status,413);
+  assert.deepEqual(JSON.parse(oversized.body),{statusCode:413,message:'Payload Too Large'});
+  assert.match(String(oversized.headers['cache-control']??''),/no-store/);
+  assert.equal(issued,0,'oversized chunked body cannot issue a CSRF token');
+  assert.equal(mutated,0);
+  const small=await chunkedPost(['{}']);
+  assert.equal(small.status,200,'small chunked JSON may pass the bounded parser');
+  assert.deepEqual(JSON.parse(small.body),{token:'test-only'});
+  assert.equal(issued,1);
  }finally{
   await app.close();
   if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
