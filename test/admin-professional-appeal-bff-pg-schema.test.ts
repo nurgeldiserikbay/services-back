@@ -56,6 +56,6 @@ test('migrated appeal BFF browser session table has separate hash-only schema',{
   assert.ok(indexes.rows.some(r=>r.indexname===
    'platform_admin_appeal_browser_sessions_staff_id_expires_at_idx'));
   assert.ok(indexes.rows.some(r=>r.indexname===
-   'platform_admin_appeal_browser_sessions_admin_session_id_expires_at_idx'));
+   'appeal_bff_admin_session_exp_idx'));
  }finally{await db.end();}
 });
