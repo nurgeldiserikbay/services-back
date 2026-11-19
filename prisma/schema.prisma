@@ -957,7 +957,7 @@ model PlatformAdminAppealBrowserSession {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   staff     PlatformAdminStaff @relation(fields: [staffId], references: [id], onDelete: Restrict)
   adminSession PlatformAdminSession @relation(fields: [adminSessionId], references: [id], onDelete: Restrict)
-  @@index([adminSessionId, expiresAt])
+  @@index([adminSessionId, expiresAt], map: "appeal_bff_admin_session_exp_idx")
   @@index([staffId, expiresAt])
   @@map("platform_admin_appeal_browser_sessions")
 }
