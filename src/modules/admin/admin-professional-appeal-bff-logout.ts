@@ -1,4 +1,5 @@
 import {UnauthorizedException} from '@nestjs/common';
+import {isTrustedAppealBffOrigin} from './admin-professional-appeal-bff-origin.js';
 import {extractAppealBffSessionCookie} from './admin-professional-appeal-bff-cookie.js';
 import {buildAppealBffSessionClearCookie} from './admin-professional-appeal-bff-cookie-policy.js';
 
@@ -40,9 +41,7 @@ export async function logoutAppealBffSession(
  if(!request||!deps||typeof deps.revokeSession!=='function'||
   request.method!=='POST'||request.requestOrigin!==request.expectedOrigin||
   request.fetchSite!=='same-origin')return deny();
- if(typeof request.expectedOrigin!=='string'||
-  !/^https:\/\/[a-z0-9.-]+(?::[0-9]{2,5})?$/i.test(request.expectedOrigin)||
-  request.expectedOrigin.includes('..'))return deny();
+ if(!isTrustedAppealBffOrigin(request.expectedOrigin))return deny();
  const opaqueCookie=extractAppealBffSessionCookie(request.rawCookieHeader);
  const revoked=await deps.revokeSession(opaqueCookie);
  if(revoked!==true)return deny();
