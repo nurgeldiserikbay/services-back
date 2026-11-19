@@ -37,11 +37,16 @@ test('logout denies unsafe requests before invoking revocation',async()=>{
  for(const patch of [
   {method:'GET'},{method:'DELETE'},{fetchSite:'cross-site'},{fetchSite:'same-site'},
   {requestOrigin:'https://evil.example.kz'},{requestOrigin:undefined},
+  {expectedOrigin:undefined,requestOrigin:undefined},
+  {expectedOrigin:'http://admin.example.kz',requestOrigin:'http://admin.example.kz'},
+  {expectedOrigin:'https://admin.example.kz/path',requestOrigin:'https://admin.example.kz/path'},
+  {expectedOrigin:'https://admin..example.kz',requestOrigin:'https://admin..example.kz'},
+  {expectedOrigin:'https://user@admin.example.kz',requestOrigin:'https://user@admin.example.kz'},
   {rawCookieHeader:name+'='+cookie+'; '+name+'='+cookie},
   {rawCookieHeader:name+'='+cookie+'; extra="quoted"'},
   {rawCookieHeader:name+'=bad'},{rawCookieHeader:undefined},
  ]){
-  await assert.rejects(logoutAppealBffSession({...base,...patch},deps),UnauthorizedException);
+  await assert.rejects(logoutAppealBffSession({...base,...patch} as typeof base,deps),UnauthorizedException);
  }
  assert.equal(count,0);
 });
