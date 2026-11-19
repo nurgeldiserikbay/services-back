@@ -47,6 +47,11 @@ export function createAppealBffHashSessionResolver(
   const bearer=await dependencies.resolvePrivilegedBearer(session.sessionId);
   if(typeof bearer!=='string'||
    extractAdminBearerToken('Bearer '+bearer)!==bearer)return null;
+  // Authorization may involve asynchronous DB/network work. A session that
+  // was valid before the await must not survive beyond its expiration.
+  const afterAuthority=now();
+  if(!Number.isSafeInteger(afterAuthority)||afterAuthority<current||
+   afterAuthority>=session.expiresAt)return null;
   return {sessionId:session.sessionId,adminBearer:bearer};
  };
 }
