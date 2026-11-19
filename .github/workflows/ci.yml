@@ -61,6 +61,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
       postgres:
         image: postgres:16
         env:
@@ -838,6 +847,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-mutation.test.ts
       - name: Prepared appeal BFF distributed Redis CSRF claim regression (fail fast)
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-redis-claim.test.ts
+      - name: Real Redis one-use CSRF replay integration (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 25s node --import tsx --test test/admin-professional-appeal-bff-redis-live.test.ts
       - name: Unit and integration tests (after database migrations)
         id: full_tests
         run: npm test
