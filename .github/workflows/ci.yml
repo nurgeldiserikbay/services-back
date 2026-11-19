@@ -834,6 +834,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 60s node --import tsx --test test/admin-professional-appeal-http-postgres-journey.test.ts
       - name: Prepared appeal BFF CSRF session-bound proof regression (fail fast)
         run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-csrf.test.ts
+      - name: Prepared appeal BFF live-session and CSRF coordination regression (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 20s node --import tsx --test test/admin-professional-appeal-bff-mutation.test.ts
       - name: Unit and integration tests (after database migrations)
         id: full_tests
         run: npm test
