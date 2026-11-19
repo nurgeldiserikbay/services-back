@@ -138,3 +138,28 @@ test('live Redis shares the BFF rate cap across 30 independently connected reque
   if(old===undefined)delete process.env[flag];else process.env[flag]=old;
  }
 });
+
+test('mapped IPv4 and plain IPv4 share one rate quota; malformed peers fail closed',async()=>{
+ const flag='SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP',old=process.env[flag];
+ process.env[flag]='enabled';
+ try{
+  const {redis,hits}=createFakeRedis();
+  const limit=createAppealBffRedisNetworkRateMiddleware(redis,randomBytes(32));
+  const combined=await Promise.all([
+   ...Array.from({length:12},()=>invoke(limit,'203.0.113.9')),
+   ...Array.from({length:13},()=>invoke(limit,'::ffff:203.0.113.9')),
+  ]);
+  assert.equal(combined.filter(x=>x.next).length,20);
+  assert.equal(combined.filter(x=>x.status===429).length,5);
+  assert.equal(hits.size,1,'mapped and plain addresses use same Redis key');
+  for(const peer of ['not-an-ip','203.0.113.999','203.0.113.9:80','fe80::invalid']){
+   const before=hits.size;
+   const denied=await invoke(limit,peer);
+   assert.equal(denied.status,503,peer);
+   assert.equal(denied.next,false);
+   assert.equal(hits.size,before,'invalid peer must not reach Redis');
+  }
+ }finally{
+  if(old===undefined)delete process.env[flag];else process.env[flag]=old;
+ }
+});
