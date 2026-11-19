@@ -73,21 +73,27 @@ test('two-client BFF grant revocation serializes with locked mutation transactio
   await a.query('INSERT INTO platform_admin_grants VALUES($1,$2,$3)',[grantId,staff,scope]);
   await a.query('BEGIN');
   const effectId=randomUUID();
-  const admitted=await withAppealBffPgMutationAuthority(a,browser,appeal,'assignment',async(client)=>{
+  let entered!:()=>void;
+  let releaseWork!:()=>void;
+  const enteredWork=new Promise<void>(resolve=>{entered=resolve;});
+  const release=new Promise<void>(resolve=>{releaseWork=resolve;});
+  const admitted=withAppealBffPgMutationAuthority(a,browser,appeal,'assignment',async(client)=>{
    await client.query('INSERT INTO mutation_effects VALUES($1)',[effectId]);
-   const revoke=b.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
-   await assertBlocked(pidB,pidA);
-   // Keep the revoke request pending; it can only complete after a COMMIT.
-   return revoke;
-  }).then(async(pending)=>{
-   // A callback must return without awaiting a blocked operation: guarded
-   // worker DB transactions cannot safely await their own competing writer.
-   return pending;
+   entered();
+   await release;
+   return true;
   });
-  // This path intentionally cannot complete while callback awaits revoke.
-  // The row-lock proof is covered by the first direction above; a separate
-  // nonblocking callback test below validates the mutation-wins direction.
-  await admitted;
+  await enteredWork;
+  const revoke=b.query('DELETE FROM platform_admin_grants WHERE id=$1',[grantId]);
+  await assertBlocked(pidB,pidA);
+  releaseWork();
+  assert.equal(await admitted,true);
+  assert.equal((await revoke).rowCount,1);
+  assert.equal((await a.query('SELECT count(*)::int AS count FROM mutation_effects')).rows[0]?.count,1);
+  assert.equal(await withAppealBffPgMutationAuthority(a,browser,appeal,'decision',async()=>{
+   workCalls++;return true;
+  }),null,'committed grant removal prevents next mutation');
+  assert.equal(workCalls,0);
  }finally{
   try{await a.query('ROLLBACK');}catch{}
   try{await b.query('ROLLBACK');}catch{}
