@@ -22,9 +22,19 @@ test('prepared appeal BFF binds live server session and CSRF before privileged f
   fetchSite:'same-origin',contentType:'application/json',now,
  };
  let resolves=0,executions=0;
+ const consumed=new Set<string>();
+ const claimCsrfProof=async(session:string,digest:string,expiry:number)=>{
+  assert.match(session,/^[0-9a-f-]{36}$/);
+  assert.match(digest,/^[0-9a-f]{64}$/);
+  assert.equal(expiry,now+600_000);
+  const key=session+':'+digest;
+  if(consumed.has(key))return false;
+  consumed.add(key);return true;
+ };
  let active=true;
  const session={sessionId,adminBearer:admin.token};
  const deps={
+  claimCsrfProof,
   resolveSession:async(input:string)=>{resolves++;return active&&input===cookie?session:null;},
   execute:async(action:string,bearer:string,aid:string,payload:unknown)=>{
    executions++;
@@ -35,6 +45,8 @@ test('prepared appeal BFF binds live server session and CSRF before privileged f
  };
  assert.deepEqual(await executeAppealBffMutation(base,deps),{status:'assigned'});
  assert.equal(executions,1);
+ await assert.rejects(executeAppealBffMutation(base,deps),UnauthorizedException);
+ assert.equal(executions,1,'replaying a valid signed CSRF must not execute twice');
  const deny=async(changes:Record<string,unknown>)=>{
   await assert.rejects(executeAppealBffMutation({...base,...changes},deps),UnauthorizedException);
  };
@@ -86,6 +98,7 @@ test('prepared appeal BFF binds live server session and CSRF before privileged f
 test('prepared BFF refuses insecure caller-controlled fields before session resolution',async()=>{
  let resolved=0;
  const deps={
+  claimCsrfProof:async()=>{throw Error('must not claim');},
   resolveSession:async()=>{resolved++;return null;},
   execute:async()=>{throw Error('must not execute');},
  };
@@ -107,4 +120,30 @@ test('prepared BFF refuses insecure caller-controlled fields before session reso
    UnauthorizedException);
  }
  assert.equal(resolved,0);
+});
+
+
+test('prepared BFF rejects concurrent replay and unavailable atomic claim before side effects',async()=>{
+ const admin=issueAdminSessionToken(randomBytes(32));
+ const sessionId=randomUUID(),appealId=randomUUID();
+ const origin='https://admin.example.kz',csrfKey=randomBytes(32),now=Date.UTC(2026,10,19,5,0,0);
+ const base={action:'decision' as const,appealId,body:{outcome:'uphold'},
+  sessionCookie:randomBytes(32).toString('base64url'),
+  csrfToken:issueAppealBffCsrf({sessionId,appealId,action:'decision',origin,csrfKey},now),
+  csrfKey,method:'POST',requestOrigin:origin,expectedOrigin:origin,
+  fetchSite:'same-origin',contentType:'application/json',now};
+ let count=0;
+ const seen=new Set<string>();
+ const deps={resolveSession:async()=>({sessionId,adminBearer:admin.token}),
+  claimCsrfProof:async(_session:string,digest:string)=>{
+   const first=!seen.has(digest);seen.add(digest);return first;
+  },execute:async()=>{count++;return {ok:true};}};
+ const results=await Promise.allSettled(Array.from({length:8},()=>executeAppealBffMutation(base,deps)));
+ assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+ assert.equal(results.filter(r=>r.status==='rejected').length,7);
+ assert.equal(count,1);
+ const broken={...deps,claimCsrfProof:async()=>{throw new Error('store unavailable');}};
+ await assert.rejects(executeAppealBffMutation({...base,csrfToken:issueAppealBffCsrf({
+  sessionId,appealId,action:'decision',origin,csrfKey},now)},broken));
+ assert.equal(count,1,'claim-store failure must never call privileged executor');
 });
