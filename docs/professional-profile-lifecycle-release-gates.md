@@ -338,3 +338,6 @@ No lifecycle HTTP endpoint is enabled by this document. Existing unique identity
 ## Prepared BFF concurrent HTTP requests against real Redis (2026-11-19)
 - A test-only Nest HTTP server connects to the CI Redis service through independent TCP EVAL clients. Thirty concurrent POSTs with malformed JSON from the same socket peer must yield exactly twenty parser 400 responses and ten 429 rate denials, with no privileged BFF adapter invocation. This adds real end-to-end Redis/HTTP contention evidence to the prepared, unregistered middleware without enabling any production route.
 - Still open: reviewed ingress/proxy network limits, infrastructure ACL/TLS and failover, real browser session lifecycle, staging HTTP/PostgreSQL acceptance, key custody, and security signoff.
+
+## Prepared BFF chunked JSON byte-limit HTTP regression (2026-11-19)
+- A test-only Nest HTTP POST with Transfer-Encoding: chunked and **no Content-Length** sends a 5 KiB JSON body. The bounded Express parser must return generic no-store 413 before any BFF CSRF issuance or mutation adapter call, while a small chunked JSON body is accepted. This verifies the streaming byte limit rather than trusting a declared Content-Length preflight. The isolated controller remains **unregistered in production**; proxy limits, real browser acceptance, and security signoff remain pending.
