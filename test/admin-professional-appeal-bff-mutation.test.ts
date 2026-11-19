@@ -147,3 +147,39 @@ test('prepared BFF rejects concurrent replay and unavailable atomic claim before
   sessionId,appealId,action:'decision',origin,csrfKey},now)},broken));
  assert.equal(count,1,'claim-store failure must never call privileged executor');
 });
+
+
+test('revocation or bearer rotation during asynchronous CSRF claim prevents privileged forwarding',async()=>{
+ const pepper=randomBytes(32),admin=issueAdminSessionToken(pepper);
+ const other=issueAdminSessionToken(pepper);
+ const sessionId=randomUUID(),appealId=randomUUID();
+ const origin='https://admin.example.kz',csrfKey=randomBytes(32),now=Date.UTC(2026,10,19,11,0);
+ const cookie=randomBytes(32).toString('base64url');
+ const csrf=issueAppealBffCsrf({sessionId,appealId,action:'decision',origin,csrfKey},now);
+ const base={action:'decision' as const,appealId,body:{outcome:'UPHOLD_REJECTION'},
+  sessionCookie:cookie,csrfToken:csrf,csrfKey,method:'POST',
+  requestOrigin:origin,expectedOrigin:origin,fetchSite:'same-origin',
+  contentType:'application/json',now};
+ for(const change of ['revoked','rotated-session','rotated-bearer'] as const){
+  let calls=0,claims=0,executions=0,active=true;
+  let currentId=sessionId,currentBearer=admin.token;
+  const deps={
+   resolveSession:async(value:string)=>{
+    calls++;
+    return value===cookie&&active?{sessionId:currentId,adminBearer:currentBearer}:null;
+   },
+   claimCsrfProof:async()=>{
+    claims++;
+    if(change==='revoked')active=false;
+    if(change==='rotated-session')currentId=randomUUID();
+    if(change==='rotated-bearer')currentBearer=other.token;
+    return true;
+   },
+   execute:async()=>{executions++;return {ok:true};},
+  };
+  await assert.rejects(executeAppealBffMutation(base,deps),UnauthorizedException,change);
+  assert.equal(calls,2,'must resolve again after asynchronous claim');
+  assert.equal(claims,1);
+  assert.equal(executions,0,'stale session must not reach privileged executor');
+ }
+});
