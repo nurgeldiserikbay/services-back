@@ -202,3 +202,51 @@ test('isolated Nest HTTP denies stalled Redis before parsing and cannot resume o
   if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
  }
 });
+
+test('isolated Nest BFF network quota ignores spoofed forwarding headers',async()=>{
+ const flag='SERVICES_ENABLE_PLATFORM_APPEAL_BFF_HTTP',previous=process.env[flag];
+ const origin='https://admin.example.kz',id=randomUUID();
+ let issued=0;
+ const usedKeys:string[]=[];
+ @Module({controllers:[PlatformProfessionalAppealBffController],providers:[{
+  provide:APPEAL_BFF_HTTP_BOUNDARY,
+  useValue:{
+   expectedOrigin:origin,
+   issueCsrf:async()=>{issued++;return {token:'test-only'};},
+   mutate:async()=>({ok:true}),
+  },
+ }]})
+ class ForwardingHeaderModule{}
+ const app=await NestFactory.create(ForwardingHeaderModule,{logger:false});
+ try{
+  const redis={eval:async(_script:string,options:{keys:string[];arguments:string[]})=>{
+   usedKeys.push(options.keys[0]!);
+   return usedKeys.length;
+  }};
+  app.use(createAppealBffRedisNetworkRateMiddleware(redis,randomBytes(32)));
+  app.use(appealBffHttpBodyPreflight);
+  app.use(expressJson({type:'application/json',limit:APPEAL_BFF_MAX_JSON_BYTES+'b',inflate:false}));
+  app.use(appealBffHttpParserError);
+  app.setGlobalPrefix('v1');
+  await app.listen(0,'127.0.0.1');
+  const url=(await app.getUrl())+'/v1/admin/bff/moderation/appeals/'+id+'/decision/csrf';
+  process.env[flag]='enabled';
+  for(let i=0;i<21;i++){
+   const resp=await fetch(url,{method:'POST',headers:{
+    Origin:origin,'Sec-Fetch-Site':'same-origin',
+    'Content-Type':'application/json',
+    'X-Forwarded-For':'198.51.100.'+(i+1),
+    'X-Real-IP':'203.0.113.'+(i+1),
+    'Forwarded':'for=192.0.2.'+(i+1),
+   },body:'{"broken":',redirect:'manual'});
+   assert.equal(resp.status,i===20?429:400);
+  }
+  assert.equal(usedKeys.length,21);
+  assert.equal(new Set(usedKeys).size,1,'all spoofed headers must share direct TCP peer quota');
+  assert.match(usedKeys[0]!,/^services:appeal-bff:net-rate:v1:[a-f0-9]{64}$/);
+  assert.equal(issued,0);
+ }finally{
+  await app.close();
+  if(previous===undefined)delete process.env[flag];else process.env[flag]=previous;
+ }
+});
