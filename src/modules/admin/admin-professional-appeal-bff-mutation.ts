@@ -1,4 +1,5 @@
 import {UnauthorizedException} from '@nestjs/common';
+import {createHash} from 'node:crypto';
 import {assertAppealBffCsrf,type AppealBffMutation} from './admin-professional-appeal-bff-csrf.js';
 import {extractAdminBearerToken} from './admin-bearer-proof.js';
 
@@ -22,6 +23,10 @@ type Dependencies<T>={
  resolveSession:(cookie:string)=>Promise<VerifiedAppealBffSession|null>;
  /** Server-side operation; must recheck admin MFA, scoped grant and assignment. */
  execute:(action:AppealBffMutation,bearer:string,appealId:string,body:unknown)=>Promise<T>;
+ /** Atomically claim the proof once (e.g. unique-key INSERT in shared Redis/DB).
+  * Must fail closed if unavailable; use expiresAt solely for bounded cleanup.
+  * Return true only for the first claimant across all BFF workers. */
+ claimCsrfProof:(sessionId:string,proofDigest:string,expiresAt:number)=>Promise<boolean>;
 };
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -36,7 +41,8 @@ export async function executeAppealBffMutation<T>(
 ):Promise<T>{
  const deny=()=>{throw new UnauthorizedException('Authentication required');};
  if(!request||!deps||typeof deps.resolveSession!=='function'||
-  typeof deps.execute!=='function'||typeof request.appealId!=='string'||
+  typeof deps.execute!=='function'||typeof deps.claimCsrfProof!=='function'||
+  typeof request.appealId!=='string'||
   !UUID.test(request.appealId)||typeof request.sessionCookie!=='string'||
   request.sessionCookie.length<16||request.sessionCookie.length>512||
   !/^[A-Za-z0-9_-]+$/.test(request.sessionCookie)||
@@ -59,6 +65,14 @@ export async function executeAppealBffMutation<T>(
   contentType:request.contentType,csrfToken:request.csrfToken,
   cookieAuthenticated:true,now:request.now,
  });
+ // This is a one-use mutation proof: a cryptographic signature by itself does
+ // not prevent an intercepted or repeated request from executing twice.
+ // Claim AFTER authentication and signature validation but BEFORE side effects.
+ // Caller must implement an atomic shared-store claim, not a process-local Set.
+ const issuedAt=Number(request.csrfToken.split('.')[1]);
+ const proofDigest=createHash('sha256').update(request.csrfToken).digest('hex');
+ const claimed=await deps.claimCsrfProof(session.sessionId,proofDigest,issuedAt+600_000);
+ if(claimed!==true)return deny();
  // Call only a trusted server-side executor with session-bound admin proof.
  // Existing privileged DB functions remain the final authorization authority.
  return deps.execute(request.action,session.adminBearer,request.appealId,request.body);
