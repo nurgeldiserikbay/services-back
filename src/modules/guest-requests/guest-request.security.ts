@@ -91,12 +91,12 @@ export function canVerifyOtp(
 }
 
 /** Capabilities are opaque, randomly generated, purpose-scoped and hash-stored. */
-export function issueGuestCapability(purpose: 'CREATE_REQUEST' | 'READ_CANCEL' | 'MANAGE_SCHEDULE', pepper: Buffer) {
+export function issueGuestCapability(purpose: 'CREATE_REQUEST' | 'READ_CANCEL' | 'COMPLETE_REQUEST' | 'MANAGE_SCHEDULE', pepper: Buffer) {
   const token = randomBytes(32).toString('base64url');
   return {token, tokenHash: hashGuestCapability(purpose, token, pepper)};
 }
 export function hashGuestCapability(
-  purpose: 'CREATE_REQUEST' | 'READ_CANCEL' | 'MANAGE_SCHEDULE',
+  purpose: 'CREATE_REQUEST' | 'READ_CANCEL' | 'COMPLETE_REQUEST' | 'MANAGE_SCHEDULE',
   token: string,
   pepper: Buffer,
 ): string {
