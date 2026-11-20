@@ -3,7 +3,7 @@ name: Generate and commit verified backend lockfile
 on:
   workflow_dispatch:
   push:
-    branches: [main, feat/customer-completion-authenticated-http-20261120]
+    branches: [main]
     paths:
       - 'package.json'
       - '.npmrc'
@@ -18,13 +18,13 @@ concurrency:
 
 jobs:
   lockfile:
-    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/customer-completion-authenticated-http-20261120') && github.repository == 'nurgeldiserikbay/services-back'
+    if: github.ref == 'refs/heads/main' && github.repository == 'nurgeldiserikbay/services-back'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -42,4 +42,4 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'chore(back): commit verified npm dependency lockfile'
-          git push origin HEAD:${{ github.ref_name }}
+          git push origin HEAD:main
