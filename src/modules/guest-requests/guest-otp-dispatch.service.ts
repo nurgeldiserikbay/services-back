@@ -77,4 +77,26 @@ export class GuestOtpDispatchService {
     }
     return {challengeId:challenge.challengeId,expiresInSeconds:challenge.expiresInSeconds};
   }
+  async dispatchCompleteRequest(
+    requestId:unknown,readCapability:unknown,locale:'kk'|'ru',networkDigest:string,
+  ):Promise<{challengeId:string;expiresInSeconds:number}|null>{
+    if(locale!=='kk'&&locale!=='ru')return null;
+    const challenge=await this.issuance.issueCompleteRequest(requestId,readCapability,networkDigest);
+    if(!challenge)return null;
+    try{
+      const receipt=await this.delivery.deliverCommittedChallenge({
+        channel:challenge.channel,contact:challenge.contact,code:challenge.code,
+        locale,purpose:'COMPLETE_REQUEST',expiresInSeconds:challenge.expiresInSeconds,
+      });
+      if(!receipt.accepted)throw new ServiceUnavailableException('OTP temporarily unavailable');
+    }catch{
+      try{
+        await this.db.query(`UPDATE guest_challenges SET consumed_at=now()
+          WHERE id=$1::uuid AND purpose='COMPLETE_REQUEST' AND consumed_at IS NULL`,
+        [challenge.challengeId]);
+      }catch{/* Expiry and attempt limits still apply if revocation is unavailable. */}
+      throw new ServiceUnavailableException('OTP temporarily unavailable');
+    }
+    return {challengeId:challenge.challengeId,expiresInSeconds:challenge.expiresInSeconds};
+  }
 }
