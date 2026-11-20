@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-20 — reference trusted ingress guest OTP proof signer (PR-head CI pending)
+
+- Branch `feat/trusted-otp-ingress-proof-reference-20261120`: a **separately intended edge-only reference** (`src/platform/ingress/guest-otp-network-proof.edge.ts`) derives a keyed nonreversible digest from a strictly parsed socket/client IP and signs the digest + timestamp using the existing 30-second Nest verifier wire format. Unit tests cover valid round trips, tampering, stale proof, mismatched keys, spoofed/header-like address strings and normalized IPv6 representation. The signer is deliberately not imported by runtime controllers or frontend code.
+- `docs/guest-otp-trusted-ingress-reference.md` records unresolved real deployment acceptance: trusted proxy-hop parsing, inbound header stripping, direct Nest network isolation, key custody/rotation, IPv6 quota grouping, approved provider, Kazakhstan residency, staging replay/abuse checks, and owner approval. **The signer is not deployed.** This does not authorize live OTP HTTP and does not close a checklist item. PR-head CI and merge pending; strict count remains 21/117.
+
+
 ### 2026-11-20 — OTP production secret-domain separation startup preflight (pending PR CI)
 
 - Branch `fix/otp-production-secret-separation-20261120`: the normal Nest startup now fails **before opening a listener** when any of CREATE_REQUEST, MANAGE_SCHEDULE or COMPLETE_REQUEST OTP HTTP flags are enabled without three canonical 256-bit secrets: `GUEST_NETWORK_ATTESTATION_KEY`, `GUEST_REQUEST_HMAC_KEY`, and `GUEST_CONTACT_ENCRYPTION_KEY`. All three values must be pairwise distinct. Invalid/missing challenge/contact keys and reused keys trigger sanitized errors before provider resolution. Default-off behavior is unchanged.
