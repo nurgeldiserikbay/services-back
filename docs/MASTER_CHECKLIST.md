@@ -9,7 +9,13 @@
 - `[x]` = verified complete: attach commit/PR **and** passing relevant CI or reproducible acceptance evidence.
 - `[ ]` = not yet verified. `Prepared` means work was implemented/reported but has not met the verification gate; `Pending` means no completion evidence is established.
 - Each change must update this file in the **same PR/commit** as the task or immediately after evidence is available.
-- Record evidence under `## Evidence log`, including repository, SHA, CI URL, date and result. Never mark green based on empty GitHub commit-status responses.
+- Record evidence under `## Evidence log
+
+### 2026-11-20 — guest completion HTTP denial-matrix regression (PR pending)
+- Backend branch `test/guest-completion-http-denial-matrix-20261120`: extended isolated **real Nest HTTP** security tests to verify exact `enabled` feature flag, malformed/untrusted network attestations, invalid OTP verification body and rejected If-Match boundaries without invoking underlying services.
+- **Not accepted yet**: PR-head CI and merge pending. No production activation, no change to acceptance checkboxes; ingress header stripping, real OTP provider, staging and security sign-off remain mandatory.
+
+`, including repository, SHA, CI URL, date and result. Never mark green based on empty GitHub commit-status responses.
 - Do not compute a single readiness percentage from unverified checkboxes. Once verified, calculate `verified completed / total acceptance items * 100` (equal weights unless a separately approved weighted scheme is committed).
 - Any regression reopens the corresponding checkbox; changes in scope require updating the denominator.
 - Release gate: all mandatory acceptance items verified, all main CI green, E2E passing, security review and staging sign-off.
