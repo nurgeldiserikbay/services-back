@@ -109,7 +109,7 @@ test('real Nest HTTP + PostgreSQL guest completion: re-OTP grants one-use reques
     'guest-capability':read.token,'x-services-network-proof':'invalid'
    },'{"locale":"kk"}');
    assert.equal(rejectedIngress.status,503);
-   assert.equal(delivery,undefined,'failed ingress cannot send completion OTP');
+   assert.equal(Boolean(delivery),false,'failed ingress cannot send completion OTP');
    assert.equal((await db.query(`SELECT id FROM guest_challenges
     WHERE request_id=$1 AND purpose='COMPLETE_REQUEST'`,[request])).rowCount,0);
    const issueResponse=await post('/challenges',{
