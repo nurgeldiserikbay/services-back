@@ -25,7 +25,7 @@ import {contactDigest,encryptGuestContact,hashGuestCapability,
  issueGuestCapability} from
  '../src/modules/guest-requests/guest-request.security.js';
 
-test('guest re-OTP: READ_CANCEL starts but cannot grant completion; correct delivered code grants one-use request proof',async()=>{
+test('real Nest HTTP + PostgreSQL guest completion: re-OTP grants one-use request-bound write proof',async()=>{
  if(!process.env.DATABASE_URL)throw Error('DATABASE_URL required');
  const db=new Client({connectionString:process.env.DATABASE_URL});
  await db.connect();await db.query('BEGIN');
