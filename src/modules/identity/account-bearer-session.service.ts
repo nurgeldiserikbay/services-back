@@ -10,6 +10,7 @@ import {resolveActiveUserSession} from './session-proof.js';
 import {readAccountMe,type AccountMe} from './account-me.js';
 import {confirmCustomerRequestCompletion,CustomerCompletionRejected,type CustomerCompletionResult} from '../requests/customer-completion.transaction.js';
 import {ConflictException,NotFoundException} from '@nestjs/common';
+import {listCustomerRequests,type CustomerRequestPage} from '../requests/customer-request-inventory.repository.js';
 import {publishOwnProfessionalProfile,type PublishReceipt} from './publish-professional-profile.js';
 import {requestOwnProfileAppeal,type AppealReceipt} from './request-professional-profile-appeal.js';
 import {findOwnAppealableProfileRejection,type AppealableProfileDecision} from './appealable-professional-profile-rejection.js';
@@ -29,6 +30,15 @@ export class AccountBearerSessionService{
 
   private getPepper():Buffer{
     return requireSecret(process.env.ACCOUNT_SESSION_HMAC_KEY);
+  }
+
+  async ownRequests(token:string,cursor:unknown):Promise<CustomerRequestPage>{
+    const pepper=this.getPepper();
+    return this.db.transaction(async client=>{
+      const actor=await readAccountMe(client,token,pepper);
+      if(!actor)throw new UnauthorizedException('Authentication required');
+      return listCustomerRequests(client,actor.person_id,cursor);
+    });
   }
 
   async completeOwnRequest(token:string,requestId:string,expectedVersion:number):Promise<CustomerCompletionResult>{
