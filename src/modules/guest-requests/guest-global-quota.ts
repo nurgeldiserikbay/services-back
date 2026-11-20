@@ -43,7 +43,7 @@ export async function checkGlobalSendQuota(
       )::text AS hour_count,
       COUNT(*)::text AS day_count
     FROM guest_challenges
-    WHERE purpose IN ('CREATE_REQUEST','MANAGE_SCHEDULE')
+    WHERE purpose IN ('CREATE_REQUEST','MANAGE_SCHEDULE','COMPLETE_REQUEST')
       AND created_at > $1::timestamptz - interval '24 hours'
   `,[now]);
   const row=result.rows[0];
