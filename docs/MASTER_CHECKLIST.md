@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-20 — edge-only OTP issuance header allowlist (pending CI)
+
+- Branch `feat/otp-edge-stripping-issuance-headers-20261120`: reference edge/BFF helper creates **fresh** JSON request headers for OTP challenge issuance, never forwarding untrusted client `Authorization`, `Cookie`, `Forwarded`, `X-Forwarded-For`, `X-Real-IP`, forged internal proof, content length or client capability. Its only output fields are JSON content-type, newly HMAC-signed network proof and, for MANAGE_SCHEDULE or COMPLETE_REQUEST, an independently supplied server-verified READ_CANCEL capability. CREATE_REQUEST forbids a capability. Unit tests compare hostile and empty incoming headers and validate real Nest backend proof compatibility.
+- **Not deployed:** trusted proxy IP resolution, BFF identity and READ_CANCEL binding, route/body policy, real ingress header stripping, backend network isolation, provider, Kazakhstan data residency, key rotation and staging acceptance remain OPEN. PR-head CI/merge pending. Do not mark acceptance checkboxes or change 21/117.
+
+
 ### 2026-11-20 — reference trusted ingress guest OTP proof signer (PR-head CI pending)
 
 - Branch `feat/trusted-otp-ingress-proof-reference-20261120`: a **separately intended edge-only reference** (`src/platform/ingress/guest-otp-network-proof.edge.ts`) derives a keyed nonreversible digest from a strictly parsed socket/client IP and signs the digest + timestamp using the existing 30-second Nest verifier wire format. Unit tests cover valid round trips, tampering, stale proof, mismatched keys, spoofed/header-like address strings and normalized IPv6 representation. The signer is deliberately not imported by runtime controllers or frontend code.

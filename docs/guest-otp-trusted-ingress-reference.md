@@ -28,6 +28,31 @@ This document defines the separation required before staging acceptance.
    Failed OTP delivery still consumes quotas; production provider is disabled
    until separately reviewed.
 
+## Issuance header allowlist reference (not deployed)
+
+`src/platform/ingress/guest-otp-issuance-headers.edge.ts` demonstrates the
+**server-side** allowlist for OTP challenge issuance calls. It creates a new
+`Headers` object containing exactly `content-type: application/json`,
+a freshly derived `x-services-network-proof`, and — only for scoped
+MANAGE_SCHEDULE or COMPLETE_REQUEST issuance — an independently authenticated
+`guest-capability` received from trusted BFF context. CREATE_REQUEST
+must not receive a read capability.
+
+The implementation copies **zero** browser-supplied headers: no arbitrary
+`Authorization`, `Cookie`, `Forwarded`, `X-Forwarded-For`,
+`X-Real-IP`, `Host`, `Content-Length`, `Guest-Completion-Capability`
+or client-provided `X-Services-Network-Proof`. Unit tests prove the
+output is identical with hostile or empty inbound headers and that the
+actual backend verifier accepts only the newly signed proof.
+
+**Trust prerequisites remain:** callers must authenticate the BFF, obtain
+scoped READ_CANCEL only from a verified sealed server-side session, resolve
+client IP using an audited deployment-specific trusted proxy policy, apply
+this allowlist at the real edge, restrict backend network access, and preserve
+the actual JSON body and its size limit independently. This code neither
+installs a proxy nor authenticates a session; a browser must never call it
+or see the signing keys. The production acceptance list below stays OPEN.
+
 ## Deployment acceptance (all pending)
 
 - [ ] Secret-store custody and rotation for the **edge-only** identity key;
