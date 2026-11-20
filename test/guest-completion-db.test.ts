@@ -122,7 +122,7 @@ test('cross-request, mismatched contact, wrong hash, expiration and stale versio
    reject('not_found'));
   await assert.rejects(confirmGuestRequestCompletion(db,f.id,f.token,2,f.pepper),
    reject('conflict'));
-  await db.query('UPDATE guest_capabilities SET expires_at=now()-interval \'1 second\' WHERE id=$1',
+  await db.query('UPDATE guest_capabilities SET created_at=now()-interval \'2 minutes\', expires_at=now()-interval \'1 minute\' WHERE id=$1',
    [f.capability]);
   await assert.rejects(confirmGuestRequestCompletion(db,f.id,f.token,1,f.pepper),
    reject('not_found'));
