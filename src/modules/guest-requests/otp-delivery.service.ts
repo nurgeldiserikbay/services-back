@@ -12,7 +12,7 @@ export type VerifiedOtpIssuance = Readonly<{
   channel:ContactChannel;
   contact:string;
   locale:'kk'|'ru';
-  purpose?:'CREATE_REQUEST'|'MANAGE_SCHEDULE';
+  purpose?:'CREATE_REQUEST'|'MANAGE_SCHEDULE'|'COMPLETE_REQUEST';
   expiresInSeconds:number;
 }>;
 

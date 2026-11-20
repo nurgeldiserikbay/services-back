@@ -5,7 +5,7 @@
  * quota approval and a committed challenge.
  */
 export type OtpChannel = 'sms'|'email';
-export type OtpPurpose = 'CREATE_REQUEST'|'MANAGE_SCHEDULE';
+export type OtpPurpose = 'CREATE_REQUEST'|'MANAGE_SCHEDULE'|'COMPLETE_REQUEST';
 export type OtpDeliveryMessage = Readonly<{
   channel:OtpChannel;
   destination:string;
@@ -35,7 +35,7 @@ export class DisabledOtpDelivery implements OtpDeliveryPort {
 }
 
 export function validateOtpDeliveryMessage(value:OtpDeliveryMessage):OtpDeliveryMessage {
-  if(!['CREATE_REQUEST','MANAGE_SCHEDULE'].includes(value.purpose) ||
+  if(!['CREATE_REQUEST','MANAGE_SCHEDULE','COMPLETE_REQUEST'].includes(value.purpose) ||
      !['kk','ru'].includes(value.locale) ||
      !Number.isSafeInteger(value.expiresInSeconds) ||
      value.expiresInSeconds<60 || value.expiresInSeconds>900 ||

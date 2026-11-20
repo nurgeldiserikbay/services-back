@@ -29,6 +29,7 @@ enum GuestChallengePurpose {
   CREATE_REQUEST
   RECOVER_REQUEST
   MANAGE_SCHEDULE
+  COMPLETE_REQUEST
 }
 enum ConsentKind {
   TERMS
