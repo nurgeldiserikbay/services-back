@@ -68,10 +68,25 @@ test('real Nest guest completion HTTP stays disabled, binds ingress proof and us
    {'guest-completion-capability':write,'If-Match':'"2"'},'{}');
   assert.equal(offWrite.status,404);
   assert.equal(completionCalls,0);
+  // No truthy alias may unintentionally activate the protected transport.
+  for(const flag of ['true','1','ENABLED',' enabled ','yes']){
+   process.env.SERVICES_ENABLE_GUEST_COMPLETION_HTTP=flag;
+   const denied=await send('/challenges',
+    {'guest-capability':read,'x-services-network-proof':proof},'{"locale":"kk"}');
+   assert.equal(denied.status,404,'unexpected activation for '+flag);
+  }
+  assert.equal(dispatchCalls,0);
   process.env.SERVICES_ENABLE_GUEST_COMPLETION_HTTP='enabled';
 
   const noIngress=await send('/challenges',{'guest-capability':read},'{"locale":"kk"}');
   assert.equal(noIngress.status,503);assert.equal(dispatchCalls,0);
+  // A bad or attacker-supplied network proof must fail before issuing an OTP.
+  for(const header of ['', 'invalid',proof+'0']){
+   const denied=await send('/challenges',
+    {'guest-capability':read,'x-services-network-proof':header},'{"locale":"kk"}');
+   assert.equal(denied.status,503);
+  }
+  assert.equal(dispatchCalls,0);
   const badInput=await send('/challenges',
    {'guest-capability':read,'x-services-network-proof':proof},
    '{"locale":"kk","contact":"forged@example.test"}');
@@ -92,6 +107,16 @@ test('real Nest guest completion HTTP stays disabled, binds ingress proof and us
   assert.equal(typeof verifiedBody.expires_at,'string');
   assert.match(verified.headers.get('cache-control')??'',/no-store/);
   assert.equal(verifyCalls,1);
+  // Reject malformed codes and forged challenge IDs before verification.
+  for(const [challengeId,body] of [
+   [challenge,'{"code":123456}'],
+   [challenge,'{"code":"123456","actor":"guest"}'],
+   [randomUUID(),'{"code":"12"}'],
+  ]){
+   const denied=await send('/challenges/'+challengeId+'/verify',{},body);
+   assert.equal(denied.status,401);
+  }
+  assert.equal(verifyCalls,1);
 
   const missingWrite=await send('/confirm',{'If-Match':'"2"'},'{}');
   assert.equal(missingWrite.status,404);
@@ -101,6 +126,13 @@ test('real Nest guest completion HTTP stays disabled, binds ingress proof and us
   const forgedBody=await send('/confirm',
    {'guest-completion-capability':write,'If-Match':'"2"'},'{"actor":"guest"}');
   assert.equal(forgedBody.status,409);assert.equal(completionCalls,0);
+  // Strong ETags only, with bounded positive DB-safe version numbers.
+  for(const version of ['2','"0"','"2147483647"','"9999999999"','"2", "3"']){
+   const denied=await send('/confirm',
+    {'guest-completion-capability':write,'If-Match':version},'{}');
+   assert.equal(denied.status,409,'unsafe If-Match '+version);
+  }
+  assert.equal(completionCalls,0);
   const completed=await send('/confirm',
    {'guest-completion-capability':write,'If-Match':'"2"'},'{}');
   assert.equal(completed.status,200);
