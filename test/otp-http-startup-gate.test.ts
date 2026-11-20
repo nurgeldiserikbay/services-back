@@ -53,13 +53,11 @@ test('startup provider check rejects unresolvable or misleading delivery provide
 });
 
 test('main startup applies adapter gate before binding network listener',()=>{
- const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8');
+ const source=readFileSync('src/main.ts','utf8');
  const guard=source.indexOf('assertGuestOtpHttpStartupReady(process.env');
  const listen=source.indexOf('await app.listen(port, host)');
  assert.ok(guard>=0&&listen>guard);
  assert.match(source,/app\.get\(OtpDeliveryService,\{strict:false\}\)/);
- const module=readFileSync(new URL(
-  '../src/modules/guest-requests/guest-verification.module.ts',
-  import.meta.url),'utf8');
+ const module=readFileSync('src/modules/guest-requests/guest-verification.module.ts','utf8');
  assert.match(module,/new OtpDeliveryService\(\)/);
 });
