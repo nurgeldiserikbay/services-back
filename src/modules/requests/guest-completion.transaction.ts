@@ -14,8 +14,9 @@ type RequestRow={
 type ProofRow={id:string;guest_contact_id:string;request_id:string|null};
 /**
  * Prepared, caller-transactional, guest-specific completion authority.
- * No route issues or accepts this proof yet. A separate independently verified
- * recovery/OTP step MUST mint request-bound COMPLETE_REQUEST capabilities.
+ * The default-off internal BFF HTTP route accepts this proof only after a
+ * separate independently verified OTP step mints a request-bound
+ * COMPLETE_REQUEST capability. It must never accept READ_CANCEL as write authority.
  * READ_CANCEL, CREATE_REQUEST and MANAGE_SCHEDULE tokens cannot authorize it.
  */
 export async function confirmGuestRequestCompletion(

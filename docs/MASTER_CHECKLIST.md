@@ -11,6 +11,12 @@
 - Each change must update this file in the **same PR/commit** as the task or immediately after evidence is available.
 - Record evidence under `## Evidence log
 
+### 2026-11-20 — completion HTTP default-off all-route and invalid UUID guards (verification pending)
+- Backend branch `test/guest-completion-http-off-all-routes-20261120`: real isolated Nest HTTP regression tests deny OTP verification as well as challenge and confirm when disabled, and deny malformed request UUIDs on all three routes before invoking services.
+- Updated stale transaction doc comment to describe prepared, **disabled** BFF-only boundary. CI/merge and staging sign-off pending; no acceptance checkbox or readiness-percent increase.
+
+
+
 ### 2026-11-20 — guest completion HTTP denial-matrix regression (PR pending)
 - Backend branch `test/guest-completion-http-denial-matrix-20261120`: extended isolated **real Nest HTTP** security tests to verify exact `enabled` feature flag, malformed/untrusted network attestations, invalid OTP verification body and rejected If-Match boundaries without invoking underlying services.
 - **Not accepted yet**: PR-head CI and merge pending. No production activation, no change to acceptance checkboxes; ingress header stripping, real OTP provider, staging and security sign-off remain mandatory.

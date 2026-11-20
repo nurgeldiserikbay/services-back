@@ -68,6 +68,10 @@ test('real Nest guest completion HTTP stays disabled, binds ingress proof and us
    {'guest-completion-capability':write,'If-Match':'"2"'},'{}');
   assert.equal(offWrite.status,404);
   assert.equal(completionCalls,0);
+  const offVerify=await send('/challenges/'+challenge+'/verify',{},
+   '{"code":"123456"}');
+  assert.equal(offVerify.status,404);
+  assert.equal(verifyCalls,0);
   // No truthy alias may unintentionally activate the protected transport.
   for(const flag of ['true','1','ENABLED',' enabled ','yes']){
    process.env.SERVICES_ENABLE_GUEST_COMPLETION_HTTP=flag;
@@ -76,7 +80,27 @@ test('real Nest guest completion HTTP stays disabled, binds ingress proof and us
    assert.equal(denied.status,404,'unexpected activation for '+flag);
   }
   assert.equal(dispatchCalls,0);
+  assert.equal(verifyCalls,0);
+  assert.equal(completionCalls,0);
   process.env.SERVICES_ENABLE_GUEST_COMPLETION_HTTP='enabled';
+
+  const invalidIdRoot=(await app.getUrl())+'/v1/guest-requests/not-a-uuid/completion';
+  const invalidIssue=await fetch(invalidIdRoot+'/challenges',{
+   method:'POST',headers:{'Content-Type':'application/json',
+    'guest-capability':read,'x-services-network-proof':proof},
+   body:'{"locale":"kk"}'});
+  assert.equal(invalidIssue.status,404);
+  const invalidConfirm=await fetch(invalidIdRoot+'/confirm',{
+   method:'POST',headers:{'Content-Type':'application/json',
+    'guest-completion-capability':write,'If-Match':'"2"'},body:'{}'});
+  assert.equal(invalidConfirm.status,404);
+  const invalidVerify=await fetch(invalidIdRoot+'/challenges/'+challenge+'/verify',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:'{"code":"123456"}'});
+  assert.equal(invalidVerify.status,401);
+  assert.equal(dispatchCalls,0);
+  assert.equal(verifyCalls,0);
+  assert.equal(completionCalls,0);
 
   const noIngress=await send('/challenges',{'guest-capability':read},'{"locale":"kk"}');
   assert.equal(noIngress.status,503);assert.equal(dispatchCalls,0);
