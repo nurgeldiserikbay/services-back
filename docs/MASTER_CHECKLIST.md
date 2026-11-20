@@ -999,6 +999,12 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 - Added a dedicated PostgreSQL CI gate `test/customer-completion-db.test.ts` to check completion effects, replay/version conflict, foreign actor denial, invalid starting states, and fail-closed guest handling. Treat this as **prepared until PR CI succeeds**; do not mark end-to-end request lifecycle, review permissions, HTTP authorization, or staging acceptance complete.
 - Guest completion remains deliberately unsupported pending independently verified guest capability proof and business-rule signoff. No production HTTP completion endpoint is enabled by this work.
 
+### 2026-11-20 — registered customer completion bearer HTTP integration
+
+- New bearer-only `POST /v1/account/requests/:id/complete` in the existing account-session module. Requires canonical 43-character bearer, strong quoted `If-Match` request version, and empty JSON object; customer ownership is resolved from an active/revocation-checked session and person row inside the same PostgreSQL transaction. Foreign and unknown requests produce the same 404, stale version is 409, malformed calls 400, missing/revoked bearer 401. No browser cookie authentication or user-selected customer ID is accepted.
+- New fail-fast real Nest HTTP/PostgreSQL test covers foreign-account denial, bad preconditions/body, successful completion, no duplicate experience/outbox on replay, and revoked-session denial. The prior completion database transaction remains the authority for `ACCEPTED -> COMPLETED` and audit/notification writes.
+- **Not complete:** same-origin browser BFF with CSRF, end-to-end frontend/admin browser flows, guest completion and policy review, staging deployment and security sign-off. No further top-level acceptance checkboxes are closed until those gates are met.
+
 ## Next acceptance gates
 
 1. Recorded historical workflow job coverage inspected (2026-11-18); verify current HEADs and add missing authenticated browser/admin E2E evidence before closing acceptance items.
