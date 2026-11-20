@@ -102,7 +102,7 @@ test('guest re-OTP: READ_CANCEL starts but cannot grant completion; correct deli
      body,redirect:'manual'});
    const timestamp=String(Date.now());
    const mac=createHmac('sha256',ingressKey)
-    .update('services-otp-network:v1\\n').update(network).update('\\n')
+    .update('services-otp-network:v1\n').update(network).update('\n')
     .update(timestamp).digest('hex');
    const ingress='v1.'+network+'.'+timestamp+'.'+mac;
    const issueResponse=await post('/challenges',{
