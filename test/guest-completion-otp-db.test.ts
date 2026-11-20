@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {test} from 'node:test';
 import {Client} from 'pg';
+import {checkGlobalSendQuota} from '../src/modules/guest-requests/guest-global-quota.js';
+import {checkContactSendQuota} from '../src/modules/guest-requests/guest-contact-quota.js';
 import {GuestChallengeIssuanceService} from
  '../src/modules/guest-requests/guest-challenge-issuance.service.js';
 import {GuestChallengeProofRepository} from
@@ -82,6 +84,22 @@ test('guest re-OTP: READ_CANCEL starts but cannot grant completion; correct deli
    SELECT purpose::text,attempts,consumed_at FROM guest_challenges WHERE id=$1`,
    [issued!.challengeId]);
   assert.deepEqual(rows.rows,[{purpose:'COMPLETE_REQUEST',attempts:0,consumed_at:null}]);
+  const contactQuota=await checkContactSendQuota(db,contactDigest('email',email,pepper));
+  assert.equal(contactQuota.allowed,false,
+   'completion OTP must charge the same per-contact cooldown as creation and scheduling');
+  assert.equal(contactQuota.reason,'cooldown');
+  // Fill only with COMPLETE_REQUEST challenges: global quota must not ignore
+  // this new purpose when counting the previous 60 seconds.
+  for(let i=0;i<29;i++){
+   await db.query(`INSERT INTO guest_challenges
+    (id,guest_contact_id,request_id,code_hash,purpose,expires_at)
+    VALUES($1,$2,$3,$4,'COMPLETE_REQUEST',now()+interval '10 minutes')`,
+    [randomUUID(),contactId,request,randomBytes(32).toString('hex')]);
+  }
+  const globalQuota=await checkGlobalSendQuota(db);
+  assert.equal(globalQuota.allowed,false);
+  assert.equal(globalQuota.reason,'global_minute');
+
   const verification=new GuestChallengeVerificationService(
    new GuestChallengeProofRepository(pool as never));
   await assert.rejects(verification.verifyCompleteRequest(
