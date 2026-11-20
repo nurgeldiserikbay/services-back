@@ -63,7 +63,7 @@
 
 ### Requests & scheduling
 
-- [ ] Guest request creation — Prepared; verification pending
+- [x] Guest request creation — Verified 2026-11-20: real Next.js → backend → PostgreSQL CREATE_REQUEST guest proof created a single request, returned a scoped HttpOnly READ_CANCEL cookie and pending status. Verified replay/CSRF/ownership in frontend CI #44680281343 and full cross-role guest-create → seller-accept → guest-status E2E in frontend CI #44681899362 (services-front PR #148, merge 72f24ef). Real OTP provider and production deployment remain separate.
 - [x] Guest capability token security — Verified guest status ownership, expired/consumed/mismatched capability rejection and private-field allowlist in backend CI #43726538338 (2026-11-15)
 - [ ] Authenticated request flow — Pending verification
 - [x] Seller accept/reject actions — Verified transactional accept/decline, scoped seller authorization, idempotent replay and notification integration in backend CI #43737972089 (2026-11-15)
@@ -1018,10 +1018,15 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 - **Latest cross-repo CI proof:** [services-front PR #147](https://github.com/nurgeldiserikbay/services-front/pull/147), merged `a42f468612c11984c0fe7b047b81059f89882684`, [CI #44680281343 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44680281343). Its immutable backend fixture is `2cebdc94a9ab574f7f6ca3011729ce6c97982a45`; real Next.js → HTTPS test API → PostgreSQL covers signed test account, own/foreign request isolation, denied forged CSRF/cross-site action, accepted → completed, DB experience and seller notification once, refreshed page status, stale-replay/pending-state denial, and revoked-session denial. Both frontend completion and inventory feature flags remain **disabled by default**.
 - **Acceptance scope:** This verifies the **registered-customer segment using disposable CI-only identities**, not real OTP/login provider, guest creation-to-completion across actors, staging TLS/ingress, Capacitor device testing, operational signoff, or production activation. The top-level `Authenticated request flow`, `End-to-end request lifecycle`, `Authentication E2E tests`, and full frontend acceptance entries remain OPEN. **Verified count stays 20/117**; no checkbox or denominator change.
 
+### 2026-11-20 — guest request creation acceptance closed (21/117)
+
+- [services-front PR #148](https://github.com/nurgeldiserikbay/services-front/pull/148), merge `72f24ef70e25e919af30137efb2ebfdc903dd900`, [frontend CI #44681899362 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44681899362), against immutable backend `2cebdc94a9ab574f7f6ca3011729ce6c97982a45`, demonstrates in one live HTTP/PostgreSQL request: CI-verified guest CREATE_REQUEST capability creates one request; scoped HttpOnly READ_CANCEL status cookie is issued; seller's separately authenticated test session can accept the same request; the guest status reflects accepted/version 2; forged CSRF, unscoped access, duplicate notification and stale decision are denied. Existing [frontend CI #44680281343 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/44680281343) includes independent guest CREATE_REQUEST cookie and replay regressions.
+- The narrowly scoped `Guest request creation` top-level requirement is now **verified** and moves from unchecked to checked. Count **20/117 → 21/117** with denominator unchanged. Real OTP provider, full guest completion, all lifecycle transitions, staging, operational and production acceptance remain **OPEN**; test fixtures are CI-only.
+
 ## Next acceptance gates
 
 1. Recorded historical workflow job coverage inspected (2026-11-18); verify current HEADs and add missing authenticated browser/admin E2E evidence before closing acceptance items.
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 20 (verified top-level acceptance items; 2026-11-20 foundation evidence reconciliation). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 21 (verified top-level acceptance items; guest request creation accepted on 2026-11-20). This strict checkbox count is not the project's historical functional-readiness estimate.
