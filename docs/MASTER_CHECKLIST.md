@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-20 — OTP production secret-domain separation startup preflight (pending PR CI)
+
+- Branch `fix/otp-production-secret-separation-20261120`: the normal Nest startup now fails **before opening a listener** when any of CREATE_REQUEST, MANAGE_SCHEDULE or COMPLETE_REQUEST OTP HTTP flags are enabled without three canonical 256-bit secrets: `GUEST_NETWORK_ATTESTATION_KEY`, `GUEST_REQUEST_HMAC_KEY`, and `GUEST_CONTACT_ENCRYPTION_KEY`. All three values must be pairwise distinct. Invalid/missing challenge/contact keys and reused keys trigger sanitized errors before provider resolution. Default-off behavior is unchanged.
+- Unit tests cover three routes, three pairwise key collisions, missing challenge/contact keys, disabled flags and valid independent keys. This is **only** a deployment configuration guard: it does not demonstrate secret-manager custody, automated rotation, real edge header stripping/network controls, approved KZ-resident OTP delivery, staging or production acceptance. No top-level checkbox change; full PR-head CI and merge pending.
+
+
 ### 2026-11-20 — trusted guest OTP network signing key startup preflight (pending CI)
 
 - Backend branch `fix/guest-otp-network-key-startup-gate-20261120`: when any guest OTP issue HTTP feature flag is enabled (`SERVICES_ENABLE_GUEST_OTP_HTTP`, `SERVICES_ENABLE_GUEST_SCHEDULE_HTTP`, or `SERVICES_ENABLE_GUEST_COMPLETION_HTTP`), the normal application startup now requires a canonical 32-byte Base64 `GUEST_NETWORK_ATTESTATION_KEY` **before** resolving the OTP provider or binding a listener. This prevents a broken, missing or mistyped signing-key configuration from appearing superficially operational.
