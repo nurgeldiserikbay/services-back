@@ -1,5 +1,5 @@
 import {
- BadRequestException,Body,Controller,Header,Headers,HttpCode,Param,Post,
+ BadRequestException,Body,Controller,Header,Headers,HttpCode,Inject,Param,Post,
 } from '@nestjs/common';
 import {requireBearerSession} from '../requests/seller-inbox.contract.js';
 import {AccountBearerSessionService} from './account-bearer-session.service.js';
@@ -13,7 +13,8 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
  */
 @Controller('account/requests')
 export class AccountCustomerCompletionController{
- constructor(private readonly account:AccountBearerSessionService){}
+ constructor(@Inject(AccountBearerSessionService)
+  private readonly account:AccountBearerSessionService){}
 
  @Post(':id/complete')
  @HttpCode(200)
