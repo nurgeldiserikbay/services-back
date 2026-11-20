@@ -1,3 +1,4 @@
+import {timingSafeEqual} from 'node:crypto';
 import type {OtpDeliveryService} from './otp-delivery.service.js';
 import {requireSecret} from './guest-request.security.js';
 
@@ -22,11 +23,26 @@ export function assertGuestOtpHttpStartupReady(
   // Reject malformed or absent edge attestation key before opening a socket.
   // The key must come from the deployment secret store, NOT a browser header.
   // This establishes only format/availability, not edge access policy or custody.
+  let networkKey:Buffer;
+  let requestKey:Buffer;
+  let contactKey:Buffer;
   try{
-    requireSecret(flags.GUEST_NETWORK_ATTESTATION_KEY);
+    networkKey=requireSecret(flags.GUEST_NETWORK_ATTESTATION_KEY);
   }catch{
     throw new Error('Guest OTP HTTP requires valid trusted ingress key');
   }
+  try{
+    requestKey=requireSecret(flags.GUEST_REQUEST_HMAC_KEY);
+    contactKey=requireSecret(flags.GUEST_CONTACT_ENCRYPTION_KEY);
+  }catch{
+    throw new Error('Guest OTP HTTP requires valid challenge and contact keys');
+  }
+  // Distinct keys for independent HMAC domains and contact encryption.
+  // Identical env values across these domains defeat key-compromise isolation.
+  if(timingSafeEqual(networkKey,requestKey)||
+     timingSafeEqual(networkKey,contactKey)||
+     timingSafeEqual(requestKey,contactKey))
+    throw new Error('Guest OTP HTTP requires independent cryptographic keys');
   // Never trust a declaration-only env flag as proof that an adapter exists.
   let attached=false;
   try{
