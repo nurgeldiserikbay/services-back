@@ -45,11 +45,10 @@ test('injected provider can be tested without a real SMS/email message',async()=
 });
 
 test('provider deadline aborts hung delivery, fails closed and never accepts late success',async()=>{
-  let signal:AbortSignal|undefined;
-  let succeedLate:((receipt:{accepted:boolean;providerRef:string|null})=>void)|undefined;
+  const record:{signal?:AbortSignal;finish?:(receipt:{accepted:boolean;providerRef:string|null})=>void}={};
   const provider:OtpDeliveryPort={deliverOtp:async(_message,providedSignal)=>{
-    signal=providedSignal;
-    return new Promise(resolve=>{succeedLate=resolve;});
+    record.signal=providedSignal;
+    return new Promise(resolve=>{record.finish=resolve;});
   }};
   const service=new OtpDeliveryService(provider,15);
   const result=service.deliverCommittedChallenge({
@@ -58,9 +57,9 @@ test('provider deadline aborts hung delivery, fails closed and never accepts lat
   });
   await assert.rejects(result,error=>error instanceof Error&&
     !error.message.includes(valid.code)&&!error.message.includes(valid.destination));
-  assert.equal(signal?.aborted,true,'slow provider must receive cancellation');
-  assert.ok(succeedLate);
-  succeedLate!({accepted:true,providerRef:'late_accepted_123'});
+  assert.equal(record.signal?.aborted,true,'slow provider must receive cancellation');
+  assert.ok(record.finish);
+  record.finish({accepted:true,providerRef:'late_accepted_123'});
   await new Promise(resolve=>setImmediate(resolve));
 });
 
