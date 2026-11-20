@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './modules/app.module.js';
 import { parseAllowedOrigins, parsePort } from './platform/config.js';
+import {OtpDeliveryService} from './modules/guest-requests/otp-delivery.service.js';
+import {assertGuestOtpHttpStartupReady} from './modules/guest-requests/otp-http-startup-gate.js';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
@@ -10,6 +12,11 @@ async function bootstrap(): Promise<void> {
     rawBody: process.env.SERVICES_ENABLE_GUEST_CANCEL_HTTP === 'enabled',
     bufferLogs: true,
   });
+  // Refuse to bind ANY socket when guest OTP HTTP is requested but the
+  // application still uses DisabledOtpDelivery. Test-only Nest listeners may
+  // inject a CI adapter independently; production startup must be explicit.
+  assertGuestOtpHttpStartupReady(process.env,
+    ()=>app.get(OtpDeliveryService,{strict:false}));
   app.setGlobalPrefix('v1');
   app.enableShutdownHooks();
 

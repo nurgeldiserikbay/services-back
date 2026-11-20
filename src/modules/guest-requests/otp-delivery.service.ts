@@ -25,6 +25,11 @@ export type VerifiedOtpIssuance = Readonly<{
 export class OtpDeliveryService {
   constructor(private readonly provider:OtpDeliveryPort=new DisabledOtpDelivery()){}
 
+  /** Startup guard only: does not verify external delivery or provider approval. */
+  isProviderAttached():boolean{
+    return !(this.provider instanceof DisabledOtpDelivery);
+  }
+
   async deliverCommittedChallenge(issuance:VerifiedOtpIssuance):Promise<OtpDeliveryReceipt>{
     let message;
     try {
