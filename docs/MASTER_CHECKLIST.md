@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-20 — trusted guest OTP network signing key startup preflight (pending CI)
+
+- Backend branch `fix/guest-otp-network-key-startup-gate-20261120`: when any guest OTP issue HTTP feature flag is enabled (`SERVICES_ENABLE_GUEST_OTP_HTTP`, `SERVICES_ENABLE_GUEST_SCHEDULE_HTTP`, or `SERVICES_ENABLE_GUEST_COMPLETION_HTTP`), the normal application startup now requires a canonical 32-byte Base64 `GUEST_NETWORK_ATTESTATION_KEY` **before** resolving the OTP provider or binding a listener. This prevents a broken, missing or mistyped signing-key configuration from appearing superficially operational.
+- Explicit tests cover all three flags, missing and malformed/incorrectly encoded signing keys, fail-closed check ordering and configured provider. This is a format/presence gate **not** evidence of real trusted ingress: the edge still needs header stripping, keyed client-network digest, signing, key custody/rotation, TLS and network access restrictions. Delivery provider/KZ residency/staging/production approvals remain OPEN; no acceptance checkbox change. PR-head CI and merge pending.
+
+
 ### 2026-11-20 — bounded guest OTP delivery and cancellation (PR-head CI pending)
 
 - Backend branch `fix/otp-provider-delivery-deadline-20261120`: add a fixed 5-second default delivery deadline to the injected guest OTP port. Deliveries now receive an `AbortSignal` that is aborted on deadline or provider error; the delivery service fails closed with a sanitized response. Existing dispatch paths then revoke already committed challenges on failures **without refunding abuse quotas**.
