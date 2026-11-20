@@ -3,6 +3,7 @@
   "scope": "static AppModule controller declarations; not HTTP exposure",
   "routes": [
     "DELETE /auth/sessions/{id}",
+    "GET /account/requests",
     "GET /admin/moderation/cases",
     "GET /auth/sessions",
     "GET /geo/areas",

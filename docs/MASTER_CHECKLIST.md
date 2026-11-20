@@ -1005,6 +1005,12 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 - New fail-fast real Nest HTTP/PostgreSQL test covers foreign-account denial, bad preconditions/body, successful completion, no duplicate experience/outbox on replay, and revoked-session denial. The prior completion database transaction remains the authority for `ACCEPTED -> COMPLETED` and audit/notification writes.
 - **Not complete:** same-origin browser BFF with CSRF, end-to-end frontend/admin browser flows, guest completion and policy review, staging deployment and security sign-off. No further top-level acceptance checkboxes are closed until those gates are met.
 
+### 2026-11-20 — registered customer request inventory and pagination
+
+- Introduces `GET /v1/account/requests` in the live account bearer-session module. Authenticated user -> customer person is resolved inside the same transaction as the bounded, latest-first 20-item PostgreSQL query. Returns only id/state/version/created_at and opaque keyset cursor; excludes guest contacts, notes, seller-private identifiers, proofs and other customers' requests. Unknown/expired/revoked bearer is denied.
+- New CI-gated real HTTP/PostgreSQL test verifies scoped 22-item pagination, foreign-account isolation, no PII in response, malformed cursor rejection and immediate revoked-session denial. The response is `private, no-store`.
+- This is a backend read primitive; frontend customer list/page, browser CSRF completion flow, staging and end-to-end request lifecycle remain OPEN. No top-level acceptance item is closed ahead of verified full CI and browser acceptance.
+
 ## Next acceptance gates
 
 1. Recorded historical workflow job coverage inspected (2026-11-18); verify current HEADs and add missing authenticated browser/admin E2E evidence before closing acceptance items.
