@@ -174,6 +174,11 @@
 
 ## Evidence log
 
+### 2026-11-20 — real guest completion HTTP ingress and stale-version transaction regression (pending CI)
+- Backend branch `test/guest-completion-http-stale-retry-20261120`: extends real Nest HTTP + PostgreSQL guest completion journey with invalid trusted-ingress rejection (no delivery, no challenge persistence) and stale If-Match rejection (no capability consumption or outbox event), then verifies the same correct proof succeeds exactly once.
+- This tests an isolated default-off internal transport with mocked OTP provider. Does not activate production HTTP or replace ingress/header-stripping, live provider, frontend BFF, staging, or security sign-off. PR-head CI and merge pending; no acceptance checkbox changes.
+
+
 ### 2026-11-20 — real Nest HTTP → OTP → PostgreSQL guest completion journey (CI pending)
 - Backend branch `test/guest-completion-real-http-db-20261120`: extend existing PostgreSQL-backed completion OTP regression to exercise real isolated Nest HTTP challenge issuance (trusted HMAC ingress), OTP verification and completion confirmation using actual dispatch, verification, transaction and notification services. Confirm READ_CANCEL cannot complete, replay returns denial, and outbox remains single.
 - This is a **test-only internal HTTP composition** with a fake OTP delivery provider and an isolated PostgreSQL test transaction, not an external production-ready BFF or live-provider acceptance. PR-head CI and merge pending; feature flag remains default-off; ingress, frontend BFF, staging/provider and security sign-off remain open. No acceptance checkbox change.
