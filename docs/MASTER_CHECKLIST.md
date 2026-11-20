@@ -174,14 +174,19 @@
 
 ## Evidence log
 
+### 2026-11-20 — guest completion cross-request OTP scope regression (pending CI)
+- Backend branch `test/guest-completion-otp-cross-request-20261120`: real PostgreSQL OTP regression verifies that a correct OTP presented for a different request cannot consume or increment the original challenge, and cannot mint a COMPLETE_REQUEST capability. Original request can still verify afterwards.
+- PR-head CI and merge pending. No production feature enablement and no acceptance checkbox changes.
+
+
 ### 2026-11-20 — verified guest completion HTTP denial matrix (#366)
 - Backend PR [#366](https://github.com/nurgeldiserikbay/services-back/pull/366), merge `10bd3e827bab7ede76d2d1173c5ad9c4680ba487`; PR-head [CI #4100](https://github.com/nurgeldiserikbay/services-back/actions/runs/44704939071) PASS. Real isolated Nest HTTP checks strict flag, malformed ingress proof, verification body and version preconditions. Staging security acceptance remains open.
 
 ### 2026-11-20 — verified guest completion HTTP all-route default-off guards (#367)
 - Backend PR [#367](https://github.com/nurgeldiserikbay/services-back/pull/367), merge `8e6b54c193fcf7ef0cf853c06171407e585f7971`; PR-head [CI #4106](https://github.com/nurgeldiserikbay/services-back/actions/runs/44706503666) PASS. All three routes deny disabled/malformed request UUID calls before delegated services. Production stays default-off.
 
-### 2026-11-20 — guest completion stale-version PostgreSQL proof atomicity (#368, verification pending)
-- Backend PR [#368](https://github.com/nurgeldiserikbay/services-back/pull/368), prior head [CI #4110](https://github.com/nurgeldiserikbay/services-back/actions/runs/44706825186) PASS before rebase. PostgreSQL regression checks rejected stale versions preserve one-use proof with no outbox, request event or notification; correct-version retry succeeds once. Rebased-head CI and merge pending. No acceptance checkbox or readiness-percent increase.
+### 2026-11-20 — verified guest completion stale-version PostgreSQL proof atomicity (#368)
+- Backend PR [#368](https://github.com/nurgeldiserikbay/services-back/pull/368), merged as `90d304a5ec18d5e79ae16d714f098a53d0ae03cc` after rebased-head [CI #4116](https://github.com/nurgeldiserikbay/services-back/actions/runs/44711311962) PASS. PostgreSQL regression checks rejected stale versions preserve one-use proof with no outbox, request event or notification; correct-version retry succeeds once. External provider, staging security review and final acceptance remain open. No acceptance checkbox or readiness-percent increase.
 
 
 2026-11-18 backend public snapshot #269 merged ace333a CI #44256314732 PASS; frontend owner profile list #139 merged 60b9d44 CI #44256697690 PASS. Prepared immutable published content revision storage, backfill, database mutation protection and PostgreSQL regressions. Owner publication, preview/rollback, legal erasure and concurrent acceptance pending; no checkbox closed.

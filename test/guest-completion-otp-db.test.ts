@@ -102,6 +102,16 @@ test('guest re-OTP: READ_CANCEL starts but cannot grant completion; correct deli
 
   const verification=new GuestChallengeVerificationService(
    new GuestChallengeProofRepository(pool as never));
+  // A valid code presented against the wrong request must not increment
+  // attempts or consume the original request-bound challenge.
+  await assert.rejects(verification.verifyCompleteRequest(
+   randomUUID(),issued!.challengeId,delivery!.code),/Invalid or expired/);
+  const crossRequest=await db.query<{attempts:number;consumed_at:Date|null}>(`
+   SELECT attempts,consumed_at FROM guest_challenges WHERE id=$1`,
+   [issued!.challengeId]);
+  assert.deepEqual(crossRequest.rows,[{attempts:0,consumed_at:null}]);
+  assert.equal((await db.query(`SELECT id FROM guest_capabilities
+   WHERE scope='COMPLETE_REQUEST' AND request_id=$1`,[request])).rowCount,0);
   await assert.rejects(verification.verifyCompleteRequest(
    request,issued!.challengeId,'wrong'),/Invalid or expired/);
   const wrong=delivery!.code==='999999'?'999998':'999999';
