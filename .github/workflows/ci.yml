@@ -358,6 +358,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=5s 55s node --import tsx --test test/account-customer-request-inventory-http-db.test.ts
       - name: Customer completion bearer HTTP and PostgreSQL E2E (fail fast)
         run: timeout --signal=TERM --kill-after=5s 50s node --import tsx --test test/account-customer-completion-http-db.test.ts
+      - name: Default-off guest completion real Nest HTTP security boundary (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 50s node --import tsx --test test/guest-completion-http.test.ts
       - name: Guest completion OTP delivery to one-use proof and state PostgreSQL E2E (fail fast)
         run: timeout --signal=TERM --kill-after=5s 55s node --import tsx --test test/guest-completion-otp-db.test.ts
       - name: Scoped guest completion one-use PostgreSQL authority (fail fast)

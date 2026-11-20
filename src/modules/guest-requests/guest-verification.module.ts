@@ -13,13 +13,15 @@ import {GuestRequestStatusHttpController} from './guest-request-status-http.cont
 import {GuestCreateHttpController} from './guest-create-http.controller.js';
 import {GuestOtpHttpController} from './guest-otp-http.controller.js';
 import {GuestScheduleAccessHttpController} from './guest-schedule-access-http.controller.js';
+import {GuestCompletionHttpController} from './guest-completion-http.controller.js';
+import {GuestCompletionService} from '../requests/guest-completion.service.js';
 
 /** Guest HTTP routes are disabled by default; explicit deployment gates required. */
 @Module({
   controllers:[GuestRequestStatusHttpController,GuestCreateHttpController,GuestOtpHttpController,
-    GuestScheduleAccessHttpController,GuestCancelHttpController],
+    GuestScheduleAccessHttpController,GuestCancelHttpController,GuestCompletionHttpController],
   providers:[
-    GuestCancellationService,
+    GuestCancellationService,GuestCompletionService,
     GuestChallengeProofRepository,GuestChallengeVerificationService,
     GuestChallengeIssuanceService,GuestOtpDispatchService,
     GuestRequestService,GuestVerifiedRequestFlow,GuestRequestStatusService,
