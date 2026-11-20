@@ -105,6 +105,13 @@ test('real Nest HTTP + PostgreSQL guest completion: re-OTP grants one-use reques
     .update('services-otp-network:v1\n').update(network).update('\n')
     .update(timestamp).digest('hex');
    const ingress='v1.'+network+'.'+timestamp+'.'+mac;
+   const rejectedIngress=await post('/challenges',{
+    'guest-capability':read.token,'x-services-network-proof':'invalid'
+   },'{"locale":"kk"}');
+   assert.equal(rejectedIngress.status,503);
+   assert.equal(delivery,undefined,'failed ingress cannot send completion OTP');
+   assert.equal((await db.query(`SELECT id FROM guest_challenges
+    WHERE request_id=$1 AND purpose='COMPLETE_REQUEST'`,[request])).rowCount,0);
    const issueResponse=await post('/challenges',{
     'guest-capability':read.token,'x-services-network-proof':ingress
    },'{"locale":"kk"}');
@@ -175,6 +182,17 @@ test('real Nest HTTP + PostgreSQL guest completion: re-OTP grants one-use reques
    'guest-completion-capability':read.token,'If-Match':'"1"'
   },'{}');
   assert.equal(deniedRead.status,404,'READ_CANCEL must never complete');
+  // A valid but stale version must not consume the newly verified proof.
+  const stale=await post('/confirm',{
+   'guest-completion-capability':verified.guestCapability,'If-Match':'"2"'
+  },'{}');
+  assert.equal(stale.status,409);
+  assert.equal((await db.query(`SELECT id FROM guest_capabilities
+   WHERE token_hash=$1 AND consumed_at IS NOT NULL`,[
+   hashGuestCapability('COMPLETE_REQUEST',verified.guestCapability,pepper)
+  ])).rowCount,0);
+  assert.equal((await db.query('SELECT id FROM domain_outbox_events WHERE subject_id=$1',
+   [request])).rowCount,0);
   const completedResponse=await post('/confirm',{
    'guest-completion-capability':verified.guestCapability,'If-Match':'"1"'
   },'{}');
