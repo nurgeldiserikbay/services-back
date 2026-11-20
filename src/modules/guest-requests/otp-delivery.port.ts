@@ -20,7 +20,9 @@ export type OtpDeliveryReceipt=Readonly<{
   providerRef:string|null;
 }>;
 export interface OtpDeliveryPort {
-  deliverOtp(message:OtpDeliveryMessage):Promise<OtpDeliveryReceipt>;
+  /** Provider implementations MUST honor cancellation and bound their own IO.
+   * The service deadline is a final guard, not a substitute for socket timeouts. */
+  deliverOtp(message:OtpDeliveryMessage,signal?:AbortSignal):Promise<OtpDeliveryReceipt>;
 }
 
 export class OtpDeliveryUnavailable extends Error {

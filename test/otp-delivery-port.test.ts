@@ -43,3 +43,49 @@ test('injected provider can be tested without a real SMS/email message',async()=
     locale:valid.locale,expiresInSeconds:valid.expiresInSeconds,
   }),{accepted:true,providerRef:'fixture_12345'});
 });
+
+test('provider deadline aborts hung delivery, fails closed and never accepts late success',async()=>{
+  const record:{signal?:AbortSignal;finish?:(receipt:{accepted:boolean;providerRef:string|null})=>void}={};
+  const provider:OtpDeliveryPort={deliverOtp:async(_message,providedSignal)=>{
+    record.signal=providedSignal;
+    return new Promise(resolve=>{record.finish=resolve;});
+  }};
+  const service=new OtpDeliveryService(provider,15);
+  const result=service.deliverCommittedChallenge({
+    code:valid.code,contact:valid.destination,channel:valid.channel,
+    locale:valid.locale,expiresInSeconds:valid.expiresInSeconds,
+  });
+  await assert.rejects(result,error=>error instanceof Error&&
+    !error.message.includes(valid.code)&&!error.message.includes(valid.destination));
+  assert.equal(record.signal?.aborted,true,'slow provider must receive cancellation');
+  assert.ok(record.finish);
+  record.finish({accepted:true,providerRef:'late_accepted_123'});
+  await new Promise(resolve=>setImmediate(resolve));
+});
+
+test('provider errors reject with one sanitized message and abort signal',async()=>{
+  let aborted=false;
+  const provider:OtpDeliveryPort={deliverOtp:async(_,signal)=>{
+    signal?.addEventListener('abort',()=>{aborted=true;},{once:true});
+    throw new Error('secret '+valid.destination+' '+valid.code);
+  }};
+  await assert.rejects(new OtpDeliveryService(provider,100).deliverCommittedChallenge({
+    code:valid.code,contact:valid.destination,channel:valid.channel,
+    locale:valid.locale,expiresInSeconds:600,
+  }),error=>error instanceof Error&&
+    error.message==='OTP delivery temporarily unavailable');
+  assert.equal(aborted,true);
+});
+
+test('invalid provider deadline never calls the external provider',async()=>{
+  let called=false;
+  const provider:OtpDeliveryPort={deliverOtp:async()=>{
+    called=true;
+    return {accepted:true,providerRef:'should_not_send'};
+  }};
+  await assert.rejects(new OtpDeliveryService(provider,0).deliverCommittedChallenge({
+    code:valid.code,contact:valid.destination,channel:valid.channel,
+    locale:valid.locale,expiresInSeconds:600,
+  }));
+  assert.equal(called,false);
+});

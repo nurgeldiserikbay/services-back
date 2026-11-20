@@ -23,7 +23,10 @@ export type VerifiedOtpIssuance = Readonly<{
  */
 @Injectable()
 export class OtpDeliveryService {
-  constructor(private readonly provider:OtpDeliveryPort=new DisabledOtpDelivery()){}
+  constructor(
+    private readonly provider:OtpDeliveryPort=new DisabledOtpDelivery(),
+    private readonly deadlineMs=5_000,
+  ){}
 
   /** Startup guard only: does not verify external delivery or provider approval. */
   isProviderAttached():boolean{
@@ -44,14 +47,34 @@ export class OtpDeliveryService {
     }catch{
       throw new ServiceUnavailableException('OTP delivery temporarily unavailable');
     }
+    // Bound provider wait time independently of the Next/Nest HTTP timeout.
+    // Dispatch revokes the already committed OTP challenge on any rejection.
+    // An adapter must also honor AbortSignal in its own transport so that
+    // a late provider acknowledgement cannot be treated as authorization.
+    const controller=new AbortController();
+    let timer:ReturnType<typeof setTimeout>|undefined;
     try {
-      const result=await this.provider.deliverOtp(message);
+      if(!Number.isSafeInteger(this.deadlineMs)||this.deadlineMs<1||
+         this.deadlineMs>30_000)throw new OtpDeliveryUnavailable();
+      const deadline=new Promise<never>((_,reject)=>{
+        timer=setTimeout(()=>{
+          controller.abort();
+          reject(new OtpDeliveryUnavailable());
+        },this.deadlineMs);
+      });
+      const result=await Promise.race([
+        Promise.resolve().then(()=>this.provider.deliverOtp(message,controller.signal)),
+        deadline,
+      ]);
       const safe=sanitizeOtpDeliveryReceipt(result);
-      if(!safe.accepted) throw new OtpDeliveryUnavailable();
+      if(!safe.accepted)throw new OtpDeliveryUnavailable();
       return safe;
     }catch{
+      controller.abort();
       // Never log provider errors; may contain raw recipients, payloads or auth.
       throw new ServiceUnavailableException('OTP delivery temporarily unavailable');
+    }finally{
+      if(timer!==undefined)clearTimeout(timer);
     }
   }
 }
