@@ -122,6 +122,17 @@ test('cross-request, mismatched contact, wrong hash, expiration and stale versio
    reject('not_found'));
   await assert.rejects(confirmGuestRequestCompletion(db,f.id,f.token,2,f.pepper),
    reject('conflict'));
+  // A stale If-Match must not consume a valid completion proof or produce
+  // notifications/events; the caller may retry with the correct version.
+  const proofAfterConflict=await db.query<{consumed_at:Date|null}>(`
+   SELECT consumed_at FROM guest_capabilities WHERE id=$1`,[f.capability]);
+  assert.equal(proofAfterConflict.rows[0]?.consumed_at,null);
+  assert.equal((await db.query('SELECT id FROM domain_outbox_events WHERE subject_id=$1',
+   [f.id])).rowCount,0);
+  assert.equal((await db.query('SELECT id FROM service_request_events WHERE request_id=$1',
+   [f.id])).rowCount,0);
+  assert.equal((await db.query('SELECT id FROM notification_intents WHERE dedupe_key=$1',
+   ['request-completed:seller:'+f.id])).rowCount,0);
   await db.query('UPDATE guest_capabilities SET created_at=now()-interval \'2 minutes\', expires_at=now()-interval \'1 minute\' WHERE id=$1',
    [f.capability]);
   await assert.rejects(confirmGuestRequestCompletion(db,f.id,f.token,1,f.pepper),
@@ -138,5 +149,22 @@ test('cross-request, mismatched contact, wrong hash, expiration and stale versio
   const row=await db.query<{consumed_at:Date|null}>(`
    SELECT consumed_at FROM guest_capabilities WHERE id=$1`,[f.capability]);
   assert.equal(row.rows[0]?.consumed_at,null);
+  assert.equal((await db.query('SELECT id FROM domain_outbox_events WHERE subject_id=$1',
+   [f.id])).rowCount,0);
+  assert.equal((await db.query('SELECT id FROM service_request_events WHERE request_id=$1',
+   [f.id])).rowCount,0);
  },'PENDING');
+ // The same proof remains usable after a rejected stale version, but only once.
+ await fixture(async(db,f)=>{
+  await assert.rejects(confirmGuestRequestCompletion(db,f.id,f.token,2,f.pepper),
+   reject('conflict'));
+  const accepted=await confirmGuestRequestCompletion(db,f.id,f.token,1,f.pepper);
+  assert.deepEqual(accepted,{id:f.id,state:'completed',version:2});
+  assert.equal((await db.query('SELECT id FROM domain_outbox_events WHERE subject_id=$1',
+   [f.id])).rowCount,1);
+  await assert.rejects(confirmGuestRequestCompletion(db,f.id,f.token,2,f.pepper),
+   reject('not_found'));
+  assert.equal((await db.query('SELECT id FROM domain_outbox_events WHERE subject_id=$1',
+   [f.id])).rowCount,1);
+ });
 });

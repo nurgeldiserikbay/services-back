@@ -9,19 +9,7 @@
 - `[x]` = verified complete: attach commit/PR **and** passing relevant CI or reproducible acceptance evidence.
 - `[ ]` = not yet verified. `Prepared` means work was implemented/reported but has not met the verification gate; `Pending` means no completion evidence is established.
 - Each change must update this file in the **same PR/commit** as the task or immediately after evidence is available.
-- Record evidence under `## Evidence log
-
-### 2026-11-20 — completion HTTP default-off all-route and invalid UUID guards (verification pending)
-- Backend branch `test/guest-completion-http-off-all-routes-20261120`: real isolated Nest HTTP regression tests deny OTP verification as well as challenge and confirm when disabled, and deny malformed request UUIDs on all three routes before invoking services.
-- Updated stale transaction doc comment to describe prepared, **disabled** BFF-only boundary. CI/merge and staging sign-off pending; no acceptance checkbox or readiness-percent increase.
-
-
-
-### 2026-11-20 — guest completion HTTP denial-matrix regression (PR pending)
-- Backend branch `test/guest-completion-http-denial-matrix-20261120`: extended isolated **real Nest HTTP** security tests to verify exact `enabled` feature flag, malformed/untrusted network attestations, invalid OTP verification body and rejected If-Match boundaries without invoking underlying services.
-- **Not accepted yet**: PR-head CI and merge pending. No production activation, no change to acceptance checkboxes; ingress header stripping, real OTP provider, staging and security sign-off remain mandatory.
-
-`, including repository, SHA, CI URL, date and result. Never mark green based on empty GitHub commit-status responses.
+- Record evidence under `## Evidence log`, including repository, SHA, CI URL, date and result. Never mark green based on empty GitHub commit-status responses.
 - Do not compute a single readiness percentage from unverified checkboxes. Once verified, calculate `verified completed / total acceptance items * 100` (equal weights unless a separately approved weighted scheme is committed).
 - Any regression reopens the corresponding checkbox; changes in scope require updating the denominator.
 - Release gate: all mandatory acceptance items verified, all main CI green, E2E passing, security review and staging sign-off.
@@ -185,6 +173,16 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+### 2026-11-20 — verified guest completion HTTP denial matrix (#366)
+- Backend PR [#366](https://github.com/nurgeldiserikbay/services-back/pull/366), merge `10bd3e827bab7ede76d2d1173c5ad9c4680ba487`; PR-head [CI #4100](https://github.com/nurgeldiserikbay/services-back/actions/runs/44704939071) PASS. Real isolated Nest HTTP checks strict flag, malformed ingress proof, verification body and version preconditions. Staging security acceptance remains open.
+
+### 2026-11-20 — verified guest completion HTTP all-route default-off guards (#367)
+- Backend PR [#367](https://github.com/nurgeldiserikbay/services-back/pull/367), merge `8e6b54c193fcf7ef0cf853c06171407e585f7971`; PR-head [CI #4106](https://github.com/nurgeldiserikbay/services-back/actions/runs/44706503666) PASS. All three routes deny disabled/malformed request UUID calls before delegated services. Production stays default-off.
+
+### 2026-11-20 — guest completion stale-version PostgreSQL proof atomicity (#368, verification pending)
+- Backend PR [#368](https://github.com/nurgeldiserikbay/services-back/pull/368), prior head [CI #4110](https://github.com/nurgeldiserikbay/services-back/actions/runs/44706825186) PASS before rebase. PostgreSQL regression checks rejected stale versions preserve one-use proof with no outbox, request event or notification; correct-version retry succeeds once. Rebased-head CI and merge pending. No acceptance checkbox or readiness-percent increase.
+
 
 2026-11-18 backend public snapshot #269 merged ace333a CI #44256314732 PASS; frontend owner profile list #139 merged 60b9d44 CI #44256697690 PASS. Prepared immutable published content revision storage, backfill, database mutation protection and PostgreSQL regressions. Owner publication, preview/rollback, legal erasure and concurrent acceptance pending; no checkbox closed.
 
