@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-20 — bounded guest OTP delivery and cancellation (PR-head CI pending)
+
+- Backend branch `fix/otp-provider-delivery-deadline-20261120`: add a fixed 5-second default delivery deadline to the injected guest OTP port. Deliveries now receive an `AbortSignal` that is aborted on deadline or provider error; the delivery service fails closed with a sanitized response. Existing dispatch paths then revoke already committed challenges on failures **without refunding abuse quotas**.
+- Unit tests cover hanging provider timeout, cancellation, late provider acceptance after the timeout, sensitive provider exceptions, and invalid timeout values. A provider adapter MUST independently honor `AbortSignal` and its own socket IO deadlines: the application-side timeout cannot guarantee cancellation of a provider that ignores it. No real provider, KZ data residency, signed trusted edge, deployment, staging, or owner acceptance was established. No acceptance checkbox or verified count change; CI and merge pending.
+
+
 ### 2026-11-20 — backend OTP HTTP provider fail-fast startup guard (CI pending)
 
 - Branch `fix/otp-provider-startup-gate-20261120`: when any independently gated guest OTP HTTP issuance endpoint (`SERVICES_ENABLE_GUEST_OTP_HTTP`, `SERVICES_ENABLE_GUEST_SCHEDULE_HTTP`, or `SERVICES_ENABLE_GUEST_COMPLETION_HTTP`) is enabled, the normal Nest application bootstrap resolves the actual injected `OtpDeliveryService` and **fails before listening** if `DisabledOtpDelivery` is still in use or resolution fails. False/mistyped values remain disabled. No environment marker is accepted as a substitute for an injected adapter.
