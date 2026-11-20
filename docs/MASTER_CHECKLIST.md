@@ -1039,6 +1039,11 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 - Dedicated isolated real Nest HTTP regressions cover default-off zero effects, denied unsigned network requests, forged input, verification and confirmation preconditions and no-store response contract. Existing PostgreSQL tests for one-use scope and OTP remain required in CI.
 - **Not a production activation:** real ingress blocklist/TLS, key custody, signed proof header stripping, recipient/network limits, approved OTP delivery provider, same-origin browser BFF with HttpOnly cookie + CSRF, end-to-end browser/staging and guest completion acceptance remain OPEN. Default remains disabled. **Checklist stays 21/117.**
 
+### 2026-11-20 — shared OTP quota coverage for completion purpose
+
+- Fixed a newly discovered **abuse-budget gap**: the contact-level send quota and shared global 1-minute/1-hour/1-day quota previously filtered only CREATE_REQUEST and MANAGE_SCHEDULE challenges, while completion issued COMPLETE_REQUEST. Both now count all three purposes together; the already request-bound network quota also includes COMPLETE_REQUEST.
+- Existing real PostgreSQL guest completion OTP CI test now inserts challenge records with only the new purpose and checks that per-contact cooldown and global minute limit are enforced. These quotas remain required in the same transaction that commits a challenge, and default-off HTTP/provider signoffs remain OPEN. **No top-level checkbox change: 21/117.**
+
 ## Next acceptance gates
 
 1. Recorded historical workflow job coverage inspected (2026-11-18); verify current HEADs and add missing authenticated browser/admin E2E evidence before closing acceptance items.
