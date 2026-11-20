@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-20 — backend OTP HTTP provider fail-fast startup guard (CI pending)
+
+- Branch `fix/otp-provider-startup-gate-20261120`: when any independently gated guest OTP HTTP issuance endpoint (`SERVICES_ENABLE_GUEST_OTP_HTTP`, `SERVICES_ENABLE_GUEST_SCHEDULE_HTTP`, or `SERVICES_ENABLE_GUEST_COMPLETION_HTTP`) is enabled, the normal Nest application bootstrap resolves the actual injected `OtpDeliveryService` and **fails before listening** if `DisabledOtpDelivery` is still in use or resolution fails. False/mistyped values remain disabled. No environment marker is accepted as a substitute for an injected adapter.
+- Tests exercise all three flags, disabled default, real test adapter injection, missing/misleading provider and startup ordering. A non-disabled adapter **does not** establish provider approval, KZ data residency, secure ingress, delivery success or operational launch readiness. This is a deployment misconfiguration guard only; provider selection, trusted edge, staging and owner sign-off remain OPEN. PR-head CI/merge pending; no acceptance checkbox or 21/117 count change.
+
+
 ### 2026-11-20 — real guest completion HTTP ingress and stale-version transaction regression (pending CI)
 - Backend branch `test/guest-completion-http-stale-retry-20261120`: extends real Nest HTTP + PostgreSQL guest completion journey with invalid trusted-ingress rejection (no delivery, no challenge persistence) and stale If-Match rejection (no capability consumption or outbox event), then verifies the same correct proof succeeds exactly once.
 - This tests an isolated default-off internal transport with mocked OTP provider. Does not activate production HTTP or replace ingress/header-stripping, live provider, frontend BFF, staging, or security sign-off. PR-head CI and merge pending; no acceptance checkbox changes.
