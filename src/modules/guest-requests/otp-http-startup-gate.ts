@@ -1,4 +1,5 @@
 import type {OtpDeliveryService} from './otp-delivery.service.js';
+import {requireSecret} from './guest-request.security.js';
 
 /**
  * Fail before binding an HTTP listener if ANY guest OTP issuance route is
@@ -18,6 +19,14 @@ export function assertGuestOtpHttpStartupReady(
     'SERVICES_ENABLE_GUEST_COMPLETION_HTTP',
   ].some(flag=>flags[flag]==='enabled');
   if(!requiresProvider)return;
+  // Reject malformed or absent edge attestation key before opening a socket.
+  // The key must come from the deployment secret store, NOT a browser header.
+  // This establishes only format/availability, not edge access policy or custody.
+  try{
+    requireSecret(flags.GUEST_NETWORK_ATTESTATION_KEY);
+  }catch{
+    throw new Error('Guest OTP HTTP requires valid trusted ingress key');
+  }
   // Never trust a declaration-only env flag as proof that an adapter exists.
   let attached=false;
   try{
