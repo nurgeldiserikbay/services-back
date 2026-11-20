@@ -61,7 +61,6 @@ export class OtpDeliveryService {
           controller.abort();
           reject(new OtpDeliveryUnavailable());
         },this.deadlineMs);
-        timer.unref?.();
       });
       const result=await Promise.race([
         Promise.resolve().then(()=>this.provider.deliverOtp(message,controller.signal)),
