@@ -1,6 +1,13 @@
+import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import {randomBytes,randomUUID} from 'node:crypto';
+import {createHmac,randomBytes,randomUUID} from 'node:crypto';
 import {test} from 'node:test';
+import {Module} from '@nestjs/common';
+import {NestFactory} from '@nestjs/core';
+import {GuestCompletionHttpController} from
+ '../src/modules/guest-requests/guest-completion-http.controller.js';
+import {GuestCompletionService} from
+ '../src/modules/requests/guest-completion.service.js';
 import {Client} from 'pg';
 import {checkGlobalSendQuota} from '../src/modules/guest-requests/guest-global-quota.js';
 import {checkContactSendQuota} from '../src/modules/guest-requests/guest-contact-quota.js';
@@ -14,8 +21,6 @@ import {GuestOtpDispatchService} from
  '../src/modules/guest-requests/guest-otp-dispatch.service.js';
 import {OtpDeliveryService} from
  '../src/modules/guest-requests/otp-delivery.service.js';
-import {confirmGuestRequestCompletion} from
- '../src/modules/requests/guest-completion.transaction.js';
 import {contactDigest,encryptGuestContact,hashGuestCapability,
  issueGuestCapability} from
  '../src/modules/guest-requests/guest-request.security.js';
@@ -26,6 +31,8 @@ test('guest re-OTP: READ_CANCEL starts but cannot grant completion; correct deli
  await db.connect();await db.query('BEGIN');
  const priorH=process.env.GUEST_REQUEST_HMAC_KEY;
  const priorE=process.env.GUEST_CONTACT_ENCRYPTION_KEY;
+ const priorFlag=process.env.SERVICES_ENABLE_GUEST_COMPLETION_HTTP;
+ const priorNetworkKey=process.env.GUEST_NETWORK_ATTESTATION_KEY;
  const pepper=randomBytes(32),encryptionKey=randomBytes(32);
  process.env.GUEST_REQUEST_HMAC_KEY=pepper.toString('base64');
  process.env.GUEST_CONTACT_ENCRYPTION_KEY=encryptionKey.toString('base64');
@@ -73,9 +80,39 @@ test('guest re-OTP: READ_CANCEL starts but cannot grant completion; correct deli
   const dispatch=new GuestOtpDispatchService(
    new GuestChallengeIssuanceService(pool as never),
    new OtpDeliveryService(provider),pool as never);
+  const verification=new GuestChallengeVerificationService(
+   new GuestChallengeProofRepository(pool as never));
   const network=randomBytes(32).toString('hex');
-  const issued=await dispatch.dispatchCompleteRequest(request,read.token,'kk',network);
-  assert.ok(issued);
+  const ingressKey=randomBytes(32);
+  process.env.GUEST_NETWORK_ATTESTATION_KEY=ingressKey.toString('base64');
+  process.env.SERVICES_ENABLE_GUEST_COMPLETION_HTTP='enabled';
+  @Module({controllers:[GuestCompletionHttpController],providers:[
+   {provide:GuestOtpDispatchService,useValue:dispatch},
+   {provide:GuestChallengeVerificationService,useValue:verification},
+   {provide:GuestCompletionService,useValue:new GuestCompletionService(pool as never)},
+  ]})
+  class IsolatedModule{}
+  const app=await NestFactory.create(IsolatedModule,{logger:false});
+  try{
+   app.setGlobalPrefix('v1');
+   await app.listen(0,'127.0.0.1');
+   const root=(await app.getUrl())+'/v1/guest-requests/'+request+'/completion';
+   const post=(path:string,headers:Record<string,string>,body:string)=>fetch(
+    root+path,{method:'POST',headers:{'content-type':'application/json',...headers},
+     body,redirect:'manual'});
+   const timestamp=String(Date.now());
+   const mac=createHmac('sha256',ingressKey)
+    .update('services-otp-network:v1\\n').update(network).update('\\n')
+    .update(timestamp).digest('hex');
+   const ingress='v1.'+network+'.'+timestamp+'.'+mac;
+   const issueResponse=await post('/challenges',{
+    'guest-capability':read.token,'x-services-network-proof':ingress
+   },'{"locale":"kk"}');
+   assert.equal(issueResponse.status,202);
+   assert.match(issueResponse.headers.get('cache-control')??'',/no-store/);
+   const issueBody=await issueResponse.json() as {challenge_id:string};
+   const issued={challengeId:issueBody.challenge_id};
+   assert.ok(issued);
   assert.match(issued!.challengeId,/^[a-f0-9-]{36}$/i);
   assert.equal(delivery?.purpose,'COMPLETE_REQUEST');
   assert.equal(delivery?.destination,email);
@@ -100,8 +137,6 @@ test('guest re-OTP: READ_CANCEL starts but cannot grant completion; correct deli
   assert.equal(globalQuota.allowed,false);
   assert.equal(globalQuota.reason,'global_minute');
 
-  const verification=new GuestChallengeVerificationService(
-   new GuestChallengeProofRepository(pool as never));
   // A valid code presented against the wrong request must not increment
   // attempts or consume the original request-bound challenge.
   await assert.rejects(verification.verifyCompleteRequest(
@@ -120,8 +155,13 @@ test('guest re-OTP: READ_CANCEL starts but cannot grant completion; correct deli
   const count=await db.query<{attempts:number}>(`
    SELECT attempts FROM guest_challenges WHERE id=$1`,[issued!.challengeId]);
   assert.equal(count.rows[0]?.attempts,1);
-  const verified=await verification.verifyCompleteRequest(
-   request,issued!.challengeId,delivery!.code);
+  const verifyResponse=await post(
+   '/challenges/'+issued.challengeId+'/verify',{},
+   JSON.stringify({code:delivery!.code}));
+  assert.equal(verifyResponse.status,200);
+  assert.match(verifyResponse.headers.get('cache-control')??'',/no-store/);
+  const verifyBody=await verifyResponse.json() as {guest_capability:string};
+  const verified={guestCapability:verifyBody.guest_capability};
   assert.match(verified.guestCapability,/^[A-Za-z0-9_-]{43}$/);
   const proofs=await db.query<{scope:string;request_id:string;token_hash:string}>(`
    SELECT scope::text,request_id::text,token_hash FROM guest_capabilities
@@ -131,9 +171,21 @@ test('guest re-OTP: READ_CANCEL starts but cannot grant completion; correct deli
    token_hash:hashGuestCapability('COMPLETE_REQUEST',verified.guestCapability,pepper)}]);
   await assert.rejects(verification.verifyCompleteRequest(
    request,issued!.challengeId,delivery!.code),/Invalid or expired/);
-  const completed=await confirmGuestRequestCompletion(db,request,
-   verified.guestCapability,2-1,pepper);
-  assert.deepEqual(completed,{id:request,state:'completed',version:2});
+  const deniedRead=await post('/confirm',{
+   'guest-completion-capability':read.token,'If-Match':'"1"'
+  },'{}');
+  assert.equal(deniedRead.status,404,'READ_CANCEL must never complete');
+  const completedResponse=await post('/confirm',{
+   'guest-completion-capability':verified.guestCapability,'If-Match':'"1"'
+  },'{}');
+  assert.equal(completedResponse.status,200);
+  assert.match(completedResponse.headers.get('cache-control')??'',/no-store/);
+  assert.deepEqual(await completedResponse.json(),
+   {id:request,state:'completed',version:2});
+  const replay=await post('/confirm',{
+   'guest-completion-capability':verified.guestCapability,'If-Match':'"2"'
+  },'{}');
+  assert.equal(replay.status,404,'consumed completion proof cannot replay');
   assert.equal((await db.query('SELECT id FROM service_experiences WHERE request_id=$1',
    [request])).rowCount,0,'no Person-backed review entitlement');
   assert.equal((await db.query('SELECT id FROM guest_capabilities WHERE token_hash=$1 AND consumed_at IS NOT NULL',
@@ -143,11 +195,16 @@ test('guest re-OTP: READ_CANCEL starts but cannot grant completion; correct deli
    request,read.token,'kk',randomBytes(32).toString('hex')),null);
   assert.equal((await db.query('SELECT id FROM domain_outbox_events WHERE subject_id=$1',
    [request])).rowCount,1);
+  }finally{await app.close();}
  }finally{
   await db.query('ROLLBACK').catch(()=>{});await db.end();
   if(priorH===undefined)delete process.env.GUEST_REQUEST_HMAC_KEY;
   else process.env.GUEST_REQUEST_HMAC_KEY=priorH;
   if(priorE===undefined)delete process.env.GUEST_CONTACT_ENCRYPTION_KEY;
   else process.env.GUEST_CONTACT_ENCRYPTION_KEY=priorE;
+  if(priorFlag===undefined)delete process.env.SERVICES_ENABLE_GUEST_COMPLETION_HTTP;
+  else process.env.SERVICES_ENABLE_GUEST_COMPLETION_HTTP=priorFlag;
+  if(priorNetworkKey===undefined)delete process.env.GUEST_NETWORK_ATTESTATION_KEY;
+  else process.env.GUEST_NETWORK_ATTESTATION_KEY=priorNetworkKey;
  }
 });
