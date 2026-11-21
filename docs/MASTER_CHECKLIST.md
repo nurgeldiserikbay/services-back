@@ -70,6 +70,10 @@
 - Backend branch `test/otp-real-mtls-handshake-20261121`: tests start an actual loopback Node HTTPS server with `requestCert:true`, `rejectUnauthorized:true` and a temporary test CA. OpenSSL creates ephemeral server/client certs and keys outside the repository, deleted after the test. Real TLS handshakes verify approved client pin access, CA-valid-but-unpinned denial, temporary two-pin rotation, rejection of revoked pins, missing client certificates, and even pinned-but-untrusted CA certificates before the HTTP handler. No private keys are committed.
 - Reference-only security evidence, not a deployed OTP server or approved CA lifecycle. Production still requires KZ-hosted private-network ingress, trusted CA renewal/revocation procedures, audited provider, operational listener configuration and staging E2E. No readiness/acceptance increase pending exact PR-head CI and security review.
 
+### 2026-11-21 — real localhost OTP mTLS handshake and pin rotation regression (PR CI pending)
+- Backend branch `test/otp-mtls-real-handshake-20261121`: adds an **actual localhost HTTPS server/TLS handshake regression test**, separate from the unwired gateway. OpenSSL creates one-day throwaway server/client CA and client certificates in a temporary directory (no private keys committed). The server requires verified client certificates (`requestCert:true`, `rejectUnauthorized:true`) and invokes `verifyOtpNodeMtlsPeerPins` on a real IncomingMessage. Tests cover primary and staged CA-trusted pins, revoked primary fingerprint denied after rotation, and no/untrusted client certificate failing to gain HTTP success. CI evidence/merge pending.
+- This tests a temporary localhost server, **not production listener deployment**. Controlled certificate issuance/rotation/revocation, private source provenance, KZ hosting, secrets and real OTP provider staging acceptance remain open. No readiness increase or acceptance checkbox adjustment.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
