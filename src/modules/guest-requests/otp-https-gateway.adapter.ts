@@ -32,7 +32,7 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
 
   constructor(options:OtpHttpsGatewayOptions){
     let url:URL;
-    try{url=new URL(options.endpoint);}catch{return reject();}
+    try{url=new URL(options.endpoint);}catch{throw new Error(ERROR);}
     const hostname=url.hostname.toLowerCase();
     if(url.protocol!=='https:'||url.username||url.password||
        url.search||url.hash||(url.port&&url.port!=='443')||
@@ -45,7 +45,7 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
        typeof options.apiToken!=='string'||
        !/^[A-Za-z0-9._~-]{32,256}$/.test(options.apiToken)||
        (options.transport!==undefined&&typeof options.transport!=='function'))
-      reject();
+      throw new Error(ERROR);
     this.url=url.toString();
     this.token=options.apiToken;
     this.transport=options.transport??fetch;
@@ -65,9 +65,10 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
           'content-type':'application/json',
           'accept':'application/json',
           'authorization':'Bearer '+this.token,
+          'cache-control':'no-store',
         },
         body:JSON.stringify(message),
-        cache:'no-store',redirect:'error',credentials:'omit',signal:combined,
+        redirect:'error',credentials:'omit',signal:combined,
       });
       if(response.status!==202||!response.ok||
          !/^application\/json(?:\s*;|\s*$)/i.test(
