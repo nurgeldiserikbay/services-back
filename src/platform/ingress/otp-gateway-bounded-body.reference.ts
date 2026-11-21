@@ -16,10 +16,9 @@ export async function readBoundedOtpGatewayBody(
   let total=0;
   const iterator=source[Symbol.asyncIterator]();
   let finished=false;
-  let aborting=false;
   try{
     while(true){
-      if(signal?.aborted){aborting=true;reject();}
+      if(signal?.aborted)reject();
       let removeAbort:()=>void=()=>{};
       const pending=Promise.resolve().then(()=>iterator.next());
       const next=signal?await Promise.race([
@@ -41,16 +40,14 @@ export async function readBoundedOtpGatewayBody(
     if(total===0||signal?.aborted)reject();
     return Buffer.concat(chunks,total);
   }catch{
-    if(signal?.aborted)aborting=true;
     return reject();
   }finally{
     if(!finished&&typeof iterator.return==='function'){
-      if(aborting){
-        // Never block fail-closed rejection behind a stalled iterator.return().
-        void Promise.resolve().then(()=>iterator.return!()).catch(()=>{});
-      }else{
-        try{await iterator.return();}catch{/* preserve fail-closed error */}
-      }
+      // Cleanup is best-effort: malformed chunks, overflow, and cancellation
+      // must never wait for a stalled or malicious iterator.return().
+      try{
+        void Promise.resolve(iterator.return()).catch(()=>{});
+      }catch{/* preserve the original fail-closed error */}
     }
   }
 }
