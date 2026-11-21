@@ -54,6 +54,10 @@
 - Backend branch `test/otp-node-incoming-adapter-20261121`: **unwired reference-only** adapter accepts Node IncomingMessage, preserves original rawHeaders, validates exact method/route, attaches an abort controller and deadline-driven request.destroy() to a bounded streaming/HMAC/ledger pipeline. Tests cover actual Readable-backed request bytes, duplicate Authorization before body consumption, stalled request timeout destroying the stream and no ledger claim, invalid routes and deadlines.
 - This adapter creates **no network server** and authenticates **no mTLS peer**; production still needs a private TLS/mTLS listener, transport header limits, KZ-residency/provenance controls, approved vendor integration and staging security acceptance. CI and merge pending; no acceptance or readiness change.
 
+### 2026-11-21 — truncated Node HTTP OTP request fail-closed handling (PR CI pending)
+- Backend branch `test/otp-node-premature-close-20261121`: **unwired reference-only** IncomingMessage adapter now rejects a premature `close` when `request.complete` is false, and rejects already-destroyed streams before dispatch. Tests cover truncated body `close` without an `aborted` event and external abort on stalled streams; no vendor construction or ledger claim is allowed.
+- This is not a deployed listener or peer authentication; production still requires TLS/mTLS, network provenance, socket/header policies, KZ residency, approved provider and staging security review. PR-head CI/merge pending; readiness and acceptance unchanged.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
