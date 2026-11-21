@@ -1,4 +1,5 @@
 import {isIP} from 'node:net';
+import {createHmac} from 'node:crypto';
 import {
   sanitizeOtpDeliveryReceipt,validateOtpDeliveryMessage,
   type OtpDeliveryMessage,type OtpDeliveryPort,type OtpDeliveryReceipt,
@@ -17,6 +18,8 @@ export type OtpHttpsGatewayOptions=Readonly<{
   endpoint:string;
   approvedHost:string;
   apiToken:string;
+  /** Separate 256-bit secret for stable provider-level challenge deduplication. */
+  idempotencySecret:Buffer;
   transport?:typeof fetch;
 }>;
 
@@ -52,6 +55,7 @@ async function withCancellation<T>(
 export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
   private readonly url:string;
   private readonly token:string;
+  private readonly idempotencySecret:Buffer;
   private readonly transport:typeof fetch;
 
   constructor(options:OtpHttpsGatewayOptions){
@@ -68,17 +72,27 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
        !url.pathname.startsWith('/v1/')||
        typeof options.apiToken!=='string'||
        !/^[A-Za-z0-9._~-]{32,256}$/.test(options.apiToken)||
+       !Buffer.isBuffer(options.idempotencySecret)||
+       options.idempotencySecret.length!==32||
        (options.transport!==undefined&&typeof options.transport!=='function'))
       throw new Error(ERROR);
     this.url=url.toString();
     this.token=options.apiToken;
+    this.idempotencySecret=Buffer.from(options.idempotencySecret);
     this.transport=options.transport??fetch;
   }
 
   async deliverOtp(message:OtpDeliveryMessage,signal?:AbortSignal):Promise<OtpDeliveryReceipt>{
     try{
       validateOtpDeliveryMessage(message);
+      // Sending without a durable challenge ID is never retry-safe.
+      if(!message.challengeId)reject();
       if(signal?.aborted)reject();
+      const idempotencyKey=createHmac('sha256',this.idempotencySecret)
+        .update('services-guest-otp-delivery:v1\n')
+        .update(message.challengeId.toLowerCase()).digest('hex');
+      // The original challenge UUID is internal; never send it in JSON.
+      const {challengeId:unusedChallengeId,...payload}=message;
       // AbortSignal.any keeps both outer service cancellation and the
       // adapter's stricter three-second I/O deadline enforceable.
       const budget=AbortSignal.timeout(3_000);
@@ -90,8 +104,9 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
           'accept':'application/json',
           'authorization':'Bearer '+this.token,
           'cache-control':'no-store',
+          'idempotency-key':idempotencyKey,
         },
-        body:JSON.stringify(message),
+        body:JSON.stringify(payload),
         redirect:'error',credentials:'omit',signal:combined,
       }),combined);
       if(response.status!==202||!response.ok||
