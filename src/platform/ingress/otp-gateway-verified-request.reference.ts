@@ -85,7 +85,14 @@ export function verifyTrustedOtpGatewayRequest(
       expiresInSeconds:values.expiresInSeconds,
     };
     if(JSON.stringify(payload)!==rawBody)deny();
-    validateOtpDeliveryMessage(payload);
+    if(!['sms','email'].includes(String(payload.channel))||
+       !['CREATE_REQUEST','MANAGE_SCHEDULE','COMPLETE_REQUEST'].includes(
+         String(payload.purpose))||
+       !['kk','ru'].includes(String(payload.locale))||
+       typeof payload.destination!=='string'||
+       typeof payload.code!=='string'||
+       typeof payload.expiresInSeconds!=='number')deny();
+    validateOtpDeliveryMessage(payload as VerifiedOtpGatewayPayload);
     const expected=createHmac('sha256',config.idempotencySecret)
       .update('services-guest-otp-payload:v1\n')
       .update(key).update('\n')
