@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-21 — bounded gateway wait when transport ignores cancellation (PR-head CI pending)
+
+- Branch `fix/otp-https-gateway-abort-bounded-20261121`: the **still unwired** guest OTP HTTPS gateway adapter now races both its outgoing transport and streamed response reads against the 3-second abort deadline and the parent `OtpDeliveryService` cancellation. This stops backend request handling from hanging indefinitely when a custom transport or response stream fails to honor its `AbortSignal`, rejects late provider results and preserves sanitized provider errors. Unfinished body readers are cancelled before lock release.
+- Added regressions for a never-settling injected transport, a stalled response stream and a body exceeding the 512-byte hard bound. The application-side race **cannot revoke a dispatched SMS/email**; real provider transport must implement socket cancellation, idempotency and delivery reconciliation separately. Module still defaults to `DisabledOtpDelivery`, production flags stay off, no provider/ingress/KZ residency/staging approval is claimed. Do not change acceptance checkboxes or 21/117 count until confirmed. PR CI and merge pending.
+
+
 ### 2026-11-21 — isolated HTTPS JSON OTP delivery gateway adapter (CI pending)
 
 - Branch `feat/guest-otp-https-provider-adapter-20261121`: introduce `OtpHttpsGatewayAdapter` as a **separately injectable but deliberately unwired** provider-neutral HTTPS JSON delivery boundary. It requires an exact approved DNS hostname, HTTPS, no URL credentials/query, port restrictions, a separately supplied gateway token, and disables redirects, cookies and HTTP caching. Provider response must be HTTP 202 JSON with exact `accepted`/`providerRef` keys and strictly bounded 512-byte body; invalid, oversized, or non-success replies fail closed with a redacted error. A 3-second transport signal combines with the service's 5-second deadline.

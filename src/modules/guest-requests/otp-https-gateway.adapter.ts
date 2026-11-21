@@ -25,6 +25,30 @@ const HOST=/^(?=.{4,253}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9
 const ERROR='otp_gateway_unavailable';
 function reject():never{throw new Error(ERROR);}
 
+/**
+ * Do not rely on a vendor transport or a mocked stream honoring AbortSignal:
+ * race every asynchronous boundary against cancellation. The underlying
+ * transport MUST still honor abort at the socket/egress layer; this bounds
+ * the application wait but cannot undo an already-sent OTP.
+ */
+async function withCancellation<T>(
+  operation:()=>Promise<T>,signal:AbortSignal,
+):Promise<T>{
+  if(signal.aborted)reject();
+  let detach=()=>{};
+  const cancelled=new Promise<never>((_,rejectPromise)=>{
+    const onAbort=()=>rejectPromise(new Error(ERROR));
+    signal.addEventListener('abort',onAbort,{once:true});
+    detach=()=>signal.removeEventListener('abort',onAbort);
+    if(signal.aborted)onAbort();
+  });
+  try{
+    return await Promise.race([Promise.resolve().then(operation),cancelled]);
+  }finally{
+    detach();
+  }
+}
+
 export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
   private readonly url:string;
   private readonly token:string;
@@ -59,7 +83,7 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
       // adapter's stricter three-second I/O deadline enforceable.
       const budget=AbortSignal.timeout(3_000);
       const combined=signal?AbortSignal.any([signal,budget]):budget;
-      const response=await this.transport(this.url,{
+      const response=await withCancellation(()=>this.transport(this.url,{
         method:'POST',
         headers:{
           'content-type':'application/json',
@@ -69,7 +93,7 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
         },
         body:JSON.stringify(message),
         redirect:'error',credentials:'omit',signal:combined,
-      });
+      }),combined);
       if(response.status!==202||!response.ok||
          !/^application\/json(?:\s*;|\s*$)/i.test(
           response.headers.get('content-type')??'')||
@@ -85,7 +109,7 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
       let ended=false;
       try{
         for(;;){
-          const chunk=await reader.read();
+          const chunk=await withCancellation(()=>reader.read(),combined);
           if(chunk.done){ended=true;break;}
           if(!(chunk.value instanceof Uint8Array)||
              size+chunk.value.byteLength>LIMIT)reject();
@@ -105,7 +129,7 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
          Object.keys(parsed).sort().join(',')!=='accepted,providerRef')
         reject();
       const receipt=sanitizeOtpDeliveryReceipt(parsed);
-      if(!receipt.accepted||!receipt.providerRef)reject();
+      if(combined.aborted||!receipt.accepted||!receipt.providerRef)reject();
       return receipt;
     }catch{
       // Never expose gateway errors, response body, phone/email or OTP.
