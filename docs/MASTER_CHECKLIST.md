@@ -38,6 +38,10 @@
 - Backend branch `test/otp-gateway-stalled-stream-abort-20261121`: reference-only bounded stream reader now races awaiting `next()` against caller AbortSignal and promptly fails closed if a source stalls; best-effort iterator cleanup does not hold abort rejection waiting for a stuck `return()`. Regression tests cover stalled `next()`, abort during iteration, and nonblocking cleanup.
 - The **real HTTP transport must still destroy/cancel the socket** on timeout and enforce network deadlines. This is not a deployed listener, provider integration or staging acceptance. PR-head CI/merge pending; do not mark an acceptance item complete or increase readiness percentage.
 
+### 2026-11-21 — OTP stream cleanup fail-closed hardening (PR CI pending)
+- Backend branch `fix/otp-gateway-iterator-cleanup-nohang-20261121`: reference-only bounded body reader now attempts iterator cleanup without awaiting `return()` for **all** failed/aborted streams, not just aborts. Tests cover oversized chunks with indefinitely pending iterator cleanup, malformed chunks, synchronous cleanup failures and rejected cleanup promises, ensuring generic sanitized failure.
+- Not deployed as an actual HTTP listener; socket destruction, request deadlines, TLS/mTLS, KZ residency, real OTP vendor and staging/security approval remain open. No acceptance checkbox or readiness increase pending CI and merge.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
