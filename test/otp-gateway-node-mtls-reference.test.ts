@@ -63,8 +63,7 @@ test('Node OTP mTLS gate denies an untrusted peer, invalid pin and absent cert',
 test('mTLS entrypoint denies wrong peer before reading body or claiming ledger',async()=>{
  let consumed=0;
  let claimed=0;
- const request=new Readable({read(){consumed++;this.push(Buffer.from('x'));this.push(null);}})
-  as IncomingMessage;
+ const request=new Readable({read(){consumed++;this.push(Buffer.from('x'));this.push(null);}}) as IncomingMessage;
  Object.assign(request,{
   method:'POST',url:'/v1/send',complete:false,aborted:false,
   rawHeaders:['Content-Length','1'],
