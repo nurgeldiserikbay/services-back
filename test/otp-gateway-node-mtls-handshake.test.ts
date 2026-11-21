@@ -44,6 +44,11 @@ test('OTP mTLS validates real CA handshake, certificate pin rotation and denial'
    'extendedKeyUsage=clientAuth\nkeyUsage=digitalSignature\n');
   sign('client-b','otp-client-b',
    'extendedKeyUsage=clientAuth\nkeyUsage=digitalSignature\n');
+  // Deliberately untrusted self-signed client certificate.
+  openssl('req','-x509','-newkey','rsa:2048','-nodes',
+   '-keyout',path('rogue.key'),'-out',path('rogue.crt'),
+   '-days','1','-sha256','-subj','/CN=Untrusted OTP Client',
+   '-addext','extendedKeyUsage=clientAuth');
 
   const certificate=(name:string)=>readFileSync(path(name+'.crt'));
   const privateKey=(name:string)=>readFileSync(path(name+'.key'));
@@ -106,8 +111,13 @@ test('OTP mTLS validates real CA handshake, certificate pin rotation and denial'
   assert.equal(await send('client-a'),403);
   assert.equal(admitted,2);
 
-  // TLS itself must reject a missing client certificate before HTTP handler.
+  // A pinned but untrusted certificate is never enough: CA auth is required.
+  approved=[pin('client-b'),pin('rogue')];
   const before=handled;
+  await assert.rejects(send('rogue'));
+  assert.equal(handled,before);
+
+  // TLS itself must reject a missing client certificate before HTTP handler.
   await assert.rejects(send());
   assert.equal(handled,before);
  }finally{
