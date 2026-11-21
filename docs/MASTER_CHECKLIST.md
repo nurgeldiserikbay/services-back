@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-21 — optional IPv6 /64 guest OTP edge quota identity policy (CI pending)
+
+- Branch `feat/otp-edge-ipv6-prefix-quota-policy-20261121`: extend the **edge-only** network proof signer and trusted request-header reference to accept an explicit server-owned `ipv6Grouping` policy. `exact` remains the default and retains per-address identity; `prefix64` aggregates rotating IPv6 privacy addresses from one canonical /64 into the same HMAC network quota identity. Distinct /64 prefixes remain separate; ordinary IPv4 and IPv4-mapped IPv6 keep exact, shared IPv4 quota identities. Tests exercise signature/backend verifier parity, unchanged default, policy validation and trusted headers.
+- **Not a production rollout or completed acceptance item:** selecting /64 risks shared-network false positives and quota continuity change, requiring owner policy signoff and staging abuse/UX measurements. Trusted edge deployment, proxy-hop provenance, key custody, live OTP provider, KZ data residency, operational signoff remain OPEN. CI/merge pending; do not change accepted 21/117.
+
+
 ### 2026-11-21 — dual-stack guest OTP edge quota identity normalization (CI pending)
 
 - Branch `fix/otp-edge-ipv4-mapped-quota-parity-20261121`: the isolated edge-only network signer now maps IPv4-mapped IPv6 forms such as `::ffff:203.0.113.9` and `::ffff:cb00:7109` to the **same** HMAC network digest as ordinary `203.0.113.9`. Prevents quota partitioning when different trusted proxy hops report the same IPv4 client in dual-stack socket formats. IPv4-translated IPv6 `::ffff:0:...` is explicitly not conflated with IPv4. Regression tests cover real backend verifier and full trusted issuance header allowlist parity.

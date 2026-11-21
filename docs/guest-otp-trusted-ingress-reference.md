@@ -57,6 +57,28 @@ the actual JSON body and its size limit independently. This code neither
 installs a proxy nor authenticates a session; a browser must never call it
 or see the signing keys. The production acceptance list below stays OPEN.
 
+## Explicit IPv6 quota grouping policy (default unchanged)
+
+The edge-only `makeTrustedOtpNetworkProof` reference and
+`buildTrustedGuestOtpIssuanceHeaders` accept an **explicit** server-owned
+`ipv6Grouping` policy:
+
+- `exact` (default): distinct IPv6 addresses receive distinct quota identities.
+- `prefix64`: addresses within the same canonical IPv6 /64 receive one
+  network quota identity, limiting privacy-address rotation across a /64.
+  Independent /64 prefixes remain distinct; IPv4 and IPv4-mapped IPv6 keep
+  the same exact IPv4 identity in either mode.
+
+**Deployment owner decision needed.** A /64 can contain several legitimate
+people or devices; aggregating it can cause shared-household and enterprise
+network throttling. Conversely, exact IPv6 identities allow privacy-address
+rotation to spread network budgets. Do not turn on `prefix64` without real
+staging measurements, abuse review, rate-limit UX, and explicit policy signoff.
+This policy is not a browser-provided field; a real ingress must choose it
+from protected deployment configuration. Changing policies changes keyed quota
+identities and therefore affects ledger continuity. Existing default remains
+`exact`; neither mode implies a deployed ingress.
+
 ## Deployment acceptance (all pending)
 
 - [ ] Secret-store custody and rotation for the **edge-only** identity key;

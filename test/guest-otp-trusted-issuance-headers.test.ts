@@ -103,6 +103,26 @@ test('dual-stack ingress does not create separate OTP quota identities',()=>{
   ipv4.get('x-services-network-proof'),attestationKey,now));
 });
 
+test('explicit IPv6 /64 issuance header policy is stable across privacy hosts',()=>{
+ const a=buildTrustedGuestOtpIssuanceHeaders(hostile,{
+  ...trusted('COMPLETE_REQUEST'),clientAddress:'2001:db8:abcd:42::1',
+  ipv6Grouping:'prefix64',
+ });
+ const b=buildTrustedGuestOtpIssuanceHeaders(new Headers(),{
+  ...trusted('COMPLETE_REQUEST'),clientAddress:'2001:db8:abcd:42::ffab',
+  ipv6Grouping:'prefix64',
+ });
+ assert.equal(a.get('x-services-network-proof'),b.get('x-services-network-proof'));
+ assert.equal(a.get('guest-capability'),token);
+ assert.match(verifyTrustedNetworkProof(a.get('x-services-network-proof'),
+  attestationKey,now)??'',/^[0-9a-f]{64}$/);
+ const defaultExact=buildTrustedGuestOtpIssuanceHeaders(hostile,{
+  ...trusted('COMPLETE_REQUEST'),clientAddress:'2001:db8:abcd:42::1',
+ });
+ assert.notEqual(a.get('x-services-network-proof'),
+  defaultExact.get('x-services-network-proof'));
+});
+
 test('edge-only allowlist helper is not imported by runtime controllers',()=>{
  for(const p of [
   'src/main.ts',
