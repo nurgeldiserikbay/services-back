@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-21 — standalone PostgreSQL claim-to-provider OTP gateway reference (CI pending)
+
+- Branch `feat/otp-gateway-ledger-dispatch-reference-20261121`: `OtpGatewayLedgerDispatchReference` orchestrates a **dedicated, unwired gateway** ledger and abstract vendor send port. A durably committed first `send` claim is the only route to provider dispatch; identical `in_flight` duplicates do not send, different fingerprints conflict, and existing `accepted` receipts replay without a second provider call. Only after the vendor returns an accepted reference is PostgreSQL CAS finalization attempted; an unknown vendor outcome or failed database acknowledgement remains RESERVED for reconciliation—**never automatic retry/reclaim**.
+- Disposable PostgreSQL-schema tests exercise competing multi-client requests while vendor delivery is deliberately held open, accepted receipt replay, content conflict, and an ambiguous vendor failure that stays permanently unresolved until reviewed. Fail-closed database errors, aborted requests and missing acknowledgement are also covered. This is a **reference-only service**, not connected to the Nest application or a real SMS/email provider. It does not verify inbound signatures or implement a gateway HTTP listener, network access control, provider-side idempotency, KZ residency or reconciliation authorization. No production acceptance checkbox or strict 21/117 count change. PR-head CI and merge pending.
+
+
 ### 2026-11-21 — isolated PostgreSQL gateway idempotency ledger (PR-head CI pending)
 
 - Branch `feat/otp-gateway-postgres-dedup-reference-20261121`: an **unwired, separate OTP gateway** PostgreSQL ledger reference (`src/platform/ingress/otp-gateway-postgres-ledger.reference.ts` and `docs/reference/otp-gateway-idempotency-ledger.sql`) uses a durable unique HMAC idempotency-key reservation **committed before external delivery**. Under concurrency, only the first claimant receives `send`; identical pending duplicates receive `in_flight` (no resend), fingerprint mismatches receive `conflict` and accepted duplicates reuse a previously sanitized provider receipt. Provider acknowledgement uses a fingerprint-guarded `RESERVED` → `ACCEPTED` compare-and-set. The table stores only keyed identifiers, status, timestamps and an opaque provider reference—never an OTP code, phone, email or access token.
