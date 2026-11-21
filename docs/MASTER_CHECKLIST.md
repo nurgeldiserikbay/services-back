@@ -30,6 +30,10 @@
 - Backend branch `test/otp-gateway-stream-envelope-composition-20261121`: new **unwired** composition reads a byte-capped AsyncIterable body, validates the exact HTTP method/path/raw-header structure, canonical signed payload and BFF bearer, then and only then constructs a vendor port and claims the PostgreSQL ledger. HTTPS-adapter tests cover accepted delivery, malformed envelopes/body, forged authorization, and aborted requests with zero ledger/vendor side effects.
 - No production listener or OTP provider activation. Streaming deadlines, TLS/mTLS, raw socket/header provenance, deployed KZ residency, staging E2E and security sign-off still pending. PR-head CI/merge pending; no acceptance checkbox/readiness change.
 
+### 2026-11-21 — OTP stream header framing preflight (PR CI pending)
+- Backend branch `test/otp-gateway-stream-header-preflight-20261121`: reference-only stream dispatcher now rejects absent/duplicate/noncanonical/oversized Content-Length, invalid Content-Type, Content-Encoding, Transfer-Encoding and malformed/oversized raw header tuples **before reading any body chunks**. Regression tests assert no stream reads or ledger/vendor effects on invalid framing.
+- Still not a live gateway listener; TLS/mTLS, real socket header limits, strict network/source provenance, streaming deadline, real provider and KZ deployment acceptance remain pending. No acceptance checkbox or readiness increase until independently verified.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
