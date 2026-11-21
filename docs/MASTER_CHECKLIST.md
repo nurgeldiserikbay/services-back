@@ -74,6 +74,10 @@
 - Backend branch `test/otp-mtls-real-handshake-20261121`: adds an **actual localhost HTTPS server/TLS handshake regression test**, separate from the unwired gateway. OpenSSL creates one-day throwaway server/client CA and client certificates in a temporary directory (no private keys committed). The server requires verified client certificates (`requestCert:true`, `rejectUnauthorized:true`) and invokes `verifyOtpNodeMtlsPeerPins` on a real IncomingMessage. Tests cover primary and staged CA-trusted pins, revoked primary fingerprint denied after rotation, and no/untrusted client certificate failing to gain HTTP success. CI evidence/merge pending.
 - This tests a temporary localhost server, **not production listener deployment**. Controlled certificate issuance/rotation/revocation, private source provenance, KZ hosting, secrets and real OTP provider staging acceptance remain open. No readiness increase or acceptance checkbox adjustment.
 
+### 2026-11-21 — bounded mTLS HTTPS listener factory (PR CI pending)
+- Backend branch `feat/otp-mtls-reference-listener-20261121`: added **unwired, non-listening** Node HTTPS factory with explicit server key/cert/trusted client CA, `requestCert:true`, `rejectUnauthorized:true`, 4 KiB HTTP header cap, 32 header-count limit, bounded header/request/keepalive/socket timeouts and one HTTP request per TLS socket. The factory verifies the operator-supplied mTLS SHA-256 certificate pin before invoking a request handler; exceptions do not expose OTP/vendor details. Existing real localhost mTLS handshake/rotation regression is updated to exercise this factory, and invalid TLS input checks are added. CI/merge pending.
+- The factory does not bind an interface, wire the OTP vendor or validate deployment network policy. Real KZ-resident private listener deployment, trusted CA/cert lifecycle, IP/firewall controls, gateway response contract, secrets storage and staging E2E remain open. No acceptance/readiness adjustment.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
