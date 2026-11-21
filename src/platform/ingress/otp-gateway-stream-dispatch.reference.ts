@@ -63,18 +63,25 @@ export async function dispatchBoundedOtpGatewayHttpStream(
   gateway:OtpGatewayLedgerDispatchReference,
   makeVendor:(payload:VerifiedOtpGatewayPayload)=>OtpGatewayVendorPort,
   signal?:AbortSignal,
+  deadlineMs=5_000,
 ):Promise<OtpGatewayDispatchResult>{
+  // A reference-level deadline is mandatory even if the caller omits a signal.
+  // This is not a replacement for socket destruction or vendor-side timeouts.
+  if(!Number.isSafeInteger(deadlineMs)||deadlineMs<10||
+     deadlineMs>30_000)deny();
+  const deadline=AbortSignal.timeout(deadlineMs);
+  const effectiveSignal=signal?AbortSignal.any([signal,deadline]):deadline;
   // Cheap routing preflight must deny wrong endpoints before consuming a stream.
-  if(signal?.aborted||method!=='POST'||requestTarget!=='/v1/send')deny();
+  if(effectiveSignal.aborted||method!=='POST'||requestTarget!=='/v1/send')deny();
   preflightHeaders(rawHeaders);
-  const bytes=await readBoundedOtpGatewayBody(stream,signal);
+  const bytes=await readBoundedOtpGatewayBody(stream,effectiveSignal);
   const request=verifyTrustedOtpGatewayHttpEnvelope(
     method,requestTarget,rawHeaders,bytes,config,
   );
-  if(signal?.aborted)deny();
+  if(effectiveSignal.aborted)deny();
   const vendor=makeVendor(request.payload);
   return gateway.dispatch({
     idempotencyKey:request.idempotencyKey,
     fingerprint:request.fingerprint,
-  },vendor,signal);
+  },vendor,effectiveSignal);
 }

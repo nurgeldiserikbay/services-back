@@ -42,6 +42,10 @@
 - Backend branch `fix/otp-gateway-iterator-cleanup-nohang-20261121`: reference-only bounded body reader now attempts iterator cleanup without awaiting `return()` for **all** failed/aborted streams, not just aborts. Tests cover oversized chunks with indefinitely pending iterator cleanup, malformed chunks, synchronous cleanup failures and rejected cleanup promises, ensuring generic sanitized failure.
 - Not deployed as an actual HTTP listener; socket destruction, request deadlines, TLS/mTLS, KZ residency, real OTP vendor and staging/security approval remain open. No acceptance checkbox or readiness increase pending CI and merge.
 
+### 2026-11-21 — OTP gateway composed ingress self-deadline (PR CI pending)
+- Backend branch `test/otp-gateway-internal-deadline-20261121`: **reference-only**, unwired OTP dispatch now applies a bounded 5-second default AbortSignal.timeout even without a caller signal, combines any caller cancellation, and rejects invalid deadline configuration before stream consumption. Tests simulate a stuck async iterator without a caller signal and invalid deadline settings; no ledger/vendor side effects are expected before validation.
+- This does **not** enforce a socket-level timeout, cancel PostgreSQL claim I/O, or make an uncooperative vendor interruptible. A real KZ-hosted listener, socket destruction, TLS/mTLS, provider configuration and staging E2E remain required. CI/merge pending, no readiness or acceptance checkbox adjustment.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
