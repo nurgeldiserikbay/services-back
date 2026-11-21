@@ -161,3 +161,54 @@ test('OTP stream header preflight rejects invalid framing before reading body',a
   assert.equal(consumed,false);
  }
 });
+
+test('composed OTP gateway has an internal body deadline without caller signal',async()=>{
+ let reads=0;
+ let claims=0;
+ const gateway=new OtpGatewayLedgerDispatchReference({
+  claim:async()=>{claims++;return {decision:'send' as const};},
+  recordAccepted:async()=>true,
+ });
+ const headers:[string,string][]=[
+  ['authorization','Bearer '+'a'.repeat(48)],
+  ['idempotency-key','a'.repeat(64)],
+  ['x-services-otp-payload-fingerprint','b'.repeat(64)],
+  ['content-type','application/json'],
+  ['content-length','10'],
+ ];
+ const stream:AsyncIterable<Buffer>={
+  [Symbol.asyncIterator](){
+   return {
+    next:()=>{
+     reads++;
+     return new Promise<IteratorResult<Buffer>>(()=>{});
+    },
+    return:async()=>({done:true as const,value:undefined}),
+   };
+  },
+ };
+ await assert.rejects(dispatchBoundedOtpGatewayHttpStream(
+  'POST','/v1/send',headers,stream,config,gateway,
+  ()=>{throw new Error('vendor must not be constructed');},
+  undefined,20,
+ ),/otp_gateway_request_rejected/);
+ assert.equal(reads,1);
+ assert.equal(claims,0);
+});
+
+test('composed OTP gateway rejects invalid deadline before consuming stream',async()=>{
+ const gateway=new OtpGatewayLedgerDispatchReference({
+  claim:async()=>{throw new Error('unexpected claim');},
+  recordAccepted:async()=>true,
+ });
+ for(const deadlineMs of [0,-1,1,30_001,Number.NaN,1.1]){
+  let consumed=false;
+  async function* stream(){consumed=true;yield Buffer.from('a');}
+  await assert.rejects(dispatchBoundedOtpGatewayHttpStream(
+   'POST','/v1/send',[],stream(),config,gateway,
+   ()=>{throw new Error('unexpected vendor');},
+   undefined,deadlineMs,
+  ),/otp_gateway_request_rejected/);
+  assert.equal(consumed,false);
+ }
+});
