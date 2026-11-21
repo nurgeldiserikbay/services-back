@@ -78,6 +78,10 @@
 - Backend branch `feat/otp-mtls-reference-listener-20261121`: added **unwired, non-listening** Node HTTPS factory with explicit server key/cert/trusted client CA, `requestCert:true`, `rejectUnauthorized:true`, 4 KiB HTTP header cap, 32 header-count limit, bounded header/request/keepalive/socket timeouts and one HTTP request per TLS socket. The factory verifies the operator-supplied mTLS SHA-256 certificate pin before invoking a request handler; exceptions do not expose OTP/vendor details. Existing real localhost mTLS handshake/rotation regression is updated to exercise this factory, and invalid TLS input checks are added. CI/merge pending.
 - The factory does not bind an interface, wire the OTP vendor or validate deployment network policy. Real KZ-resident private listener deployment, trusted CA/cert lifecycle, IP/firewall controls, gateway response contract, secrets storage and staging E2E remain open. No acceptance/readiness adjustment.
 
+### 2026-11-22 — reference OTP mTLS HTTP response dispatch (PR CI pending)
+- Backend branch `feat/otp-mtls-http-dispatch-handler-20261122`: added an **unwired** HTTP callback for the existing trusted mTLS listener factory. It uses the bounded raw-header/OTP HMAC verification and durable ledger dispatcher, returns only the canonical `202 {accepted:true,providerRef}` for accepted deliveries, `409 {accepted:false}` for in-flight/conflicting idempotency, and generic `503 {accepted:false}` for validation/infrastructure failures; unknown path is `404` before body processing. Responses include `no-store`, exact body byte count and `nosniff`. Tests cover accepted receipt, conflict/in-flight no vendor send, invalid payload, wrong route and invalid deadlines. **The handler must never be registered on an unauthenticated route; only pass it into the mTLS server factory.**
+- No provider, listener interface binding, KZ residency/network-perimeter enforcement, operational CA/certificate controls or real staging acceptance has been deployed. CI/merge and acceptance pending; no readiness inflation.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
