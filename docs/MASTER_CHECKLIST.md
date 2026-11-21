@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-21 — reject proxy-local and non-client OTP quota signing identities (pending CI)
+
+- Branch `fix/otp-edge-reject-nonclient-network-identities-20261121`: the isolated edge reference signer now refuses to mint a network proof from loopback, unspecified, link-local, multicast/broadcast IPv4/IPv6 sources, including IPv4-mapped IPv6 equivalents. This catches common trusted proxy misconfiguration where the edge otherwise attributes every guest to its own internal socket address, creating an unintended shared OTP quota. Regression tests cover both proof signer and issuance-header reconstruction; legitimate test-net IP and IPv6 signer/verifier behavior remains unchanged.
+- Real trusted-hop client-IP resolution, edge authenticity, header stripping, private transport, key custody, provider, KZ residency and staged deployment acceptance remain OPEN. The signer is still reference-only, production feature flags remain disabled, and no acceptance checkbox or 21/117 count changes. PR-head CI and merge pending.
+
+
 ### 2026-11-21 — optional IPv6 /64 guest OTP edge quota identity policy (CI pending)
 
 - Branch `feat/otp-edge-ipv6-prefix-quota-policy-20261121`: extend the **edge-only** network proof signer and trusted request-header reference to accept an explicit server-owned `ipv6Grouping` policy. `exact` remains the default and retains per-address identity; `prefix64` aggregates rotating IPv6 privacy addresses from one canonical /64 into the same HMAC network quota identity. Distinct /64 prefixes remain separate; ordinary IPv4 and IPv4-mapped IPv6 keep exact, shared IPv4 quota identities. Tests exercise signature/backend verifier parity, unchanged default, policy validation and trusted headers.
