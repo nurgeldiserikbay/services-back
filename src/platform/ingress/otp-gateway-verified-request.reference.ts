@@ -145,6 +145,35 @@ export function verifyTrustedOtpGatewayRawHeaders(
   }catch{deny();}
 }
 
+
+/**
+ * Reference-only envelope check for a future gateway listener. Use the
+ * ORIGINAL request method, request-target and raw body bytes; never decoded
+ * or reserialized intermediary content. A production listener must enforce
+ * this limit while streaming, BEFORE buffering.
+ */
+export function verifyTrustedOtpGatewayHttpEnvelope(
+  method:string,
+  requestTarget:string,
+  rawHeaders:readonly (readonly [string,string])[],
+  bodyBytes:Buffer,
+  config:TrustedOtpGatewayIngressConfig,
+):VerifiedOtpGatewayRequest{
+  if(method!=='POST'||requestTarget!=='/v1/send'||
+     !Buffer.isBuffer(bodyBytes)||bodyBytes.length===0||
+     bodyBytes.length>1024)deny();
+  // Reject invalid UTF-8, including replacement-character ambiguities.
+  const rawBody=bodyBytes.toString('utf8');
+  if(!Buffer.from(rawBody,'utf8').equals(bodyBytes))deny();
+  const contentLengths=rawHeaders.filter(entry=>
+    Array.isArray(entry)&&typeof entry[0]==='string'&&
+    entry[0].toLowerCase()==='content-length');
+  if(contentLengths.length!==1||
+     !/^(0|[1-9][0-9]*)$/.test(contentLengths[0]?.[1]??'')||
+     Number(contentLengths[0][1])!==bodyBytes.length)deny();
+  return verifyTrustedOtpGatewayRawHeaders(rawHeaders,rawBody,config);
+}
+
 /** Authenticate, validate and bind the inbound payload BEFORE ledger claim.
  * A gateway implementation constructs its approved vendor port exclusively
  * from the returned parsed payload; no browser-controlled vendor function.

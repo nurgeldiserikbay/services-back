@@ -6,7 +6,7 @@ import {OtpHttpsGatewayAdapter} from '../src/modules/guest-requests/otp-https-ga
 import {OtpGatewayLedgerDispatchReference} from
  '../src/platform/ingress/otp-gateway-ledger-dispatch.reference.js';
 import {
- verifyTrustedOtpGatewayRequest,verifyTrustedOtpGatewayRawHeaders,dispatchVerifiedOtpGatewayRequest,
+ verifyTrustedOtpGatewayRequest,verifyTrustedOtpGatewayRawHeaders,verifyTrustedOtpGatewayHttpEnvelope,dispatchVerifiedOtpGatewayRequest,
 } from '../src/platform/ingress/otp-gateway-verified-request.reference.js';
 
 const config={
@@ -175,4 +175,48 @@ test('raw gateway header boundary rejects duplicate credentials before Header co
  denial([...tuples,['X-Test','line\r\ninjected']]);
  denial([...tuples,['X-Test','x'.repeat(1025)]]);
  denial([...tuples,...Array.from({length:33},(_,i)=>['x-extra-'+i,'value'] as [string,string])]);
+});
+
+
+test('OTP HTTP envelope verifies exact POST path, raw bytes and content length',async()=>{
+ let headers:Headers|undefined;
+ let body='';
+ const adapter=new OtpHttpsGatewayAdapter({
+  ...config,endpoint:'https://otp.example.org/v1/send',
+  approvedHost:'otp.example.org',
+  transport:async(_url,init)=>{
+   headers=new Headers(init?.headers);body=String(init?.body);
+   return new Response(JSON.stringify({accepted:true,providerRef:'provider_12345678'}),{
+    status:202,headers:{'content-type':'application/json'},
+   });
+  },
+ });
+ await adapter.deliverOtp(msg);
+ assert.ok(headers);
+ const raw=Buffer.from(body,'utf8');
+ const pairs:[string,string][]=[
+  ...headers.entries(),['content-length',String(raw.length)],
+ ];
+ assert.equal(verifyTrustedOtpGatewayHttpEnvelope(
+  'POST','/v1/send',pairs,raw,config,
+ ).payload.code,msg.code);
+ const denied=(method:string,path:string,h:[string,string][],bytes:Buffer)=>
+  assert.throws(()=>verifyTrustedOtpGatewayHttpEnvelope(
+   method,path,h,bytes,config,
+  ),/otp_gateway_request_rejected/);
+ denied('GET','/v1/send',pairs,raw);
+ denied('post','/v1/send',pairs,raw);
+ denied('POST','/v1/send?debug=1',pairs,raw);
+ denied('POST','/v1/send/',pairs,raw);
+ denied('POST','/v1/send',pairs,Buffer.concat([raw,Buffer.from(' ')]));
+ denied('POST','/v1/send',pairs,Buffer.from([0xc3,0x28]));
+ denied('POST','/v1/send',pairs,Buffer.alloc(1025,65));
+ denied('POST','/v1/send',pairs.filter(([k])=>k!=='content-length'),raw);
+ denied('POST','/v1/send',[...pairs,['Content-Length',String(raw.length)]],raw);
+ denied('POST','/v1/send',pairs.map(([k,v])=>[
+  k,k==='content-length'?'0'+v:v,
+ ] as [string,string]),raw);
+ denied('POST','/v1/send',pairs.map(([k,v])=>[
+  k,k==='content-length'?String(raw.length+1):v,
+ ] as [string,string]),raw);
 });

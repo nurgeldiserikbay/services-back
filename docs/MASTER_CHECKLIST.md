@@ -18,6 +18,10 @@
 - Backend branch `test/otp-gateway-raw-header-boundary-20261121`: added a **reference-only** raw header-pair verifier that rejects duplicate authorization, idempotency, signature and Content-Type fields *before* `Headers` coalesces them; rejects transfer/content encoding and malformed/oversized header entries. Added real HTTPS-adapter roundtrip and negative regression tests.
 - **Not accepted yet:** CI result, merge and staging sign-off pending. The helper is NOT a deployed listener, and the actual gateway must still validate HTTP method/route, bound request streaming bytes, real raw-header provenance, TLS/mTLS, approved KZ residency and vendor delivery. No checkbox/readiness change.
 
+### 2026-11-21 — OTP gateway raw HTTP envelope verification (PR pending)
+- Backend branch `test/otp-gateway-http-envelope-20261121`: added reference-only exact POST `/v1/send` request-target check, byte-exact UTF-8 body validation, 1024-byte maximum and unique matching Content-Length guard before authenticated OTP payload verification. Regression tests use the real HTTPS adapter and reject ambiguous paths, lengths, invalid UTF-8 and oversized bodies.
+- This does **not** implement a deployed server or streaming pre-buffer cap. CI/merge, TLS/mTLS, raw header provenance, KZ residency, real OTP provider and staging acceptance remain open. No acceptance checkbox or readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
