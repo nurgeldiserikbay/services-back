@@ -47,7 +47,7 @@ test('gateway requires approved HTTPS host and safe request path',()=>{
 });
 
 test('gateway rejects ambiguous or cacheable response contracts',async()=>{
- const values=[
+ const values:ResponseInit[]=[
   {status:200,headers:{'content-type':'application/json'}},
   {status:202,headers:{'content-type':'text/html'}},
   {status:202,headers:{'content-type':'application/json','cache-control':'public'}},
