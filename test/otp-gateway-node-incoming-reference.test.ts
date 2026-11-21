@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
 import {test} from 'node:test';
 import {Readable} from 'node:stream';
 import type {IncomingMessage} from 'node:http';
@@ -10,7 +11,8 @@ import {dispatchOtpNodeIncomingMessage} from
 
 const config={apiToken:'fixture'.repeat(8),idempotencySecret:Buffer.alloc(32,42)};
 const msg={channel:'email' as const,destination:'person@example.org',code:'123456',
- purpose:'CREATE_REQUEST' as const,locale:'kk' as const,expiresInSeconds:600};
+ purpose:'CREATE_REQUEST' as const,locale:'kk' as const,expiresInSeconds:600,
+ challengeId:randomUUID()};
 
 function incoming(body:Buffer,rawHeaders:string[]):IncomingMessage{
  const stream=Readable.from([body]) as IncomingMessage;
