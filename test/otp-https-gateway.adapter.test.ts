@@ -172,3 +172,67 @@ test('gateway rejects missing and invalid idempotency signing secret',()=>{
    /otp_gateway_unavailable/);
  }
 });
+
+test('payload fingerprint is stable for identical retries and changes on conflicting payload',async()=>{
+ const seen:{key:string;fingerprint:string;body:string}[]=[];
+ const transport:typeof fetch=async(_url,init)=>{
+  const headers=new Headers(init?.headers);
+  const key=headers.get('idempotency-key')??'';
+  const fingerprint=headers.get('x-services-otp-payload-fingerprint')??'';
+  assert.match(key,/^[0-9a-f]{64}$/);
+  assert.match(fingerprint,/^[0-9a-f]{64}$/);
+  const body=String(init?.body);
+  seen.push({key,fingerprint,body});
+  return new Response(JSON.stringify({
+   accepted:true,providerRef:'delivery_12345678',
+  }),{status:202,headers:{'content-type':'application/json'}});
+ };
+ const adapter=new OtpHttpsGatewayAdapter({...config,transport});
+ await adapter.deliverOtp(message);
+ await adapter.deliverOtp(message);
+ await adapter.deliverOtp({...message,code:'234567'});
+ await adapter.deliverOtp({...message,destination:'another@example.org'});
+ await adapter.deliverOtp({...message,challengeId:'e6e9c6a5-eecb-42d2-95b7-6ae7e5e98e52'});
+ assert.equal(seen.length,5);
+ assert.equal(seen[0].key,seen[1].key);
+ assert.equal(seen[0].fingerprint,seen[1].fingerprint);
+ assert.equal(seen[0].body,seen[1].body);
+ assert.equal(seen[0].key,seen[2].key);
+ assert.equal(seen[0].key,seen[3].key);
+ assert.notEqual(seen[0].fingerprint,seen[2].fingerprint);
+ assert.notEqual(seen[0].fingerprint,seen[3].fingerprint);
+ assert.notEqual(seen[0].key,seen[4].key);
+ assert.notEqual(seen[0].fingerprint,seen[4].fingerprint);
+ for(const entry of seen){
+  assert.ok(!entry.fingerprint.includes(message.code));
+  assert.ok(!entry.fingerprint.includes(message.destination));
+  assert.ok(!entry.body.includes(message.challengeId));
+ }
+});
+
+test('reference gateway conflict handling requires same key and same fingerprint',async()=>{
+ const stored=new Map<string,{fingerprint:string;receipt:string}>();
+ let providerDispatches=0;
+ const transport:typeof fetch=async(_url,init)=>{
+  const h=new Headers(init?.headers);
+  const key=h.get('idempotency-key')??'';
+  const fingerprint=h.get('x-services-otp-payload-fingerprint')??'';
+  const prior=stored.get(key);
+  if(prior&&prior.fingerprint!==fingerprint){
+   return new Response(null,{status:409});
+  }
+  if(!prior){
+   providerDispatches++;
+   stored.set(key,{fingerprint,receipt:'delivery_12345678'});
+  }
+  return new Response(JSON.stringify({
+   accepted:true,providerRef:stored.get(key)!.receipt,
+  }),{status:202,headers:{'content-type':'application/json'}});
+ };
+ const adapter=new OtpHttpsGatewayAdapter({...config,transport});
+ assert.equal((await adapter.deliverOtp(message)).accepted,true);
+ assert.equal((await adapter.deliverOtp(message)).accepted,true);
+ await assert.rejects(adapter.deliverOtp({...message,code:'234567'}),
+  /otp_gateway_unavailable/);
+ assert.equal(providerDispatches,1);
+});
