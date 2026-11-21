@@ -30,7 +30,8 @@ export async function dispatchBoundedOtpGatewayHttpStream(
   makeVendor:(payload:VerifiedOtpGatewayPayload)=>OtpGatewayVendorPort,
   signal?:AbortSignal,
 ):Promise<OtpGatewayDispatchResult>{
-  if(signal?.aborted)deny();
+  // Cheap routing preflight must deny wrong endpoints before consuming a stream.
+  if(signal?.aborted||method!=='POST'||requestTarget!=='/v1/send')deny();
   const bytes=await readBoundedOtpGatewayBody(stream,signal);
   const request=verifyTrustedOtpGatewayHttpEnvelope(
     method,requestTarget,rawHeaders,bytes,config,
