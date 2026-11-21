@@ -61,6 +61,42 @@ test('dual stack IPv4 mapped IPv6 forms share the same network quota digest',()=
   identityKey,attestationKey,now),ipv4);
 });
 
+test('operator opt-in /64 policy groups changing IPv6 privacy hosts',()=>{
+ const base='2001:db8:abcd:42::1';
+ const rotated='2001:0db8:abcd:0042:ffff:eeee:dddd:cccc';
+ const other='2001:db8:abcd:43::1';
+ const exactA=makeTrustedOtpNetworkProof(base,identityKey,attestationKey,now);
+ const exactB=makeTrustedOtpNetworkProof(rotated,identityKey,attestationKey,now);
+ assert.notEqual(exactA,exactB,'default exact addressing must not change');
+ assert.equal(exactA,makeTrustedOtpNetworkProof(base,
+  identityKey,attestationKey,now,'exact'));
+ const prefixA=makeTrustedOtpNetworkProof(base,
+  identityKey,attestationKey,now,'prefix64');
+ const prefixB=makeTrustedOtpNetworkProof(rotated,
+  identityKey,attestationKey,now,'prefix64');
+ assert.equal(prefixA,prefixB,'same IPv6 /64 must have one quota ledger key');
+ assert.notEqual(prefixA,makeTrustedOtpNetworkProof(other,
+  identityKey,attestationKey,now,'prefix64'));
+ assert.notEqual(prefixA,exactA,'different policies must not silently share quota identities');
+ assert.match(verifyTrustedNetworkProof(prefixA,attestationKey,now)??'',
+  /^[0-9a-f]{64}$/);
+});
+
+test('IPv4 and mapped IPv4 identities ignore IPv6-only grouping policy',()=>{
+ const ipv4=makeTrustedOtpNetworkProof('203.0.113.9',
+  identityKey,attestationKey,now,'prefix64');
+ const mapped=makeTrustedOtpNetworkProof('::ffff:203.0.113.9',
+  identityKey,attestationKey,now,'prefix64');
+ assert.equal(ipv4,mapped);
+ assert.equal(ipv4,makeTrustedOtpNetworkProof('203.0.113.9',
+  identityKey,attestationKey,now));
+ for(const bad of ['prefix56','/64','PREFIX64',null]){
+  assert.throws(()=>makeTrustedOtpNetworkProof('2001:db8::1',
+   identityKey,attestationKey,now,bad as never),
+   /invalid_trusted_otp_edge_proof_input/);
+ }
+});
+
 test('edge reference rejects untrusted host/header strings and weak key configuration',()=>{
  for(const untrusted of [
   '', ' 203.0.113.9', '203.0.113.9, 192.0.2.1',
