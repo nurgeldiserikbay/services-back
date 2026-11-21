@@ -13,6 +13,8 @@ export type OtpDeliveryMessage = Readonly<{
   purpose:OtpPurpose;
   expiresInSeconds:number;
   locale:'kk'|'ru';
+  /** Durable issued challenge UUID; never a browser-selected idempotency key. */
+  challengeId?:string;
 }>;
 export type OtpDeliveryReceipt=Readonly<{
   accepted:boolean;
@@ -43,6 +45,9 @@ export function validateOtpDeliveryMessage(value:OtpDeliveryMessage):OtpDelivery
      value.expiresInSeconds<60 || value.expiresInSeconds>900 ||
      !/^[0-9]{6}$/.test(value.code))
     throw new Error('invalid_otp_message');
+  if(value.challengeId!==undefined&&
+     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.challengeId))
+    throw new Error('invalid_otp_challenge_id');
   if(value.channel==='sms') {
     if(!/^\+[1-9][0-9]{7,14}$/.test(value.destination))
       throw new Error('invalid_otp_destination');
