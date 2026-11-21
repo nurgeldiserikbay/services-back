@@ -24,5 +24,5 @@ export async function readBoundedOtpGatewayBody(
     }
     if(signal?.aborted||total===0)reject();
     return Buffer.concat(chunks,total);
-  }catch{reject();}
+  }catch{return reject();}
 }
