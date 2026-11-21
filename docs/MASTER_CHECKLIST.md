@@ -22,6 +22,10 @@
 - Backend branch `test/otp-gateway-http-envelope-20261121`: added reference-only exact POST `/v1/send` request-target check, byte-exact UTF-8 body validation, 1024-byte maximum and unique matching Content-Length guard before authenticated OTP payload verification. Regression tests use the real HTTPS adapter and reject ambiguous paths, lengths, invalid UTF-8 and oversized bodies.
 - This does **not** implement a deployed server or streaming pre-buffer cap. CI/merge, TLS/mTLS, raw header provenance, KZ residency, real OTP provider and staging acceptance remain open. No acceptance checkbox or readiness increase.
 
+### 2026-11-21 — OTP gateway bounded streaming body reference (verification pending)
+- Backend branch `test/otp-gateway-bounded-stream-20261121`: introduced an **unwired**, fail-closed AsyncIterable<Buffer> stream accumulator capped at 1024 bytes, rejecting oversize chunks before retaining them, non-buffer inputs, empty bodies and aborted reads. Tests cover split-byte delivery, exact limit, overflow cancellation, and abort.
+- Not a deployed HTTP listener, and does not guarantee live request cancellation while awaiting a stalled stream: **production integration must enforce socket/deadline timeouts**, raw-header provenance, TLS/mTLS, HTTP envelope verification, KZ residency and provider sign-off. PR CI/merge/staging pending; no acceptance/readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
