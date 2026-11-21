@@ -82,6 +82,10 @@
 - Backend branch `feat/otp-mtls-http-dispatch-handler-20261122`: added an **unwired** HTTP callback for the existing trusted mTLS listener factory. It uses the bounded raw-header/OTP HMAC verification and durable ledger dispatcher, returns only the canonical `202 {accepted:true,providerRef}` for accepted deliveries, `409 {accepted:false}` for in-flight/conflicting idempotency, and generic `503 {accepted:false}` for validation/infrastructure failures; unknown path is `404` before body processing. Responses include `no-store`, exact body byte count and `nosniff`. Tests cover accepted receipt, conflict/in-flight no vendor send, invalid payload, wrong route and invalid deadlines. **The handler must never be registered on an unauthenticated route; only pass it into the mTLS server factory.**
 - No provider, listener interface binding, KZ residency/network-perimeter enforcement, operational CA/certificate controls or real staging acceptance has been deployed. CI/merge and acceptance pending; no readiness inflation.
 
+### 2026-11-22 — real TLS-to-OTP dispatch/receipt E2E (PR CI pending)
+- Backend branch `test/otp-mtls-composed-http-e2e-20261122`: **test-only** localhost HTTPS/mTLS integration starts the unwired Node listener factory and its reference HTTP handler using generated short-lived certificates and a mocked durable-ledger interface/provider. It sends actual TLS POST requests with original signed JSON/HMAC, checks accepted `202` plus `providerRef`, replay with no duplicate vendor send, bad HMAC `503`, unexpected route `404`, and missing client certificate rejection before any ledger claim. The fixture generates no committed keys. CI/merge pending.
+- This is **not** staging/production acceptance: it does not verify an actual PostgreSQL ledger or external OTP vendor, KZ network source provenance, production CA lifecycle, or deployment. Readiness and acceptance remain unchanged.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
