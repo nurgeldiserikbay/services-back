@@ -30,8 +30,8 @@ function preflightHeaders(rawHeaders:readonly (readonly [string,string])[]):void
     if(!Array.isArray(entry)||entry.length!==2||
        typeof entry[0]!=='string'||typeof entry[1]!=='string')deny();
     const [rawName,value]=entry;
-    if(!/^[A-Za-z0-9!#$%&'*+.^_\\x60|~-]+$/.test(rawName)||
-       value.length>1024||/[\\r\\n]/.test(value))deny();
+    if(!/^[A-Za-z0-9!#$%&'*+.^_\x60|~-]+$/.test(rawName)||
+       value.length>1024||/[\r\n]/.test(value))deny();
     const name=rawName.toLowerCase();
     if(name==='transfer-encoding'||name==='content-encoding')deny();
     if(required.has(name)){
