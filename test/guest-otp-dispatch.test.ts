@@ -15,7 +15,8 @@ test('dispatch returns only safe metadata and passes the code to delivery',async
   const delivery={deliverCommittedChallenge:async(input:unknown)=>{
     called++;
     assert.deepEqual(input,{code:fixture.code,contact:fixture.contact,
-      channel:'email',locale:'kk',expiresInSeconds:600});
+      channel:'email',locale:'kk',expiresInSeconds:600,
+      challengeId:fixture.challengeId});
     return {accepted:true,providerRef:'fixture_123456'};
   }} as unknown as OtpDeliveryService;
   const database={query:async()=>{throw new Error('should not revoke success');}} as unknown as DatabasePool;
