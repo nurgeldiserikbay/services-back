@@ -6,7 +6,7 @@ import {OtpHttpsGatewayAdapter} from '../src/modules/guest-requests/otp-https-ga
 import {OtpGatewayLedgerDispatchReference} from
  '../src/platform/ingress/otp-gateway-ledger-dispatch.reference.js';
 import {
- verifyTrustedOtpGatewayRequest,dispatchVerifiedOtpGatewayRequest,
+ verifyTrustedOtpGatewayRequest,verifyTrustedOtpGatewayRawHeaders,dispatchVerifiedOtpGatewayRequest,
 } from '../src/platform/ingress/otp-gateway-verified-request.reference.js';
 
 const config={
@@ -137,4 +137,42 @@ test('gateway ingress reference is never imported into live Nest controllers',()
   assert.doesNotMatch(readFileSync(path,'utf8'),
    /otp-gateway-verified-request\.reference|dispatchVerifiedOtpGatewayRequest/);
  }
+});
+
+
+test('raw gateway header boundary rejects duplicate credentials before Header coalescing',async()=>{
+ let captured:Headers|undefined;
+ let raw='';
+ const adapter=new OtpHttpsGatewayAdapter({
+  ...config,endpoint:'https://otp.example.org/v1/send',
+  approvedHost:'otp.example.org',
+  transport:async(_url,init)=>{
+   captured=new Headers(init?.headers);
+   raw=String(init?.body);
+   return new Response(JSON.stringify({accepted:true,providerRef:'provider_12345678'}),{
+    status:202,headers:{'content-type':'application/json'},
+   });
+  },
+ });
+ await adapter.deliverOtp(msg);
+ assert.ok(captured);
+ const tuples=[...captured.entries()];
+ assert.equal(verifyTrustedOtpGatewayRawHeaders(tuples,raw,config).payload.code,msg.code);
+ const denial=(entries:[string,string][])=>assert.throws(
+  ()=>verifyTrustedOtpGatewayRawHeaders(entries,raw,config),
+  /otp_gateway_request_rejected/,
+ );
+ for(const name of [
+  'authorization','idempotency-key','x-services-otp-payload-fingerprint','content-type',
+ ]){
+  const value=captured.get(name);
+  assert.ok(value);
+  denial([...tuples,[name.toUpperCase(),value]]);
+  denial(tuples.filter(([key])=>key!==name));
+ }
+ denial([...tuples,['content-encoding','gzip']]);
+ denial([...tuples,['transfer-encoding','chunked']]);
+ denial([...tuples,['X-Test','line\r\ninjected']]);
+ denial([...tuples,['X-Test','x'.repeat(1025)]]);
+ denial([...tuples,...Array.from({length:33},(_,i)=>['x-extra-'+i,'value'] as [string,string])]);
 });
