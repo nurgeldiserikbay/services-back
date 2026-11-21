@@ -106,3 +106,42 @@ test('OTP gateway rejects a stalled iterator after an external abort',async()=>{
  controller.abort();
  await assert.rejects(result,/otp_gateway_request_rejected/);
 });
+
+test('OTP stream overflow does not wait on a stalled iterator cleanup',async()=>{
+ let cleanupCalls=0;
+ const source:AsyncIterable<Buffer>={
+  [Symbol.asyncIterator](){
+   return {
+    next:async()=>({done:false as const,value:Buffer.alloc(1025)}),
+    return:()=>{
+     cleanupCalls++;
+     return new Promise<IteratorResult<Buffer>>(()=>{});
+    },
+   };
+  },
+ };
+ await assert.rejects(readBoundedOtpGatewayBody(source),
+  /otp_gateway_request_rejected/);
+ assert.equal(cleanupCalls,1);
+});
+
+test('OTP stream malformed chunk ignores rejecting or throwing iterator cleanup',async()=>{
+ for(const behavior of ['throw','reject']){
+  let cleanupCalls=0;
+  const source:AsyncIterable<Buffer>={
+   [Symbol.asyncIterator](){
+    return {
+     next:async()=>({done:false as const,value:'not a buffer' as unknown as Buffer}),
+     return:()=>{
+      cleanupCalls++;
+      if(behavior==='throw')throw new Error('secret cleanup error');
+      return Promise.reject(new Error('secret cleanup error'));
+     },
+    };
+   },
+  };
+  await assert.rejects(readBoundedOtpGatewayBody(source),
+   error=>error instanceof Error&&error.message==='otp_gateway_request_rejected');
+  assert.equal(cleanupCalls,1);
+ }
+});
