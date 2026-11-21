@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-21 — stable per-challenge OTP gateway idempotency contract (PR-head CI pending)
+
+- Branch `feat/guest-otp-challenge-delivery-idempotency-20261121`: pass the **committed database challenge UUID** from all three `GuestOtpDispatchService` purposes through `OtpDeliveryService` to the still-unwired HTTPS gateway. The gateway now requires the UUID and a separate 32-byte idempotency signing secret; it HMACs a domain-separated normalized UUID into a 64-hex `Idempotency-Key` header. Repeated requests for the same committed challenge use the same opaque key; distinct challenges use different keys, and neither raw challenge UUID nor secret is included in the outbound JSON payload. A missing/invalid UUID or missing key fails closed *before* transport.
+- Fixture tests cover stable same-challenge keys, distinct challenges, no raw UUID in JSON, invalid or absent IDs/keys, and fail-closed behavior. This is **not a retry mechanism or exactly-once guarantee**: the real approved gateway must atomically persist idempotency outcomes by key, enforce matching request payload, return consistent receipts, and reconcile timed-out/late deliveries. A newly issued challenge intentionally has a new key and retains abuse quota. No live provider, KZ residency, trusted ingress, secret-custody or staging approval has been established; `GuestVerificationModule` stays wired to `DisabledOtpDelivery`. No acceptance checkbox or 21/117 count change; CI and merge pending.
+
+
 ### 2026-11-21 — bounded gateway wait when transport ignores cancellation (PR-head CI pending)
 
 - Branch `fix/otp-https-gateway-abort-bounded-20261121`: the **still unwired** guest OTP HTTPS gateway adapter now races both its outgoing transport and streamed response reads against the 3-second abort deadline and the parent `OtpDeliveryService` cancellation. This stops backend request handling from hanging indefinitely when a custom transport or response stream fails to honor its `AbortSignal`, rejects late provider results and preserves sanitized provider errors. Unfinished body readers are cancelled before lock release.
