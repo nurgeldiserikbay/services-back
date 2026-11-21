@@ -14,6 +14,8 @@ export type VerifiedOtpIssuance = Readonly<{
   locale:'kk'|'ru';
   purpose?:'CREATE_REQUEST'|'MANAGE_SCHEDULE'|'COMPLETE_REQUEST';
   expiresInSeconds:number;
+  /** Committed challenge UUID, passed only to a reviewed provider adapter. */
+  challengeId?:string;
 }>;
 
 /**
@@ -43,6 +45,7 @@ export class OtpDeliveryService {
         purpose:issuance.purpose??'CREATE_REQUEST',
         expiresInSeconds:issuance.expiresInSeconds,
         locale:issuance.locale,
+        ...(issuance.challengeId===undefined?{}:{challengeId:issuance.challengeId}),
       });
     }catch{
       throw new ServiceUnavailableException('OTP delivery temporarily unavailable');
