@@ -30,7 +30,7 @@ export async function readBoundedOtpGatewayBody(
           if(signal.aborted)onAbort();
         }),
       ]).finally(()=>removeAbort()):await pending;
-      if(signal?.aborted){aborting=true;reject();}
+      if(signal?.aborted)reject();
       if(next.done){finished=true;break;}
       const chunk=next.value;
       if(!Buffer.isBuffer(chunk)||chunk.length>1024-total)reject();
