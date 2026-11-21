@@ -58,6 +58,10 @@
 - Backend branch `test/otp-node-premature-close-20261121`: **unwired reference-only** IncomingMessage adapter now rejects a premature `close` when `request.complete` is false, and rejects already-destroyed streams before dispatch. Tests cover truncated body `close` without an `aborted` event and external abort on stalled streams; no vendor construction or ledger claim is allowed.
 - This is not a deployed listener or peer authentication; production still requires TLS/mTLS, network provenance, socket/header policies, KZ residency, approved provider and staging security review. PR-head CI/merge pending; readiness and acceptance unchanged.
 
+### 2026-11-21 — OTP Node TLS client certificate pin gate (PR CI pending)
+- Backend branch `test/otp-node-mtls-peer-gate-20261121`: added an **unwired, reference-only** mTLS trust entrypoint requiring Node `TLSSocket` with `encrypted` and `authorized` true, no certificate authorization error, and constant-time comparison of the peer SHA-256 certificate fingerprint with a strict approved pin, before reading any body or claiming ledger. Tests cover accepted pin, untrusted/missing/mismatched/invalid peer and no body/ledger effects.
+- Production listener still must be configured with `requestCert:true` and `rejectUnauthorized:true`, trusted CA verification and certificate lifecycle/rotation, private network policy, KZ residency, provider acceptance, real TLS handshakes and staging E2E. No listener is wired; no acceptance checkbox/readiness increase pending CI and review.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
