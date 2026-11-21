@@ -17,7 +17,7 @@ const msg={channel:'email' as const,destination:'person@example.org',code:'12345
 function incoming(body:Buffer,rawHeaders:string[]):IncomingMessage{
  const stream=Readable.from([body]) as IncomingMessage;
  Object.assign(stream,{
-  method:'POST',url:'/v1/send',rawHeaders,aborted:false,
+  method:'POST',url:'/v1/send',rawHeaders,aborted:false,complete:true,
  });
  return stream;
 }
