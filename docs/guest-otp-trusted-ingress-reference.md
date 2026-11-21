@@ -20,6 +20,14 @@ This document defines the separation required before staging acceptance.
    (`::ffff:203.0.113.9` and `::ffff:cb00:7109`) to the same keyed
    identity as `203.0.113.9`, preventing a dual-stack quota split. Other
    IPv6 grouping and trusted-hop selection remain deployment decisions.
+   To avoid collapsing all users behind a misconfigured proxy's self-address
+   into one quota bucket, the edge-only signer rejects loopback, unspecified,
+   link-local and multicast/broadcast source addresses (including IPv4-mapped
+   IPv6 aliases). This does **not** discover or authenticate the actual
+   client IP: the deployment still needs a reviewed trusted-hop resolver.
+   If a staging or private-network topology uses internal client addresses,
+   validate its address policy explicitly rather than falling back to a
+   proxy-local address.
 4. A signer running **only on the approved trusted edge** holds separate,
    32-byte identity-HMAC and attestation-HMAC keys. Reference:
    `src/platform/ingress/guest-otp-network-proof.edge.ts`.
