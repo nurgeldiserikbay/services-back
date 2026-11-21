@@ -127,3 +127,37 @@ test('invalid OTP HTTP route and method do not consume incoming body streams',as
   assert.equal(reads,0);
  }
 });
+
+test('OTP stream header preflight rejects invalid framing before reading body',async()=>{
+ const gateway=new OtpGatewayLedgerDispatchReference({
+  claim:async()=>{throw new Error('unexpected ledger claim');},
+  recordAccepted:async()=>{throw new Error('unexpected ledger record');},
+ });
+ const base:[string,string][]=[
+  ['authorization','Bearer '+'a'.repeat(48)],
+  ['idempotency-key','a'.repeat(64)],
+  ['x-services-otp-payload-fingerprint','b'.repeat(64)],
+  ['content-type','application/json'],
+  ['content-length','42'],
+ ];
+ const inputs:[string,string][][]=[
+  base.filter(([k])=>k!=='content-length'),
+  [...base,['CONTENT-LENGTH','42']],
+  base.map(([k,v])=>[k,k==='content-length'?'1025':v]),
+  base.map(([k,v])=>[k,k==='content-length'?'00042':v]),
+  base.map(([k,v])=>[k,k==='content-type'?'text/plain':v]),
+  [...base,['transfer-encoding','chunked']],
+  [...base,['content-encoding','gzip']],
+  [...base,['x-extra','line'+String.fromCharCode(10)+'break']],
+  [...base,...Array.from({length:33},(_,i)=>['x-'+i,'v'] as [string,string])],
+ ];
+ for(const headers of inputs){
+  let consumed=false;
+  async function* stream(){consumed=true;yield Buffer.from('irrelevant');}
+  await assert.rejects(dispatchBoundedOtpGatewayHttpStream(
+   'POST','/v1/send',headers,stream(),config,gateway,
+   ()=>{throw new Error('unexpected vendor');},
+  ),/otp_gateway_request_rejected/);
+  assert.equal(consumed,false);
+ }
+});
