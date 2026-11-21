@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-21 — isolated PostgreSQL gateway idempotency ledger (PR-head CI pending)
+
+- Branch `feat/otp-gateway-postgres-dedup-reference-20261121`: an **unwired, separate OTP gateway** PostgreSQL ledger reference (`src/platform/ingress/otp-gateway-postgres-ledger.reference.ts` and `docs/reference/otp-gateway-idempotency-ledger.sql`) uses a durable unique HMAC idempotency-key reservation **committed before external delivery**. Under concurrency, only the first claimant receives `send`; identical pending duplicates receive `in_flight` (no resend), fingerprint mismatches receive `conflict` and accepted duplicates reuse a previously sanitized provider receipt. Provider acknowledgement uses a fingerprint-guarded `RESERVED` → `ACCEPTED` compare-and-set. The table stores only keyed identifiers, status, timestamps and an opaque provider reference—never an OTP code, phone, email or access token.
+- Tests use a disposable isolated PostgreSQL schema when `DATABASE_URL` is configured and check concurrent claims, conflicting payload, persisted acceptance, fail-closed database errors, input validation and data-minimizing schema. **No automatic reservation expiry/reclaim or vendor send/retry is implemented**: an ambiguous provider dispatch must be reconciled before it can safely be retried. This code and SQL are NOT deployed, not a Prisma migration, not wired into the Nest app, and do not establish gateway atomic send/ack across external systems, approved provider, KZ residency, ingress or staging acceptance. No checkbox changes or 21/117 count increase. Full CI and merge pending.
+
+
 ### 2026-11-21 — OTP gateway idempotency payload consistency (PR-head CI pending)
 
 - Branch `feat/otp-gateway-idempotency-payload-fingerprint-20261121`: the still-unwired HTTPS gateway adapter adds an `X-Services-OTP-Payload-Fingerprint` header: a domain-separated HMAC-SHA256 over the immutable `Idempotency-Key` and the exact outbound allowlisted JSON payload, using its separate 256-bit gateway idempotency secret. The same committed challenge and payload yield matching key/fingerprint; a changed OTP, recipient or other payload with the **same challenge ID** retains the same idempotency key but has a *different* fingerprint. The 6-digit OTP is never exposed in an unhashed digest. The existing per-challenge key, no-raw-UUID body, and default-off Nest wiring remain unchanged.
