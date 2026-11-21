@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-21 — dual-stack guest OTP edge quota identity normalization (CI pending)
+
+- Branch `fix/otp-edge-ipv4-mapped-quota-parity-20261121`: the isolated edge-only network signer now maps IPv4-mapped IPv6 forms such as `::ffff:203.0.113.9` and `::ffff:cb00:7109` to the **same** HMAC network digest as ordinary `203.0.113.9`. Prevents quota partitioning when different trusted proxy hops report the same IPv4 client in dual-stack socket formats. IPv4-translated IPv6 `::ffff:0:...` is explicitly not conflated with IPv4. Regression tests cover real backend verifier and full trusted issuance header allowlist parity.
+- This remains an isolated reference, **not a deployed ingress**. Proxy trust, IPv6 prefix aggregation, production signing key custody, edge auth/header stripping and actual staging/OTP provider/KZ residency acceptance remain OPEN. PR-head CI/merge pending. No acceptance checkbox or 21/117 count change.
+
+
 ### 2026-11-20 — edge-only OTP issuance header allowlist (pending CI)
 
 - Branch `feat/otp-edge-stripping-issuance-headers-20261120`: reference edge/BFF helper creates **fresh** JSON request headers for OTP challenge issuance, never forwarding untrusted client `Authorization`, `Cookie`, `Forwarded`, `X-Forwarded-For`, `X-Real-IP`, forged internal proof, content length or client capability. Its only output fields are JSON content-type, newly HMAC-signed network proof and, for MANAGE_SCHEDULE or COMPLETE_REQUEST, an independently supplied server-verified READ_CANCEL capability. CREATE_REQUEST forbids a capability. Unit tests compare hostile and empty incoming headers and validate real Nest backend proof compatibility.
