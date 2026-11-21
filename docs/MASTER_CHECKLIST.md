@@ -26,6 +26,10 @@
 - Backend branch `test/otp-gateway-bounded-stream-20261121`: introduced an **unwired**, fail-closed AsyncIterable<Buffer> stream accumulator capped at 1024 bytes, rejecting oversize chunks before retaining them, non-buffer inputs, empty bodies and aborted reads. Tests cover split-byte delivery, exact limit, overflow cancellation, and abort.
 - Not a deployed HTTP listener, and does not guarantee live request cancellation while awaiting a stalled stream: **production integration must enforce socket/deadline timeouts**, raw-header provenance, TLS/mTLS, HTTP envelope verification, KZ residency and provider sign-off. PR CI/merge/staging pending; no acceptance/readiness increase.
 
+### 2026-11-21 — composed bounded OTP gateway ingress reference (CI pending)
+- Backend branch `test/otp-gateway-stream-envelope-composition-20261121`: new **unwired** composition reads a byte-capped AsyncIterable body, validates the exact HTTP method/path/raw-header structure, canonical signed payload and BFF bearer, then and only then constructs a vendor port and claims the PostgreSQL ledger. HTTPS-adapter tests cover accepted delivery, malformed envelopes/body, forged authorization, and aborted requests with zero ledger/vendor side effects.
+- No production listener or OTP provider activation. Streaming deadlines, TLS/mTLS, raw socket/header provenance, deployed KZ residency, staging E2E and security sign-off still pending. PR-head CI/merge pending; no acceptance checkbox/readiness change.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
