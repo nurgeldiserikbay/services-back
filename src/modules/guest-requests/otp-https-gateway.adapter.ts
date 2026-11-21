@@ -91,8 +91,13 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
       const idempotencyKey=createHmac('sha256',this.idempotencySecret)
         .update('services-guest-otp-delivery:v1\n')
         .update(message.challengeId.toLowerCase()).digest('hex');
-      // The original challenge UUID is internal; never send it in JSON.
-      const {challengeId:unusedChallengeId,...payload}=message;
+      // Reconstruct the outbound contract; never transmit the internal UUID
+      // or unexpected properties from an upstream object.
+      const payload={
+        channel:message.channel,destination:message.destination,
+        code:message.code,purpose:message.purpose,locale:message.locale,
+        expiresInSeconds:message.expiresInSeconds,
+      };
       // AbortSignal.any keeps both outer service cancellation and the
       // adapter's stricter three-second I/O deadline enforceable.
       const budget=AbortSignal.timeout(3_000);
