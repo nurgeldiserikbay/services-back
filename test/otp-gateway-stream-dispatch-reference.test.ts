@@ -109,3 +109,21 @@ test('composed gateway denies pre-aborted streams before vendor or ledger',async
  assert.equal(consumed,false);
  assert.equal(claims,0);
 });
+
+test('invalid OTP HTTP route and method do not consume incoming body streams',async()=>{
+ const gateway=new OtpGatewayLedgerDispatchReference({
+  claim:async()=>{throw new Error('must not claim');},
+  recordAccepted:async()=>{throw new Error('must not record');},
+ });
+ for(const [method,path] of [
+  ['GET','/v1/send'],['POST','/v1/send?debug=1'],['POST','/v1/send/'],
+ ]){
+  let reads=0;
+  async function* stream(){reads++;yield Buffer.from('invalid');}
+  await assert.rejects(dispatchBoundedOtpGatewayHttpStream(
+   method,path,[],stream(),config,gateway,
+   ()=>{throw new Error('must not make vendor');},
+  ),/otp_gateway_request_rejected/);
+  assert.equal(reads,0);
+ }
+});
