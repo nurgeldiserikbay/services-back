@@ -97,6 +97,33 @@ test('IPv4 and mapped IPv4 identities ignore IPv6-only grouping policy',()=>{
  }
 });
 
+test('edge refuses non-client socket addresses before signing shared OTP quota',()=>{
+ for(const address of [
+  '0.0.0.0','0.1.2.3','127.0.0.1','127.10.20.30',
+  '169.254.10.4','224.0.0.1','239.255.255.255',
+  '240.0.0.1','255.255.255.255','::','::1','fe80::1',
+  'febf::1234','ff02::1','ff0e::1',
+  '::ffff:127.0.0.1','::ffff:169.254.1.2',
+  '::ffff:224.0.0.1',
+ ]){
+  for(const grouping of ['exact','prefix64'] as const){
+   assert.throws(()=>makeTrustedOtpNetworkProof(address,
+    identityKey,attestationKey,now,grouping),
+    /invalid_trusted_otp_edge_proof_input/,
+    'do not sign non-client identity '+address);
+  }
+ }
+ for(const address of [
+  '203.0.113.9','::ffff:203.0.113.9','2001:db8::1',
+  '192.0.2.21',
+ ]){
+  const proof=makeTrustedOtpNetworkProof(address,
+   identityKey,attestationKey,now);
+  assert.match(verifyTrustedNetworkProof(proof,attestationKey,now)??'',
+   /^[0-9a-f]{64}$/);
+ }
+});
+
 test('edge reference rejects untrusted host/header strings and weak key configuration',()=>{
  for(const untrusted of [
   '', ' 203.0.113.9', '203.0.113.9, 192.0.2.1',
