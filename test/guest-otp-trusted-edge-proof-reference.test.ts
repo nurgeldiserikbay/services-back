@@ -40,6 +40,27 @@ test('equivalent IPv6 text forms map to one keyed quota identity',()=>{
   identityKey,attestationKey,now));
 });
 
+test('dual stack IPv4 mapped IPv6 forms share the same network quota digest',()=>{
+ const ipv4=makeTrustedOtpNetworkProof('203.0.113.9',
+  identityKey,attestationKey,now);
+ for(const equivalent of [
+  '::ffff:203.0.113.9',
+  '::ffff:cb00:7109',
+  '0:0:0:0:0:ffff:cb00:7109',
+ ]){
+  const mapped=makeTrustedOtpNetworkProof(equivalent,
+   identityKey,attestationKey,now);
+  assert.equal(mapped,ipv4,'IPv4-mapped IPv6 must not evade a shared quota');
+  assert.equal(verifyTrustedNetworkProof(mapped,attestationKey,now),
+   verifyTrustedNetworkProof(ipv4,attestationKey,now));
+ }
+ // IPv4-translated IPv6 is a different network family, not IPv4-mapped.
+ assert.notEqual(makeTrustedOtpNetworkProof('::ffff:0:203.0.113.9',
+  identityKey,attestationKey,now),ipv4);
+ assert.notEqual(makeTrustedOtpNetworkProof('::ffff:203.0.113.10',
+  identityKey,attestationKey,now),ipv4);
+});
+
 test('edge reference rejects untrusted host/header strings and weak key configuration',()=>{
  for(const untrusted of [
   '', ' 203.0.113.9', '203.0.113.9, 192.0.2.1',
