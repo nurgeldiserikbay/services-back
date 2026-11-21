@@ -34,6 +34,10 @@
 - Backend branch `test/otp-gateway-stream-header-preflight-20261121`: reference-only stream dispatcher now rejects absent/duplicate/noncanonical/oversized Content-Length, invalid Content-Type, Content-Encoding, Transfer-Encoding and malformed/oversized raw header tuples **before reading any body chunks**. Regression tests assert no stream reads or ledger/vendor effects on invalid framing.
 - Still not a live gateway listener; TLS/mTLS, real socket header limits, strict network/source provenance, streaming deadline, real provider and KZ deployment acceptance remain pending. No acceptance checkbox or readiness increase until independently verified.
 
+### 2026-11-21 — stalled OTP request stream abort handling (PR CI pending)
+- Backend branch `test/otp-gateway-stalled-stream-abort-20261121`: reference-only bounded stream reader now races awaiting `next()` against caller AbortSignal and promptly fails closed if a source stalls; best-effort iterator cleanup does not hold abort rejection waiting for a stuck `return()`. Regression tests cover stalled `next()`, abort during iteration, and nonblocking cleanup.
+- The **real HTTP transport must still destroy/cancel the socket** on timeout and enforce network deadlines. This is not a deployed listener, provider integration or staging acceptance. PR-head CI/merge pending; do not mark an acceptance item complete or increase readiness percentage.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
