@@ -1,4 +1,4 @@
-import {makeTrustedOtpNetworkProof} from './guest-otp-network-proof.edge.js';
+import {makeTrustedOtpNetworkProof,type Ipv6NetworkQuotaGrouping} from './guest-otp-network-proof.edge.js';
 
 type OtpIssuancePurpose='CREATE_REQUEST'|'MANAGE_SCHEDULE'|'COMPLETE_REQUEST';
 type TrustedOtpIssuanceContext=Readonly<{
@@ -10,6 +10,8 @@ type TrustedOtpIssuanceContext=Readonly<{
   /** Obtained server-side from a verified scoped HttpOnly READ_CANCEL session. */
   readCapability?:string;
   now?:number;
+  /** Explicit, operator-approved IPv6 quota identity; defaults to exact. */
+  ipv6Grouping?:Ipv6NetworkQuotaGrouping;
 }>;
 
 const TOKEN=/^[A-Za-z0-9_-]{43}$/;
@@ -42,6 +44,7 @@ export function buildTrustedGuestOtpIssuanceHeaders(
   // No client header is referenced, merged or spread into the result.
   const proof=makeTrustedOtpNetworkProof(
     trusted.clientAddress,trusted.identityKey,trusted.attestationKey,trusted.now,
+    trusted.ipv6Grouping,
   );
   const headers=new Headers();
   headers.set('content-type','application/json');
