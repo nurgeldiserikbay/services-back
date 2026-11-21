@@ -16,6 +16,10 @@ This document defines the separation required before staging acceptance.
    user-supplied `X-Forwarded-For`, `Forwarded` or similar header directly
    into the proof signer. An unverified address lets an attacker rotate
    network identities and bypass quota attribution.
+   The signer now normalizes IPv4-mapped IPv6 socket representations
+   (`::ffff:203.0.113.9` and `::ffff:cb00:7109`) to the same keyed
+   identity as `203.0.113.9`, preventing a dual-stack quota split. Other
+   IPv6 grouping and trusted-hop selection remain deployment decisions.
 4. A signer running **only on the approved trusted edge** holds separate,
    32-byte identity-HMAC and attestation-HMAC keys. Reference:
    `src/platform/ingress/guest-otp-network-proof.edge.ts`.
