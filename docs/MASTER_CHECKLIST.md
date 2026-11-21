@@ -14,6 +14,10 @@
 - Any regression reopens the corresponding checkbox; changes in scope require updating the denominator.
 - Release gate: all mandatory acceptance items verified, all main CI green, E2E passing, security review and staging sign-off.
 
+### 2026-11-21 — OTP gateway raw-header integrity boundary (PR CI pending)
+- Backend branch `test/otp-gateway-raw-header-boundary-20261121`: added a **reference-only** raw header-pair verifier that rejects duplicate authorization, idempotency, signature and Content-Type fields *before* `Headers` coalesces them; rejects transfer/content encoding and malformed/oversized header entries. Added real HTTPS-adapter roundtrip and negative regression tests.
+- **Not accepted yet:** CI result, merge and staging sign-off pending. The helper is NOT a deployed listener, and the actual gateway must still validate HTTP method/route, bound request streaming bytes, real raw-header provenance, TLS/mTLS, approved KZ residency and vendor delivery. No checkbox/readiness change.
+
 ## Acceptance items
 
 ### Architecture & infrastructure

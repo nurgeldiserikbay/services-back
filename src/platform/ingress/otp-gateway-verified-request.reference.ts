@@ -107,6 +107,44 @@ export function verifyTrustedOtpGatewayRequest(
   }catch{deny();}
 }
 
+
+/**
+ * Transport adapter boundary for Node rawHeaders (header name/value pairs).
+ * A Headers object has already coalesced duplicates, so a real gateway must
+ * validate raw header multiplicity BEFORE converting to Headers.
+ * This is a reference helper, not an HTTP listener or proxy trust decision.
+ */
+export function verifyTrustedOtpGatewayRawHeaders(
+  rawHeaders:readonly (readonly [string,string])[],
+  rawBody:string,
+  config:TrustedOtpGatewayIngressConfig,
+):VerifiedOtpGatewayRequest{
+  if(!Array.isArray(rawHeaders)||rawHeaders.length>32)deny();
+  const required=new Set([
+    'authorization','idempotency-key',
+    'x-services-otp-payload-fingerprint','content-type',
+  ]);
+  const counts=new Map<string,number>();
+  const headers=new Headers();
+  try{
+    for(const entry of rawHeaders){
+      if(!Array.isArray(entry)||entry.length!==2||
+         typeof entry[0]!=='string'||typeof entry[1]!=='string')deny();
+      const [name,value]=entry;
+      if(!/^[A-Za-z0-9!#$%&'*+.^_\x60|~-]+$/.test(name)||
+         value.length>1024||/[\r\n]/.test(value))deny();
+      const lower=name.toLowerCase();
+      if(lower==='content-encoding'||lower==='transfer-encoding')deny();
+      const next=(counts.get(lower)??0)+1;
+      if(next>1&&required.has(lower))deny();
+      counts.set(lower,next);
+      headers.append(name,value);
+    }
+    for(const name of required)if(counts.get(name)!==1)deny();
+    return verifyTrustedOtpGatewayRequest(headers,rawBody,config);
+  }catch{deny();}
+}
+
 /** Authenticate, validate and bind the inbound payload BEFORE ledger claim.
  * A gateway implementation constructs its approved vendor port exclusively
  * from the returned parsed payload; no browser-controlled vendor function.
