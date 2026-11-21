@@ -29,6 +29,7 @@ export class GuestOtpDispatchService {
         channel:challenge.channel,contact:challenge.contact,
         code:challenge.code,locale,
         expiresInSeconds:challenge.expiresInSeconds,
+        challengeId:challenge.challengeId,
       });
       if(!receipt.accepted)
         throw new ServiceUnavailableException('OTP temporarily unavailable');
@@ -65,6 +66,7 @@ export class GuestOtpDispatchService {
       const receipt=await this.delivery.deliverCommittedChallenge({
         channel:challenge.channel,contact:challenge.contact,code:challenge.code,
         locale,purpose:'MANAGE_SCHEDULE',expiresInSeconds:challenge.expiresInSeconds,
+        challengeId:challenge.challengeId,
       });
       if(!receipt.accepted)throw new ServiceUnavailableException('OTP temporarily unavailable');
     }catch{
@@ -87,6 +89,7 @@ export class GuestOtpDispatchService {
       const receipt=await this.delivery.deliverCommittedChallenge({
         channel:challenge.channel,contact:challenge.contact,code:challenge.code,
         locale,purpose:'COMPLETE_REQUEST',expiresInSeconds:challenge.expiresInSeconds,
+        challengeId:challenge.challengeId,
       });
       if(!receipt.accepted)throw new ServiceUnavailableException('OTP temporarily unavailable');
     }catch{
