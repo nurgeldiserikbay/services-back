@@ -102,3 +102,48 @@ test('Node HTTP ingress denies unsupported route and invalid deadline',async()=>
  }
  assert.equal(claimed,0);
 });
+
+test('Node HTTP ingress denies premature close during stalled body before ledger',async()=>{
+ let claimed=0;
+ const req=new Readable({read(){/* simulate truncated request */}}) as IncomingMessage;
+ Object.assign(req,{
+  method:'POST',url:'/v1/send',aborted:false,complete:false,
+  rawHeaders:[
+   'Authorization','Bearer '+'a'.repeat(48),
+   'Idempotency-Key','a'.repeat(64),
+   'X-Services-OTP-Payload-Fingerprint','b'.repeat(64),
+   'Content-Type','application/json',
+   'Content-Length','10',
+  ],
+ });
+ const result=dispatchOtpNodeIncomingMessage(req,config,
+  ledger(()=>{claimed++;}),()=>{throw new Error('unexpected vendor');},1_000);
+ // Node may signal a truncated upload using close without aborted.
+ req.emit('close');
+ await assert.rejects(result,/otp_gateway_request_rejected/);
+ assert.equal(req.destroyed,true);
+ assert.equal(claimed,0);
+});
+
+test('Node HTTP external cancellation destroys a stalled stream and denies ledger',async()=>{
+ let claimed=0;
+ const req=new Readable({read(){/* stalled request */}}) as IncomingMessage;
+ Object.assign(req,{
+  method:'POST',url:'/v1/send',aborted:false,complete:false,
+  rawHeaders:[
+   'Authorization','Bearer '+'a'.repeat(48),
+   'Idempotency-Key','a'.repeat(64),
+   'X-Services-OTP-Payload-Fingerprint','b'.repeat(64),
+   'Content-Type','application/json',
+   'Content-Length','10',
+  ],
+ });
+ const controller=new AbortController();
+ const result=dispatchOtpNodeIncomingMessage(req,config,
+  ledger(()=>{claimed++;}),()=>{throw new Error('unexpected vendor');},
+  1_000,controller.signal);
+ controller.abort();
+ await assert.rejects(result,/otp_gateway_request_rejected/);
+ assert.equal(req.destroyed,true);
+ assert.equal(claimed,0);
+});
