@@ -46,6 +46,10 @@
 - Backend branch `test/otp-gateway-internal-deadline-20261121`: **reference-only**, unwired OTP dispatch now applies a bounded 5-second default AbortSignal.timeout even without a caller signal, combines any caller cancellation, and rejects invalid deadline configuration before stream consumption. Tests simulate a stuck async iterator without a caller signal and invalid deadline settings; no ledger/vendor side effects are expected before validation.
 - This does **not** enforce a socket-level timeout, cancel PostgreSQL claim I/O, or make an uncooperative vendor interruptible. A real KZ-hosted listener, socket destruction, TLS/mTLS, provider configuration and staging E2E remain required. CI/merge pending, no readiness or acceptance checkbox adjustment.
 
+### 2026-11-21 — Node HTTP original OTP header pairs reference (PR CI pending)
+- Backend branch `test/otp-node-rawheaders-boundary-20261121`: added a **reference-only** Node IncomingMessage.rawHeaders alternating-array converter preserving header order, casing and duplicates before normalized Headers can hide multiplicity. Rejects odd counts, invalid names/values and excessive header entries; tests assert duplicate Authorization is denied before OTP body streaming, ledger claim or vendor invocation.
+- Not a wired Node HTTP listener or proxy trust decision; the real listener must enforce socket/header timeouts, peer provenance, TLS/mTLS, KZ residency, real provider and staging acceptance. PR-head CI/merge pending, no acceptance or readiness adjustment.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
