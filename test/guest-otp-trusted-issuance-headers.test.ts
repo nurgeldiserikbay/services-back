@@ -90,6 +90,19 @@ test('trusted output invariant under adversarial inbound headers',()=>{
  assert.deepEqual([...a.entries()],[...b.entries()]);
 });
 
+test('dual-stack ingress does not create separate OTP quota identities',()=>{
+ const ipv4=buildTrustedGuestOtpIssuanceHeaders(hostile,
+  {...trusted('COMPLETE_REQUEST'),clientAddress:'203.0.113.9'});
+ const mapped=buildTrustedGuestOtpIssuanceHeaders(hostile,
+  {...trusted('COMPLETE_REQUEST'),clientAddress:'::ffff:203.0.113.9'});
+ assert.equal(mapped.get('x-services-network-proof'),
+  ipv4.get('x-services-network-proof'));
+ assert.equal(mapped.get('guest-capability'),token);
+ assert.equal(verifyTrustedNetworkProof(mapped.get('x-services-network-proof'),
+  attestationKey,now),verifyTrustedNetworkProof(
+  ipv4.get('x-services-network-proof'),attestationKey,now));
+});
+
 test('edge-only allowlist helper is not imported by runtime controllers',()=>{
  for(const p of [
   'src/main.ts',
