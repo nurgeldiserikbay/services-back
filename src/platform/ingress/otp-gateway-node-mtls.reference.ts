@@ -31,9 +31,24 @@ export function verifyOtpNodeMtlsPeer(
   request:IncomingMessage,
   approvedPeerFingerprintSha256:string,
 ):void{
+  verifyOtpNodeMtlsPeerPins(request,[approvedPeerFingerprintSha256]);
+}
+
+/**
+ * Reference-only certificate rotation gate: one active pin or an active
+ * plus one staged pin. This must be tied to an operator-controlled expiry
+ * and revocation process by the real deployment; no arbitrary pin lists.
+ */
+export function verifyOtpNodeMtlsPeerPins(
+  request:IncomingMessage,
+  approvedPins:readonly string[],
+):void{
   try{
-    if(typeof approvedPeerFingerprintSha256!=='string'||
-       !/^[0-9a-f]{64}$/.test(approvedPeerFingerprintSha256))deny();
+    if(!Array.isArray(approvedPins)||approvedPins.length<1||
+       approvedPins.length>2||
+       approvedPins.some(pin=>typeof pin!=='string'||
+         !/^[0-9a-f]{64}$/.test(pin))||
+       new Set(approvedPins).size!==approvedPins.length)deny();
     const socket=request.socket;
     if(!(socket instanceof TLSSocket)||!socket.encrypted||
        socket.authorized!==true||socket.authorizationError)deny();
@@ -42,9 +57,14 @@ export function verifyOtpNodeMtlsPeer(
        !/^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(
          certificate.fingerprint256))deny();
     const actual=Buffer.from(certificate.fingerprint256.replace(/:/g,'').toLowerCase(),'hex');
-    const approved=Buffer.from(approvedPeerFingerprintSha256,'hex');
-    if(actual.length!==32||approved.length!==32||
-       !timingSafeEqual(actual,approved))deny();
+    if(actual.length!==32)deny();
+    let matched=0;
+    // Compare both pins, without returning early on the first match.
+    for(const pin of approvedPins){
+      const approved=Buffer.from(pin,'hex');
+      matched|=Number(timingSafeEqual(actual,approved));
+    }
+    if(matched===0)deny();
   }catch{deny();}
 }
 
@@ -62,6 +82,25 @@ export async function dispatchMtlsOtpNodeIncomingMessage(
   externalSignal?:AbortSignal,
 ):Promise<OtpGatewayDispatchResult>{
   verifyOtpNodeMtlsPeer(request,approvedPeerFingerprintSha256);
+  return dispatchOtpNodeIncomingMessage(
+    request,config,gateway,makeVendor,deadlineMs,externalSignal,
+  );
+}
+
+/**
+ * Unwired entrypoint for controlled active + staged certificate rotation.
+ * The private listener must still enforce valid mTLS and trusted peer source.
+ */
+export async function dispatchMtlsRotatingOtpNodeIncomingMessage(
+  request:IncomingMessage,
+  approvedPins:readonly string[],
+  config:TrustedOtpGatewayIngressConfig,
+  gateway:OtpGatewayLedgerDispatchReference,
+  makeVendor:(payload:VerifiedOtpGatewayPayload)=>OtpGatewayVendorPort,
+  deadlineMs=5_000,
+  externalSignal?:AbortSignal,
+):Promise<OtpGatewayDispatchResult>{
+  verifyOtpNodeMtlsPeerPins(request,approvedPins);
   return dispatchOtpNodeIncomingMessage(
     request,config,gateway,makeVendor,deadlineMs,externalSignal,
   );

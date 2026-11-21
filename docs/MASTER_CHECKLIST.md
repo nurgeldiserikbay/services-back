@@ -62,6 +62,10 @@
 - Backend branch `test/otp-node-mtls-peer-gate-20261121`: added an **unwired, reference-only** mTLS trust entrypoint requiring Node `TLSSocket` with `encrypted` and `authorized` true, no certificate authorization error, and constant-time comparison of the peer SHA-256 certificate fingerprint with a strict approved pin, before reading any body or claiming ledger. Tests cover accepted pin, untrusted/missing/mismatched/invalid peer and no body/ledger effects.
 - Production listener still must be configured with `requestCert:true` and `rejectUnauthorized:true`, trusted CA verification and certificate lifecycle/rotation, private network policy, KZ residency, provider acceptance, real TLS handshakes and staging E2E. No listener is wired; no acceptance checkbox/readiness increase pending CI and review.
 
+### 2026-11-21 — OTP mTLS dual-certificate rotation reference (PR CI pending)
+- Backend branch `test/otp-mtls-pin-rotation-20261121`: **unwired reference-only** Node mTLS ingress now has a bounded 1–2 SHA-256 certificate pin allowlist for controlled primary/staged certificate overlap. It checks both pins without early-match return, rejects duplicates, malformed pins and untrusted peers, and prevents body consumption/ledger/vendor effects for a mismatched peer. Existing single-pin entrypoint is preserved.
+- Production must supply operator-governed rotation windows, pin expiry/revocation, trusted CA chain, real TLS handshake testing, socket/network controls, KZ residency and provider signoff. No deployed listener, no acceptance checkbox or readiness increase. PR-head CI/merge pending.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
