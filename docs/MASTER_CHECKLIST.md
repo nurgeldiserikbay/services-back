@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-21 — isolated HTTPS JSON OTP delivery gateway adapter (CI pending)
+
+- Branch `feat/guest-otp-https-provider-adapter-20261121`: introduce `OtpHttpsGatewayAdapter` as a **separately injectable but deliberately unwired** provider-neutral HTTPS JSON delivery boundary. It requires an exact approved DNS hostname, HTTPS, no URL credentials/query, port restrictions, a separately supplied gateway token, and disables redirects, cookies and HTTP caching. Provider response must be HTTP 202 JSON with exact `accepted`/`providerRef` keys and strictly bounded 512-byte body; invalid, oversized, or non-success replies fail closed with a redacted error. A 3-second transport signal combines with the service's 5-second deadline.
+- Regression tests cover successful fixture delivery, failed status, URL misconfiguration, invalid cache/content-type, oversized Content-Length and already-aborted transport. **No actual OTP vendor was selected, configured, contacted or approved.** The default Nest `GuestVerificationModule` remains wired to `DisabledOtpDelivery`; guest OTP HTTP stays default OFF. Before any provider integration the owner must approve recipient data handling/Kazakhstan residency, gateway auth and network egress/SSRF controls, TLS, DNS behavior, retry/idempotency, staging delivery tests, and secret rotation. PR-head CI pending; no acceptance count change.
+
+
 ### 2026-11-21 — reject proxy-local and non-client OTP quota signing identities (pending CI)
 
 - Branch `fix/otp-edge-reject-nonclient-network-identities-20261121`: the isolated edge reference signer now refuses to mint a network proof from loopback, unspecified, link-local, multicast/broadcast IPv4/IPv6 sources, including IPv4-mapped IPv6 equivalents. This catches common trusted proxy misconfiguration where the edge otherwise attributes every guest to its own internal socket address, creating an unintended shared OTP quota. Regression tests cover both proof signer and issuance-header reconstruction; legitimate test-net IP and IPv6 signer/verifier behavior remains unchanged.
