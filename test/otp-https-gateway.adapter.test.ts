@@ -31,3 +31,34 @@ test('HTTPS adapter rejects redirects and invalid outcomes',async()=>{
  });
  await assert.rejects(adapter.deliverOtp(message),/otp_gateway_unavailable/);
 });
+
+test('gateway requires approved HTTPS host and safe request path',()=>{
+ for(const endpoint of [
+  'http://otp.example.org/v1/send',
+  'https://different.example.org/v1/send',
+  'https://otp.example.org:8443/v1/send',
+  'https://otp.example.org/v1/send?bad=yes',
+  'https://otp.example.org/',
+  'https://127.0.0.1/v1/send',
+ ]){
+  assert.throws(()=>new OtpHttpsGatewayAdapter({...config,endpoint}),
+   /otp_gateway_unavailable/);
+ }
+});
+
+test('gateway rejects ambiguous or cacheable response contracts',async()=>{
+ const values=[
+  {status:200,headers:{'content-type':'application/json'}},
+  {status:202,headers:{'content-type':'text/html'}},
+  {status:202,headers:{'content-type':'application/json','cache-control':'public'}},
+  {status:202,headers:{'content-type':'application/json','content-length':'1000'}},
+ ];
+ for(const setup of values){
+  const adapter=new OtpHttpsGatewayAdapter({...config,
+   transport:async()=>new Response(JSON.stringify({
+    accepted:true,providerRef:'delivery_12345678',
+   }),setup),
+  });
+  await assert.rejects(adapter.deliverOtp(message),/otp_gateway_unavailable/);
+ }
+});
