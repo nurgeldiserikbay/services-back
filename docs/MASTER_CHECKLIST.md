@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-21 — isolated gateway inbound authentication and signed JSON verification (PR CI pending)
+
+- Branch `feat/otp-gateway-verified-ingress-boundary-20261121`: new `otp-gateway-verified-request.reference.ts` validates an **isolated, unwired** gateway ingress request before any provider/ledger call: exact HTTPS adapter JSON serialization/schema, BFF Bearer token checked with `timingSafeEqual`, strict 64-hex HMAC idempotency-key and domain-separated HMAC payload fingerprint checked in constant time, bounded raw payload and validated OTP parameters. Rejects modified or duplicated JSON properties, extra keys, invalid token, altered code/recipient, malformed signatures and ambiguous serialization. The wrapper passes only the parsed, verified payload to a gateway-owned vendor factory, never a client-controlled vendor callback.
+- The adapter-to-gateway roundtrip and tamper-negative tests are local reference tests. This is **not a deployed HTTP listener or a fully authenticated gateway**: TLS/mTLS, transport provenance, duplicate raw HTTP header detection, pre-buffer request body limits, secret rotation, network isolation, approved vendor, Kazakhstan residency, staging abuse acceptance and reconciliation are OPEN. Nest remains wired to `DisabledOtpDelivery`, OTP production flags remain off, and 21/117 acceptance count is unchanged. PR-head CI/merge pending.
+
+
 ### 2026-11-21 — standalone PostgreSQL claim-to-provider OTP gateway reference (CI pending)
 
 - Branch `feat/otp-gateway-ledger-dispatch-reference-20261121`: `OtpGatewayLedgerDispatchReference` orchestrates a **dedicated, unwired gateway** ledger and abstract vendor send port. A durably committed first `send` claim is the only route to provider dispatch; identical `in_flight` duplicates do not send, different fingerprints conflict, and existing `accepted` receipts replay without a second provider call. Only after the vendor returns an accepted reference is PostgreSQL CAS finalization attempted; an unknown vendor outcome or failed database acknowledgement remains RESERVED for reconciliation—**never automatic retry/reclaim**.
