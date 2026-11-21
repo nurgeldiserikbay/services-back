@@ -28,13 +28,24 @@ export function makeTrustedOtpNetworkProof(
   // Normalize IPv6 representation to avoid treating equivalent textual
   // addresses as distinct quota subjects. The deployment must separately
   // specify IPv6 prefix aggregation policy if necessary.
-  const address=isIP(clientAddress)===6
+  const family=isIP(clientAddress);
+  const canonical=family===6
     ?new URL('http://['+clientAddress+']/').hostname.slice(1,-1)
     :clientAddress;
+  // A dual-stack reverse proxy may supply the same IPv4 socket as an
+  // IPv4-mapped IPv6 address. The quota identity must NOT change with that
+  // transport representation; reject network-budget splitting by spelling.
+  const mapped=/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(canonical);
+  const mappedIpv4=mapped
+    ?[parseInt(mapped[1],16)>>8,parseInt(mapped[1],16)&255,
+      parseInt(mapped[2],16)>>8,parseInt(mapped[2],16)&255].join('.')
+    :null;
+  const normalizedFamily=mappedIpv4?'4':String(family);
+  const normalizedAddress=mappedIpv4??canonical;
   const digest=createHmac('sha256',identityKey)
     .update('services-otp-client-network:v1\n')
-    .update(String(isIP(clientAddress))).update('\n')
-    .update(address).digest('hex');
+    .update(normalizedFamily).update('\n')
+    .update(normalizedAddress).digest('hex');
   const timestamp=String(now);
   const mac=createHmac('sha256',attestationKey)
     .update('services-otp-network:v1\n')
