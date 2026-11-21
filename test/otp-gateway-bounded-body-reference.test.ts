@@ -59,3 +59,50 @@ test('OTP gateway stream denies aborted requests',async()=>{
  await assert.rejects(readBoundedOtpGatewayBody(abortAfterFirst(),midway.signal),
   /otp_gateway_request_rejected/);
 });
+
+test('OTP gateway abort interrupts stalled next and never awaits stalled return',async()=>{
+ const controller=new AbortController();
+ let entered=0;
+ let cleanupCalled=0;
+ const source:AsyncIterable<Buffer>={
+  [Symbol.asyncIterator](){
+   return {
+    next:()=>{
+     entered++;
+     controller.abort();
+     return new Promise<IteratorResult<Buffer>>(()=>{});
+    },
+    return:()=>{
+     cleanupCalled++;
+     return new Promise<IteratorResult<Buffer>>(()=>{});
+    },
+   };
+  },
+ };
+ await assert.rejects(readBoundedOtpGatewayBody(source,controller.signal),
+  /otp_gateway_request_rejected/);
+ assert.equal(entered,1);
+ // Iterator shutdown is best-effort and must not block the rejection.
+ await Promise.resolve();
+ assert.equal(cleanupCalled,1);
+});
+
+test('OTP gateway rejects a stalled iterator after an external abort',async()=>{
+ const controller=new AbortController();
+ let entered!:()=>void;
+ const started=new Promise<void>(resolve=>{entered=resolve;});
+ const source:AsyncIterable<Buffer>={
+  [Symbol.asyncIterator](){
+   return {
+    next:()=>{
+     entered();
+     return new Promise<IteratorResult<Buffer>>(()=>{});
+    },
+   };
+  },
+ };
+ const result=readBoundedOtpGatewayBody(source,controller.signal);
+ await started;
+ controller.abort();
+ await assert.rejects(result,/otp_gateway_request_rejected/);
+});
