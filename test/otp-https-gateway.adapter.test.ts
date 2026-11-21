@@ -62,3 +62,15 @@ test('gateway rejects ambiguous or cacheable response contracts',async()=>{
   await assert.rejects(adapter.deliverOtp(message),/otp_gateway_unavailable/);
  }
 });
+
+test('pre-canceled request does not start network transport',async()=>{
+ let calls=0;
+ const cancellation=new AbortController();
+ cancellation.abort();
+ const gateway=new OtpHttpsGatewayAdapter({...config,
+  transport:async()=>{calls++;return new Response(null,{status:204});},
+ });
+ await assert.rejects(gateway.deliverOtp(message,cancellation.signal),
+  /otp_gateway_unavailable/);
+ assert.equal(calls,0);
+});
