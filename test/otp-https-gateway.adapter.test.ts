@@ -74,3 +74,53 @@ test('pre-canceled request does not start network transport',async()=>{
   /otp_gateway_unavailable/);
  assert.equal(calls,0);
 });
+
+test('external abort bounds transport that ignores its signal',async()=>{
+ const controller=new AbortController();
+ let entered=false;
+ const adapter=new OtpHttpsGatewayAdapter({...config,transport:async()=>{
+  entered=true;
+  return await new Promise<Response>(()=>{});
+ }});
+ const pending=adapter.deliverOtp(message,controller.signal);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(entered,true);
+ controller.abort();
+ await assert.rejects(pending,/otp_gateway_unavailable/);
+});
+
+test('external abort bounds a stalled provider response stream',async()=>{
+ const controller=new AbortController();
+ let cancelled=0;
+ let firstRead=true;
+ const stream=new ReadableStream<Uint8Array>({
+  pull(streamController){
+   if(firstRead){
+    firstRead=false;
+    streamController.enqueue(new TextEncoder().encode('{"accepted":'));
+   }
+  },
+  cancel(){cancelled++;}
+ });
+ const adapter=new OtpHttpsGatewayAdapter({...config,transport:async()=>
+  new Response(stream,{status:202,headers:{'content-type':'application/json'}}),
+ });
+ const pending=adapter.deliverOtp(message,controller.signal);
+ await new Promise(resolve=>setImmediate(resolve));
+ controller.abort();
+ await assert.rejects(pending,/otp_gateway_unavailable/);
+ assert.equal(cancelled,1);
+});
+
+test('oversize response stream is cancelled before parsing',async()=>{
+ let cancelled=0;
+ const stream=new ReadableStream<Uint8Array>({
+  start(ctrl){ctrl.enqueue(new Uint8Array(513));},
+  cancel(){cancelled++;}
+ });
+ const adapter=new OtpHttpsGatewayAdapter({...config,transport:async()=>
+  new Response(stream,{status:202,headers:{'content-type':'application/json'}}),
+ });
+ await assert.rejects(adapter.deliverOtp(message),/otp_gateway_unavailable/);
+ assert.equal(cancelled,1);
+});
