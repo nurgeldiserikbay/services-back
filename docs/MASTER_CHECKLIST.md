@@ -50,6 +50,10 @@
 - Backend branch `test/otp-node-rawheaders-boundary-20261121`: added a **reference-only** Node IncomingMessage.rawHeaders alternating-array converter preserving header order, casing and duplicates before normalized Headers can hide multiplicity. Rejects odd counts, invalid names/values and excessive header entries; tests assert duplicate Authorization is denied before OTP body streaming, ledger claim or vendor invocation.
 - Not a wired Node HTTP listener or proxy trust decision; the real listener must enforce socket/header timeouts, peer provenance, TLS/mTLS, KZ residency, real provider and staging acceptance. PR-head CI/merge pending, no acceptance or readiness adjustment.
 
+### 2026-11-21 — original Node IncomingMessage OTP adapter (PR CI pending)
+- Backend branch `test/otp-node-incoming-adapter-20261121`: **unwired reference-only** adapter accepts Node IncomingMessage, preserves original rawHeaders, validates exact method/route, attaches an abort controller and deadline-driven request.destroy() to a bounded streaming/HMAC/ledger pipeline. Tests cover actual Readable-backed request bytes, duplicate Authorization before body consumption, stalled request timeout destroying the stream and no ledger claim, invalid routes and deadlines.
+- This adapter creates **no network server** and authenticates **no mTLS peer**; production still needs a private TLS/mTLS listener, transport header limits, KZ-residency/provenance controls, approved vendor integration and staging security acceptance. CI and merge pending; no acceptance or readiness change.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
