@@ -174,6 +174,12 @@
 
 ## Evidence log
 
+### 2026-11-21 — OTP gateway idempotency payload consistency (PR-head CI pending)
+
+- Branch `feat/otp-gateway-idempotency-payload-fingerprint-20261121`: the still-unwired HTTPS gateway adapter adds an `X-Services-OTP-Payload-Fingerprint` header: a domain-separated HMAC-SHA256 over the immutable `Idempotency-Key` and the exact outbound allowlisted JSON payload, using its separate 256-bit gateway idempotency secret. The same committed challenge and payload yield matching key/fingerprint; a changed OTP, recipient or other payload with the **same challenge ID** retains the same idempotency key but has a *different* fingerprint. The 6-digit OTP is never exposed in an unhashed digest. The existing per-challenge key, no-raw-UUID body, and default-off Nest wiring remain unchanged.
+- Tests model a reference gateway accepting identical retries, returning one receipt, and rejecting conflicting payloads with HTTP 409; conflict responses fail closed. **This is not distributed exactly-once delivery**: the real provider gateway must implement durable atomic deduplication, compare fingerprints in constant time as appropriate, verify transport authenticity, avoid logging sensitive fields, and test concurrency/restarts, failed/late sends, key rotation and Kazakhstan residency in staging. No production acceptance checkbox or 21/117 count changes, PR CI and merge pending.
+
+
 ### 2026-11-21 — stable per-challenge OTP gateway idempotency contract (PR-head CI pending)
 
 - Branch `feat/guest-otp-challenge-delivery-idempotency-20261121`: pass the **committed database challenge UUID** from all three `GuestOtpDispatchService` purposes through `OtpDeliveryService` to the still-unwired HTTPS gateway. The gateway now requires the UUID and a separate 32-byte idempotency signing secret; it HMACs a domain-separated normalized UUID into a 64-hex `Idempotency-Key` header. Repeated requests for the same committed challenge use the same opaque key; distinct challenges use different keys, and neither raw challenge UUID nor secret is included in the outbound JSON payload. A missing/invalid UUID or missing key fails closed *before* transport.
