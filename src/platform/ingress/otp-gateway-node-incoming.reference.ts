@@ -40,14 +40,18 @@ export async function dispatchOtpNodeIncomingMessage(
   const pairs=otpNodeRawHeaderPairs(request.rawHeaders);
   const abort=new AbortController();
   const onAborted=()=>abort.abort();
+  // IncomingMessage may emit 'close' without 'aborted' on a truncated body.
+  // A normally completed request must not be mistaken for a disconnect.
+  const onClose=()=>{if(!request.complete)abort.abort();};
   const onExternalAbort=()=>abort.abort();
   request.once('aborted',onAborted);
+  request.once('close',onClose);
   externalSignal?.addEventListener('abort',onExternalAbort,{once:true});
   const onAbort=()=>request.destroy();
   abort.signal.addEventListener('abort',onAbort,{once:true});
   const timer=setTimeout(()=>abort.abort(),deadlineMs);
   try{
-    if(request.aborted||externalSignal?.aborted)reject();
+    if(request.aborted||request.destroyed||externalSignal?.aborted)reject();
     return await dispatchBoundedOtpGatewayHttpStream(
       method,requestTarget,pairs,request,config,gateway,makeVendor,
       abort.signal,deadlineMs,
@@ -55,6 +59,7 @@ export async function dispatchOtpNodeIncomingMessage(
   }finally{
     clearTimeout(timer);
     request.removeListener('aborted',onAborted);
+    request.removeListener('close',onClose);
     externalSignal?.removeEventListener('abort',onExternalAbort);
     abort.signal.removeEventListener('abort',onAbort);
   }
