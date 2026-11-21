@@ -80,7 +80,7 @@ test('gateway ledger refuses malformed keys or unsafe provider receipts before S
   await assert.rejects(ledger.claim(key('0'),bad),
    /otp_gateway_ledger_unavailable/);
  }
- for(const bad of ['',null,'too-short','external:destination']){
+ for(const bad of ['',null,'short','external:destination']){
   await assert.rejects(ledger.recordAccepted(key('0'),fingerprint('0'),bad),
    /otp_gateway_ledger_unavailable/);
  }
