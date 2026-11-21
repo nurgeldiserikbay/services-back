@@ -66,6 +66,10 @@
 - Backend branch `test/otp-mtls-pin-rotation-20261121`: **unwired reference-only** Node mTLS ingress now has a bounded 1–2 SHA-256 certificate pin allowlist for controlled primary/staged certificate overlap. It checks both pins without early-match return, rejects duplicates, malformed pins and untrusted peers, and prevents body consumption/ledger/vendor effects for a mismatched peer. Existing single-pin entrypoint is preserved.
 - Production must supply operator-governed rotation windows, pin expiry/revocation, trusted CA chain, real TLS handshake testing, socket/network controls, KZ residency and provider signoff. No deployed listener, no acceptance checkbox or readiness increase. PR-head CI/merge pending.
 
+### 2026-11-21 — real ephemeral Node TLS/mTLS handshake regression (PR CI pending)
+- Backend branch `test/otp-real-mtls-handshake-20261121`: tests start an actual loopback Node HTTPS server with `requestCert:true`, `rejectUnauthorized:true` and a temporary test CA. OpenSSL creates ephemeral server/client certs and keys outside the repository, deleted after the test. Real TLS handshakes verify approved client pin access, CA-valid-but-unpinned denial, temporary two-pin rotation, rejection of revoked pins, missing client certificates, and even pinned-but-untrusted CA certificates before the HTTP handler. No private keys are committed.
+- Reference-only security evidence, not a deployed OTP server or approved CA lifecycle. Production still requires KZ-hosted private-network ingress, trusted CA renewal/revocation procedures, audited provider, operational listener configuration and staging E2E. No readiness/acceptance increase pending exact PR-head CI and security review.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
