@@ -123,6 +123,14 @@ test('explicit IPv6 /64 issuance header policy is stable across privacy hosts',(
   defaultExact.get('x-services-network-proof'));
 });
 
+test('trusted issuance header constructor refuses proxy self-address',()=>{
+ for(const address of ['127.0.0.1','::1','::ffff:127.0.0.1','fe80::1','0.0.0.0']){
+  assert.throws(()=>buildTrustedGuestOtpIssuanceHeaders(hostile,{
+   ...trusted('COMPLETE_REQUEST'),clientAddress:address,
+  }),/invalid_trusted_otp_edge_proof_input/);
+ }
+});
+
 test('edge-only allowlist helper is not imported by runtime controllers',()=>{
  for(const p of [
   'src/main.ts',

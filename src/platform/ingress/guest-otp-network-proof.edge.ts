@@ -62,6 +62,24 @@ export function makeTrustedOtpNetworkProof(
     ?[parseInt(mapped[1],16)>>8,parseInt(mapped[1],16)&255,
       parseInt(mapped[2],16)>>8,parseInt(mapped[2],16)&255].join('.')
     :null;
+  // A misconfigured proxy may report its own loopback, unspecified or
+  // link-local socket instead of the visitor address. Never mint a shared
+  // issuance identity for those values; a real edge must repair its trusted
+  // client-IP resolver. Multicast/broadcast addresses are not clients.
+  const ipv4Subject=family===4?canonical:mappedIpv4;
+  if(ipv4Subject){
+    const octets=ipv4Subject.split('.').map(Number);
+    if(octets[0]===0||octets[0]===127||
+       (octets[0]===169&&octets[1]===254)||
+       octets[0]>=224)
+      throw new Error('invalid_trusted_otp_edge_proof_input');
+  }else if(family===6){
+    const first=parseInt(canonical.split(':')[0]||'0',16);
+    if(canonical==='::'||canonical==='::1'||
+       (first>=0xfe80&&first<=0xfebf)||
+       (first>=0xff00&&first<=0xffff))
+      throw new Error('invalid_trusted_otp_edge_proof_input');
+  }
   const normalizedFamily=mappedIpv4?'4':String(family);
   const normalizedAddress=mappedIpv4??(family===6
     ?ipv6QuotaSubject(canonical,ipv6Grouping):canonical);
