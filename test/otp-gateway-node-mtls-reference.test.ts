@@ -6,6 +6,8 @@ import {TLSSocket} from 'node:tls';
 import {
   dispatchMtlsOtpNodeIncomingMessage,
   verifyOtpNodeMtlsPeer,
+  verifyOtpNodeMtlsPeerPins,
+  dispatchMtlsRotatingOtpNodeIncomingMessage,
 } from '../src/platform/ingress/otp-gateway-node-mtls.reference.js';
 import {OtpGatewayLedgerDispatchReference} from
  '../src/platform/ingress/otp-gateway-ledger-dispatch.reference.js';
@@ -83,4 +85,48 @@ test('mTLS entrypoint denies wrong peer before reading body or claiming ledger',
  ),/otp_gateway_request_rejected/);
  assert.equal(consumed,0);
  assert.equal(claimed,0);
+});
+
+test('OTP TLS peer pin rotation accepts current and staged cert with no duplicates',()=>{
+ const staged='cd'.repeat(32);
+ const stagedCertificate=staged.toUpperCase().match(/.{2}/g)!.join(':');
+ assert.doesNotThrow(()=>verifyOtpNodeMtlsPeerPins(requestWithTlsPeer(),[pin]));
+ assert.doesNotThrow(()=>verifyOtpNodeMtlsPeerPins(requestWithTlsPeer(),[pin,staged]));
+ assert.doesNotThrow(()=>verifyOtpNodeMtlsPeerPins(
+  requestWithTlsPeer({fingerprint:stagedCertificate}),[pin,staged]));
+ assert.throws(()=>verifyOtpNodeMtlsPeerPins(requestWithTlsPeer(),[staged]),
+  /otp_gateway_request_rejected/);
+ for(const invalid of [
+  [],[pin,pin],[pin,pin,'ef'.repeat(32)],
+  ['invalid'],[pin,'ef'.repeat(31)],[pin.toUpperCase()],
+ ]){
+  assert.throws(()=>verifyOtpNodeMtlsPeerPins(requestWithTlsPeer(),invalid),
+   /otp_gateway_request_rejected/);
+ }
+});
+
+test('unapproved rotated OTP TLS peer denies before body, ledger or vendor',async()=>{
+ let consumed=0;
+ let claims=0;
+ const req=new Readable({read(){consumed++;this.push(Buffer.from('x'));this.push(null);}}) as IncomingMessage;
+ const fake=Object.create(TLSSocket.prototype) as TLSSocket;
+ Object.defineProperties(fake,{
+  encrypted:{value:true},authorized:{value:true},authorizationError:{value:null},
+  getPeerCertificate:{value:()=>({fingerprint256:'EF:'.repeat(31)+'EF'})},
+ });
+ Object.assign(req,{
+  method:'POST',url:'/v1/send',complete:false,aborted:false,
+  rawHeaders:['Content-Length','1'],
+ });
+ Object.defineProperty(req,'socket',{value:fake});
+ const gateway=new OtpGatewayLedgerDispatchReference({
+  claim:async()=>{claims++;return {decision:'send' as const};},
+  recordAccepted:async()=>true,
+ });
+ await assert.rejects(dispatchMtlsRotatingOtpNodeIncomingMessage(
+  req,[pin,'cd'.repeat(32)],config,gateway,
+  ()=>{throw new Error('vendor must not be created');},
+ ),/otp_gateway_request_rejected/);
+ assert.equal(consumed,0);
+ assert.equal(claims,0);
 });
