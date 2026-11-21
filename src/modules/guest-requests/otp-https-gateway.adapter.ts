@@ -98,6 +98,17 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
         code:message.code,purpose:message.purpose,locale:message.locale,
         expiresInSeconds:message.expiresInSeconds,
       };
+      const payloadJson=JSON.stringify(payload);
+      // Preserve one idempotency key per committed challenge, but give the
+      // future gateway a separate opaque fingerprint to compare the exact
+      // payload. If a retry reuses a key with different OTP/recipient/purpose,
+      // a compliant gateway MUST reject it rather than dispatch again.
+      // Never expose an unhashed six-digit code as a digest: the HMAC secret
+      // prevents offline enumeration of the small OTP space.
+      const payloadFingerprint=createHmac('sha256',this.idempotencySecret)
+        .update('services-guest-otp-payload:v1\n')
+        .update(idempotencyKey).update('\n')
+        .update(payloadJson).digest('hex');
       // AbortSignal.any keeps both outer service cancellation and the
       // adapter's stricter three-second I/O deadline enforceable.
       const budget=AbortSignal.timeout(3_000);
@@ -110,8 +121,9 @@ export class OtpHttpsGatewayAdapter implements OtpDeliveryPort {
           'authorization':'Bearer '+this.token,
           'cache-control':'no-store',
           'idempotency-key':idempotencyKey,
+          'x-services-otp-payload-fingerprint':payloadFingerprint,
         },
-        body:JSON.stringify(payload),
+        body:payloadJson,
         redirect:'error',credentials:'omit',signal:combined,
       }),combined);
       if(response.status!==202||!response.ok||
