@@ -115,9 +115,9 @@
 - Branch `test/otp-postgres-ack-write-failure-20261122` extends real localhost HTTPS/mTLS + isolated PostgreSQL OTP E2E. A test-schema-only BEFORE UPDATE trigger deliberately rejects the provider receipt finalization for a distinct idempotency key, after a stubbed accepted vendor response. HTTP must return generic 503, preserve durable `RESERVED`, and deny a signed replay with 409 without a second provider invocation.
 - This does NOT implement operator reconciliation, deployed provider delivery, KZ network provenance or production database trigger. Latest PR-head CI and staging/security sign-off remain pending; no readiness/acceptance increase.
 
-### 2026-11-22 — fail closed on PostgreSQL initial OTP reservation INSERT failure (PR CI pending)
-- Branch `test/otp-mtls-postgres-reservation-write-denied-20261122`: extends actual localhost HTTPS/mTLS + PostgreSQL OTP E2E with a scoped, test-schema-only BEFORE INSERT trigger rejecting the initial durable claim for a separate idempotency key. An authenticated request and replay must each return generic 503, leave no row, and never invoke the provider stub. The real provider and production schema are untouched.
-- This is local test evidence only; exact PR-head CI, approved OTP provider, Kazakhstan private ingress, reconciliation and staging acceptance remain pending. No release/readiness checkbox changes.
+### 2026-11-22 — fail closed on PostgreSQL initial OTP reservation INSERT failure (PR #413 verified)
+- [Backend PR #413](https://github.com/nurgeldiserikbay/services-back/pull/413), head `f900d9352819cecfc26c5d583b0f3711b6702296`, [CI #4438 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45029432842), squash merge `2ca779849864e28df77e1b0317fef4bfc9ea7829`. Real localhost HTTPS/mTLS + isolated PostgreSQL E2E installs a test-schema-only BEFORE INSERT trigger to reject initial durable claim; both original request and retry return generic 503, leave no row, and do not invoke the provider stub.
+- This proves reference test behavior only. Approved live provider, Kazakhstan private ingress, reconciliation, staging/security sign-off and production readiness remain pending. Do not change release acceptance/readiness checkboxes.
 
 ## Acceptance items
 
