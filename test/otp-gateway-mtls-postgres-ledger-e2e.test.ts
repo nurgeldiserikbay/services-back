@@ -119,12 +119,17 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
       req.once('error',()=>finish(null));
       req.end(body);
      });
-   const success=await send();
-   assert.equal(success.status,202);
-   assert.deepEqual(JSON.parse(success.body),{
-    accepted:true,providerRef:'provider_12345678',
-   });
-   assert.equal(success.cache,'no-store');
+   const simultaneous=await Promise.all([send(),send()]);
+   assert.ok(simultaneous.some(x=>x.status===202));
+   assert.ok(simultaneous.every(x=>x.status===202||x.status===409));
+   for(const item of simultaneous){
+    if(item.status===202){
+     assert.deepEqual(JSON.parse(item.body),{
+      accepted:true,providerRef:'provider_12345678',
+     });
+     assert.equal(item.cache,'no-store');
+    }else assert.equal(item.body,'{"accepted":false}');
+   }
    assert.deepEqual(await stored(),[{status:'ACCEPTED',provider_ref:'provider_12345678'}]);
    assert.equal(sends,1);
    const replay=await send();
