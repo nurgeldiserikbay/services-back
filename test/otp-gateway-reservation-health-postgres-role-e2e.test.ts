@@ -31,6 +31,29 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
     "INSERT INTO otp_gateway_delivery_claims(idempotency_key,fingerprint,status) VALUES($1,$2,'RESERVED')",
     [key,fingerprint],
    );
+   // Distinct ages are inserted by the fixture owner only; live claims
+   // are immutable after reservation, and the restricted observer cannot write.
+   await db.query(`
+    INSERT INTO otp_gateway_delivery_claims
+      (idempotency_key,fingerprint,status,claimed_at)
+    VALUES
+      ($1,$5,'RESERVED',now()-interval '10 minutes'),
+      ($2,$5,'RESERVED',now()-interval '2 hours'),
+      ($3,$5,'RESERVED',now()-interval '25 hours'),
+      ($4,$5,'RESERVED',now()-interval '1 hour')
+   `,['c'.repeat(64),'d'.repeat(64),'e'.repeat(64),
+      'f'.repeat(64),fingerprint]);
+   // A true ACCEPTED row must never be included in unresolved buckets.
+   await db.query(`
+    INSERT INTO otp_gateway_delivery_claims
+      (idempotency_key,fingerprint,status,claimed_at)
+    VALUES ($1,$2,'RESERVED',now()-interval '3 days')
+   `,['9'.repeat(64),fingerprint]);
+   await db.query(`
+    UPDATE otp_gateway_delivery_claims
+    SET status='ACCEPTED',provider_ref='provider_12345678',accepted_at=now()
+    WHERE idempotency_key=$1 AND status='RESERVED'
+   `,['9'.repeat(64)]);
    await admin.query('CREATE ROLE '+role+' NOLOGIN');
    roleCreated=true;
    await admin.query('GRANT USAGE ON SCHEMA '+schema+' TO '+role);
@@ -47,14 +70,15 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
     const health=await readOtpGatewayReservationHealth(
      {query:(sql:string)=>client.query(sql)} as never,
     );
-    assert.equal(health.unresolvedCount,'1');
+    assert.equal(health.unresolvedCount,'5');
     assert.ok(health.oldestClaimedAt);
+    assert.ok(new Date(health.oldestClaimedAt).getTime() < Date.now()-24*60*60*1000);
     const buckets=await readOtpGatewayReservationAgeBuckets(
      {query:(sql:string)=>client.query(sql)} as never,
     );
     assert.deepEqual(buckets,{
-     total:'1',underFiveMinutes:'1',fiveMinutesToOneHour:'0',
-     oneHourOrOlder:'0',
+     total:'5',underFiveMinutes:'1',fiveMinutesToOneHour:'1',
+     oneHourOrOlder:'3',
     });
     assert.deepEqual(Object.keys(health).sort(),[
      'oldestClaimedAt','unresolvedCount',
@@ -92,7 +116,7 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
    assert.deepEqual(persisted.rows.map(x=>x.status),['RESERVED']);
    assert.equal((await db.query(
     'SELECT count(*)::text AS n FROM otp_gateway_delivery_claims',
-   )).rows[0]?.n,'1');
+   )).rows[0]?.n,'6');
   }finally{
    if(db)await db.end();
    if(roleCreated){
