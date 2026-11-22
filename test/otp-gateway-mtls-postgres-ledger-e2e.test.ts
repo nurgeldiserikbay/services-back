@@ -76,6 +76,7 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
       sends++;
       if(payload.code==='000000')throw new Error('test provider ambiguous failure');
       if(payload.code==='999999')return {accepted:true,providerRef:'bad'};
+      if(payload.code==='111111')return {accepted:true,providerRef:'provider_87654321'};
       assert.equal(payload.code,'123456');
       return {accepted:true,providerRef:'provider_12345678'};
      },
@@ -87,21 +88,24 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    });
    const addr=server.address();
    assert.ok(addr&&typeof addr!=='string');
-   const send=(options?:{badSignature?:boolean;clientCert?:boolean;path?:string;alternateBody?:boolean;vendorFailure?:boolean;invalidReceipt?:boolean}):
+   const send=(options?:{badSignature?:boolean;clientCert?:boolean;path?:string;alternateBody?:boolean;vendorFailure?:boolean;invalidReceipt?:boolean;ackFailure?:boolean}):
      Promise<{status:number|null;body:string;cache:string|null}>=>
      new Promise(resolve=>{
       let responded=false;
       const finish=(status:number|null,bodyText='',cache:string|null=null)=>{
        if(!responded){responded=true;resolve({status,body:bodyText,cache});}
       };
-      const requestBody=options?.invalidReceipt
+      const requestBody=options?.ackFailure
+       ?body.replace('"code":"123456"','"code":"111111"')
+       :options?.invalidReceipt
        ?body.replace('"code":"123456"','"code":"999999"')
        :options?.vendorFailure
        ?body.replace('"code":"123456"','"code":"000000"')
         .replace('"locale":"kk"',options.alternateBody?'"locale":"ru"':'"locale":"kk"')
        :options?.alternateBody
         ?body.replace('"code":"123456"','"code":"654321"'):body;
-      const requestKey=options?.invalidReceipt?'c'.repeat(64)
+      const requestKey=options?.ackFailure?'d'.repeat(64)
+       :options?.invalidReceipt?'c'.repeat(64)
        :options?.vendorFailure?'b'.repeat(64):key;
       const headers={
        'Authorization':'Bearer '+config.apiToken,
@@ -223,10 +227,44 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
     {status:'RESERVED',provider_ref:null},
    ]);
    assert.equal(sends,3);
+   // The vendor may accept while PostgreSQL rejects the final ACK update.
+   // The durable reservation must survive; replay must not contact vendor again.
+   // This trigger is confined to the disposable test schema, never production.
+   await db!.query(`
+    CREATE FUNCTION otp_test_reject_ack() RETURNS trigger
+    LANGUAGE plpgsql AS $tag$
+    BEGIN
+      IF NEW.idempotency_key = repeat('d',64) THEN
+        RAISE EXCEPTION 'simulated ack persistence failure';
+      END IF;
+      RETURN NEW;
+    END;
+    $tag$
+   `);
+   await db!.query(`
+    CREATE TRIGGER otp_test_reject_ack_before_update
+    BEFORE UPDATE ON otp_gateway_delivery_claims
+    FOR EACH ROW EXECUTE FUNCTION otp_test_reject_ack()
+   `);
+   const failedAck=await send({ackFailure:true});
+   assert.equal(failedAck.status,503);
+   assert.equal(failedAck.body,'{"accepted":false}');
+   assert.equal(failedAck.cache,'no-store');
+   assert.deepEqual(await stored('d'.repeat(64)),[
+    {status:'RESERVED',provider_ref:null},
+   ]);
+   assert.equal(sends,4);
+   const failedAckReplay=await send({ackFailure:true});
+   assert.equal(failedAckReplay.status,409);
+   assert.equal(failedAckReplay.body,'{"accepted":false}');
+   assert.deepEqual(await stored('d'.repeat(64)),[
+    {status:'RESERVED',provider_ref:null},
+   ]);
+   assert.equal(sends,4);
    const missingCert=await send({clientCert:false});
    assert.notEqual(missingCert.status,202);
-   // One accepted send, one failed vendor call, one malformed receipt.
-   assert.equal(sends,3);
+   // One accepted send and three independent ambiguous vendor attempts.
+   assert.equal(sends,4);
    assert.deepEqual(await stored(),[{status:'ACCEPTED',provider_ref:'provider_12345678'}]);
    assert.deepEqual(await stored('b'.repeat(64)),[
     {status:'RESERVED',provider_ref:null},
