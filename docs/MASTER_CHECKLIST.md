@@ -177,6 +177,10 @@
 - Branch `feat/otp-gateway-sanitized-operator-report-20261122`: added reference-only `readOtpGatewayOperatorReport`, which checks PostgreSQL current_user privileges before returning a single-statement snapshot; it denies writer/owner or any role able to read idempotency keys, fingerprints or provider receipt fields. The manual single-shot CLI `scripts/otp-gateway-reservation-report.ts --read-only` uses only `OTP_GATEWAY_MONITOR_DATABASE_URL` and prints sanitized aggregates; SQL errors/secrets are not echoed. Added unit security regressions and real isolated PostgreSQL test of permitted observer vs denied owner.
 - Verified [PR #427](https://github.com/nurgeldiserikbay/services-back/pull/427), exact PR head `93996e659356eb698bbd4d02132c8a708ff84e3c`, [CI #4534 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45051819575), squash merge `c90114f7329cb15ee44055c74bb5100f93478551`. **Not deployed or scheduled.** Actual KZ private host, credential lifecycle, TLS/network approval, alert limits, provider API and staging/operations authorization remain outstanding. No acceptance/readiness increase.
 
+### 2026-11-22 — OTP operator report pinned read-only session (PR CI pending)
+- Branch `fix/otp-operator-report-one-session-readonly-20261122`: manual OTP report CLI now obtains one PostgreSQL client, begins `TRANSACTION READ ONLY`, performs the current_user privilege preflight and consistent reservation snapshot on that client, rolls back and releases the session even on sanitized failures. Unit tests cover query order, ACL denial, transaction startup failure and client release; actual PostgreSQL E2E covers restricted observer and future-skew fail-closed behavior.
+- Reference-only CLI. DB TLS/certificate validation, KZ private networking, schema/role administration, production monitoring approval and provider staging acceptance are NOT fulfilled by the transaction wrapper. Exact PR-head CI required; no acceptance checkbox/readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
