@@ -26,6 +26,8 @@ The monitoring role should receive **schema `USAGE` plus column-scoped `SELECT (
 
 For a read-only count, from a controlled operator session with **SELECT-only** access:
 
+For a consistent one-shot operator view, `readOtpGatewayReservationSnapshot` returns the unresolved total, oldest timestamp and all age buckets from **one PostgreSQL aggregate statement**, sharing a single MVCC statement snapshot and database `now()`. It requires only the same column-scoped SELECT rights and fails closed if the totals disagree, a timestamp is malformed, or future-dated claims make the buckets incomplete. Do not combine separate read results as if they were necessarily from the same database instant; do not expose this function as a public route or use it for automatic OTP retries.
+
 The optional reference helper `readOtpGatewayReservationHealth` (`src/platform/ingress/otp-gateway-reservation-health.reference.ts`) executes an aggregate-only query returning `{unresolvedCount, oldestClaimedAt}`; it contains no HTTP endpoint, deployment, claims manipulation or automatic retry logic. Supply a dedicated read-only PostgreSQL role; do not expose the returned diagnostic through a public API. The unresolved count is a decimal string to prevent loss of precision for large PostgreSQL `count(*)` values.
 
 ```sql
