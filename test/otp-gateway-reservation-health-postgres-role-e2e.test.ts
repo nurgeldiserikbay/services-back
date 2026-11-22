@@ -6,7 +6,8 @@ import {Pool} from 'pg';
 import {readOtpGatewayReservationHealth,readOtpGatewayReservationAgeBuckets,
  readOtpGatewayReservationSnapshot} from
  '../src/platform/ingress/otp-gateway-reservation-health.reference.js';
-import {readOtpGatewayOperatorReport} from
+import {readOtpGatewayOperatorReport,
+ runOtpGatewayOperatorReportReadOnly} from
  '../src/platform/ingress/otp-gateway-operator-report.reference.js';
 
 test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
@@ -148,6 +149,13 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
     await client.query('RESET ROLE');
     client.release();
    }
+   // CLI helper preserves the role and runs under a read-only transaction.
+   // Future-dated fixture above must fail closed without changing the ledger.
+   const pinned=await db.connect();
+   await pinned.query('SET ROLE '+role);
+   await assert.rejects(runOtpGatewayOperatorReportReadOnly({
+    connect:async()=>pinned,
+   } as never),{message:'otp_gateway_operator_report_unavailable'});
    const persisted=await db.query<{status:string}>(
     'SELECT status FROM otp_gateway_delivery_claims WHERE idempotency_key=$1',
     [key],
