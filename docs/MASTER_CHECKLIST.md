@@ -107,6 +107,10 @@
 - Reference test evidence already merged: [backend PR #408](https://github.com/nurgeldiserikbay/services-back/pull/408) with full [CI #4411 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45019210278), merge `12aeda33a2afe35048183b65e4ea13458645294b`; [backend PR #409](https://github.com/nurgeldiserikbay/services-back/pull/409) with full [CI #4416 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45023345083), merge `b7c34b5071f3152cd54fcd3ed3bc320195cc9523`. These prove local gateway reference regressions only, not KZ private network, a real OTP provider, staging reconciliation or production release.
 - New documentation PR CI and security/operations sign-off pending. Do not change acceptance checkbox/readiness.
 
+### 2026-11-22 — invalid OTP provider acceptance receipt leaves reservation unresolved (CI pending)
+- Branch `test/otp-mtls-invalid-provider-receipt-20261122`: real localhost HTTPS/mTLS + isolated PostgreSQL E2E extends the reference vendor stub with an `accepted:true` response carrying an invalid provider reference. The gateway must fail closed with generic 503, preserve the durable `RESERVED` row, and reject a subsequent identical signed retry with 409 and no second provider send.
+- Reference-only regression, not a live provider guarantee, a production deployment, or authorized reconciliation. Exact latest PR-head CI, KZ residency, certificate operations, provider and staging approval are still required. No acceptance/readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure

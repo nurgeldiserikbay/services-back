@@ -75,6 +75,7 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
      sendOnce:async()=>{
       sends++;
       if(payload.code==='000000')throw new Error('test provider ambiguous failure');
+      if(payload.code==='999999')return {accepted:true,providerRef:'bad'};
       assert.equal(payload.code,'123456');
       return {accepted:true,providerRef:'provider_12345678'};
      },
@@ -86,19 +87,22 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    });
    const addr=server.address();
    assert.ok(addr&&typeof addr!=='string');
-   const send=(options?:{badSignature?:boolean;clientCert?:boolean;path?:string;alternateBody?:boolean;vendorFailure?:boolean}):
+   const send=(options?:{badSignature?:boolean;clientCert?:boolean;path?:string;alternateBody?:boolean;vendorFailure?:boolean;invalidReceipt?:boolean}):
      Promise<{status:number|null;body:string;cache:string|null}>=>
      new Promise(resolve=>{
       let responded=false;
       const finish=(status:number|null,bodyText='',cache:string|null=null)=>{
        if(!responded){responded=true;resolve({status,body:bodyText,cache});}
       };
-      const requestBody=options?.vendorFailure
+      const requestBody=options?.invalidReceipt
+       ?body.replace('"code":"123456"','"code":"999999"')
+       :options?.vendorFailure
        ?body.replace('"code":"123456"','"code":"000000"')
         .replace('"locale":"kk"',options.alternateBody?'"locale":"ru"':'"locale":"kk"')
        :options?.alternateBody
         ?body.replace('"code":"123456"','"code":"654321"'):body;
-      const requestKey=options?.vendorFailure?'b'.repeat(64):key;
+      const requestKey=options?.invalidReceipt?'c'.repeat(64)
+       :options?.vendorFailure?'b'.repeat(64):key;
       const headers={
        'Authorization':'Bearer '+config.apiToken,
        'Idempotency-Key':requestKey,
@@ -202,10 +206,27 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
     {status:'RESERVED',provider_ref:null},
    ]);
    assert.equal(sends,2);
+   // Even a claimed successful vendor response with malformed receipt
+   // must not finalize ACCEPTED or authorize a second provider send.
+   const invalidReceipt=await send({invalidReceipt:true});
+   assert.equal(invalidReceipt.status,503);
+   assert.equal(invalidReceipt.body,'{"accepted":false}');
+   assert.equal(invalidReceipt.cache,'no-store');
+   assert.deepEqual(await stored('c'.repeat(64)),[
+    {status:'RESERVED',provider_ref:null},
+   ]);
+   assert.equal(sends,3);
+   const invalidReceiptReplay=await send({invalidReceipt:true});
+   assert.equal(invalidReceiptReplay.status,409);
+   assert.equal(invalidReceiptReplay.body,'{"accepted":false}');
+   assert.deepEqual(await stored('c'.repeat(64)),[
+    {status:'RESERVED',provider_ref:null},
+   ]);
+   assert.equal(sends,3);
    const missingCert=await send({clientCert:false});
    assert.notEqual(missingCert.status,202);
-   // One accepted send plus one deliberately failed vendor attempt.
-   assert.equal(sends,2);
+   // One accepted send, one failed vendor call, one malformed receipt.
+   assert.equal(sends,3);
    assert.deepEqual(await stored(),[{status:'ACCEPTED',provider_ref:'provider_12345678'}]);
    assert.deepEqual(await stored('b'.repeat(64)),[
     {status:'RESERVED',provider_ref:null},
