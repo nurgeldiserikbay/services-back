@@ -153,6 +153,10 @@
 - Branch `test/otp-health-observer-column-select-20261122`: isolated real PostgreSQL E2E grants gateway health observer only schema USAGE and `SELECT(status,claimed_at)`. The count/oldest RESERVED diagnostic must succeed, while direct reads of idempotency keys, fingerprints, provider references, acceptance timestamps and SELECT * must fail with SQLSTATE 42501. Existing INSERT/UPDATE/DELETE permission denials remain.
 - Operator runbook updated. Reference permission test only; real production role and secret provisioning, approved provider, KZ private hosting, reconciliation, staging and security sign-off pending. Exact PR-head CI required; no readiness checkbox or completion percentage increase.
 
+### 2026-11-22 — reference-only OTP unresolved age histogram (PR CI pending)
+- Branch `feat/otp-reservation-age-buckets-20261122`: read-only `readOtpGatewayReservationAgeBuckets` returns decimal-string aggregates for all RESERVED claims, under 5 minutes, 5 minutes to under 1 hour, and one hour or older. It validates that bucket totals exactly equal the overall total and sanitizes unexpected DB responses. Unit tests and an isolated real PostgreSQL test under the column-restricted observer role were added.
+- Diagnostic buckets are NOT retry/expiry thresholds, adopted SLOs or a public monitoring endpoint. Approved operational thresholds, KZ-hosted infrastructure, provider contract and staging acceptance remain pending. Require exact PR-head full CI PASS and no readiness inflation.
+
 ## Acceptance items
 
 ### Architecture & infrastructure

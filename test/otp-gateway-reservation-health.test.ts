@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {readOtpGatewayReservationHealth} from
+import {readOtpGatewayReservationHealth,readOtpGatewayReservationAgeBuckets} from
  '../src/platform/ingress/otp-gateway-reservation-health.reference.js';
 
 test('OTP reservation health returns only aggregate count and UTC oldest timestamp',async()=>{
@@ -61,4 +61,52 @@ test('OTP reservation health fails closed with sanitized error on bad DB data',a
  await assert.rejects(readOtpGatewayReservationHealth(failed as never),{
   message:'otp_gateway_reservation_health_unavailable',
  });
+});
+
+test('OTP reservation age buckets return only four aggregate count strings',async()=>{
+ let statement='';
+ const db={query:async(sql:string)=>{
+  statement=sql;
+  return {rows:[{total:'6',recent:'1',middle:'2',older:'3',
+   idempotency_key:'private'}]};
+ }};
+ const result=await readOtpGatewayReservationAgeBuckets(db as never);
+ assert.deepEqual(result,{
+  total:'6',underFiveMinutes:'1',fiveMinutesToOneHour:'2',
+  oneHourOrOlder:'3',
+ });
+ assert.deepEqual(Object.keys(result).sort(),[
+  'fiveMinutesToOneHour','oneHourOrOlder','total','underFiveMinutes',
+ ]);
+ assert.match(statement,/WHERE status='RESERVED'/);
+ assert.doesNotMatch(statement,/idempotency_key|fingerprint|provider_ref/i);
+ assert.doesNotMatch(statement,/\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
+ const empty={query:async()=>({rows:[{
+  total:'0',recent:'0',middle:'0',older:'0',
+ }]})};
+ assert.equal((await readOtpGatewayReservationAgeBuckets(empty as never))
+  .total,'0');
+});
+
+test('OTP reservation buckets reject bad or inconsistent DB results',async()=>{
+ const bad=[
+  [],[{total:'2',recent:'1',middle:'0',older:'0'}],
+  [{total:'1',recent:'-1',middle:'1',older:'1'}],
+  [{total:'1',recent:'01',middle:'0',older:'0'}],
+  [{total:'1',recent:1,middle:'0',older:'0'}],
+  [{total:'0',recent:'0',middle:'0',older:'0'},{
+   total:'0',recent:'0',middle:'0',older:'0'}],
+ ];
+ for(const rows of bad){
+  await assert.rejects(
+   readOtpGatewayReservationAgeBuckets({query:async()=>({rows})} as never),
+   {message:'otp_gateway_reservation_health_unavailable'},
+  );
+ }
+ await assert.rejects(
+  readOtpGatewayReservationAgeBuckets({
+   query:async()=>{throw new Error('database secret');},
+  } as never),
+  {message:'otp_gateway_reservation_health_unavailable'},
+ );
 });
