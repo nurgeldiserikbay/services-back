@@ -22,6 +22,8 @@ No raw OTP, destination, access token, HMAC secret, client certificate private k
 
 For staging verification, `test/otp-gateway-reservation-health-postgres-role-e2e.test.ts` creates a temporary NOLOGIN PostgreSQL role with only schema USAGE and table SELECT in a disposable isolated schema, invokes the aggregate health reader under `SET ROLE`, and asserts UPDATE/DELETE/INSERT are rejected with insufficient privilege. This is **test-only proof**, not a provisioned production role or a credential management policy. An authorized infrastructure owner must provision and review the real SELECT-only account separately.
 
+The monitoring role should receive **schema `USAGE` plus column-scoped `SELECT (status,claimed_at)` only**, not table-wide `SELECT`. This supports the aggregate diagnostic while preventing direct reads of idempotency keys, fingerprints, provider references or acceptance timestamps. The real PostgreSQL role test verifies forbidden column reads return SQLSTATE `42501`; deployable role provisioning still requires infrastructure approval.
+
 For a read-only count, from a controlled operator session with **SELECT-only** access:
 
 The optional reference helper `readOtpGatewayReservationHealth` (`src/platform/ingress/otp-gateway-reservation-health.reference.ts`) executes an aggregate-only query returning `{unresolvedCount, oldestClaimedAt}`; it contains no HTTP endpoint, deployment, claims manipulation or automatic retry logic. Supply a dedicated read-only PostgreSQL role; do not expose the returned diagnostic through a public API. The unresolved count is a decimal string to prevent loss of precision for large PostgreSQL `count(*)` values.
