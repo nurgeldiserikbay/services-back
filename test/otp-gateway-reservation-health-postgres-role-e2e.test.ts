@@ -95,6 +95,19 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
      await assert.rejects(client.query(sql),
       (error:unknown)=>(error as {code?:string}).code==='42501',sql);
     }
+    // A future-dated reservation must not be reported as recent. The
+    // separate test-schema owner inserts it; the observer remains SELECT-only.
+    await db!.query(`
+      INSERT INTO otp_gateway_delivery_claims
+        (idempotency_key,fingerprint,status,claimed_at)
+      VALUES ($1,$2,'RESERVED',now()+interval '2 hours')
+    `,['8'.repeat(64),fingerprint]);
+    await assert.rejects(
+     readOtpGatewayReservationAgeBuckets(
+      {query:(sql:string)=>client.query(sql)} as never,
+     ),
+     {message:'otp_gateway_reservation_health_unavailable'},
+    );
     for(const sql of [
      "UPDATE otp_gateway_delivery_claims SET status='ACCEPTED' WHERE idempotency_key=$1",
      'DELETE FROM otp_gateway_delivery_claims WHERE idempotency_key=$1',
@@ -116,7 +129,7 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
    assert.deepEqual(persisted.rows.map(x=>x.status),['RESERVED']);
    assert.equal((await db.query(
     'SELECT count(*)::text AS n FROM otp_gateway_delivery_claims',
-   )).rows[0]?.n,'6');
+   )).rows[0]?.n,'7');
   }finally{
    if(db)await db.end();
    if(roleCreated){
