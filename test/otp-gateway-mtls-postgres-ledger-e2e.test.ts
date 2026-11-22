@@ -15,6 +15,8 @@ import {OtpGatewayLedgerDispatchReference} from
  '../src/platform/ingress/otp-gateway-ledger-dispatch.reference.js';
 import {OtpGatewayPostgresLedger} from
  '../src/platform/ingress/otp-gateway-postgres-ledger.reference.js';
+import {readOtpGatewayReservationHealth} from
+ '../src/platform/ingress/otp-gateway-reservation-health.reference.js';
 
 test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot delivery',
  {skip:!process.env.DATABASE_URL},async()=>{
@@ -299,6 +301,13 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    assert.deepEqual(await stored('b'.repeat(64)),[
     {status:'RESERVED',provider_ref:null},
    ]);
+   const health=await readOtpGatewayReservationHealth(db!);
+   assert.equal(health.unresolvedCount,'3');
+   assert.ok(health.oldestClaimedAt);
+   assert.deepEqual(Object.keys(health).sort(),[
+    'oldestClaimedAt','unresolvedCount',
+   ]);
+   assert.equal(sends,4);
   }finally{
    if(server){
     server.closeAllConnections();
