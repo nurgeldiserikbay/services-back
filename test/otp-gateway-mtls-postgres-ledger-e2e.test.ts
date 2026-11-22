@@ -85,20 +85,22 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    });
    const addr=server.address();
    assert.ok(addr&&typeof addr!=='string');
-   const send=(options?:{badSignature?:boolean;clientCert?:boolean;path?:string}):
+   const send=(options?:{badSignature?:boolean;clientCert?:boolean;path?:string;alternateBody?:boolean}):
      Promise<{status:number|null;body:string;cache:string|null}>=>
      new Promise(resolve=>{
       let responded=false;
       const finish=(status:number|null,bodyText='',cache:string|null=null)=>{
        if(!responded){responded=true;resolve({status,body:bodyText,cache});}
       };
+      const requestBody=options?.alternateBody
+       ?body.replace('"code":"123456"','"code":"654321"'):body;
       const headers={
        'Authorization':'Bearer '+config.apiToken,
        'Idempotency-Key':key,
        'X-Services-Otp-Payload-Fingerprint':
-        options?.badSignature?'f'.repeat(64):signature(body),
+        options?.badSignature?'f'.repeat(64):signature(requestBody),
        'Content-Type':'application/json',
-       'Content-Length':String(Buffer.byteLength(body)),
+       'Content-Length':String(Buffer.byteLength(requestBody)),
       };
       const req=httpsRequest({
        hostname:'127.0.0.1',port:addr.port,servername:'localhost',
@@ -117,7 +119,7 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
       });
       req.once('timeout',()=>req.destroy());
       req.once('error',()=>finish(null));
-      req.end(body);
+      req.end(requestBody);
      });
    // Deny unauthenticated and malformed ingress before the first ledger claim.
    // A later successful send must not hide an earlier unwanted DB mutation.
@@ -148,6 +150,16 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    }
    assert.deepEqual(await stored(),[{status:'ACCEPTED',provider_ref:'provider_12345678'}]);
    assert.equal(sends,1);
+   // An authenticated change of body under an already-accepted key
+   // must conflict rather than send another OTP or overwrite its receipt.
+   const conflictingPayload=await send({alternateBody:true});
+   assert.equal(conflictingPayload.status,409);
+   assert.equal(conflictingPayload.body,'{"accepted":false}');
+   assert.equal(conflictingPayload.cache,'no-store');
+   assert.equal(sends,1);
+   assert.deepEqual(await stored(),[
+    {status:'ACCEPTED',provider_ref:'provider_12345678'},
+   ]);
    const replay=await send();
    assert.equal(replay.status,202);
    assert.equal(sends,1);
