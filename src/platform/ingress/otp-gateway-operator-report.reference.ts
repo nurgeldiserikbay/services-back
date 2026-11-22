@@ -55,3 +55,29 @@ export async function readOtpGatewayOperatorReport(
     throw new Error(DENIED);
   }
 }
+
+/**
+ * Keep role preflight and report on the SAME database connection, inside a
+ * server-enforced READ ONLY transaction. A generic Pool.query() per step can
+ * otherwise select different sessions or search_path configurations.
+ * Always release the connection and avoid leaking PostgreSQL diagnostics.
+ */
+export async function runOtpGatewayOperatorReportReadOnly(
+  pool:Pick<Pool,'connect'>,
+):Promise<OtpGatewayReservationSnapshot>{
+  let client:Awaited<ReturnType<Pool['connect']>>|undefined;
+  try{
+    if(!pool||typeof pool.connect!=='function')throw new Error(DENIED);
+    client=await pool.connect();
+    await client.query('BEGIN TRANSACTION READ ONLY');
+    try{
+      return await readOtpGatewayOperatorReport(client);
+    }finally{
+      await client.query('ROLLBACK');
+    }
+  }catch{
+    throw new Error(DENIED);
+  }finally{
+    client?.release();
+  }
+}
