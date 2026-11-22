@@ -173,6 +173,10 @@
 - Branch `feat/otp-gateway-atomic-health-snapshot-20261122`: reference-only `readOtpGatewayReservationSnapshot` combines unresolved count, oldest RESERVED timestamp and three age buckets in a **single PostgreSQL SELECT**. It validates exact decimal-string counts, complete bucket partition, and valid oldest timestamp; malformed data and future-dated claims return a generic failure with no key/PII exposure. Unit regressions and real PostgreSQL E2E under column-scoped observer role assert a consistent snapshot and fail-closed future skew.
 - Verified [PR #426](https://github.com/nurgeldiserikbay/services-back/pull/426), exact PR head `08a24354815ed7a0e8ccb32b0ab3f10c5fe4b458`, [CI #4524 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45051160498), squash merge `7bb3701f8e1849eec65f2e061e7136f75aacd7fb`. Still no deployed monitoring endpoint, alerts/SLOs, automatic resend, approved OTP provider, KZ private infrastructure or staging sign-off. No top-level acceptance/readiness increase.
 
+### 2026-11-22 — manual sanitized OTP operator report with DB role guard (PR CI pending)
+- Branch `feat/otp-gateway-sanitized-operator-report-20261122`: added reference-only `readOtpGatewayOperatorReport`, which checks PostgreSQL current_user privileges before returning a single-statement snapshot; it denies writer/owner or any role able to read idempotency keys, fingerprints or provider receipt fields. The manual single-shot CLI `scripts/otp-gateway-reservation-report.ts --read-only` uses only `OTP_GATEWAY_MONITOR_DATABASE_URL` and prints sanitized aggregates; SQL errors/secrets are not echoed. Added unit security regressions and real isolated PostgreSQL test of permitted observer vs denied owner.
+- **Not deployed or scheduled.** Actual KZ private host, credential lifecycle, TLS/network approval, alert limits, provider API and staging/operations authorization remain outstanding. Full exact PR-head CI is pending; no acceptance checkbox or readiness percentage increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure

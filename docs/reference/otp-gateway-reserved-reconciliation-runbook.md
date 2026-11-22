@@ -13,6 +13,12 @@ A `RESERVED` row means the gateway durably claimed the idempotency key, but cann
 
 No raw OTP, destination, access token, HMAC secret, client certificate private key or full request payload belongs in this ledger, operator report or logs.
 
+## Optional manual aggregate report (reference-only)
+
+An authorized operator may run `scripts/otp-gateway-reservation-report.ts` **only** from an approved private gateway operator session using a dedicated, tightly scoped PostgreSQL credential supplied through `OTP_GATEWAY_MONITOR_DATABASE_URL` by the secret manager. It requires explicit `--read-only` and never runs as part of the Services app or CI deployment. Example: `node --import tsx scripts/otp-gateway-reservation-report.ts --read-only`.
+
+Before any count is fetched, the report checks the database's **current role privileges**. It refuses table owners or broad roles with any INSERT/UPDATE/DELETE/TRUNCATE access, as well as roles able to SELECT idempotency keys, fingerprints, receipts, or acceptance timestamps. Only `SELECT(status,claimed_at)` is permitted. The returned JSON contains only aggregate counts and the oldest claim timestamp, never row identifiers or OTP payloads; SQL errors are sanitized. This is a **defense-in-depth preflight**, not a replacement for audited grants, TLS validation, secret rotation, KZ residency controls, DDL role isolation or owner approval. Do not expose the CLI output as a public endpoint or schedule it without a reviewed operations process.
+
 ## 1. Detect and contain
 
 1. Confirm the alert belongs to the **dedicated** OTP gateway database and identify the deployment, environment, owner and timestamp without copying credentials.
