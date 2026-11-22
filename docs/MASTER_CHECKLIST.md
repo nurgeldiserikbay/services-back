@@ -149,6 +149,10 @@
 - Branch `test/otp-column-level-writer-grants-20261122`: real isolated PostgreSQL E2E narrows the runtime gateway writer from table-wide INSERT/UPDATE to schema USAGE, table SELECT, INSERT on (idempotency_key,fingerprint,status), and UPDATE on (status,provider_ref,accepted_at). It verifies actual claim/ACK work while immutable key/fingerprint/timestamp changes and explicit claimed_at inserts are denied with SQLSTATE 42501; existing trigger still rejects accepted receipt mutation.
 - Provider staging requirements updated. Full exact PR-head PostgreSQL CI, approved KZ-hosted production roles, provider API, DDL ownership, reconciliation and staging sign-off remain pending. No readiness percentage or release checkbox increase.
 
+### 2026-11-22 — least-privilege OTP aggregate observer column SELECT (PR CI pending)
+- Branch `test/otp-health-observer-column-select-20261122`: isolated real PostgreSQL E2E grants gateway health observer only schema USAGE and `SELECT(status,claimed_at)`. The count/oldest RESERVED diagnostic must succeed, while direct reads of idempotency keys, fingerprints, provider references, acceptance timestamps and SELECT * must fail with SQLSTATE 42501. Existing INSERT/UPDATE/DELETE permission denials remain.
+- Operator runbook updated. Reference permission test only; real production role and secret provisioning, approved provider, KZ private hosting, reconciliation, staging and security sign-off pending. Exact PR-head CI required; no readiness checkbox or completion percentage increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure

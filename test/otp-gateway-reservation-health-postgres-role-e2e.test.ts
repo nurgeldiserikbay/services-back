@@ -35,7 +35,7 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
    roleCreated=true;
    await admin.query('GRANT USAGE ON SCHEMA '+schema+' TO '+role);
    await admin.query(
-    'GRANT SELECT ON '+schema+'.otp_gateway_delivery_claims TO '+role,
+    'GRANT SELECT (status,claimed_at) ON '+schema+'.otp_gateway_delivery_claims TO '+role,
    );
    const client=await db.connect();
    try{
@@ -52,6 +52,18 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
     assert.deepEqual(Object.keys(health).sort(),[
      'oldestClaimedAt','unresolvedCount',
     ]);
+    // The health reader can aggregate only allowed columns, not retrieve
+    // identifiers, fingerprints or provider receipts from the ledger.
+    for(const sql of [
+     'SELECT idempotency_key FROM otp_gateway_delivery_claims',
+     'SELECT fingerprint FROM otp_gateway_delivery_claims',
+     'SELECT provider_ref FROM otp_gateway_delivery_claims',
+     'SELECT accepted_at FROM otp_gateway_delivery_claims',
+     'SELECT * FROM otp_gateway_delivery_claims',
+    ]){
+     await assert.rejects(client.query(sql),
+      (error:unknown)=>(error as {code?:string}).code==='42501',sql);
+    }
     for(const sql of [
      "UPDATE otp_gateway_delivery_claims SET status='ACCEPTED' WHERE idempotency_key=$1",
      'DELETE FROM otp_gateway_delivery_claims WHERE idempotency_key=$1',
