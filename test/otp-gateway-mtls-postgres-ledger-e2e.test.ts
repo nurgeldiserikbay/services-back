@@ -52,16 +52,16 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
     channel:'email',destination:'person@example.org',code:'123456',
     purpose:'CREATE_REQUEST',locale:'kk',expiresInSeconds:600,
    });
-   const signature=(contents:string)=>createHmac('sha256',config.idempotencySecret)
+   const signature=(contents:string,requestKey=key)=>createHmac('sha256',config.idempotencySecret)
     .update('services-guest-otp-payload:v1\n')
-    .update(key).update('\n').update(contents).digest('hex');
+    .update(requestKey).update('\n').update(contents).digest('hex');
    let sends=0;
    const durableLedger=new OtpGatewayPostgresLedger(db!);
    const ledger=new OtpGatewayLedgerDispatchReference(durableLedger);
-   const stored=async()=>{
+   const stored=async(requestKey=key)=>{
     const result=await db!.query<{status:string;provider_ref:string|null}>(
      'SELECT status,provider_ref FROM otp_gateway_delivery_claims WHERE idempotency_key=$1',
-     [key],
+     [requestKey],
     );
     return result.rows;
    };
@@ -74,6 +74,7 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
     config,ledger,payload=>({
      sendOnce:async()=>{
       sends++;
+      if(payload.code==='000000')throw new Error('test provider ambiguous failure');
       assert.equal(payload.code,'123456');
       return {accepted:true,providerRef:'provider_12345678'};
      },
@@ -85,20 +86,25 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    });
    const addr=server.address();
    assert.ok(addr&&typeof addr!=='string');
-   const send=(options?:{badSignature?:boolean;clientCert?:boolean;path?:string}):
+   const send=(options?:{badSignature?:boolean;clientCert?:boolean;path?:string;alternateBody?:boolean;vendorFailure?:boolean}):
      Promise<{status:number|null;body:string;cache:string|null}>=>
      new Promise(resolve=>{
       let responded=false;
       const finish=(status:number|null,bodyText='',cache:string|null=null)=>{
        if(!responded){responded=true;resolve({status,body:bodyText,cache});}
       };
+      const requestBody=options?.vendorFailure
+       ?body.replace('"code":"123456"','"code":"000000"')
+       :options?.alternateBody
+        ?body.replace('"code":"123456"','"code":"654321"'):body;
+      const requestKey=options?.vendorFailure?'b'.repeat(64):key;
       const headers={
        'Authorization':'Bearer '+config.apiToken,
-       'Idempotency-Key':key,
+       'Idempotency-Key':requestKey,
        'X-Services-Otp-Payload-Fingerprint':
-        options?.badSignature?'f'.repeat(64):signature(body),
+        options?.badSignature?'f'.repeat(64):signature(requestBody,requestKey),
        'Content-Type':'application/json',
-       'Content-Length':String(Buffer.byteLength(body)),
+       'Content-Length':String(Buffer.byteLength(requestBody)),
       };
       const req=httpsRequest({
        hostname:'127.0.0.1',port:addr.port,servername:'localhost',
@@ -117,8 +123,24 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
       });
       req.once('timeout',()=>req.destroy());
       req.once('error',()=>finish(null));
-      req.end(body);
+      req.end(requestBody);
      });
+   // Deny unauthenticated and malformed ingress before the first ledger claim.
+   // A later successful send must not hide an earlier unwanted DB mutation.
+   const firstBadSignature=await send({badSignature:true});
+   assert.equal(firstBadSignature.status,503);
+   assert.equal(firstBadSignature.body,'{"accepted":false}');
+   assert.equal(firstBadSignature.cache,'no-store');
+   assert.deepEqual(await stored(),[]);
+   assert.equal(sends,0);
+   const firstWrongRoute=await send({path:'/v1/send?unexpected=1'});
+   assert.equal(firstWrongRoute.status,404);
+   assert.deepEqual(await stored(),[]);
+   assert.equal(sends,0);
+   const firstMissingCert=await send({clientCert:false});
+   assert.notEqual(firstMissingCert.status,202);
+   assert.deepEqual(await stored(),[]);
+   assert.equal(sends,0);
    const simultaneous=await Promise.all([send(),send()]);
    assert.ok(simultaneous.some(x=>x.status===202));
    assert.ok(simultaneous.every(x=>x.status===202||x.status===409));
@@ -132,6 +154,16 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    }
    assert.deepEqual(await stored(),[{status:'ACCEPTED',provider_ref:'provider_12345678'}]);
    assert.equal(sends,1);
+   // An authenticated change of body under an already-accepted key
+   // must conflict rather than send another OTP or overwrite its receipt.
+   const conflictingPayload=await send({alternateBody:true});
+   assert.equal(conflictingPayload.status,409);
+   assert.equal(conflictingPayload.body,'{"accepted":false}');
+   assert.equal(conflictingPayload.cache,'no-store');
+   assert.equal(sends,1);
+   assert.deepEqual(await stored(),[
+    {status:'ACCEPTED',provider_ref:'provider_12345678'},
+   ]);
    const replay=await send();
    assert.equal(replay.status,202);
    assert.equal(sends,1);
@@ -143,10 +175,30 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    const wrongRoute=await send({path:'/v1/send?unexpected=1'});
    assert.equal(wrongRoute.status,404);
    assert.equal(sends,1);
+   // A provider failure after durable claim is ambiguous. Never retry it
+   // automatically, even if a later request carries the same valid signature.
+   const failedVendor=await send({vendorFailure:true});
+   assert.equal(failedVendor.status,503);
+   assert.equal(failedVendor.body,'{"accepted":false}');
+   assert.deepEqual(await stored('b'.repeat(64)),[
+    {status:'RESERVED',provider_ref:null},
+   ]);
+   assert.equal(sends,2);
+   const ambiguousReplay=await send({vendorFailure:true});
+   assert.equal(ambiguousReplay.status,409);
+   assert.equal(ambiguousReplay.body,'{"accepted":false}');
+   assert.deepEqual(await stored('b'.repeat(64)),[
+    {status:'RESERVED',provider_ref:null},
+   ]);
+   assert.equal(sends,2);
    const missingCert=await send({clientCert:false});
    assert.notEqual(missingCert.status,202);
-   assert.equal(sends,1);
+   // One accepted send plus one deliberately failed vendor attempt.
+   assert.equal(sends,2);
    assert.deepEqual(await stored(),[{status:'ACCEPTED',provider_ref:'provider_12345678'}]);
+   assert.deepEqual(await stored('b'.repeat(64)),[
+    {status:'RESERVED',provider_ref:null},
+   ]);
   }finally{
    if(server){
     server.closeAllConnections();
