@@ -115,6 +115,10 @@
 - Branch `test/otp-postgres-ack-write-failure-20261122` extends real localhost HTTPS/mTLS + isolated PostgreSQL OTP E2E. A test-schema-only BEFORE UPDATE trigger deliberately rejects the provider receipt finalization for a distinct idempotency key, after a stubbed accepted vendor response. HTTP must return generic 503, preserve durable `RESERVED`, and deny a signed replay with 409 without a second provider invocation.
 - This does NOT implement operator reconciliation, deployed provider delivery, KZ network provenance or production database trigger. Latest PR-head CI and staging/security sign-off remain pending; no readiness/acceptance increase.
 
+### 2026-11-22 — fail closed on PostgreSQL initial OTP reservation INSERT failure (PR CI pending)
+- Branch `test/otp-mtls-postgres-reservation-write-denied-20261122`: extends actual localhost HTTPS/mTLS + PostgreSQL OTP E2E with a scoped, test-schema-only BEFORE INSERT trigger rejecting the initial durable claim for a separate idempotency key. An authenticated request and replay must each return generic 503, leave no row, and never invoke the provider stub. The real provider and production schema are untouched.
+- This is local test evidence only; exact PR-head CI, approved OTP provider, Kazakhstan private ingress, reconciliation and staging acceptance remain pending. No release/readiness checkbox changes.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
