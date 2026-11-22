@@ -94,6 +94,10 @@
 - Branch `test/otp-mtls-parallel-postgres-http-race-20261122`: the existing local TLS-to-PostgreSQL end-to-end test now sends two identical signed requests concurrently using separate HTTPS connections. Exactly one durable OTP send may occur; the other response can be `409` while RESERVED or `202` after ACCEPTED. Both cases must leave a single ACCEPTED row and one provider-port invocation. Existing HMAC, route, certificate and replay regressions remain in place.
 - This is test-only localhost evidence using a stubbed OTP provider, not production gateway deployment, Kazakhstan source-network approval or actual provider staging acceptance. CI/merge pending; readiness unchanged.
 
+### 2026-11-22 — reject invalid real-mTLS ingress before any PostgreSQL claim (PR CI pending)
+- Branch `test/otp-mtls-reject-before-first-claim-20261122`: extends the local real HTTPS/mTLS + PostgreSQL integration test with malformed HMAC, wrong route and absent client certificate **before the first valid request**. Each rejection must leave the isolated PostgreSQL claim table empty and the stub provider send count zero, followed by existing concurrent signed delivery and replay assertions.
+- This is regression coverage only; the actual provider, deployed KZ-private ingress, operational TLS material and staging security acceptance remain pending. Do not change readiness or mark acceptance verified without exact-head passing CI and independent evidence.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
