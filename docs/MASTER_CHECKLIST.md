@@ -127,6 +127,11 @@
 - Branch `test/otp-reservation-health-readonly-db-role-20261122`: a disposable real PostgreSQL schema plus NOLOGIN SELECT-only role verifies that the aggregate health reader works as the restricted role and INSERT/UPDATE/DELETE of gateway reservations are rejected with SQLSTATE 42501. Test cleanup removes temporary grants, role and schema. The observer has no OTP delivery or reset ability.
 - This validates a staging reference permission boundary only. Production role provisioning, approved real OTP provider, KZ private deployment, secrets, reconciliation and security acceptance remain pending. Exact latest PR-head PostgreSQL CI required; no readiness increase.
 
+### 2026-11-22 — live OTP vendor onboarding and staging acceptance gates (PR CI pending)
+- Branch `docs/otp-provider-staging-acceptance-gates-20261122` adds `docs/reference/otp-gateway-provider-staging-acceptance.md`: provider contract/provenance requirements, explicit no-go conditions, real vendor sandbox matrix, evidence template and security/KZ residency approval responsibilities. No provider has been selected, configured or contacted; this document does **not** deploy any gateway or satisfy production sign-off.
+- Backend OTP observer privilege regressions were verified in [PR #415](https://github.com/nurgeldiserikbay/services-back/pull/415), exact head `9707b2237ed34f23445b71f4807514bf8f68f52e`, [CI #4453 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45038361762), merged `04253eab68f75c31f520d241d943f00c469393bd`. This is reference PostgreSQL evidence, not a live vendor audit.
+- PR-head CI, external provider agreement, private KZ deployment, credential lifecycle, staging security sign-off and operational acceptance pending. No checkbox/readiness change.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
