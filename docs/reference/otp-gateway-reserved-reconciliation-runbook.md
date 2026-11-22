@@ -35,6 +35,8 @@ FROM otp_gateway_delivery_claims
 WHERE status = 'RESERVED';
 ```
 
+The reference helper `readOtpGatewayReservationAgeBuckets` implements this read-only age histogram using the same column-scoped `SELECT(status,claimed_at)` observer role. It reports exact decimal-string counts for **under 5 minutes**, **5 minutes to under 1 hour**, and **1 hour or older**, plus a total; inconsistent aggregate counts fail closed. These windows are *diagnostic buckets only*, never a retry trigger, expiry policy or adopted SLO.
+
 For an age-bucket summary without exposing any idempotency keys:
 
 ```sql
