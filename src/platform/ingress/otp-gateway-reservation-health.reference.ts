@@ -52,6 +52,8 @@ export async function readOtpGatewayReservationHealth(
 /**
  * Observation-only age histogram. Thresholds are descriptive 5m/1h
  * boundaries, NOT agreed delivery SLOs or automatic retry deadlines.
+ * Future-dated claims are deliberately in no bucket: an unmatched total
+ * must fail closed instead of silently classifying clock-skewed data as new.
  */
 export type OtpGatewayReservationAgeBuckets=Readonly<{
   total:string;
@@ -75,6 +77,7 @@ export async function readOtpGatewayReservationAgeBuckets(
       SELECT count(*)::text AS total,
         count(*) FILTER (
           WHERE claimed_at >= now() - interval '5 minutes'
+            AND claimed_at <= now()
         )::text AS recent,
         count(*) FILTER (
           WHERE claimed_at < now() - interval '5 minutes'
