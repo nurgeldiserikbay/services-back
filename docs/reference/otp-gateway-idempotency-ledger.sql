@@ -68,3 +68,18 @@ FOR EACH ROW EXECUTE FUNCTION otp_gateway_guard_delivery_claim_mutation();
 CREATE TRIGGER otp_gateway_guard_claim_delete
 BEFORE DELETE ON otp_gateway_delivery_claims
 FOR EACH ROW EXECUTE FUNCTION otp_gateway_guard_delivery_claim_mutation();
+
+-- DELETE row triggers do not fire for TRUNCATE. Reject it separately.
+-- Enforce strict DDL/ownership privileges too: table owners and superusers
+-- can change/drop triggers, so this is defense in depth, not an admin boundary.
+CREATE FUNCTION otp_gateway_deny_claim_truncate()
+RETURNS trigger
+LANGUAGE plpgsql AS $otp_no_truncate$
+BEGIN
+  RAISE EXCEPTION 'otp delivery claim truncate denied';
+END;
+$otp_no_truncate$;
+
+CREATE TRIGGER otp_gateway_guard_claim_truncate
+BEFORE TRUNCATE ON otp_gateway_delivery_claims
+FOR EACH STATEMENT EXECUTE FUNCTION otp_gateway_deny_claim_truncate();
