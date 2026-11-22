@@ -1,4 +1,4 @@
-import type {Pool} from 'pg';
+import type {Pool,PoolClient} from 'pg';
 import {
   readOtpGatewayReservationSnapshot,
   type OtpGatewayReservationSnapshot,
@@ -65,7 +65,7 @@ export async function readOtpGatewayOperatorReport(
 export async function runOtpGatewayOperatorReportReadOnly(
   pool:Pick<Pool,'connect'>,
 ):Promise<OtpGatewayReservationSnapshot>{
-  let client:Awaited<ReturnType<Pool['connect']>>|undefined;
+  let client:PoolClient|undefined;
   try{
     if(!pool||typeof pool.connect!=='function')throw new Error(DENIED);
     client=await pool.connect();
