@@ -86,6 +86,10 @@
 - Backend branch `test/otp-mtls-composed-http-e2e-20261122`: **test-only** localhost HTTPS/mTLS integration starts the unwired Node listener factory and its reference HTTP handler using generated short-lived certificates and a mocked durable-ledger interface/provider. It sends actual TLS POST requests with original signed JSON/HMAC, checks accepted `202` plus `providerRef`, replay with no duplicate vendor send, bad HMAC `503`, unexpected route `404`, and missing client certificate rejection before any ledger claim. The fixture generates no committed keys. CI/merge pending.
 - This is **not** staging/production acceptance: it does not verify an actual PostgreSQL ledger or external OTP vendor, KZ network source provenance, production CA lifecycle, or deployment. Readiness and acceptance remain unchanged.
 
+### 2026-11-22 — local TLS-to-real-PostgreSQL OTP ledger E2E (PR CI pending)
+- Backend branch `test/otp-mtls-real-postgres-ledger-e2e-20261122`: adds a localhost HTTPS/mTLS integration test with ephemeral server/client certificates and a **real PostgreSQL** `OtpGatewayPostgresLedger` in a unique isolated schema. It exercises signed POST -> TLS peer pin -> bounded HTTP ingress/HMAC -> durable INSERT/ACCEPTED CAS -> sanitized 202 response, then replays the same idempotency key and proves no duplicate vendor send. Invalid HMAC, wrong route and missing client certificate must not alter the stored accepted row or send again. The provider remains a deliberate test stub. CI/merge pending.
+- This does NOT establish deployed private KZ ingress, a real external OTP provider's idempotency/receipt guarantees, operational secrets/certificates or staging acceptance. No readiness or acceptance inflation.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
