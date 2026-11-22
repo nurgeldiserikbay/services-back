@@ -98,6 +98,10 @@
 - Branch `test/otp-mtls-reject-before-first-claim-20261122`: extends the local real HTTPS/mTLS + PostgreSQL integration test with malformed HMAC, wrong route and absent client certificate **before the first valid request**. Each rejection must leave the isolated PostgreSQL claim table empty and the stub provider send count zero, followed by existing concurrent signed delivery and replay assertions. After acceptance, an authenticated changed OTP payload reusing the same idempotency key must return 409 with no additional send or ledger overwrite. Additional real PostgreSQL scenario: after a simulated vendor error on a distinct, durably RESERVED key, a signed replay returns 409 with zero additional vendor calls; RESERVED remains for explicitly approved reconciliation.
 - This is regression coverage only; the actual provider, deployed KZ-private ingress, operational TLS material and staging security acceptance remain pending. Do not change readiness or mark acceptance verified without exact-head passing CI and independent evidence.
 
+### 2026-11-22 — changed signed payload against unresolved OTP reservation (CI pending)
+- Branch `test/otp-reserved-conflicting-payload-20261122` extends real loopback HTTPS/mTLS + PostgreSQL OTP E2E: after a simulated vendor error leaves an isolated key durably RESERVED, an independently signed payload with the same key but changed locale must return 409. Assert no second provider send and no ledger mutation; existing identical-body replay remains blocked.
+- This is test-only evidence using a stubbed vendor. Staging/real provider, reconciliation operations, KZ private network and production sign-off remain pending. Do not increase accepted readiness without exact PR-head CI and review.
+
 ## Acceptance items
 
 ### Architecture & infrastructure

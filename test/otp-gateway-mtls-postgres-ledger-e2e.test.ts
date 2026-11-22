@@ -95,6 +95,7 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
       };
       const requestBody=options?.vendorFailure
        ?body.replace('"code":"123456"','"code":"000000"')
+        .replace('"locale":"kk"',options.alternateBody?'"locale":"ru"':'"locale":"kk"')
        :options?.alternateBody
         ?body.replace('"code":"123456"','"code":"654321"'):body;
       const requestKey=options?.vendorFailure?'b'.repeat(64):key;
@@ -187,6 +188,16 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    const ambiguousReplay=await send({vendorFailure:true});
    assert.equal(ambiguousReplay.status,409);
    assert.equal(ambiguousReplay.body,'{"accepted":false}');
+   assert.deepEqual(await stored('b'.repeat(64)),[
+    {status:'RESERVED',provider_ref:null},
+   ]);
+   assert.equal(sends,2);
+   // A different authenticated body under an unresolved RESERVED key
+   // must conflict without touching the provider or releasing the claim.
+   const changedUnresolved=await send({vendorFailure:true,alternateBody:true});
+   assert.equal(changedUnresolved.status,409);
+   assert.equal(changedUnresolved.body,'{"accepted":false}');
+   assert.equal(changedUnresolved.cache,'no-store');
    assert.deepEqual(await stored('b'.repeat(64)),[
     {status:'RESERVED',provider_ref:null},
    ]);
