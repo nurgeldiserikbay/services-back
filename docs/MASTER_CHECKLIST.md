@@ -157,9 +157,9 @@
 - Branch `feat/otp-reservation-age-buckets-20261122`: read-only `readOtpGatewayReservationAgeBuckets` returns decimal-string aggregates for all RESERVED claims, under 5 minutes, 5 minutes to under 1 hour, and one hour or older. It validates that bucket totals exactly equal the overall total and sanitizes unexpected DB responses. Unit tests and an isolated real PostgreSQL test under the column-restricted observer role were added.
 - Diagnostic buckets are NOT retry/expiry thresholds, adopted SLOs or a public monitoring endpoint. Approved operational thresholds, KZ-hosted infrastructure, provider contract and staging acceptance remain pending. Require exact PR-head full CI PASS and no readiness inflation.
 
-### 2026-11-22 — real PostgreSQL OTP histogram age coverage (PR CI pending)
+### 2026-11-22 — real PostgreSQL OTP histogram age coverage (verified reference tests)
 - Branch `test/otp-age-histogram-postgres-fixtures-20261122` strengthens the restricted-role PostgreSQL E2E with distinct RESERVED fixtures (recent, 10 minutes, 1 hour, 2 hours, 25 hours), plus a separately accepted historical claim that must not be counted. It verifies the aggregate total, each age bucket and oldest RESERVED time using the column-restricted observer role, while keeping direct key/receipt reads and mutations forbidden.
-- Reference-only regression with test-schema fixtures; exact head CI, approved alert SLOs, KZ private deployment, real provider and staging sign-off remain pending. No acceptance/readiness increase.
+- Verified backend [PR #423](https://github.com/nurgeldiserikbay/services-back/pull/423), exact head `f3f85178ba11f051790a665bdc574b99f73de800`, [Backend foundation CI #4501 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45049133171), squash merge `402cf215f751a46216845de40d220bc1fd58a091`. This is reference-only test evidence; approved alert SLOs, KZ private deployment, live provider and staging sign-off remain pending. No acceptance/readiness increase.
 
 ## Acceptance items
 
