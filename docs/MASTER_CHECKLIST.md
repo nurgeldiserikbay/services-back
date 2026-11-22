@@ -90,6 +90,10 @@
 - Backend branch `test/otp-mtls-real-postgres-ledger-e2e-20261122`: adds a localhost HTTPS/mTLS integration test with ephemeral server/client certificates and a **real PostgreSQL** `OtpGatewayPostgresLedger` in a unique isolated schema. It exercises signed POST -> TLS peer pin -> bounded HTTP ingress/HMAC -> durable INSERT/ACCEPTED CAS -> sanitized 202 response, then replays the same idempotency key and proves no duplicate vendor send. Invalid HMAC, wrong route and missing client certificate must not alter the stored accepted row or send again. The provider remains a deliberate test stub. CI/merge pending.
 - This does NOT establish deployed private KZ ingress, a real external OTP provider's idempotency/receipt guarantees, operational secrets/certificates or staging acceptance. No readiness or acceptance inflation.
 
+### 2026-11-22 — concurrent real-mTLS HTTP requests against PostgreSQL OTP ledger (PR CI pending)
+- Branch `test/otp-mtls-parallel-postgres-http-race-20261122`: the existing local TLS-to-PostgreSQL end-to-end test now sends two identical signed requests concurrently using separate HTTPS connections. Exactly one durable OTP send may occur; the other response can be `409` while RESERVED or `202` after ACCEPTED. Both cases must leave a single ACCEPTED row and one provider-port invocation. Existing HMAC, route, certificate and replay regressions remain in place.
+- This is test-only localhost evidence using a stubbed OTP provider, not production gateway deployment, Kazakhstan source-network approval or actual provider staging acceptance. CI/merge pending; readiness unchanged.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
