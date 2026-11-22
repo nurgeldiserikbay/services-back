@@ -102,6 +102,11 @@
 - Branch `test/otp-reserved-conflicting-payload-20261122` extends real loopback HTTPS/mTLS + PostgreSQL OTP E2E: after a simulated vendor error leaves an isolated key durably RESERVED, an independently signed payload with the same key but changed locale must return 409. Assert no second provider send and no ledger mutation; existing identical-body replay remains blocked.
 - This is test-only evidence using a stubbed vendor. Staging/real provider, reconciliation operations, KZ private network and production sign-off remain pending. Do not increase accepted readiness without exact PR-head CI and review.
 
+### 2026-11-22 — unresolved OTP claim investigation runbook (documentation PR pending)
+- Branch `docs/otp-gateway-reserved-reconciliation-runbook-20261122` adds `docs/reference/otp-gateway-reserved-reconciliation-runbook.md`: SELECT-only aggregate detection, incident ownership, provider receipt verification and explicit prohibitions on automatic claim deletion/retry/reset. The runbook defines acceptance gates for a future separately reviewed reconciliation tool but implements **no operational writes or endpoint**.
+- Reference test evidence already merged: [backend PR #408](https://github.com/nurgeldiserikbay/services-back/pull/408) with full [CI #4411 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45019210278), merge `12aeda33a2afe35048183b65e4ea13458645294b`; [backend PR #409](https://github.com/nurgeldiserikbay/services-back/pull/409) with full [CI #4416 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45023345083), merge `b7c34b5071f3152cd54fcd3ed3bc320195cc9523`. These prove local gateway reference regressions only, not KZ private network, a real OTP provider, staging reconciliation or production release.
+- New documentation PR CI and security/operations sign-off pending. Do not change acceptance checkbox/readiness.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
