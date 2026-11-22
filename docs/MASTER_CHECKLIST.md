@@ -132,6 +132,10 @@
 - Backend OTP observer privilege regressions were verified in [PR #415](https://github.com/nurgeldiserikbay/services-back/pull/415), exact head `9707b2237ed34f23445b71f4807514bf8f68f52e`, [CI #4453 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45038361762), merged `04253eab68f75c31f520d241d943f00c469393bd`. This is reference PostgreSQL evidence, not a live vendor audit.
 - PR-head CI, external provider agreement, private KZ deployment, credential lifecycle, staging security sign-off and operational acceptance pending. No checkbox/readiness change.
 
+### 2026-11-22 — OTP ledger state immutability enforced at PostgreSQL boundary (PR CI pending)
+- Branch `test/otp-ledger-state-immutability-20261122`: dedicated gateway **reference schema** adds BEFORE INSERT/UPDATE/DELETE guards: claims must begin RESERVED, may transition once to ACCEPTED only while preserving key/fingerprint/claimed timestamp, and cannot be changed or deleted after acceptance. New isolated real PostgreSQL E2E tests reject direct SQL mutation and verify normal `claim` / `recordAccepted` path. Changes apply to newly initialized reference gateway DBs only; existing deployed ledgers require approved migrations, privilege review and staging validation.
+- No migration to Services main app database, no OTP provider configuration or runtime deployment. Full PR-head CI and external provider/KZ staging/security sign-off pending; do not raise completion percentage.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
