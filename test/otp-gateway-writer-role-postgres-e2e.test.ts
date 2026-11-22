@@ -29,7 +29,15 @@ test('OTP gateway writer role may claim and ACK but cannot destroy ledger or dis
    roleCreated=true;
    await admin.query('GRANT USAGE ON SCHEMA '+schema+' TO '+role);
    await admin.query(
-    'GRANT SELECT,INSERT,UPDATE ON '+schema+'.otp_gateway_delivery_claims TO '+role,
+    'GRANT SELECT ON '+schema+'.otp_gateway_delivery_claims TO '+role,
+   );
+   await admin.query(
+    'GRANT INSERT (idempotency_key,fingerprint,status) ON '+
+     schema+'.otp_gateway_delivery_claims TO '+role,
+   );
+   await admin.query(
+    'GRANT UPDATE (status,provider_ref,accepted_at) ON '+
+     schema+'.otp_gateway_delivery_claims TO '+role,
    );
    const client=await db.connect();
    try{
@@ -59,14 +67,33 @@ test('OTP gateway writer role may claim and ACK but cannot destroy ledger or dis
       sql,
      );
     }
-    // Even though this writer has UPDATE, the ledger trigger disallows
-    // changing an accepted receipt and the claim fingerprint.
+    // Column-level grants deny immutable metadata changes even before
+    // the trigger has a chance to inspect the attempted UPDATE.
+    for(const column of ['fingerprint','idempotency_key','claimed_at']){
+     await assert.rejects(
+      client.query(
+       'UPDATE otp_gateway_delivery_claims SET '+column+'='+column+
+        ' WHERE idempotency_key=$1',[key],
+      ),
+      (error:unknown)=>(error as {code?:string}).code==='42501',
+      column,
+     );
+    }
+    // Allowed UPDATE columns still cannot rewrite an ACCEPTED receipt,
+    // because PostgreSQL's immutability trigger rejects the transition.
     await assert.rejects(
      client.query(
-      'UPDATE otp_gateway_delivery_claims SET fingerprint=$2 WHERE idempotency_key=$1',
-      [key,'c'.repeat(64)],
+      'UPDATE otp_gateway_delivery_claims SET provider_ref=$2 WHERE idempotency_key=$1',
+      [key,'provider_87654321'],
      ),
      (error:unknown)=>(error as {code?:string}).code==='P0001',
+    );
+    await assert.rejects(
+     client.query(
+      "INSERT INTO otp_gateway_delivery_claims(idempotency_key,fingerprint,status,claimed_at) VALUES($1,$2,'RESERVED',now())",
+      ['c'.repeat(64),fingerprint],
+     ),
+     (error:unknown)=>(error as {code?:string}).code==='42501',
     );
    }finally{
     await client.query('RESET ROLE');
