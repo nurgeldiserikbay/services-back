@@ -85,7 +85,7 @@ test('operator report pins ACL and aggregates to one READ ONLY session',async()=
    if(sql.includes("WHERE status='RESERVED'"))return {rows:[snapshot]};
    return {rows:[]};
   },
-  release:()=>{releases++;},
+  release:(destroy?:boolean)=>{assert.equal(destroy,true);releases++;},
  };
  const pool={connect:async()=>{connects++;return db;}};
  assert.deepEqual(await runOtpGatewayOperatorReportReadOnly(pool as never),{
@@ -110,7 +110,7 @@ test('operator report rolls back, releases, and sanitizes ACL denial',async()=>{
    statements.push(sql);
    return {rows:[{...restricted,identifier_allowed:true}]};
   },
-  release:()=>{releases++;},
+  release:(destroy?:boolean)=>{assert.equal(destroy,true);releases++;},
  })};
  await assert.rejects(
   runOtpGatewayOperatorReportReadOnly(pool as never),
@@ -130,7 +130,7 @@ test('operator report sanitizes transaction startup errors and releases client',
  let queries=0;
  const pool={connect:async()=>({
   query:async()=>{queries++;throw new Error('private DB configuration');},
-  release:()=>{released++;},
+  release:(destroy?:boolean)=>{assert.equal(destroy,true);released++;},
  })};
  await assert.rejects(runOtpGatewayOperatorReportReadOnly(pool as never),{
   message:'otp_gateway_operator_report_unavailable',
