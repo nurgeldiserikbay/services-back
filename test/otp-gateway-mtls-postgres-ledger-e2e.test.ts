@@ -119,6 +119,22 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
       req.once('error',()=>finish(null));
       req.end(body);
      });
+   // Deny unauthenticated and malformed ingress before the first ledger claim.
+   // A later successful send must not hide an earlier unwanted DB mutation.
+   const firstBadSignature=await send({badSignature:true});
+   assert.equal(firstBadSignature.status,503);
+   assert.equal(firstBadSignature.body,'{"accepted":false}');
+   assert.equal(firstBadSignature.cache,'no-store');
+   assert.deepEqual(await stored(),[]);
+   assert.equal(sends,0);
+   const firstWrongRoute=await send({path:'/v1/send?unexpected=1'});
+   assert.equal(firstWrongRoute.status,404);
+   assert.deepEqual(await stored(),[]);
+   assert.equal(sends,0);
+   const firstMissingCert=await send({clientCert:false});
+   assert.notEqual(firstMissingCert.status,202);
+   assert.deepEqual(await stored(),[]);
+   assert.equal(sends,0);
    const simultaneous=await Promise.all([send(),send()]);
    assert.ok(simultaneous.some(x=>x.status===202));
    assert.ok(simultaneous.every(x=>x.status===202||x.status===409));
