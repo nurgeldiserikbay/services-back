@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {readOtpGatewayReservationHealth,readOtpGatewayReservationAgeBuckets} from
+import {readOtpGatewayReservationHealth,readOtpGatewayReservationAgeBuckets,
+ readOtpGatewayReservationSnapshot} from
  '../src/platform/ingress/otp-gateway-reservation-health.reference.js';
 
 test('OTP reservation health returns only aggregate count and UTC oldest timestamp',async()=>{
@@ -112,4 +113,61 @@ test('OTP reservation buckets reject bad or inconsistent DB results',async()=>{
   } as never),
   {message:'otp_gateway_reservation_health_unavailable'},
  );
+});
+
+test('OTP snapshot reads count, oldest timestamp and histogram in ONE aggregate query',async()=>{
+ let calls=0;
+ let statement='';
+ const db={query:async(sql:string)=>{
+  calls++;
+  statement=sql;
+  return {rows:[{
+   total:'6',oldest_claimed_at:new Date('2026-11-22T01:00:00Z'),
+   recent:'1',middle:'2',older:'3',
+   idempotency_key:'must-not-expose',
+  }]};
+ }};
+ const result=await readOtpGatewayReservationSnapshot(db as never);
+ assert.equal(calls,1);
+ assert.deepEqual(result,{
+  unresolvedCount:'6',oldestClaimedAt:'2026-11-22T01:00:00.000Z',
+  total:'6',underFiveMinutes:'1',fiveMinutesToOneHour:'2',
+  oneHourOrOlder:'3',
+ });
+ assert.match(statement,/min\(claimed_at\)/);
+ assert.match(statement,/claimed_at <= now\(\)/);
+ assert.match(statement,/WHERE status='RESERVED'/);
+ assert.doesNotMatch(statement,/idempotency_key|fingerprint|provider_ref/i);
+ assert.doesNotMatch(statement,/\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
+ const empty={query:async()=>({rows:[{
+  total:'0',oldest_claimed_at:null,recent:'0',middle:'0',older:'0',
+ }]})};
+ assert.deepEqual(await readOtpGatewayReservationSnapshot(empty as never),{
+  unresolvedCount:'0',oldestClaimedAt:null,total:'0',
+  underFiveMinutes:'0',fiveMinutesToOneHour:'0',oneHourOrOlder:'0',
+ });
+});
+
+test('OTP snapshot rejects incomplete, inconsistent and future-skewed counts',async()=>{
+ const base={total:'2',oldest_claimed_at:new Date('2026-11-22T00:00:00Z'),
+  recent:'1',middle:'0',older:'1'};
+ const invalid=[
+  [],
+  [base,base],
+  [{...base,total:'3'}],
+  [{...base,oldest_claimed_at:null}],
+  [{...base,oldest_claimed_at:'2026-11-22'}],
+  [{...base,recent:'01'}],
+  [{...base,total:'-2'}],
+  [{...base,oldest_claimed_at:new Date(NaN)}],
+  [{...base,total:'0',recent:'0',middle:'0',older:'0'}],
+ ];
+ for(const rows of invalid){
+  await assert.rejects(readOtpGatewayReservationSnapshot(
+   {query:async()=>({rows})} as never,
+  ),{message:'otp_gateway_reservation_health_unavailable'});
+ }
+ await assert.rejects(readOtpGatewayReservationSnapshot({
+  query:async()=>{throw new Error('sensitive connection detail');},
+ } as never),{message:'otp_gateway_reservation_health_unavailable'});
 });
