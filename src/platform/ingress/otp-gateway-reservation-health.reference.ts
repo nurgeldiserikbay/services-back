@@ -107,3 +107,64 @@ export async function readOtpGatewayReservationAgeBuckets(
     throw new Error(UNAVAILABLE);
   }
 }
+
+/**
+ * One PostgreSQL statement supplies a consistent aggregate view: count,
+ * oldest claim, and age histogram all share a statement snapshot and now().
+ * This is not an HTTP endpoint, alert, expiry or resend/reclaim instruction.
+ */
+export type OtpGatewayReservationSnapshot=
+  OtpGatewayReservationHealth & OtpGatewayReservationAgeBuckets;
+
+export async function readOtpGatewayReservationSnapshot(
+  db:Pick<Pool,'query'>,
+):Promise<OtpGatewayReservationSnapshot>{
+  try{
+    if(!db||typeof db.query!=='function')throw new Error(UNAVAILABLE);
+    const result=await db.query<{
+      total:string;
+      oldest_claimed_at:Date|null;
+      recent:string;
+      middle:string;
+      older:string;
+    }>(`
+      SELECT count(*)::text AS total,
+        min(claimed_at) AS oldest_claimed_at,
+        count(*) FILTER (
+          WHERE claimed_at >= now() - interval '5 minutes'
+            AND claimed_at <= now()
+        )::text AS recent,
+        count(*) FILTER (
+          WHERE claimed_at < now() - interval '5 minutes'
+            AND claimed_at >= now() - interval '1 hour'
+        )::text AS middle,
+        count(*) FILTER (
+          WHERE claimed_at < now() - interval '1 hour'
+        )::text AS older
+      FROM otp_gateway_delivery_claims
+      WHERE status='RESERVED'
+    `);
+    if(result.rows.length!==1)throw new Error(UNAVAILABLE);
+    const row=result.rows[0];
+    if(!row)throw new Error(UNAVAILABLE);
+    const counts=[row.total,row.recent,row.middle,row.older];
+    if(counts.some(x=>typeof x!=='string'||
+      !/^(0|[1-9][0-9]*)$/.test(x)))throw new Error(UNAVAILABLE);
+    const [total,recent,middle,older]=counts.map(x=>BigInt(x));
+    if(total!==recent+middle+older)throw new Error(UNAVAILABLE);
+    const oldest=row.oldest_claimed_at;
+    if((total===0n)!==(oldest===null))throw new Error(UNAVAILABLE);
+    if(oldest!==null&&(!(oldest instanceof Date)||
+      !Number.isFinite(oldest.getTime())))throw new Error(UNAVAILABLE);
+    return {
+      unresolvedCount:row.total,
+      oldestClaimedAt:oldest===null?null:oldest.toISOString(),
+      total:row.total,
+      underFiveMinutes:row.recent,
+      fiveMinutesToOneHour:row.middle,
+      oneHourOrOlder:row.older,
+    };
+  }catch{
+    throw new Error(UNAVAILABLE);
+  }
+}
