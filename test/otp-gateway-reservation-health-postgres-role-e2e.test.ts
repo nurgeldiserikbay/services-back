@@ -6,6 +6,8 @@ import {Pool} from 'pg';
 import {readOtpGatewayReservationHealth,readOtpGatewayReservationAgeBuckets,
  readOtpGatewayReservationSnapshot} from
  '../src/platform/ingress/otp-gateway-reservation-health.reference.js';
+import {readOtpGatewayOperatorReport} from
+ '../src/platform/ingress/otp-gateway-operator-report.reference.js';
 
 test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
  {skip:!process.env.DATABASE_URL},async()=>{
@@ -92,6 +94,15 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
      total:'5',underFiveMinutes:'1',fiveMinutesToOneHour:'1',
      oneHourOrOlder:'3',
     });
+    // The restricted observer can run the manual operator report, but the
+    // schema owner cannot: broad privileges must be denied by ACL preflight.
+    assert.deepEqual(
+     await readOtpGatewayOperatorReport(client as never),snapshot,
+    );
+    await assert.rejects(
+     readOtpGatewayOperatorReport(db!),
+     {message:'otp_gateway_operator_report_unavailable'},
+    );
     // The health reader can aggregate only allowed columns, not retrieve
     // identifiers, fingerprints or provider receipts from the ledger.
     for(const sql of [
