@@ -53,6 +53,12 @@ Run against an approved **sandbox provider** with dedicated test destinations, a
 | Provider outage, network partition, rate-limit and response-size attack | Bounded resources, sanitized diagnostics, no duplicate send |
 | Restricted observer account attempts to write claims | PostgreSQL denies mutation; only aggregate diagnostic SELECT succeeds |
 
+## Database writer privilege separation
+
+The reference PostgreSQL schema must be owned by a separate, tightly controlled migration/DDL role, **not** the runtime delivery role. Runtime writer needs schema `USAGE` and table `SELECT, INSERT, UPDATE` for durable reservation and acceptance. It must not own the table, own trigger functions, hold `DELETE` or `TRUNCATE` privileges, or have `CREATE` on the gateway schema. Superuser and privileged migration credentials must never be present in the runtime environment.
+
+`test/otp-gateway-writer-role-postgres-e2e.test.ts` tests this isolation using a randomly named temporary PostgreSQL `NOLOGIN` role and separate reference schema: real `claim` and `recordAccepted` work under `SET ROLE`; destructive DML, TRUNCATE and attempts to disable/drop triggers or drop the table are forbidden. This does not provision a production credential. The infra owner must approve actual role grants, audit privileged DDL and run rotation/recovery drills.
+
 ## 4. Operational go/no-go
 
 Before any real delivery: designated provider owner, security lead, KZ data owner and operations lead must approve the staging matrix, network ACL/egress/firewall, secrets and certificate lifecycle, provider contract, monitoring thresholds measured in pilot, reconciliation incident response and rollback/drill evidence.
