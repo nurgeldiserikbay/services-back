@@ -193,8 +193,12 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    assert.equal(sends,2);
    const missingCert=await send({clientCert:false});
    assert.notEqual(missingCert.status,202);
-   assert.equal(sends,1);
+   // One accepted send plus one deliberately failed vendor attempt.
+   assert.equal(sends,2);
    assert.deepEqual(await stored(),[{status:'ACCEPTED',provider_ref:'provider_12345678'}]);
+   assert.deepEqual(await stored('b'.repeat(64)),[
+    {status:'RESERVED',provider_ref:null},
+   ]);
   }finally{
    if(server){
     server.closeAllConnections();
