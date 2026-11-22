@@ -145,6 +145,10 @@
 - Branch `test/otp-gateway-writer-least-privilege-20261122`: isolated actual PostgreSQL E2E runs the gateway ledger as a temporary NOLOGIN writer with only schema USAGE and SELECT/INSERT/UPDATE table grants. It verifies normal RESERVED/ACCEPTED operations and denies DELETE, TRUNCATE, table/trigger DDL and accepted receipt mutation. Separate ownership/DDL is necessary because table owners and superusers can bypass triggers.
 - Reference provider acceptance doc now requires separate DDL owner, production privilege audit and credential rotation. No real KZ provider, gateway deployment, prod role provisioning or staging sign-off; exact PR-head full CI is pending. No readiness or release checkbox changes.
 
+### 2026-11-22 — gateway runtime writer column-scoped grants (PR CI pending)
+- Branch `test/otp-column-level-writer-grants-20261122`: real isolated PostgreSQL E2E narrows the runtime gateway writer from table-wide INSERT/UPDATE to schema USAGE, table SELECT, INSERT on (idempotency_key,fingerprint,status), and UPDATE on (status,provider_ref,accepted_at). It verifies actual claim/ACK work while immutable key/fingerprint/timestamp changes and explicit claimed_at inserts are denied with SQLSTATE 42501; existing trigger still rejects accepted receipt mutation.
+- Provider staging requirements updated. Full exact PR-head PostgreSQL CI, approved KZ-hosted production roles, provider API, DDL ownership, reconciliation and staging sign-off remain pending. No readiness percentage or release checkbox increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
