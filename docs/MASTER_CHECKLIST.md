@@ -165,6 +165,10 @@
 - Branch `fix/otp-reservation-future-timestamp-detection-20261122` narrows the recent RESERVED bucket to only timestamps not later than PostgreSQL `now()`. Future-dated claims are not quietly treated as new: the existing total-vs-bucket integrity check fails closed with a sanitized error. Unit regression verifies the upper time bound, and real isolated PostgreSQL E2E adds a +2-hour reservation under a SELECT-only observer role and checks the histogram fails closed.
 - Verified reference-only safety regression: [PR #424](https://github.com/nurgeldiserikbay/services-back/pull/424), exact PR head `e76061afa5f86f947d627cedeb930d907f4cc87e`, [Backend foundation CI #4509 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45049759724), squash merge `07c6390dcf6fae27c4fb398c3d8dcfd647930e3c`. This does not auto-reset/retry OTP, establish alert SLOs, deploy a provider or change Services app Prisma. Production provider/KZ staging/security sign-off remains pending; readiness unchanged.
 
+### 2026-11-22 — OTP histogram exact PostgreSQL boundary regression (PR CI pending)
+- Branch `test/otp-histogram-exact-boundaries-20261122`: new isolated PostgreSQL E2E pins all five reservation fixture timestamps to the **same transaction-stable database `now()`**. Confirms exactly 5m belongs to the recent bucket, just older than 5m belongs to the middle bucket, exactly 1h belongs to middle and just older than 1h belongs to the older bucket. Count query executes as a column-scoped, SELECT-only observer role and still denies idempotency-key disclosure.
+- This is reference-only diagnostic correctness. Full exact PR-head PostgreSQL CI and approved production thresholds/OTP provider/KZ residency/security staging sign-off remain pending. No release checkbox or readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
