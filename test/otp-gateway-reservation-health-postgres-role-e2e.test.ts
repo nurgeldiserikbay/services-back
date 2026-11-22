@@ -3,7 +3,8 @@ import {randomBytes} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {Pool} from 'pg';
-import {readOtpGatewayReservationHealth,readOtpGatewayReservationAgeBuckets} from
+import {readOtpGatewayReservationHealth,readOtpGatewayReservationAgeBuckets,
+ readOtpGatewayReservationSnapshot} from
  '../src/platform/ingress/otp-gateway-reservation-health.reference.js';
 
 test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
@@ -83,6 +84,14 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
     assert.deepEqual(Object.keys(health).sort(),[
      'oldestClaimedAt','unresolvedCount',
     ]);
+    const snapshot=await readOtpGatewayReservationSnapshot(
+     {query:(sql:string)=>client.query(sql)} as never,
+    );
+    assert.deepEqual(snapshot,{
+     unresolvedCount:'5',oldestClaimedAt:health.oldestClaimedAt,
+     total:'5',underFiveMinutes:'1',fiveMinutesToOneHour:'1',
+     oneHourOrOlder:'3',
+    });
     // The health reader can aggregate only allowed columns, not retrieve
     // identifiers, fingerprints or provider receipts from the ledger.
     for(const sql of [
@@ -104,6 +113,12 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
     `,['8'.repeat(64),fingerprint]);
     await assert.rejects(
      readOtpGatewayReservationAgeBuckets(
+      {query:(sql:string)=>client.query(sql)} as never,
+     ),
+     {message:'otp_gateway_reservation_health_unavailable'},
+    );
+    await assert.rejects(
+     readOtpGatewayReservationSnapshot(
       {query:(sql:string)=>client.query(sql)} as never,
      ),
      {message:'otp_gateway_reservation_health_unavailable'},
