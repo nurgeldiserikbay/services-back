@@ -111,6 +111,10 @@
 - Branch `test/otp-mtls-invalid-provider-receipt-20261122`: real localhost HTTPS/mTLS + isolated PostgreSQL E2E extends the reference vendor stub with an `accepted:true` response carrying an invalid provider reference. The gateway must fail closed with generic 503, preserve the durable `RESERVED` row, and reject a subsequent identical signed retry with 409 and no second provider send.
 - Reference-only regression, not a live provider guarantee, a production deployment, or authorized reconciliation. Exact latest PR-head CI, KZ residency, certificate operations, provider and staging approval are still required. No acceptance/readiness increase.
 
+### 2026-11-22 — real PostgreSQL OTP final ACK failure regression (CI pending)
+- Branch `test/otp-postgres-ack-write-failure-20261122` extends real localhost HTTPS/mTLS + isolated PostgreSQL OTP E2E. A test-schema-only BEFORE UPDATE trigger deliberately rejects the provider receipt finalization for a distinct idempotency key, after a stubbed accepted vendor response. HTTP must return generic 503, preserve durable `RESERVED`, and deny a signed replay with 409 without a second provider invocation.
+- This does NOT implement operator reconciliation, deployed provider delivery, KZ network provenance or production database trigger. Latest PR-head CI and staging/security sign-off remain pending; no readiness/acceptance increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
