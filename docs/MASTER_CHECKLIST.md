@@ -123,6 +123,10 @@
 - Branch `feat/otp-gateway-readonly-reservation-health-20261122`: added reference-only `readOtpGatewayReservationHealth` with a SELECT-only PostgreSQL aggregate query returning unresolved count as an exact decimal string and oldest claim timestamp. No idempotency keys, fingerprints, OTP payload, provider receipts or mutations leave this boundary. Added error-sanitization/unit regressions and real HTTPS/mTLS + isolated PostgreSQL integration assertion.
 - Runbook linked to helper. This helper creates no public route or production job and must be invoked only with a separately authorized SELECT-only database role. Exact head CI, approved alert thresholds, provider integration, KZ private deployment and staging sign-off pending. No readiness checkbox change.
 
+### 2026-11-22 — OTP reservation monitor least-privilege PostgreSQL E2E (PR CI pending)
+- Branch `test/otp-reservation-health-readonly-db-role-20261122`: a disposable real PostgreSQL schema plus NOLOGIN SELECT-only role verifies that the aggregate health reader works as the restricted role and INSERT/UPDATE/DELETE of gateway reservations are rejected with SQLSTATE 42501. Test cleanup removes temporary grants, role and schema. The observer has no OTP delivery or reset ability.
+- This validates a staging reference permission boundary only. Production role provisioning, approved real OTP provider, KZ private deployment, secrets, reconciliation and security acceptance remain pending. Exact latest PR-head PostgreSQL CI required; no readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure

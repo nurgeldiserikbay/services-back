@@ -20,6 +20,8 @@ No raw OTP, destination, access token, HMAC secret, client certificate private k
 3. Pause affected gateway outbound delivery if suspected duplicate sends, unauthorized access or provider contract failure are observed. Do not stop unrelated notification channels without an incident decision.
 4. Verify RBAC: read-only investigator access is distinct from emergency operations approval. Use approved secure access, not a public SQL endpoint.
 
+For staging verification, `test/otp-gateway-reservation-health-postgres-role-e2e.test.ts` creates a temporary NOLOGIN PostgreSQL role with only schema USAGE and table SELECT in a disposable isolated schema, invokes the aggregate health reader under `SET ROLE`, and asserts UPDATE/DELETE/INSERT are rejected with insufficient privilege. This is **test-only proof**, not a provisioned production role or a credential management policy. An authorized infrastructure owner must provision and review the real SELECT-only account separately.
+
 For a read-only count, from a controlled operator session with **SELECT-only** access:
 
 The optional reference helper `readOtpGatewayReservationHealth` (`src/platform/ingress/otp-gateway-reservation-health.reference.ts`) executes an aggregate-only query returning `{unresolvedCount, oldestClaimedAt}`; it contains no HTTP endpoint, deployment, claims manipulation or automatic retry logic. Supply a dedicated read-only PostgreSQL role; do not expose the returned diagnostic through a public API. The unresolved count is a decimal string to prevent loss of precision for large PostgreSQL `count(*)` values.
