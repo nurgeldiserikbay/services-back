@@ -232,14 +232,14 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    // This trigger is confined to the disposable test schema, never production.
    await db!.query(`
     CREATE FUNCTION otp_test_reject_ack() RETURNS trigger
-    LANGUAGE plpgsql AS $
+    LANGUAGE plpgsql AS $tag$
     BEGIN
       IF NEW.idempotency_key = repeat('d',64) THEN
         RAISE EXCEPTION 'simulated ack persistence failure';
       END IF;
       RETURN NEW;
     END;
-    $
+    $tag$
    `);
    await db!.query(`
     CREATE TRIGGER otp_test_reject_ack_before_update
