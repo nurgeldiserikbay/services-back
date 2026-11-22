@@ -48,3 +48,59 @@ export async function readOtpGatewayReservationHealth(
     throw new Error(UNAVAILABLE);
   }
 }
+
+/**
+ * Observation-only age histogram. Thresholds are descriptive 5m/1h
+ * boundaries, NOT agreed delivery SLOs or automatic retry deadlines.
+ */
+export type OtpGatewayReservationAgeBuckets=Readonly<{
+  total:string;
+  underFiveMinutes:string;
+  fiveMinutesToOneHour:string;
+  oneHourOrOlder:string;
+}>;
+
+/** Restricted-role SELECT uses only status and claimed_at columns. */
+export async function readOtpGatewayReservationAgeBuckets(
+  db:Pick<Pool,'query'>,
+):Promise<OtpGatewayReservationAgeBuckets>{
+  try{
+    if(!db||typeof db.query!=='function')throw new Error(UNAVAILABLE);
+    const result=await db.query<{
+      total:string;
+      recent:string;
+      middle:string;
+      older:string;
+    }>(`
+      SELECT count(*)::text AS total,
+        count(*) FILTER (
+          WHERE claimed_at >= now() - interval '5 minutes'
+        )::text AS recent,
+        count(*) FILTER (
+          WHERE claimed_at < now() - interval '5 minutes'
+            AND claimed_at >= now() - interval '1 hour'
+        )::text AS middle,
+        count(*) FILTER (
+          WHERE claimed_at < now() - interval '1 hour'
+        )::text AS older
+      FROM otp_gateway_delivery_claims
+      WHERE status='RESERVED'
+    `);
+    if(result.rows.length!==1)throw new Error(UNAVAILABLE);
+    const row=result.rows[0];
+    if(!row)throw new Error(UNAVAILABLE);
+    const values=[row.total,row.recent,row.middle,row.older];
+    if(values.some(v=>typeof v!=='string'||!/^(0|[1-9][0-9]*)$/.test(v)))
+      throw new Error(UNAVAILABLE);
+    const [total,recent,middle,older]=values.map(v=>BigInt(v));
+    if(recent+middle+older!==total)throw new Error(UNAVAILABLE);
+    return {
+      total:row.total,
+      underFiveMinutes:row.recent,
+      fiveMinutesToOneHour:row.middle,
+      oneHourOrOlder:row.older,
+    };
+  }catch{
+    throw new Error(UNAVAILABLE);
+  }
+}
