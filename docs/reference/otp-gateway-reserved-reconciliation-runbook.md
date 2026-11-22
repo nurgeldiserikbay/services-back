@@ -22,6 +22,8 @@ No raw OTP, destination, access token, HMAC secret, client certificate private k
 
 For a read-only count, from a controlled operator session with **SELECT-only** access:
 
+The optional reference helper `readOtpGatewayReservationHealth` (`src/platform/ingress/otp-gateway-reservation-health.reference.ts`) executes an aggregate-only query returning `{unresolvedCount, oldestClaimedAt}`; it contains no HTTP endpoint, deployment, claims manipulation or automatic retry logic. Supply a dedicated read-only PostgreSQL role; do not expose the returned diagnostic through a public API. The unresolved count is a decimal string to prevent loss of precision for large PostgreSQL `count(*)` values.
+
 ```sql
 SELECT count(*)::bigint AS unresolved_count,
        min(claimed_at) AS oldest_claim_at
