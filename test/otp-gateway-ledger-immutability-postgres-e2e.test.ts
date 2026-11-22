@@ -60,6 +60,10 @@ test('OTP PostgreSQL claim lifecycle is immutable and cannot be deleted',
    await forbidden(
     'DELETE FROM otp_gateway_delivery_claims WHERE idempotency_key=$1',[key],
    );
+   // TRUNCATE skips DELETE row triggers; its own statement trigger must deny
+   // all attempts, including a cascading truncate and even an empty table.
+   await forbidden('TRUNCATE TABLE otp_gateway_delivery_claims',[]);
+   await forbidden('TRUNCATE TABLE otp_gateway_delivery_claims CASCADE',[]);
    const rows=await db.query<{
     status:string;fingerprint:string;provider_ref:string|null;
    }>('SELECT status,fingerprint,provider_ref FROM otp_gateway_delivery_claims WHERE idempotency_key=$1',[key]);

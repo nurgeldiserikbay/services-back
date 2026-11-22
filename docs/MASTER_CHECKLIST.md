@@ -136,6 +136,11 @@
 - Branch `test/otp-ledger-state-immutability-20261122`: dedicated gateway **reference schema** adds BEFORE INSERT/UPDATE/DELETE guards: claims must begin RESERVED, may transition once to ACCEPTED only while preserving key/fingerprint/claimed timestamp, and cannot be changed or deleted after acceptance. New isolated real PostgreSQL E2E tests reject direct SQL mutation and verify normal `claim` / `recordAccepted` path. Changes apply to newly initialized reference gateway DBs only; existing deployed ledgers require approved migrations, privilege review and staging validation.
 - No migration to Services main app database, no OTP provider configuration or runtime deployment. Full PR-head CI and external provider/KZ staging/security sign-off pending; do not raise completion percentage.
 
+### 2026-11-22 — OTP ledger TRUNCATE bypass defense (PR CI pending)
+- Branch `fix/otp-ledger-truncate-guard-20261122` adds a dedicated BEFORE TRUNCATE statement trigger to the gateway-only reference PostgreSQL schema because DELETE row triggers do not run for TRUNCATE. Isolated real PostgreSQL E2E asserts that both ordinary and CASCADE TRUNCATE fail and an ACCEPTED receipt remains intact.
+- This guards against accidental or unauthorized TRUNCATE by accounts without DDL/trigger bypass authority. Table owners, privileged migration roles and database superusers require independent restriction and audit; an approved production database hardening/migration plan is still needed. No changes to the Services application Prisma database or live provider.
+- Exact PR-head CI and provider/KZ private staging acceptance pending; no readiness or checkbox increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
