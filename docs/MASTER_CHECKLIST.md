@@ -119,6 +119,10 @@
 - [Backend PR #413](https://github.com/nurgeldiserikbay/services-back/pull/413), head `f900d9352819cecfc26c5d583b0f3711b6702296`, [CI #4438 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45029432842), squash merge `2ca779849864e28df77e1b0317fef4bfc9ea7829`. Real localhost HTTPS/mTLS + isolated PostgreSQL E2E installs a test-schema-only BEFORE INSERT trigger to reject initial durable claim; both original request and retry return generic 503, leave no row, and do not invoke the provider stub.
 - This proves reference test behavior only. Approved live provider, Kazakhstan private ingress, reconciliation, staging/security sign-off and production readiness remain pending. Do not change release acceptance/readiness checkboxes.
 
+### 2026-11-22 — read-only aggregate OTP gateway reservation health (CI pending)
+- Branch `feat/otp-gateway-readonly-reservation-health-20261122`: added reference-only `readOtpGatewayReservationHealth` with a SELECT-only PostgreSQL aggregate query returning unresolved count as an exact decimal string and oldest claim timestamp. No idempotency keys, fingerprints, OTP payload, provider receipts or mutations leave this boundary. Added error-sanitization/unit regressions and real HTTPS/mTLS + isolated PostgreSQL integration assertion.
+- Runbook linked to helper. This helper creates no public route or production job and must be invoked only with a separately authorized SELECT-only database role. Exact head CI, approved alert thresholds, provider integration, KZ private deployment and staging sign-off pending. No readiness checkbox change.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
