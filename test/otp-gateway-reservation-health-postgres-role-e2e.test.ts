@@ -3,7 +3,7 @@ import {randomBytes} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {Pool} from 'pg';
-import {readOtpGatewayReservationHealth} from
+import {readOtpGatewayReservationHealth,readOtpGatewayReservationAgeBuckets} from
  '../src/platform/ingress/otp-gateway-reservation-health.reference.js';
 
 test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
@@ -49,6 +49,13 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
     );
     assert.equal(health.unresolvedCount,'1');
     assert.ok(health.oldestClaimedAt);
+    const buckets=await readOtpGatewayReservationAgeBuckets(
+     {query:(sql:string)=>client.query(sql)} as never,
+    );
+    assert.deepEqual(buckets,{
+     total:'1',underFiveMinutes:'1',fiveMinutesToOneHour:'0',
+     oneHourOrOlder:'0',
+    });
     assert.deepEqual(Object.keys(health).sort(),[
      'oldestClaimedAt','unresolvedCount',
     ]);
