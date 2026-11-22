@@ -141,6 +141,10 @@
 - This guards against accidental or unauthorized TRUNCATE by accounts without DDL/trigger bypass authority. Table owners, privileged migration roles and database superusers require independent restriction and audit; an approved production database hardening/migration plan is still needed. No changes to the Services application Prisma database or live provider.
 - Exact PR-head CI and provider/KZ private staging acceptance pending; no readiness or checkbox increase.
 
+### 2026-11-22 — OTP gateway runtime writer least-privilege PostgreSQL verification (PR CI pending)
+- Branch `test/otp-gateway-writer-least-privilege-20261122`: isolated actual PostgreSQL E2E runs the gateway ledger as a temporary NOLOGIN writer with only schema USAGE and SELECT/INSERT/UPDATE table grants. It verifies normal RESERVED/ACCEPTED operations and denies DELETE, TRUNCATE, table/trigger DDL and accepted receipt mutation. Separate ownership/DDL is necessary because table owners and superusers can bypass triggers.
+- Reference provider acceptance doc now requires separate DDL owner, production privilege audit and credential rotation. No real KZ provider, gateway deployment, prod role provisioning or staging sign-off; exact PR-head full CI is pending. No readiness or release checkbox changes.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
