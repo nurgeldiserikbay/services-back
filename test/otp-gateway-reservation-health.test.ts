@@ -79,6 +79,7 @@ test('OTP reservation age buckets return only four aggregate count strings',asyn
   'fiveMinutesToOneHour','oneHourOrOlder','total','underFiveMinutes',
  ]);
  assert.match(statement,/WHERE status='RESERVED'/);
+ assert.match(statement,/claimed_at <= now\(\)/);
  assert.doesNotMatch(statement,/idempotency_key|fingerprint|provider_ref/i);
  assert.doesNotMatch(statement,/\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
  const empty={query:async()=>({rows:[{
@@ -88,6 +89,8 @@ test('OTP reservation age buckets return only four aggregate count strings',asyn
   .total,'0');
 });
 
+// A future-dated reservation is excluded from recent, making the bucket
+// sum disagree with the total and preventing a misleading healthy snapshot.
 test('OTP reservation buckets reject bad or inconsistent DB results',async()=>{
  const bad=[
   [],[{total:'2',recent:'1',middle:'0',older:'0'}],
