@@ -88,7 +88,7 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    });
    const addr=server.address();
    assert.ok(addr&&typeof addr!=='string');
-   const send=(options?:{badSignature?:boolean;clientCert?:boolean;path?:string;alternateBody?:boolean;vendorFailure?:boolean;invalidReceipt?:boolean;ackFailure?:boolean}):
+   const send=(options?:{badSignature?:boolean;clientCert?:boolean;path?:string;alternateBody?:boolean;vendorFailure?:boolean;invalidReceipt?:boolean;ackFailure?:boolean;claimFailure?:boolean}):
      Promise<{status:number|null;body:string;cache:string|null}>=>
      new Promise(resolve=>{
       let responded=false;
@@ -104,7 +104,8 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
         .replace('"locale":"kk"',options.alternateBody?'"locale":"ru"':'"locale":"kk"')
        :options?.alternateBody
         ?body.replace('"code":"123456"','"code":"654321"'):body;
-      const requestKey=options?.ackFailure?'d'.repeat(64)
+      const requestKey=options?.claimFailure?'e'.repeat(64)
+       :options?.ackFailure?'d'.repeat(64)
        :options?.invalidReceipt?'c'.repeat(64)
        :options?.vendorFailure?'b'.repeat(64):key;
       const headers={
@@ -260,6 +261,35 @@ test('real mTLS OTP HTTP uses committed PostgreSQL gateway ledger for one-shot d
    assert.deepEqual(await stored('d'.repeat(64)),[
     {status:'RESERVED',provider_ref:null},
    ]);
+   assert.equal(sends,4);
+   // A failed durable INSERT must never reach the OTP provider.
+   // Trigger exists only in the random, disposable PostgreSQL test schema.
+   await db!.query(`
+    CREATE FUNCTION otp_test_reject_claim() RETURNS trigger
+    LANGUAGE plpgsql AS $claim$
+    BEGIN
+      IF NEW.idempotency_key = repeat('e',64) THEN
+        RAISE EXCEPTION 'simulated initial reservation persistence failure';
+      END IF;
+      RETURN NEW;
+    END;
+    $claim$
+   `);
+   await db!.query(`
+    CREATE TRIGGER otp_test_reject_claim_before_insert
+    BEFORE INSERT ON otp_gateway_delivery_claims
+    FOR EACH ROW EXECUTE FUNCTION otp_test_reject_claim()
+   `);
+   const failedClaim=await send({claimFailure:true});
+   assert.equal(failedClaim.status,503);
+   assert.equal(failedClaim.body,'{"accepted":false}');
+   assert.equal(failedClaim.cache,'no-store');
+   assert.deepEqual(await stored('e'.repeat(64)),[]);
+   assert.equal(sends,4);
+   const failedClaimReplay=await send({claimFailure:true});
+   assert.equal(failedClaimReplay.status,503);
+   assert.equal(failedClaimReplay.body,'{"accepted":false}');
+   assert.deepEqual(await stored('e'.repeat(64)),[]);
    assert.equal(sends,4);
    const missingCert=await send({clientCert:false});
    assert.notEqual(missingCert.status,202);
