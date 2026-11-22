@@ -55,9 +55,9 @@ Run against an approved **sandbox provider** with dedicated test destinations, a
 
 ## Database writer privilege separation
 
-The reference PostgreSQL schema must be owned by a separate, tightly controlled migration/DDL role, **not** the runtime delivery role. Runtime writer needs schema `USAGE` and table `SELECT, INSERT, UPDATE` for durable reservation and acceptance. It must not own the table, own trigger functions, hold `DELETE` or `TRUNCATE` privileges, or have `CREATE` on the gateway schema. Superuser and privileged migration credentials must never be present in the runtime environment.
+The reference PostgreSQL schema must be owned by a separate, tightly controlled migration/DDL role, **not** the runtime delivery role. Runtime writer needs schema `USAGE`, table `SELECT`, column-scoped `INSERT (idempotency_key,fingerprint,status)` and `UPDATE (status,provider_ref,accepted_at)` for durable reservation and acceptance. Do **not** grant table-wide `INSERT` or `UPDATE`: immutable key, fingerprint and original claim timestamp must remain outside its write privileges. It must not own the table, own trigger functions, hold `DELETE` or `TRUNCATE` privileges, or have `CREATE` on the gateway schema. Superuser and privileged migration credentials must never be present in the runtime environment.
 
-`test/otp-gateway-writer-role-postgres-e2e.test.ts` tests this isolation using a randomly named temporary PostgreSQL `NOLOGIN` role and separate reference schema: real `claim` and `recordAccepted` work under `SET ROLE`; destructive DML, TRUNCATE and attempts to disable/drop triggers or drop the table are forbidden. This does not provision a production credential. The infra owner must approve actual role grants, audit privileged DDL and run rotation/recovery drills.
+`test/otp-gateway-writer-role-postgres-e2e.test.ts` tests this isolation using a randomly named temporary PostgreSQL `NOLOGIN` role and separate reference schema: real `claim` and `recordAccepted` work under `SET ROLE`; immutable column mutations, destructive DML, TRUNCATE and attempts to disable/drop triggers or drop the table are forbidden. This does not provision a production credential. The infra owner must approve actual role grants, audit privileged DDL and run rotation/recovery drills.
 
 ## 4. Operational go/no-go
 
