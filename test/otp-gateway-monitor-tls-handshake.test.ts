@@ -39,7 +39,7 @@ test('OTP monitor PostgreSQL SSLRequest requires correct CA and hostname',
   run('x509','-req','-in','server.csr','-CA','trusted.crt',
    '-CAkey','trusted.key','-CAcreateserial','-days','2',
    '-extfile','server.ext','-out','server.crt');
-  const context=createSecureContext({
+  let context=createSecureContext({
    cert:readFileSync(join(dir,'server.crt')),
    key:readFileSync(join(dir,'server.key')),
   });
@@ -91,6 +91,28 @@ test('OTP monitor PostgreSQL SSLRequest requires correct CA and hostname',
   assert.equal(authenticatedStartups,1,'untrusted CA must not send authenticated startup');
   await attempt('127.0.0.1',trustedCa);
   assert.equal(authenticatedStartups,1,'hostname mismatch must fail before secure handshake');
+
+  // Simulate the gateway server leaf switching from the original CA to
+  // a replacement CA. The monitor must deny the retired trust anchor.
+  run('req','-newkey','rsa:2048','-nodes',
+   '-subj','/CN=localhost',
+   '-keyout','rotated-server.key','-out','rotated-server.csr');
+  run('x509','-req','-in','rotated-server.csr','-CA','other.crt',
+   '-CAkey','other.key','-CAcreateserial','-days','2',
+   '-extfile','server.ext','-out','rotated-server.crt');
+  context=createSecureContext({
+   cert:readFileSync(join(dir,'rotated-server.crt')),
+   key:readFileSync(join(dir,'rotated-server.key')),
+  });
+  await attempt('localhost',trustedCa);
+  assert.equal(authenticatedStartups,1,
+   'retired CA pin must not trust the rotated gateway certificate');
+  await attempt('localhost',otherCa);
+  assert.equal(authenticatedStartups,2,
+   'replacement CA pin must trust the rotated gateway certificate');
+  await attempt('localhost',trustedCa+'\n'+otherCa);
+  assert.equal(authenticatedStartups,3,
+   'bounded overlapping CA bundle must support controlled cutover');
  }finally{
   if(server)await new Promise<void>(resolve=>server!.close(()=>resolve()));
   rmSync(dir,{recursive:true,force:true});
