@@ -9,6 +9,10 @@
 - This is **CI-only negative-path evidence**, not a TLS-verified KZ private staging gateway connection, provisioned observer credential, provider sign-off, or production acceptance. Keep the verified top-level acceptance count unchanged until independently evidenced.
 - Verified [backend PR #446](https://github.com/nurgeldiserikbay/services-back/pull/446), exact PR head `21b36cdec34012834be76ae81ebbe1aeb0c80108`, [Backend foundation CI #4715 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45140434525) (including real PostgreSQL E2E), squash merge `f7b99a210e7876a82b757590b3422712587d502d`. This verifies the disposable-CI negative case only; staging and production gates remain open. No new top-level acceptance checkbox.
 
+### 2026-11-23 — real PostgreSQL OTP approved-schema negative E2E (PR CI pending)
+- Branch `test/otp-observer-wrong-schema-real-pg-20261123`: tests the manual read-only operator report against the disposable CI PostgreSQL server with an operator-supplied schema name confirmed absent on that server. Requires parameter-bound `SET LOCAL` search path, exact database identity preflight, generic denial at observer ACL resolution, rollback and forced connection disposal. Verifies no aggregate count query runs after schema rejection.
+- This is **only a negative real-PostgreSQL CI regression**, not approved dedicated KZ gateway schema/role provisioning, TLS-attested staging, OTP provider testing or production acceptance. No top-level acceptance checkbox changes.
+
 ## Rules
 
 - `[x]` = verified complete: attach commit/PR **and** passing relevant CI or reproducible acceptance evidence.
