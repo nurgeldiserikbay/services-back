@@ -9,9 +9,10 @@
 - This is **CI-only negative-path evidence**, not a TLS-verified KZ private staging gateway connection, provisioned observer credential, provider sign-off, or production acceptance. Keep the verified top-level acceptance count unchanged until independently evidenced.
 - Verified [backend PR #446](https://github.com/nurgeldiserikbay/services-back/pull/446), exact PR head `21b36cdec34012834be76ae81ebbe1aeb0c80108`, [Backend foundation CI #4715 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45140434525) (including real PostgreSQL E2E), squash merge `f7b99a210e7876a82b757590b3422712587d502d`. This verifies the disposable-CI negative case only; staging and production gates remain open. No new top-level acceptance checkbox.
 
-### 2026-11-23 — real PostgreSQL OTP approved-schema negative E2E (PR CI pending)
+### 2026-11-23 — real PostgreSQL OTP approved-schema negative E2E (verified CI)
 - Branch `test/otp-observer-wrong-schema-real-pg-20261123`: tests the manual read-only operator report against the disposable CI PostgreSQL server with an operator-supplied schema name confirmed absent on that server. Requires parameter-bound `SET LOCAL` search path, exact database identity preflight, generic denial at observer ACL resolution, rollback and forced connection disposal. Verifies no aggregate count query runs after schema rejection.
 - This is **only a negative real-PostgreSQL CI regression**, not approved dedicated KZ gateway schema/role provisioning, TLS-attested staging, OTP provider testing or production acceptance. No top-level acceptance checkbox changes.
+- Verified [backend PR #447](https://github.com/nurgeldiserikbay/services-back/pull/447), exact head `298d74569befe01926addd8f4c1bd3e1e3ef3512`, [Backend foundation CI #4721 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45142090741), including dependency audit and full `npm test` against disposable PostgreSQL; squash merge `926006453de746bb47845ba770d22177bb5bcd1a`. Operational staging and provider approval still OPEN; no acceptance-count change.
 
 ## Rules
 
