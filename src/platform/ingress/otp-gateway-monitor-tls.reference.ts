@@ -1,3 +1,4 @@
+import {X509Certificate} from 'node:crypto';
 import type {PoolConfig} from 'pg';
 
 const DENIED='otp_gateway_operator_report_unavailable';
@@ -11,6 +12,7 @@ const DENIED='otp_gateway_operator_report_unavailable';
 export function makeOtpGatewayMonitorPoolConfig(
   connectionString:string|undefined,
   caPem:string|undefined,
+  globalTlsVerification:string|undefined=process.env.NODE_TLS_REJECT_UNAUTHORIZED,
 ):PoolConfig{
   try{
     if(!connectionString||!caPem)throw new Error(DENIED);
@@ -18,10 +20,25 @@ export function makeOtpGatewayMonitorPoolConfig(
     if(!['postgres:','postgresql:'].includes(url.protocol)||
       !url.hostname||!url.username||url.search||url.hash)
       throw new Error(DENIED);
-    // Sanity check only: actual certificate-chain and hostname verification
-    // are performed by Node TLS when the PostgreSQL connection is opened.
-    if(!/-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----/.test(caPem))
+    // NODE_TLS_REJECT_UNAUTHORIZED=0 disables verification process-wide,
+    // even if rejectUnauthorized is set on an individual client.
+    if(globalTlsVerification==='0')throw new Error(DENIED);
+    // Parse the COMPLETE bounded PEM bundle, not just matching delimiters.
+    // A placeholder, expired CA or trailing garbage cannot act as trust.
+    if(caPem.length>131_072)throw new Error(DENIED);
+    const blocks=caPem.match(/-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----/g);
+    if(!blocks||blocks.length===0||blocks.length>8||
+      caPem.replace(/-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----/g,'').trim())
       throw new Error(DENIED);
+    const now=Date.now();
+    for(const block of blocks){
+      const cert=new X509Certificate(block);
+      const notBefore=Date.parse(cert.validFrom);
+      const notAfter=Date.parse(cert.validTo);
+      if(!cert.ca||!Number.isFinite(notBefore)||!Number.isFinite(notAfter)||
+        now<notBefore||now>=notAfter)throw new Error(DENIED);
+    }
+    // Certificate chain and hostname validation still happen on connect.
     return {
       connectionString,
       ssl:{ca:caPem,rejectUnauthorized:true,minVersion:'TLSv1.2'},
