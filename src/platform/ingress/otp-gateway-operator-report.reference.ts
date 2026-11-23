@@ -66,20 +66,27 @@ export async function runOtpGatewayOperatorReportReadOnly(
   pool:Pick<Pool,'connect'>,
 ):Promise<OtpGatewayReservationSnapshot>{
   let client:PoolClient|undefined;
+  let transactionStarted=false;
   try{
     if(!pool||typeof pool.connect!=='function')throw new Error(DENIED);
     client=await pool.connect();
     await client.query('BEGIN TRANSACTION READ ONLY');
-    try{
-      return await readOtpGatewayOperatorReport(client);
-    }finally{
-      await client.query('ROLLBACK');
-    }
+    transactionStarted=true;
+    const report=await readOtpGatewayOperatorReport(client);
+    await client.query('ROLLBACK');
+    transactionStarted=false;
+    return report;
   }catch{
     throw new Error(DENIED);
   }finally{
-    // One-shot operator report: never recycle a session with possibly
-    // changed role or transaction state.
-    client?.release(true);
+    if(client){
+      if(transactionStarted){
+        try{await client.query('ROLLBACK');}catch{
+          // Connection is destroyed below, not returned for reuse.
+        }
+      }
+      // Explicitly dispose the one-shot session to prevent role bleed.
+      client.release(true);
+    }
   }
 }
