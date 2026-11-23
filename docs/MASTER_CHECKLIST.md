@@ -416,7 +416,7 @@
 - [ ] Admin typecheck lint build — Prepared: admin CI #43826523983 passed typecheck, AST security lint, Node tests, production build and default-off/flagged BFF smoke (2026-11-16); comprehensive ESLint/React/Next semantic rules and authenticated UI acceptance still pending
 - [x] API contract tests — Backend search, public profile, seller and guest HTTP contract regression gate passed in CI #43724266432 (2026-11-15); cross-repository parity remains separately pending
 - [ ] End-to-end user journeys — Pending verification
-- [ ] All main CI checks green — Backend main passed #43723300416; frontend/admin/docs main checks not yet verified
+- [x] All main CI checks green — Verified 2026-11-23 on four **current main commit SHAs**: backend `aa00af6` CI #45163698435 PASS; frontend `ca60fc7` CI #45174908233 PASS; admin `af4ffb9` CI #44296290223 PASS; docs `b13fd6b` route inventory #45177745677, documentation HTML #45177745558, technical contracts #45177745461 and Pages deployment #45177744383 all PASS. This is point-in-time main CI acceptance, not staging/security/production approval; future failing main CI reopens this item.
 - [ ] Regression and smoke suite — Pending verification
 
 ### Production operations
@@ -445,6 +445,14 @@
 - [ ] Release checklist and version tag — Pending verification
 
 ## Evidence log
+
+### 2026-11-23 — all current main CI checks reconciled (acceptance 21/117 → 22/117)
+
+- **Backend:** main `aa00af61eeddf27e47a5a46b68d641821d3175a5`, [Backend foundation CI #45163698435 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45163698435).
+- **Frontend:** main `ca60fc7e258ece2f26ce6d70a75c56ffc20c3655`, [Frontend foundation CI #45174908233 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45174908233).
+- **Admin:** main `af4ffb9e91132b300202678033d2cba220a4c464`, [Admin foundation CI #44296290223 PASS](https://github.com/nurgeldiserikbay/services-admin/actions/runs/44296290223).
+- **Documentation:** main `b13fd6b6bd518bca5a919fb70f67d0cebf87af64`, [API route inventory #45177745677 PASS](https://github.com/nurgeldiserikbay/services/actions/runs/45177745677), [HTML #45177745558 PASS](https://github.com/nurgeldiserikbay/services/actions/runs/45177745558), [technical contracts #45177745461 PASS](https://github.com/nurgeldiserikbay/services/actions/runs/45177745461), and [Pages build/deployment #45177744383 PASS](https://github.com/nurgeldiserikbay/services/actions/runs/45177744383). Previously failed scheduled route inventory was restored in [docs PR #19](https://github.com/nurgeldiserikbay/services/pull/19) via source-snapshot parity and recalculated design comparison; its tests passed on the docs main SHA.
+- These are **successful runs on the exact latest `main` heads verified at the time of review**. An older cancelled/superseded run is not treated as an outstanding head failure. This checkbox does **not** assert that all cross-repository API semantics match, that real OTP provider/staging is approved, or that any unexercised feature flags are ready for rollout. A new failing required check on any current main reopens it. The `API contract parity` item stays unchecked (36 unmatched design operations); acceptance moves **21/117 → 22/117** without changing the denominator.
 
 ### 2026-11-21 — isolated gateway inbound authentication and signed JSON verification (PR CI pending)
 
@@ -1443,4 +1451,4 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 21 (verified top-level acceptance items; guest request creation accepted on 2026-11-20). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 22 (21 previously accepted, plus independently verified current-main CI across backend, frontend, admin and docs on 2026-11-23). This strict checkbox count is not the project's historical functional-readiness estimate.
