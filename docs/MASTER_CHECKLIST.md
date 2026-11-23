@@ -195,6 +195,10 @@
 - Branch `fix/otp-operator-release-error-sanitization-20261123`: the manual reference-only observer masks an unexpected PostgreSQL client `release(true)` exception instead of propagating connection diagnostics. Unit regressions cover a disposal exception following successful aggregate read and ACL denial.
 - Verified [PR #431](https://github.com/nurgeldiserikbay/services-back/pull/431), exact head `d0af0bc66567acff4b17129fdfb4b2889cdbaefa`, [Backend foundation CI #4587 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45116150277), squash merge `90ccecb0b95bf9badc93fd577228b4311e2cbd73`. No production provider, TLS custody, private KZ staging or operational approval; no readiness increase.
 
+### 2026-11-23 — explicit CA-verified PostgreSQL TLS for reference OTP monitor (PR CI pending)
+- Branch `fix/otp-operator-explicit-pg-tls-20261123`: manual OTP operator CLI now requires secret-manager-supplied `OTP_GATEWAY_MONITOR_CA_PEM` and sets PostgreSQL TLS with `rejectUnauthorized: true`, a pinned CA and TLS >= 1.2. Connection URL query params and fragments are rejected to prevent pg URL SSL options from overriding the explicit configuration. Unit regressions cover missing CA, unsafe URL/TLS overrides and valid configuration shape.
+- Reference-only safeguard. No production CA, TLS server, approved KZ private network, credential/CA lifecycle, actual OTP provider or staging evidence is provisioned. Full exact PR-head backend CI including PostgreSQL E2E required before merge; no release-readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
