@@ -39,7 +39,12 @@ test('OTP monitor PostgreSQL SSLRequest requires correct CA and hostname',
   run('x509','-req','-in','server.csr','-CA','trusted.crt',
    '-CAkey','trusted.key','-CAcreateserial','-days','2',
    '-extfile','server.ext','-out','server.crt');
-  const context=createSecureContext({
+  // Simulate a server certificate replacement signed by a distinct CA.
+  // Keep the same localhost key/CSR to isolate trust-store rotation.
+  run('x509','-req','-in','server.csr','-CA','other.crt',
+   '-CAkey','other.key','-CAcreateserial','-days','2',
+   '-extfile','server.ext','-out','rotated-server.crt');
+  let context=createSecureContext({
    cert:readFileSync(join(dir,'server.crt')),
    key:readFileSync(join(dir,'server.key')),
   });
@@ -91,6 +96,22 @@ test('OTP monitor PostgreSQL SSLRequest requires correct CA and hostname',
   assert.equal(authenticatedStartups,1,'untrusted CA must not send authenticated startup');
   await attempt('127.0.0.1',trustedCa);
   assert.equal(authenticatedStartups,1,'hostname mismatch must fail before secure handshake');
+
+  // CA rotation: a new server certificate must not be trusted by the old
+  // pinned CA alone. Update the server's TLS context without restarting it.
+  context=createSecureContext({
+   cert:readFileSync(join(dir,'rotated-server.crt')),
+   key:readFileSync(join(dir,'server.key')),
+  });
+  await attempt('localhost',trustedCa);
+  assert.equal(authenticatedStartups,1,
+   'old-only CA must not trust a server rotated to the new CA');
+  await attempt('localhost',otherCa);
+  assert.equal(authenticatedStartups,2,
+   'new-only CA must accept the rotated server certificate');
+  await attempt('localhost',trustedCa+'\n'+otherCa);
+  assert.equal(authenticatedStartups,3,
+   'bounded overlap CA bundle must accept the new server chain');
  }finally{
   if(server)await new Promise<void>(resolve=>server!.close(()=>resolve()));
   rmSync(dir,{recursive:true,force:true});
