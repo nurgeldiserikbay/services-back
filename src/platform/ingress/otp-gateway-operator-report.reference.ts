@@ -87,6 +87,7 @@ export async function runOtpGatewayOperatorReportReadOnly(
   pool:Pick<Pool,'connect'>,
   expectedSchema?:string,
   verifyServerTls=false,
+  expectedDatabase?:string,
 ):Promise<OtpGatewayReservationSnapshot>{
   let client:PoolClient|undefined;
   let transactionStarted=false;
@@ -119,6 +120,19 @@ export async function runOtpGatewayOperatorReportReadOnly(
       `);
       if(tls.rows.length!==1||tls.rows[0]?.ssl!==true||
         !['TLSv1.2','TLSv1.3'].includes(tls.rows[0]?.version??''))
+        throw new Error(DENIED);
+    }
+    if(expectedDatabase!==undefined){
+      // Check the actual selected database in the SAME pinned transaction
+      // before any observer ACL/ledger query, not only the URL text.
+      if(!/^[a-z_][a-z0-9_]{0,62}$/.test(expectedDatabase)||
+        expectedDatabase.startsWith('pg_'))
+        throw new Error(DENIED);
+      const dbIdentity=await client.query<{name:string}>(
+        'SELECT pg_catalog.current_database() AS name',
+      );
+      if(dbIdentity.rows.length!==1||
+        dbIdentity.rows[0]?.name!==expectedDatabase)
         throw new Error(DENIED);
     }
     const report=await readOtpGatewayOperatorReport(client,expectedSchema);

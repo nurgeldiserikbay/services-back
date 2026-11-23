@@ -232,6 +232,10 @@
 - Initial [CI #4676](https://github.com/nurgeldiserikbay/services-back/actions/runs/45130905227) FAILED from a test-only false positive: the dummy schema text `otp_gateway` also occurred in the permitted constant error string. The assertion fixture was corrected to a distinct dummy schema marker; no runtime security behavior was weakened. Verified [PR #442](https://github.com/nurgeldiserikbay/services-back/pull/442), exact head `b22610de160bc028f947ad22d0ab5798959c8d5e`, [Backend foundation CI #4678 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45131511244), squash merge `2f5f654409d55803cfae2d57aeaeb145f295fac0`.
 - Does not establish private KZ staging environment identity, a live provider, valid CA custody or production acceptance; no readiness increase.
 
+### 2026-11-23 — independent staging PostgreSQL database identity pin (PR CI pending)
+- Branch `fix/otp-staging-approved-database-pin-20261123`: manual staging observer now requires `OTP_GATEWAY_MONITOR_EXPECTED_DATABASE` independently supplied by the approved infrastructure operator; pre-connect URL path must select exactly that database and reject system/malformed names. On the same pinned READ ONLY transaction, after TLS verification and before ACL or ledger reads, a `pg_catalog.current_database()` query must match the approved name. Unit regressions cover wrong URL database, malformed database names, server-side identity mismatch, rollback/session disposal, and a matched positive path.
+- This is reference-only defense in depth, not proof of actual KZ-private network or a real staging OTP provider/database. Exact-head backend CI pending; no readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure

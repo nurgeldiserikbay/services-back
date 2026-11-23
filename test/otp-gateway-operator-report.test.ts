@@ -300,3 +300,60 @@ test('staging observer accepts server TLS before ACL and aggregates',async()=>{
  assert.match(queries[4],/WHERE status='RESERVED'/);
  assert.equal(queries[5],'ROLLBACK');
 });
+
+test('staging observer verifies connected DB identity before ACL and aggregate SQL',async()=>{
+ for(const actual of ['services',null,undefined]){
+  const queries:string[]=[];
+  let released=0;
+  const pool={connect:async()=>({
+   query:async(sql:string)=>{
+    queries.push(sql);
+    if(sql.includes('pg_stat_ssl'))
+     return {rows:[{ssl:true,version:'TLSv1.3'}]};
+    if(sql.includes('current_database()'))
+     return {rows:[{name:actual}]};
+    if(sql.includes('has_column_privilege'))
+     throw Error('database mismatch must fail before ACL');
+    return {rows:[]};
+   },
+   release:(destroy?:boolean)=>{assert.equal(destroy,true);released++;},
+  })};
+  await assert.rejects(
+   runOtpGatewayOperatorReportReadOnly(
+    pool as never,'gateway_ledger',true,'otp_staging',
+   ),{message:'otp_gateway_operator_report_unavailable'},
+  );
+  assert.equal(released,1);
+  assert.ok(queries.some(sql=>sql.includes('current_database()')));
+  assert.ok(!queries.some(sql=>sql.includes('has_column_privilege')));
+  assert.equal(queries.at(-1),'ROLLBACK');
+ }
+});
+
+test('staging observer accepts pinned DB identity then validates role and aggregates',async()=>{
+ const queries:string[]=[];
+ let released=0;
+ const pool={connect:async()=>({
+  query:async(sql:string)=>{
+   queries.push(sql);
+   if(sql.includes('pg_stat_ssl'))
+    return {rows:[{ssl:true,version:'TLSv1.3'}]};
+   if(sql.includes('current_database()'))
+    return {rows:[{name:'otp_staging'}]};
+   if(sql.includes('has_column_privilege'))return {rows:[restricted]};
+   if(sql.includes("WHERE status='RESERVED'"))return {rows:[snapshot]};
+   return {rows:[]};
+  },
+  release:(destroy?:boolean)=>{assert.equal(destroy,true);released++;},
+ })};
+ const result=await runOtpGatewayOperatorReportReadOnly(
+  pool as never,'gateway_ledger',true,'otp_staging',
+ );
+ assert.equal(result.total,'3');
+ assert.equal(released,1);
+ assert.match(queries[2],/pg_stat_ssl/);
+ assert.match(queries[3],/current_database/);
+ assert.match(queries[4],/has_column_privilege/);
+ assert.match(queries[5],/WHERE status='RESERVED'/);
+ assert.equal(queries[6],'ROLLBACK');
+});

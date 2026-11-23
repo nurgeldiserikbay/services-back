@@ -6,6 +6,7 @@ import {parseOtpGatewayStagingPreflightInputs} from
 const valid={
  OTP_GATEWAY_MONITOR_ENV:'staging',
  OTP_GATEWAY_MONITOR_EXPECTED_HOST:'gateway.internal',
+ OTP_GATEWAY_MONITOR_EXPECTED_DATABASE:'otp',
  OTP_GATEWAY_MONITOR_DATABASE_URL:'postgresql://observer:secret@gateway.internal:5432/otp',
  OTP_GATEWAY_MONITOR_SCHEMA:'otp_gateway',
  OTP_GATEWAY_MONITOR_CA_PEM:'fake-for-argument-gate-only',
@@ -16,7 +17,8 @@ test('OTP staging preflight requires explicit staging-only read-only opt-in',()=
   parseOtpGatewayStagingPreflightInputs(['--staging-read-only'],valid),
   {databaseUrl:valid.OTP_GATEWAY_MONITOR_DATABASE_URL,
    schema:valid.OTP_GATEWAY_MONITOR_SCHEMA,
-   caPem:valid.OTP_GATEWAY_MONITOR_CA_PEM},
+   caPem:valid.OTP_GATEWAY_MONITOR_CA_PEM,
+   databaseName:valid.OTP_GATEWAY_MONITOR_EXPECTED_DATABASE},
  );
  for(const args of [[],['--read-only'],['--staging-read-only','extra']]){
   assert.throws(()=>parseOtpGatewayStagingPreflightInputs(args,valid),{
@@ -30,6 +32,7 @@ test('OTP staging preflight requires explicit staging-only read-only opt-in',()=
   ['OTP_GATEWAY_MONITOR_SCHEMA',''],
   ['OTP_GATEWAY_MONITOR_CA_PEM',''],
   ['OTP_GATEWAY_MONITOR_EXPECTED_HOST',''],
+  ['OTP_GATEWAY_MONITOR_EXPECTED_DATABASE',''],
  ] as const){
   assert.throws(
    ()=>parseOtpGatewayStagingPreflightInputs(
@@ -70,5 +73,27 @@ test('OTP staging preflight pins operator-approved hostname before connecting',(
    {message:'otp_gateway_staging_preflight_unavailable'},
    url.replace(/secret/g,'[redacted]'),
   );
+ }
+});
+
+test('OTP staging preflight rejects wrong or unsafe database names before connect',()=>{
+ for(const name of ['services','postgres','template0','template1',
+  'pg_catalog','PG_PUBLIC','otp;DROP TABLE users','otp-other','otp/backup',
+  'otp%2Fbackup','', 'a'.repeat(64)]){
+  assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
+   ['--staging-read-only'],
+   {...valid,OTP_GATEWAY_MONITOR_EXPECTED_DATABASE:name},
+  ),{message:'otp_gateway_staging_preflight_unavailable'});
+ }
+ for(const url of [
+  'postgresql://observer:secret@gateway.internal:5432/services',
+  'postgresql://observer:secret@gateway.internal:5432/',
+  'postgresql://observer:secret@gateway.internal:5432/otp%2Fother',
+  'postgresql://observer:secret@gateway.internal:5432/otp/other',
+ ]){
+  assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
+   ['--staging-read-only'],
+   {...valid,OTP_GATEWAY_MONITOR_DATABASE_URL:url},
+  ),{message:'otp_gateway_staging_preflight_unavailable'});
  }
 });
