@@ -43,7 +43,7 @@ test('OTP monitor PostgreSQL SSLRequest requires correct CA and hostname',
    cert:readFileSync(join(dir,'server.crt')),
    key:readFileSync(join(dir,'server.key')),
   });
-  let handshakes=0;
+  let authenticatedStartups=0;
   server=createServer(socket=>{
    socket.once('data',request=>{
     // PostgreSQL protocol: length=8, SSLRequest code=80877103.
@@ -57,10 +57,12 @@ test('OTP monitor PostgreSQL SSLRequest requires correct CA and hostname',
       isServer:true,secureContext:context,
      });
      encrypted.on('error',()=>{});
-     encrypted.once('secure',()=>{
-      handshakes++;
-      // Close after SSL handshake; no fake database authentication.
-      encrypted.end();
+     encrypted.on('data',startup=>{
+      // The PostgreSQL startup packet is sent only once the client has
+      // accepted the TLS peer certificate and hostname.
+      if(startup.length>=8&&startup.readInt32BE(4)===196608)
+       authenticatedStartups++;
+      encrypted.end(); // No fake database authentication.
      });
     });
    });
@@ -84,11 +86,11 @@ test('OTP monitor PostgreSQL SSLRequest requires correct CA and hostname',
    }
   };
   await attempt('localhost',trustedCa);
-  assert.equal(handshakes,1,'trusted CA + hostname must complete real TLS');
+  assert.equal(authenticatedStartups,1,'trusted CA + hostname must send startup after authenticated TLS');
   await attempt('localhost',otherCa);
-  assert.equal(handshakes,1,'untrusted CA must fail before secure handshake');
+  assert.equal(authenticatedStartups,1,'untrusted CA must not send authenticated startup');
   await attempt('127.0.0.1',trustedCa);
-  assert.equal(handshakes,1,'hostname mismatch must fail before secure handshake');
+  assert.equal(authenticatedStartups,1,'hostname mismatch must fail before secure handshake');
  }finally{
   if(server)await new Promise<void>(resolve=>server!.close(()=>resolve()));
   rmSync(dir,{recursive:true,force:true});
