@@ -14,6 +14,10 @@
 - This is **only a negative real-PostgreSQL CI regression**, not approved dedicated KZ gateway schema/role provisioning, TLS-attested staging, OTP provider testing or production acceptance. No top-level acceptance checkbox changes.
 - Verified [backend PR #447](https://github.com/nurgeldiserikbay/services-back/pull/447), exact head `298d74569befe01926addd8f4c1bd3e1e3ef3512`, [Backend foundation CI #4721 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45142090741), including dependency audit and full `npm test` against disposable PostgreSQL; squash merge `926006453de746bb47845ba770d22177bb5bcd1a`. Operational staging and provider approval still OPEN; no acceptance-count change.
 
+### 2026-11-23 — prepared registered-customer request creation (PR CI pending)
+- Branch `feat/registered-customer-request-core-20261123`: introduces an **internal transaction primitive**, distinct from guest CREATE_REQUEST, for a registered customer's own request. The caller must first authenticate a revocation-checked active account bearer and resolve the customer Person in the **same** database transaction. The primitive verifies the person exists, the offer remains published, seller/profile state and location are eligible, then atomically inserts one PENDING request, actor-scoped CREATED audit event, PII-free outbox event, seller IN_APP notification intent and an account-scoped idempotent response. Same key+body replays; key+changed body conflicts. PostgreSQL E2E covers scoped replay, no duplicate side effects, foreign/unregistered identity denial and paused offer denial.
+- **Not exposed:** No new controller, session issuer, browser cookie route or feature flag activation. A trusted bearer-only HTTP adapter, authenticated browser BFF with CSRF, client integration, cross-role browser journey, security review and staging E2E are still required before marking `Authenticated request flow` complete. Do not treat CI-only transaction preparation as public feature acceptance or increment the 21/117 count.
+
 ## Rules
 
 - `[x]` = verified complete: attach commit/PR **and** passing relevant CI or reproducible acceptance evidence.
