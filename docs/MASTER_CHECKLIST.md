@@ -203,6 +203,10 @@
 - Branch `fix/otp-monitor-ca-validity-global-tls-20261123`: reference-only manual PostgreSQL observer validates every PEM certificate in the bounded CA bundle using Node `X509Certificate`: CA flag, parseability, and current validity range. Denies trailing untrusted data and `NODE_TLS_REJECT_UNAUTHORIZED=0` before connecting. Regression coverage uses a valid test CA from Node's root set, malformed placeholder/trailing text and process-wide TLS bypass.
 - Verified [PR #433](https://github.com/nurgeldiserikbay/services-back/pull/433), exact head `0ceea83e17073dcc136582c45b05e0734e516a11`, [Backend foundation CI #4606 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45118664857), squash merge `2b3c5d8503a6c6f3f0a8d01ed07a5b9bfb548870`. No production CA, private KZ deployment, revocation/rotation evidence, real provider or staging sign-off. No release readiness increase.
 
+### 2026-11-23 — local PostgreSQL SSLRequest TLS integration regression (PR CI pending)
+- Branch `test/otp-monitor-real-pg-tls-handshake-20261123`: isolated Node `pg` client negotiates a real TLS handshake with a local PostgreSQL SSLRequest test peer using ephemeral OpenSSL CA/server material generated at runtime. Positive trusted-CA/DNS case and negative wrong-CA/hostname cases test the connection boundary; the mock peer terminates before PostgreSQL authentication. CI confirmation still pending.
+- This is a local protocol regression, NOT an authenticated production PostgreSQL E2E or staging approval. Actual KZ-private gateway, provider, certificate issuance and renewal, role credentials, operational evidence and security sign-off remain pending. Do not increase readiness or merge without exact PR-head full backend CI PASS.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
