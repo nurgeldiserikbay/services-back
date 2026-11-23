@@ -199,6 +199,9 @@
 - Branch `fix/otp-operator-explicit-pg-tls-20261123`: manual OTP operator CLI now requires secret-manager-supplied `OTP_GATEWAY_MONITOR_CA_PEM` and sets PostgreSQL TLS with `rejectUnauthorized: true`, a pinned CA and TLS >= 1.2. Connection URL query params and fragments are rejected to prevent pg URL SSL options from overriding the explicit configuration. Unit regressions cover missing CA, unsafe URL/TLS overrides and valid configuration shape.
 - Verified [PR #432](https://github.com/nurgeldiserikbay/services-back/pull/432), exact head `3871ca78a20d9964d7cf6ebca3b5fc0c6a13acb4`, [Backend foundation CI #4596 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45117347044), squash merge `de6e95b7dee4d22b890068880e8bdc139562340b`. Reference-only safeguard; no production CA, TLS server, approved KZ private network, credential/CA lifecycle, actual OTP provider or staging evidence is provisioned; no release-readiness increase.
 
+### 2026-11-23 — OTP observer CA bundle validity and TLS bypass guard (PR CI pending)
+- Branch `fix/otp-monitor-ca-validity-global-tls-20261123`: reference-only manual PostgreSQL observer validates every PEM certificate in the bounded CA bundle using Node `X509Certificate`: CA flag, parseability, and current validity range. Denies trailing untrusted data and `NODE_TLS_REJECT_UNAUTHORIZED=0` before connecting. Regression coverage uses a valid test CA from Node's root set, malformed placeholder/trailing text and process-wide TLS bypass. Full backend CI including PostgreSQL E2E still required; no production CA, private KZ deployment, revocation/rotation evidence, real provider or staging sign-off. No release readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
