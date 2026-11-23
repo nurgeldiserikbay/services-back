@@ -219,6 +219,10 @@
 - Branch `feat/otp-gateway-staging-preflight-20261123`: new opt-in `scripts/otp-gateway-staging-preflight.ts --staging-read-only` (requires `OTP_GATEWAY_MONITOR_ENV=staging` and approved credential/CA/schema inputs). Uses the one-shot pinned READ ONLY transaction, verifies `pg_stat_ssl` reports SSL and TLS 1.2/1.3 for its own backend PID before ACL and aggregate checks, then prints a fixed success marker without metrics, credentials or identifiers. Regressions cover disabled/missing inputs, plaintext/older protocol denial, strict SQL order and sanitized failure.
 - Verified [PR #438](https://github.com/nurgeldiserikbay/services-back/pull/438), exact head `533c481b5c36639eacf0bfbe932bd492b9130394`, [Backend foundation CI #4646 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45125480303), squash merge `3091956a7fe85f5be322c9679190349de60e9e41`. No real staging endpoint or secret provided; command has NOT been run against any KZ-private gateway. Env flag does not authenticate actual environment identity; actual network, provider, TLS certificate custody, role provisioning and operational production sign-off are still open. No readiness increase.
 
+### 2026-11-23 — staging observer plaintext PostgreSQL denial E2E (PR CI pending)
+- Branch `test/otp-staging-preflight-plaintext-pg-e2e-20261123`: real disposable CI PostgreSQL connection with `ssl:false` confirms the current backend's `pg_stat_ssl.ssl=false`. The staging preflight's pinned read-only session must reject before ACL or ledger queries, issue rollback, and destroy the connection. The error remains sanitized. Unlike mocked unit regression, this runs against PostgreSQL itself; final exact PR-head CI remains pending.
+- This is **negative local database E2E** only. No private Kazakhstan staging infrastructure, TLS-enabled live gateway, provider integration, real observer credential, CA lifecycle, or production acceptance has been verified; no readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
