@@ -180,6 +180,7 @@
 ### 2026-11-22 — OTP operator report pinned read-only session (PR CI pending)
 - Branch `fix/otp-operator-report-one-session-readonly-20261122`: manual OTP report CLI now obtains one PostgreSQL client, begins `TRANSACTION READ ONLY`, performs the current_user privilege preflight and consistent reservation snapshot on that client, rolls back and releases the session even on sanitized failures. Unit tests cover query order, ACL denial, transaction startup failure and client release; actual PostgreSQL E2E covers restricted observer and future-skew fail-closed behavior.
 - Initial PR head `937d859` failed full CI #4545: real PostgreSQL E2E exposed pooled `SET ROLE` state leaking into the next test query (`42501`). Fix explicitly destroys the single-shot observer connection after use, preventing unsafe reuse of role/transaction context; rerun of exact latest PR head is required. Reference-only CLI. DB TLS/certificate validation, KZ private networking, schema/role administration, production monitoring approval and provider staging acceptance remain open; no acceptance/readiness increase.
+- Second PR head `d929eb9` CI #4553 **cancelled**, not PASS. Archived test output identifies 3 failed operator-report release assertions and a process hang: escaped literal `\\n` sequences after `//` accidentally commented out `client?.release(true)`. Commit `8f56164` restores real line breaks and the actual connection destruction call. New exact-head CI must PASS before merge.
 
 ## Acceptance items
 
