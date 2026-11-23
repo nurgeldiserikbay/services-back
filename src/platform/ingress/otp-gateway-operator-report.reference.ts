@@ -78,6 +78,8 @@ export async function runOtpGatewayOperatorReportReadOnly(
   }catch{
     throw new Error(DENIED);
   }finally{
-    // This is a one-shot operator report. Never recycle a session whose\n    // SQL role or transaction state may have been changed during probing.\n    client?.release(true);
+    // One-shot operator report: never recycle a session with possibly
+    // changed role or transaction state.
+    client?.release(true);
   }
 }
