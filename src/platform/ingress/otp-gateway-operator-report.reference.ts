@@ -10,6 +10,8 @@ const DENIED='otp_gateway_operator_report_unavailable';
  * Reference-only privileged operator access gate. The DB role must be
  * restricted to SELECT(status, claimed_at) on the DEDICATED gateway ledger.
  * No write, truncate, or access to identifiers/receipts is permitted.
+ * Refuse temporary tables and views that could shadow the real ledger via
+ * search_path; the query must resolve to an ordinary persistent table.
  * This is not an HTTP endpoint or approval to deploy a monitoring agent.
  */
 export async function readOtpGatewayOperatorReport(
@@ -21,7 +23,7 @@ export async function readOtpGatewayOperatorReport(
       status_allowed:boolean;claimed_allowed:boolean;
       identifier_allowed:boolean;fingerprint_allowed:boolean;
       reference_allowed:boolean;receipt_time_allowed:boolean;
-      can_mutate:boolean;
+      can_mutate:boolean;relation_is_persistent_table:boolean;
     }>(`
       SELECT
         has_column_privilege(current_user,
@@ -41,14 +43,24 @@ export async function readOtpGatewayOperatorReport(
             'otp_gateway_delivery_claims','INSERT,UPDATE')
           OR has_table_privilege(current_user,
             'otp_gateway_delivery_claims','DELETE,TRUNCATE')
-        ) AS can_mutate
+        ) AS can_mutate,
+        EXISTS (
+          SELECT 1 FROM pg_class AS ledger
+          JOIN pg_namespace AS ns ON ns.oid=ledger.relnamespace
+          WHERE ledger.oid='otp_gateway_delivery_claims'::regclass
+            AND ledger.relkind='r'
+            AND ledger.relpersistence='p'
+            AND ns.nspname NOT LIKE 'pg_temp_%'
+            AND ns.nspname NOT LIKE 'pg_toast%'
+        ) AS relation_is_persistent_table
     `);
     const role=acl.rows[0];
     if(acl.rows.length!==1||!role||
       role.status_allowed!==true||role.claimed_allowed!==true||
       role.identifier_allowed!==false||role.fingerprint_allowed!==false||
       role.reference_allowed!==false||role.receipt_time_allowed!==false||
-      role.can_mutate!==false)throw new Error(DENIED);
+      role.can_mutate!==false||
+      role.relation_is_persistent_table!==true)throw new Error(DENIED);
     return await readOtpGatewayReservationSnapshot(db);
   }catch{
     // Never leak connection strings, database errors, role names or secrets.

@@ -7,7 +7,7 @@ const restricted={
  status_allowed:true,claimed_allowed:true,
  identifier_allowed:false,fingerprint_allowed:false,
  reference_allowed:false,receipt_time_allowed:false,
- can_mutate:false,
+ can_mutate:false,relation_is_persistent_table:true,
 };
 const snapshot={
  total:'3',recent:'1',middle:'1',older:'1',
@@ -57,6 +57,20 @@ test('operator report refuses roles with direct PII, receipts or mutation access
    message:'otp_gateway_operator_report_unavailable',
   });
   assert.equal(calls,1,flag);
+ }
+});
+
+test('operator report denies shadowed or non-persistent ledger relation',async()=>{
+ for(const relation of [false,null,undefined,'true']){
+  let calls=0;
+  const db={query:async()=>{
+   calls++;
+   return {rows:[{...restricted,relation_is_persistent_table:relation}]};
+  }};
+  await assert.rejects(readOtpGatewayOperatorReport(db as never),{
+   message:'otp_gateway_operator_report_unavailable',
+  });
+  assert.equal(calls,1);
  }
 });
 

@@ -156,6 +156,32 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
    await assert.rejects(runOtpGatewayOperatorReportReadOnly({
     connect:async()=>pinned,
    } as never),{message:'otp_gateway_operator_report_unavailable'});
+   // A temporary lookalike can shadow an unqualified ledger name in the
+   // same session's search_path. Even with matching column grants, the
+   // operator preflight must reject the temporary relation before metrics.
+   const shadow=await db.connect();
+   try{
+    await shadow.query(`
+      CREATE TEMP TABLE otp_gateway_delivery_claims (
+        idempotency_key text,fingerprint text,status text,
+        claimed_at timestamptz,provider_ref text,accepted_at timestamptz
+      )
+    `);
+    await shadow.query(
+     'GRANT SELECT (status,claimed_at) ON pg_temp.otp_gateway_delivery_claims TO '+role,
+    );
+    await shadow.query('SET ROLE '+role);
+    const resolved=await shadow.query<{relpersistence:string}>(`
+      SELECT c.relpersistence FROM pg_class c
+      WHERE c.oid='otp_gateway_delivery_claims'::regclass
+    `);
+    assert.equal(resolved.rows[0]?.relpersistence,'t');
+    await assert.rejects(readOtpGatewayOperatorReport(shadow as never),{
+     message:'otp_gateway_operator_report_unavailable',
+    });
+   }finally{
+    shadow.release(true);
+   }
    const persisted=await db.query<{status:string}>(
     'SELECT status FROM otp_gateway_delivery_claims WHERE idempotency_key=$1',
     [key],
