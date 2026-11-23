@@ -4,9 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
-### 2026-11-23 — real PostgreSQL OTP observer database mismatch denial (PR CI pending)
+### 2026-11-23 — real PostgreSQL OTP observer database mismatch denial (verified CI)
 - Branch `test/otp-staging-database-identity-real-pg-20261123`: a new disposable PostgreSQL E2E reads the actual database identity, supplies a deliberately different independently approved expected database, and verifies sanitized fail-closed denial before observer ACL, ledger or role queries. It checks READ ONLY transaction start, rollback and forced one-shot connection disposal. No mutation or OTP provider access.
 - This is **CI-only negative-path evidence**, not a TLS-verified KZ private staging gateway connection, provisioned observer credential, provider sign-off, or production acceptance. Keep the verified top-level acceptance count unchanged until independently evidenced.
+- Verified [backend PR #446](https://github.com/nurgeldiserikbay/services-back/pull/446), exact PR head `21b36cdec34012834be76ae81ebbe1aeb0c80108`, [Backend foundation CI #4715 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45140434525) (including real PostgreSQL E2E), squash merge `f7b99a210e7876a82b757590b3422712587d502d`. This verifies the disposable-CI negative case only; staging and production gates remain open. No new top-level acceptance checkbox.
 
 ## Rules
 
