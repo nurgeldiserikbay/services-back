@@ -9,7 +9,7 @@ import {revokeCurrentAccountSession} from './session-revocation.js';
 import {resolveActiveUserSession} from './session-proof.js';
 import {readAccountMe,type AccountMe} from './account-me.js';
 import {confirmCustomerRequestCompletion,CustomerCompletionRejected,type CustomerCompletionResult} from '../requests/customer-completion.transaction.js';
-import {ConflictException,NotFoundException} from '@nestjs/common';
+import {ConflictException,NotFoundException,HttpException,HttpStatus} from '@nestjs/common';
 import {listCustomerRequests,type CustomerRequestPage} from '../requests/customer-request-inventory.repository.js';
 import {createRegisteredCustomerRequestInTransaction,RegisteredRequestRejected,
  type RegisteredRequestReceipt} from '../requests/registered-customer-request.transaction.js';
@@ -51,6 +51,8 @@ export class AccountBearerSessionService{
             throw new UnauthorizedException('Authentication required');
           if(error.reason==='unavailable_offer')
             throw new NotFoundException('Service unavailable');
+          if(error.reason==='rate_limited')
+            throw new HttpException('Request limit reached',HttpStatus.TOO_MANY_REQUESTS);
         }
         throw error;
       }

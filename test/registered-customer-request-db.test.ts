@@ -111,11 +111,50 @@ test('registered request transaction creates one scoped request and replays safe
   `,[f.offer]);
   assert.equal(denied.rows[0]?.n,'1',
    'ineligible seller must create no extra request');
+  // Check offer eligibility below the budget before populating limit fixtures.
   await db.query("UPDATE service_offers SET status='PAUSED' WHERE id=$1",[f.offer]);
   await assert.rejects(
    createRegisteredCustomerRequestInTransaction(db,f.customerPerson,input,
     'registered_create_20261123_003',pepper),
    (e:unknown)=>e instanceof RegisteredRequestRejected&&e.reason==='unavailable_offer');
+  await db.query("UPDATE service_offers SET status='PUBLISHED' WHERE id=$1",[f.offer]);
+  // Seed four more committed-looking rows within this same transaction;
+  // the previous successful creation plus these rows reaches five per minute.
+  // These are disposable CI fixtures and are rolled back at test exit.
+  for(let i=0;i<4;i++){
+   await db.query(`
+    INSERT INTO service_requests
+     (id,offer_id,customer_person_id,source_context,
+      seller_organization_id,status,note)
+    VALUES($1::uuid,$2::uuid,$3::uuid,'ORGANIZATION',
+     $4::uuid,'PENDING',NULL)
+   `,[uuid(),f.offer,f.customerPerson,f.organization]);
+  }
+  const preLimit=await db.query<{n:string}>(`
+   SELECT count(*)::text AS n FROM service_requests
+   WHERE customer_person_id=$1::uuid
+    AND created_at>now()-interval '1 minute'
+  `,[f.customerPerson]);
+  assert.equal(preLimit.rows[0]?.n,'5');
+  await assert.rejects(
+   createRegisteredCustomerRequestInTransaction(
+    db,f.customerPerson,input,'registered_create_20261123_budget_block',pepper),
+   (e:unknown)=>e instanceof RegisteredRequestRejected&&e.reason==='rate_limited');
+  // Idempotent retries must be allowed even after the caller hits the limit.
+  const replayAtLimit=await createRegisteredCustomerRequestInTransaction(
+   db,f.customerPerson,input,key,pepper);
+  assert.deepEqual(replayAtLimit,first);
+  const afterLimit=await db.query<{n:string}>(`
+   SELECT count(*)::text AS n FROM service_requests
+   WHERE customer_person_id=$1::uuid
+  `,[f.customerPerson]);
+  assert.equal(afterLimit.rows[0]?.n,'5','budget denial adds no request');
+  const blockedLedger=await db.query<{n:string}>(`
+   SELECT count(*)::text AS n FROM idempotency_records
+   WHERE actor_scope=$1 AND key=$2
+  `,['account:'+f.customerPerson,'registered_create_20261123_budget_block']);
+  assert.equal(blockedLedger.rows[0]?.n,'0','denial cannot create an idempotent success');
+
  }finally{
   await db.query('ROLLBACK').catch(()=>{});
   await db.end();

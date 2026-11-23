@@ -1,12 +1,13 @@
 import {createHmac,randomUUID} from 'node:crypto';
 import type {PoolClient} from 'pg';
 import type {GuestRequestInput} from '../guest-requests/guest-request.validation.js';
+import {checkRegisteredRequestBudget} from './registered-customer-request.budget.js';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const KEY=/^[A-Za-z0-9][A-Za-z0-9_-]{15,127}$/;
 
 export class RegisteredRequestRejected extends Error{
- constructor(readonly reason:'invalid_actor'|'invalid_input'|'unavailable_offer'|'idempotency_conflict'){
+ constructor(readonly reason:'invalid_actor'|'invalid_input'|'unavailable_offer'|'idempotency_conflict'|'rate_limited'){
   super(reason);
  }
 }
@@ -81,6 +82,12 @@ export async function createRegisteredCustomerRequestInTransaction(
    throw new RegisteredRequestRejected('idempotency_conflict');
   return readReceipt(ledger.response_body);
  }
+
+ // Read the committed retry ledger first: a valid repeat does not create
+ // another request and must not be denied by the issuance budget.
+ const budget=await checkRegisteredRequestBudget(client,personId);
+ if(!budget.allowed)
+  throw new RegisteredRequestRejected('rate_limited');
 
  const offer=await client.query<Seller>(`
   SELECT o.professional_id::text,o.organization_id::text
