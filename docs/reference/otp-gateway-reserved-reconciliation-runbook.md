@@ -33,7 +33,7 @@ Before any count is fetched, the report checks the database's **current role pri
 
 ### Optional staging observer preflight (not an approval)
 
-An authorized infrastructure operator may run the new **manual, one-shot** staging preflight exclusively from the approved private KZ network using the dedicated observer-only gateway role. Retrieve `OTP_GATEWAY_MONITOR_DATABASE_URL`, `OTP_GATEWAY_MONITOR_SCHEMA` and `OTP_GATEWAY_MONITOR_CA_PEM` through the approved secret manager, set `OTP_GATEWAY_MONITOR_ENV=staging`, and invoke:
+An authorized infrastructure operator may run the new **manual, one-shot** staging preflight exclusively from the approved private KZ network using the dedicated observer-only gateway role. Retrieve `OTP_GATEWAY_MONITOR_DATABASE_URL`, `OTP_GATEWAY_MONITOR_SCHEMA` and `OTP_GATEWAY_MONITOR_CA_PEM` through the approved secret manager, set `OTP_GATEWAY_MONITOR_ENV=staging` and separately set `OTP_GATEWAY_MONITOR_EXPECTED_HOST` to the **operator-approved DNS hostname** (not copied automatically from the database URL); the preflight fails before opening a network connection if the URL host differs from the approved name, contains an IP address or malformed DNS pin. This additional explicit host guard is not network identity attestation: TLS still verifies the hostname against the CA-validated certificate. Then invoke:
 
 ```sh
 node --import tsx scripts/otp-gateway-staging-preflight.ts --staging-read-only
