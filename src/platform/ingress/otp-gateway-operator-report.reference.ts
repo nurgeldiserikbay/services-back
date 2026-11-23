@@ -124,7 +124,12 @@ export async function runOtpGatewayOperatorReportReadOnly(
         }
       }
       // Explicitly dispose the one-shot session to prevent role bleed.
-      client.release(true);
+      try{
+        client.release(true);
+      }catch{
+        // Connection disposal failures must never expose PG diagnostics.
+        throw new Error(DENIED);
+      }
     }
   }
 }
