@@ -111,6 +111,13 @@ test('registered request transaction creates one scoped request and replays safe
   `,[f.offer]);
   assert.equal(denied.rows[0]?.n,'1',
    'ineligible seller must create no extra request');
+  // Check offer eligibility below the budget before populating limit fixtures.
+  await db.query("UPDATE service_offers SET status='PAUSED' WHERE id=$1",[f.offer]);
+  await assert.rejects(
+   createRegisteredCustomerRequestInTransaction(db,f.customerPerson,input,
+    'registered_create_20261123_003',pepper),
+   (e:unknown)=>e instanceof RegisteredRequestRejected&&e.reason==='unavailable_offer');
+  await db.query("UPDATE service_offers SET status='PUBLISHED' WHERE id=$1",[f.offer]);
   // Seed four more committed-looking rows within this same transaction;
   // the previous successful creation plus these rows reaches five per minute.
   // These are disposable CI fixtures and are rolled back at test exit.
@@ -147,11 +154,7 @@ test('registered request transaction creates one scoped request and replays safe
    WHERE actor_scope=$1 AND key=$2
   `,['account:'+f.customerPerson,'registered_create_20261123_budget_block']);
   assert.equal(blockedLedger.rows[0]?.n,'0','denial cannot create an idempotent success');
-  await db.query("UPDATE service_offers SET status='PAUSED' WHERE id=$1",[f.offer]);
-  await assert.rejects(
-   createRegisteredCustomerRequestInTransaction(db,f.customerPerson,input,
-    'registered_create_20261123_003',pepper),
-   (e:unknown)=>e instanceof RegisteredRequestRejected&&e.reason==='unavailable_offer');
+
  }finally{
   await db.query('ROLLBACK').catch(()=>{});
   await db.end();
