@@ -92,7 +92,7 @@ test('registered request transaction creates one scoped request and replays safe
   const suspendedSellerQuery={
    query:async(sql:string,values?:unknown[])=>{
     captured.push(sql);
-    if(/FROM organizations\\s+WHERE id=\\$1::uuid AND status='ACTIVE' FOR SHARE/.test(sql))
+    if(/FROM organizations\s+WHERE id=\$1::uuid AND status='ACTIVE' FOR SHARE/.test(sql))
      return {rows:[],rowCount:0};
     return db.query(sql,values);
    },
@@ -103,7 +103,7 @@ test('registered request transaction creates one scoped request and replays safe
     'registered_create_20261123_org_denied',pepper),
    (e:unknown)=>e instanceof RegisteredRequestRejected&&e.reason==='unavailable_offer');
   assert.ok(captured.some(sql=>
-   /FROM organizations\\s+WHERE id=\\$1::uuid AND status='ACTIVE' FOR SHARE/.test(sql)),
+   /FROM organizations\s+WHERE id=\$1::uuid AND status='ACTIVE' FOR SHARE/.test(sql)),
    'the active organization row must be explicitly locked');
   const denied=await db.query<{n:string}>(`
    SELECT count(*)::text AS n FROM service_requests
