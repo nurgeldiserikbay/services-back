@@ -227,6 +227,10 @@
 - Branch `fix/otp-staging-operator-approved-host-pin-20261123`: require independent `OTP_GATEWAY_MONITOR_EXPECTED_HOST` for the manual staging observer. Before creating a PostgreSQL pool, the staging argument gate rejects database URL host mismatches, IP/wildcard/port/scheme host pins and malformed DNS names with a sanitized error. Regression tests verify correct host acceptance and wrong-target denial. The approved expected hostname must come from an operator-controlled environment decision, not copied from the connection URL. Explicit `isIP` checking rejects IPv4/IPv6 pins.
 - Verified [PR #441](https://github.com/nurgeldiserikbay/services-back/pull/441), exact head `87d53245ca7cb0613a4597c4ddd0b3254ec1933d`, [Backend foundation CI #4669 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45129440642), squash merge `e1fbc195164015661e9c8ef8ec88e0ef791938a0`. This is defense in depth, not verified KZ network ownership, certificate custody, live DNS or provider staging sign-off. Actual hostname TLS verification happens at the `pg` connection; no production readiness increase.
 
+### 2026-11-23 — staging observer CLI process-output sanitization regression (PR CI pending)
+- Branch `test/otp-staging-cli-sanitized-failure-20261123`: new `test/otp-gateway-staging-cli-sanitization.test.ts` runs the actual staging CLI in an isolated child Node process with dummy test-only URL/CA values and invalid opt-in, production-labeled environment, wrong operator hostname, and invalid CA. Ensures no database connection is required and checks exit code 1, empty stdout, exact sanitized stderr, and absence of dummy secret/hostname/schema values. This supplements parser/unit tests with process-level evidence.
+- Exact PR-head full CI pending. Does not establish private KZ staging environment identity, a live provider, valid CA custody or production acceptance; no readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
