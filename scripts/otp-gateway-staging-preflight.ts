@@ -21,7 +21,7 @@ async function main():Promise<void>{
   ));
   try{
     await runOtpGatewayOperatorReportReadOnly(
-      pool,inputs.schema,true,inputs.databaseName,
+      pool,inputs.schema,true,inputs.databaseName,inputs.roleName,
     );
     // No DB name, schema, role, hostname, metrics, identifiers or secrets.
     process.stdout.write(
