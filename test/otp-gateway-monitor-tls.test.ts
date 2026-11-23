@@ -54,12 +54,12 @@ test('OTP monitor refuses process-wide TLS verification bypass',()=>{
  assert.throws(()=>makeOtpGatewayMonitorPoolConfig(url,ca,'0'),{
   message:'otp_gateway_operator_report_unavailable',
  });
- assert.equal(makeOtpGatewayMonitorPoolConfig(url,ca,'1').ssl?.rejectUnauthorized,true);
+ assert.equal((makeOtpGatewayMonitorPoolConfig(url,ca,'1').ssl as {rejectUnauthorized:boolean}).rejectUnauthorized,true);
 });
 
 test('OTP monitor accepts a valid bounded multi-certificate CA bundle',()=>{
  const config=makeOtpGatewayMonitorPoolConfig(url,ca+'\n'+ca);
- assert.equal(config.ssl?.rejectUnauthorized,true);
+ assert.equal((config.ssl as {rejectUnauthorized:boolean}).rejectUnauthorized,true);
 });
 
 test('OTP monitor fails closed on empty, oversized or malformed CA bundles',()=>{
