@@ -20,7 +20,9 @@ async function main():Promise<void>{
     inputs.databaseUrl,inputs.caPem,
   ));
   try{
-    await runOtpGatewayOperatorReportReadOnly(pool,inputs.schema,true);
+    await runOtpGatewayOperatorReportReadOnly(
+      pool,inputs.schema,true,inputs.databaseName,
+    );
     // No DB name, schema, role, hostname, metrics, identifiers or secrets.
     process.stdout.write(
       '{"observerTlsAndAcl":"pass","productionApproved":false}\n',
