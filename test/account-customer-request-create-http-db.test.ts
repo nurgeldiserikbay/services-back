@@ -134,6 +134,41 @@ test('real Nest HTTP and PostgreSQL create once for active own bearer, reject re
   assert.equal(stored.rows[0]?.customer_person_id,customerPerson);
   assert.equal(stored.rows[0]?.guest_contact_id,null);
 
+  // The real frontend form sends note:null when the comment is empty.
+  // This must pass the same live bearer and PostgreSQL creation path.
+  const blankKey='registered_http_create_20261123_null_note';
+  const blankBody={service_offer_id:offer,note:null,consent_to_contact:true};
+  const blank=await send('Bearer '+owner.token,blankKey,blankBody);
+  assert.equal(blank.status,201,'explicit null note from BFF must be accepted');
+  const blankReceipt=await blank.json() as {id:string;state:string;version:number};
+  assert.equal(blankReceipt.state,'pending');
+  assert.equal(blankReceipt.version,1);
+  assert.notEqual(blankReceipt.id,receipt.id);
+  const blankPersisted=await db.query<{note:string|null;customer_person_id:string}>(`
+   SELECT note,customer_person_id::text FROM service_requests WHERE id=$1::uuid
+  `,[blankReceipt.id]);
+  assert.equal(blankPersisted.rows[0]?.note,null);
+  assert.equal(blankPersisted.rows[0]?.customer_person_id,customerPerson);
+  const blankRetry=await send('Bearer '+owner.token,blankKey,blankBody);
+  assert.equal(blankRetry.status,201);
+  assert.deepEqual(await blankRetry.json(),blankReceipt,
+   'same explicit-null payload and idempotency key replay one receipt');
+  const omittedKey='registered_http_create_20261123_omitted_note';
+  const omitted=await send('Bearer '+owner.token,omittedKey,{
+   service_offer_id:offer,consent_to_contact:true,
+  });
+  assert.equal(omitted.status,201,'omitted note is also valid');
+  const omittedReceipt=await omitted.json() as {id:string};
+  const omittedPersisted=await db.query<{note:string|null}>(`
+   SELECT note FROM service_requests WHERE id=$1::uuid
+  `,[omittedReceipt.id]);
+  assert.equal(omittedPersisted.rows[0]?.note,null);
+  const total=await db.query<{n:string}>(`
+   SELECT count(*)::text AS n FROM service_requests
+   WHERE customer_person_id=$1::uuid AND offer_id=$2::uuid
+  `,[customerPerson,offer]);
+  assert.equal(total.rows[0]?.n,'3','one original plus two blank-note creations');
+
   await db.query('UPDATE sessions SET revoked_at=now() WHERE token_hash=$1',[owner.hash]);
   const revoked=await send('Bearer '+owner.token,
    'registered_http_create_20261123_002',body);

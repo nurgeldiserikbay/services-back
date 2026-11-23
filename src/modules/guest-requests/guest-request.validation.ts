@@ -20,12 +20,15 @@ export function validateGuestRequestBody(input: unknown): GuestRequestInput {
     throw new BadRequestException('Invalid service_offer_id');
   }
   if (o.consent_to_contact !== true) throw new BadRequestException('Contact consent required');
-  if (o.note !== undefined && (typeof o.note !== 'string' || o.note.length > 1000 ||
-    /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(o.note))) {
+  // Optional note is nullable: browser forms send JSON null for an empty note.
+  // Keep the same allowlist and control-character limits for actual text.
+  if (o.note !== undefined && o.note !== null &&
+      (typeof o.note !== 'string' || o.note.length > 1000 ||
+       /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(o.note))) {
     throw new BadRequestException('Invalid request note');
   }
   return {serviceOfferId:o.service_offer_id.toLowerCase(),
-    note: o.note === undefined ? null : (o.note as string).trim(),consentToContact:true};
+    note: typeof o.note === 'string' ? o.note.trim() : null,consentToContact:true};
 }
 
 export function validateIdempotencyKey(value: unknown): string {
