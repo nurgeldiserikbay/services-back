@@ -207,6 +207,10 @@
 - Branch `test/otp-monitor-real-pg-tls-handshake-20261123`: isolated Node `pg` client negotiates a real TLS handshake with a local PostgreSQL SSLRequest test peer using ephemeral OpenSSL CA/server material generated at runtime. Positive trusted-CA/DNS case and negative wrong-CA/hostname cases test the connection boundary; the mock peer terminates before PostgreSQL authentication. The final test checks an authenticated PostgreSQL startup packet instead of treating the server-side TLS event alone as proof of client trust.
 - Verified [PR #434](https://github.com/nurgeldiserikbay/services-back/pull/434), exact head `04742d6c98b73910bdbc3f4dd0e4bf372d7f28ea`, [Backend foundation CI #4615 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45120247455), squash merge `c8e85323176001530c60526b89eb74bad5c204ce`. Earlier CI #4613 was cancelled after new head pushed; not counted as PASS. This is a local protocol regression, NOT an authenticated production PostgreSQL E2E or staging approval. Actual KZ-private gateway, provider, certificate issuance and renewal, role credentials, operational evidence and security sign-off remain pending; no readiness increase.
 
+### 2026-11-23 — local OTP PostgreSQL CA rotation protocol regression (PR CI pending)
+- Branch `test/otp-monitor-ca-rollover-20261123`: the disposable SSLRequest integration test now rotates the local server leaf from the first CA to a different newly generated CA. The original CA pin fails to authenticate the rotated server, while the replacement CA and explicitly overlapping bundle allow a PostgreSQL startup packet after validated TLS. Test CA keys remain ephemeral and never enter repository history.
+- Reference-only local test, **not** evidence of production certificate lifecycle or staged credentials/provider integration. Private KZ infrastructure, CA custody, automated renewal, revocation/rollback approval and real gateway acceptance remain pending. Exact-head full backend CI including PostgreSQL checks must PASS before merging; no readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
