@@ -47,6 +47,10 @@ Passing this check is **only** evidence of a single successful staging observer 
 
 ### Real PostgreSQL negative-path CI evidence (not live staging)
 
+The disposable CI suite also tests the operator-approved **role identity** check against an actual PostgreSQL connection: `test/otp-gateway-staging-role-postgres-e2e.test.ts` obtains the server-reported database/login role, supplies an independently mismatched role pin, and requires a sanitized failure **before ledger ACL or aggregate queries**. The helper must roll back its read-only transaction and destroy the pinned session. TLS is deliberately tested separately; this role test does not establish a live CA-authenticated staging connection, a provisioned observer account or provider acceptance.
+
+
+
 `test/otp-gateway-staging-plaintext-postgres-e2e.test.ts` connects to the disposable PostgreSQL CI database using `ssl:false`, confirms the server reports `ssl=false` via `pg_stat_ssl`, then invokes the staging TLS-enforcing observer on that real connection. It expects the sanitized denial, a rollback, forced one-shot connection disposal, and **no ACL or aggregate queries** after observing plaintext. It makes no schema or data mutations. When the CI database endpoint itself requires TLS, the plaintext-specific case is explicitly skipped rather than weakening the server configuration. The positive real TLS case against an approved staging gateway **remains unverified**; local mock-protocol TLS coverage is separate.
 
 #### Minimum operator-controlled staging acceptance record
