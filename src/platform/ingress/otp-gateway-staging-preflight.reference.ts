@@ -1,3 +1,5 @@
+import {isIP} from 'node:net';
+
 const DENIED='otp_gateway_staging_preflight_unavailable';
 
 export type OtpGatewayStagingPreflightInputs={
@@ -24,7 +26,7 @@ export function parseOtpGatewayStagingPreflightInputs(
     const host=env.OTP_GATEWAY_MONITOR_EXPECTED_HOST!;
     // Independent operator-approved DNS identity, not a value extracted
     // from the URL itself. Reject scheme, port, wildcard and IP literals.
-    if(host.length>253||!/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(host)||
+    if(isIP(host)!==0||host.length>253||!/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(host)||
       host.split('.').some(label=>label.length>63||
         label.startsWith('-')||label.endsWith('-')))
       throw new Error(DENIED);
