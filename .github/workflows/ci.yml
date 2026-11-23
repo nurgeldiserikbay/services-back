@@ -356,6 +356,8 @@ jobs:
             test/seller-decision-idempotent-db.test.ts
       - name: Customer request inventory HTTP authorization and PostgreSQL pagination (fail fast)
         run: timeout --signal=TERM --kill-after=5s 55s node --import tsx --test test/account-customer-request-inventory-http-db.test.ts
+      - name: Default-off registered customer request create Nest HTTP and PostgreSQL E2E (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 55s node --import tsx --test test/account-customer-request-create-http-db.test.ts
       - name: Prepared registered customer request creation PostgreSQL E2E (fail fast)
         run: timeout --signal=TERM --kill-after=5s 55s node --import tsx --test test/registered-customer-request-db.test.ts
       - name: Customer completion bearer HTTP and PostgreSQL E2E (fail fast)

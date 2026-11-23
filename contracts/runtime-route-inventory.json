@@ -24,6 +24,7 @@
     "GET /service-definitions",
     "GET /service-offers/{id}",
     "PATCH /me/professional-profiles/{id}",
+    "POST /account/requests",
     "POST /account/requests/{id}/complete",
     "POST /admin/moderation/cases/{id}/decision",
     "POST /admin/session/logout",
