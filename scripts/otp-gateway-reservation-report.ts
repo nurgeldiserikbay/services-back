@@ -1,4 +1,6 @@
 import {Pool} from 'pg';
+import {makeOtpGatewayMonitorPoolConfig} from
+ '../src/platform/ingress/otp-gateway-monitor-tls.reference.js';
 import {runOtpGatewayOperatorReportReadOnly} from
  '../src/platform/ingress/otp-gateway-operator-report.reference.js';
 
@@ -15,15 +17,13 @@ import {runOtpGatewayOperatorReportReadOnly} from
 async function main():Promise<void>{
   if(process.argv.length!==3||process.argv[2]!=='--read-only'||
     !process.env.OTP_GATEWAY_MONITOR_DATABASE_URL||
-    !process.env.OTP_GATEWAY_MONITOR_SCHEMA)
+    !process.env.OTP_GATEWAY_MONITOR_SCHEMA||
+    !process.env.OTP_GATEWAY_MONITOR_CA_PEM)
     throw new Error('disabled');
-  const pool=new Pool({
-    connectionString:process.env.OTP_GATEWAY_MONITOR_DATABASE_URL,
-    max:1,
-    connectionTimeoutMillis:5_000,
-    idleTimeoutMillis:1_000,
-    query_timeout:5_000,
-  });
+  const pool=new Pool(makeOtpGatewayMonitorPoolConfig(
+    process.env.OTP_GATEWAY_MONITOR_DATABASE_URL,
+    process.env.OTP_GATEWAY_MONITOR_CA_PEM,
+  ));
   try{
     const snapshot=await runOtpGatewayOperatorReportReadOnly(
       pool,process.env.OTP_GATEWAY_MONITOR_SCHEMA,
