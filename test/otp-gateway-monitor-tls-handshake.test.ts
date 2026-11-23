@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createServer} from 'node:net';
@@ -113,6 +113,39 @@ test('OTP monitor PostgreSQL SSLRequest requires correct CA and hostname',
   await attempt('localhost',trustedCa+'\n'+otherCa);
   assert.equal(authenticatedStartups,3,
    'bounded overlapping CA bundle must support controlled cutover');
+
+  // The trust root remains current, but a leaf expired in 2021.
+  // Use openssl ca to specify deterministic historical start/end dates,
+  // rather than relying on wall-clock sleeps or a near-expiry fixture.
+  mkdirSync(join(dir,'expired-newcerts'));
+  writeFileSync(join(dir,'expired-index.txt'),'');
+  writeFileSync(join(dir,'expired-serial'),'1000\n');
+  writeFileSync(join(dir,'expired-ca.cnf'),[
+   '[ ca ]','default_ca=CA_default',
+   '[ CA_default ]','database=./expired-index.txt',
+   'serial=./expired-serial','new_certs_dir=./expired-newcerts',
+   'certificate=./trusted.crt','private_key=./trusted.key',
+   'default_md=sha256','policy=policy_any',
+   'x509_extensions=server_ext',
+   '[ policy_any ]','commonName=supplied',
+   '[ server_ext ]','subjectAltName=DNS:localhost',
+   'basicConstraints=critical,CA:FALSE',
+   'extendedKeyUsage=serverAuth',
+   '',
+  ].join('\n'));
+  run('req','-newkey','rsa:2048','-nodes',
+   '-subj','/CN=localhost',
+   '-keyout','expired-server.key','-out','expired-server.csr');
+  run('ca','-batch','-config','expired-ca.cnf',
+   '-startdate','20200101000000Z','-enddate','20210101000000Z',
+   '-in','expired-server.csr','-out','expired-server.crt');
+  context=createSecureContext({
+   cert:readFileSync(join(dir,'expired-server.crt')),
+   key:readFileSync(join(dir,'expired-server.key')),
+  });
+  await attempt('localhost',trustedCa);
+  assert.equal(authenticatedStartups,3,
+   'an expired gateway leaf must not pass even with a trusted CA');
  }finally{
   if(server)await new Promise<void>(resolve=>server!.close(()=>resolve()));
   rmSync(dir,{recursive:true,force:true});
