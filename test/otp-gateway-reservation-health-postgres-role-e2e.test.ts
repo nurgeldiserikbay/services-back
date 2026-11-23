@@ -213,3 +213,49 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
    await admin.end();
   }
  });
+
+test('OTP staging preflight rejects actual plaintext PostgreSQL before ACL or aggregates',
+ {skip:!process.env.DATABASE_URL},async()=>{
+  // CI's disposable PostgreSQL uses plaintext for local tests. This check
+  // exercises actual pg_stat_ssl with a real backend PID, unlike mocked
+  // unit tests. It must never be confused with KZ-private staging evidence.
+  const db=new Pool({connectionString:process.env.DATABASE_URL,
+   ssl:false,max:1});
+  try{
+   const current=await db.query<{ssl:boolean;version:string|null}>(
+    'SELECT ssl,version FROM pg_stat_ssl WHERE pid=pg_backend_pid()',
+   );
+   assert.equal(current.rows.length,1);
+   assert.equal(current.rows[0]?.ssl,false);
+   const statements:string[]=[];
+   let destroyed=0;
+   const adapter={connect:async()=>{
+    const client=await db.connect();
+    return {
+     query:(sql:string,values?:unknown[])=>{
+      statements.push(sql);
+      return client.query(sql,values);
+     },
+     release:(destroy?:boolean)=>{
+      assert.equal(destroy,true);
+      destroyed++;
+      client.release(destroy);
+     },
+    };
+   }};
+   await assert.rejects(
+    runOtpGatewayOperatorReportReadOnly(adapter as never,undefined,true),
+    {message:'otp_gateway_operator_report_unavailable'},
+   );
+   assert.equal(destroyed,1);
+   assert.equal(statements.length,3);
+   assert.equal(statements[0],'BEGIN TRANSACTION READ ONLY');
+   assert.match(statements[1],/pg_stat_ssl/);
+   assert.match(statements[1],/pg_backend_pid\(\)/);
+   assert.equal(statements[2],'ROLLBACK');
+   assert.ok(!statements.some(sql=>/has_column_privilege|otp_gateway_delivery_claims/.test(sql)),
+    'plaintext session must fail before reading observer ACL or ledger');
+  }finally{
+   await db.end();
+  }
+});
