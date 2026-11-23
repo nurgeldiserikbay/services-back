@@ -38,7 +38,7 @@ test('minute, hour and day ceilings are inclusive and prioritized',async()=>{
   [['0','0','50'],'account_day',86400],
   [['5','20','50'],'account_day',86400],
  ] as const){
-  const {client}=fixture(...counts);
+  const {client}=fixture(counts[0],counts[1],counts[2]);
   const result=await checkRegisteredRequestBudget(client as never,actor);
   assert.deepEqual(result,{allowed:false,retryAfterSeconds:seconds,reason});
  }
