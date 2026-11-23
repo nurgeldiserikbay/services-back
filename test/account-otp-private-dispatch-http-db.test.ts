@@ -115,7 +115,9 @@ test('real Nest HTTP denies default-off and unauthorized callers without dispatc
    const accepted=await request(key);
    assert.equal(accepted.status,201);
    assert.match(accepted.headers.get('cache-control')??'',/no-store/);
-   const receipt=await accepted.json();
+   const receipt=await accepted.json() as {
+    challenge_id:string;expires_in_seconds:number;
+   };
    assert.deepEqual(Object.keys(receipt).sort(),
     ['challenge_id','expires_in_seconds']);
    assert.equal(receipt.expires_in_seconds,300);
