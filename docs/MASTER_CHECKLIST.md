@@ -223,6 +223,10 @@
 - Branch `test/otp-staging-plaintext-pg-e2e-20261123`: isolated real PostgreSQL CI negative-path test connects without TLS, verifies `pg_stat_ssl.ssl=false`, and confirms staging observer preflight refuses the connection before ACL or aggregate reads, rolls back and destroys its session. If a test endpoint requires TLS, this negative case skips rather than weakens server policy. Runbook now lists nonsecret owner-reviewed evidence for private KZ staging acceptance.
 - Verified [PR #439](https://github.com/nurgeldiserikbay/services-back/pull/439), exact head `c07031cf10aadcc08e1181461a749a3fbd93fd38`, [Backend foundation CI #4653 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45127622145), squash merge `508990a0f666cc4667176ad7ddce601cc24a072b`. No approved real gateway staging credentials, network identity, signed owner evidence, production role, CA lifecycle or OTP provider contract/E2E tested; no readiness increase.
 
+### 2026-11-23 — separately approved staging database DNS pin (PR CI pending)
+- Branch `fix/otp-staging-operator-approved-host-pin-20261123`: require independent `OTP_GATEWAY_MONITOR_EXPECTED_HOST` for the manual staging observer. Before creating a PostgreSQL pool, the staging argument gate rejects database URL host mismatches, IP/wildcard/port/scheme host pins and malformed DNS names with a sanitized error. Regression tests verify correct host acceptance and wrong-target denial. The approved expected hostname must come from an operator-controlled environment decision, not copied from the connection URL.
+- This is defense in depth, not verified KZ network ownership, certificate custody, live DNS or provider staging sign-off. Actual hostname TLS verification still happens at the `pg` connection. Exact-head full backend CI pending; no production readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
