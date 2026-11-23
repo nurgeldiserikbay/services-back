@@ -205,3 +205,41 @@ test('operator report sanitizes transaction startup errors and releases client',
  assert.equal(queries,1);
  assert.equal(released,1);
 });
+
+test('operator report sanitizes a connection disposal failure after success',async()=>{
+ let releases=0;
+ const pool={connect:async()=>({
+  query:async(sql:string)=>{
+   if(sql.includes('has_column_privilege'))return {rows:[restricted]};
+   if(sql.includes("WHERE status='RESERVED'"))return {rows:[snapshot]};
+   return {rows:[]};
+  },
+  release:()=>{
+   releases++;
+   throw new Error('private connection details in release');
+  },
+ })};
+ await assert.rejects(runOtpGatewayOperatorReportReadOnly(pool as never,'gateway_ledger'),{
+  message:'otp_gateway_operator_report_unavailable',
+ });
+ assert.equal(releases,1);
+});
+
+test('operator report sanitizes a connection disposal failure on ACL denial',async()=>{
+ let releases=0;
+ const pool={connect:async()=>({
+  query:async(sql:string)=>{
+   if(sql.includes('has_column_privilege'))
+    return {rows:[{...restricted,can_mutate:true}]};
+   return {rows:[]};
+  },
+  release:()=>{
+   releases++;
+   throw new Error('private connection details in release');
+  },
+ })};
+ await assert.rejects(runOtpGatewayOperatorReportReadOnly(pool as never,'gateway_ledger'),{
+  message:'otp_gateway_operator_report_unavailable',
+ });
+ assert.equal(releases,1);
+});
