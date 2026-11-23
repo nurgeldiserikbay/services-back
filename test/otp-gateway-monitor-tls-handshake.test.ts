@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
+import {X509Certificate} from 'node:crypto';
 import {mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -139,6 +140,13 @@ test('OTP monitor PostgreSQL SSLRequest requires correct CA and hostname',
   run('ca','-batch','-config','expired-ca.cnf',
    '-startdate','20200101000000Z','-enddate','20210101000000Z',
    '-in','expired-server.csr','-out','expired-server.crt');
+  const expiredLeaf=new X509Certificate(
+   readFileSync(join(dir,'expired-server.crt')),
+  );
+  assert.ok(Date.parse(expiredLeaf.validTo)<Date.now(),
+   'fixture must be an actually expired leaf certificate');
+  assert.ok(Date.parse(expiredLeaf.validFrom)<Date.parse(expiredLeaf.validTo),
+   'fixture certificate must have a valid historical lifetime');
   context=createSecureContext({
    cert:readFileSync(join(dir,'expired-server.crt')),
    key:readFileSync(join(dir,'expired-server.key')),
