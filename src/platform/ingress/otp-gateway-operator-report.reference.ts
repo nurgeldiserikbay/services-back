@@ -16,6 +16,7 @@ const DENIED='otp_gateway_operator_report_unavailable';
  */
 export async function readOtpGatewayOperatorReport(
   db:Pick<Pool,'query'>,
+  expectedSchema?:string,
 ):Promise<OtpGatewayReservationSnapshot>{
   try{
     if(!db||typeof db.query!=='function')throw new Error(DENIED);
@@ -24,6 +25,7 @@ export async function readOtpGatewayOperatorReport(
       identifier_allowed:boolean;fingerprint_allowed:boolean;
       reference_allowed:boolean;receipt_time_allowed:boolean;
       can_mutate:boolean;relation_is_persistent_table:boolean;
+      relation_in_expected_schema:boolean;
     }>(`
       SELECT
         has_column_privilege(current_user,
@@ -52,15 +54,22 @@ export async function readOtpGatewayOperatorReport(
             AND ledger.relpersistence='p'
             AND ns.nspname NOT LIKE 'pg_temp_%'
             AND ns.nspname NOT LIKE 'pg_toast%'
-        ) AS relation_is_persistent_table
-    `);
+        ) AS relation_is_persistent_table,
+        EXISTS (
+          SELECT 1 FROM pg_class AS ledger
+          JOIN pg_namespace AS ns ON ns.oid=ledger.relnamespace
+          WHERE ledger.oid='otp_gateway_delivery_claims'::regclass
+            AND ($1::text IS NULL OR ns.nspname=$1::text)
+        ) AS relation_in_expected_schema
+    `,[expectedSchema??null]);
     const role=acl.rows[0];
     if(acl.rows.length!==1||!role||
       role.status_allowed!==true||role.claimed_allowed!==true||
       role.identifier_allowed!==false||role.fingerprint_allowed!==false||
       role.reference_allowed!==false||role.receipt_time_allowed!==false||
       role.can_mutate!==false||
-      role.relation_is_persistent_table!==true)throw new Error(DENIED);
+      role.relation_is_persistent_table!==true||
+      role.relation_in_expected_schema!==true)throw new Error(DENIED);
     return await readOtpGatewayReservationSnapshot(db);
   }catch{
     // Never leak connection strings, database errors, role names or secrets.
@@ -76,15 +85,32 @@ export async function readOtpGatewayOperatorReport(
  */
 export async function runOtpGatewayOperatorReportReadOnly(
   pool:Pick<Pool,'connect'>,
+  expectedSchema?:string,
 ):Promise<OtpGatewayReservationSnapshot>{
   let client:PoolClient|undefined;
   let transactionStarted=false;
   try{
     if(!pool||typeof pool.connect!=='function')throw new Error(DENIED);
+    // This parameter comes from operator-approved deployment config, never
+    // a user request or the database session's pre-existing search_path.
+    if(expectedSchema!==undefined&&(
+      !/^[a-z_][a-z0-9_]{0,62}$/.test(expectedSchema)||
+      expectedSchema.startsWith('pg_')||
+      expectedSchema==='information_schema'
+    ))throw new Error(DENIED);
     client=await pool.connect();
     await client.query('BEGIN TRANSACTION READ ONLY');
     transactionStarted=true;
-    const report=await readOtpGatewayOperatorReport(client);
+    if(expectedSchema!==undefined){
+      // Explicitly put pg_temp AFTER the trusted schema so even an existing
+      // namesake temporary table cannot take precedence. Never concatenate
+      // an unchecked identifier into SQL.
+      await client.query(
+        "SELECT set_config('search_path', format('%I, pg_temp', $1::text), true)",
+        [expectedSchema],
+      );
+    }
+    const report=await readOtpGatewayOperatorReport(client,expectedSchema);
     await client.query('ROLLBACK');
     transactionStarted=false;
     return report;
