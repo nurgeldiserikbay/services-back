@@ -263,6 +263,8 @@ jobs:
           node --import tsx --test \
             test/account-session-management-db.test.ts \
             test/account-session-activity-db.test.ts
+      - name: Private account OTP initiation HTTP PostgreSQL and provider-denial E2E (fail fast)
+        run: timeout --signal=TERM --kill-after=5s 55s node --import tsx --test test/account-otp-private-dispatch-http-db.test.ts
       - name: Account authentication and remote session revoke HTTP boundaries (fail fast)
         run: |
           node --import tsx --test \
