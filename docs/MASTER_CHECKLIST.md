@@ -211,6 +211,10 @@
 - Branch `test/otp-monitor-ca-rollover-20261123`: the disposable SSLRequest integration test now rotates the local server leaf from the first CA to a different newly generated CA. The original CA pin fails to authenticate the rotated server, while the replacement CA and explicitly overlapping bundle allow a PostgreSQL startup packet after validated TLS. Test CA keys remain ephemeral and never enter repository history.
 - Verified [PR #436](https://github.com/nurgeldiserikbay/services-back/pull/436), exact head `9c65db7e187f8ec239fa5bf0a4417f5a5fda98ff`, [Backend foundation CI #4627 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45122085556), squash merge `edf82919401ecc99b2a9bac3eca3fb6ccc677e1c`. Reference-only local protocol test, **not** evidence of production certificate lifecycle or staged credentials/provider integration. Private KZ infrastructure, CA custody, automated renewal, revocation/rollback approval and real gateway acceptance remain pending; no readiness increase.
 
+### 2026-11-23 — expired PostgreSQL server certificate TLS rejection regression (PR CI pending)
+- Branch `test/otp-monitor-expired-leaf-tls-20261123`: the local PostgreSQL SSLRequest protocol fixture uses OpenSSL to sign a historical (2020–2021) server leaf with the currently valid test CA and verifies fixture dates using `X509Certificate`. The TLS client must refuse that expired leaf and send no authenticated PostgreSQL startup packet, even while the root CA remains trusted. Test-only ephemeral keys are removed at cleanup.
+- Full exact PR-head backend CI with PostgreSQL checks remains mandatory before merge. This does not prove live private KZ gateway certificate lifecycle, renewal/revocation, operational runbooks or OTP provider staging acceptance; no readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
