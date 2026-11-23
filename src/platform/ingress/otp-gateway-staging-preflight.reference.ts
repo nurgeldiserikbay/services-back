@@ -7,6 +7,7 @@ export type OtpGatewayStagingPreflightInputs={
   schema:string;
   caPem:string;
   databaseName:string;
+  roleName:string;
 };
 
 /** Explicit opt-in to a read-only, reference-only staging connection.
@@ -22,7 +23,8 @@ export function parseOtpGatewayStagingPreflightInputs(
     !env.OTP_GATEWAY_MONITOR_SCHEMA||
     !env.OTP_GATEWAY_MONITOR_CA_PEM||
     !env.OTP_GATEWAY_MONITOR_EXPECTED_HOST||
-    !env.OTP_GATEWAY_MONITOR_EXPECTED_DATABASE)
+    !env.OTP_GATEWAY_MONITOR_EXPECTED_DATABASE||
+    !env.OTP_GATEWAY_MONITOR_EXPECTED_ROLE)
     throw new Error(DENIED);
   try{
     const host=env.OTP_GATEWAY_MONITOR_EXPECTED_HOST!;
@@ -37,9 +39,14 @@ export function parseOtpGatewayStagingPreflightInputs(
       dbName.startsWith('pg_')||dbName==='postgres'||
       dbName==='template0'||dbName==='template1')
       throw new Error(DENIED);
+    const role=env.OTP_GATEWAY_MONITOR_EXPECTED_ROLE!;
+    if(!/^[a-z_][a-z0-9_]{0,62}$/.test(role)||
+      role.startsWith('pg_')||role==='postgres')
+      throw new Error(DENIED);
     const url=new URL(env.OTP_GATEWAY_MONITOR_DATABASE_URL);
     if(!['postgres:','postgresql:'].includes(url.protocol)||
-      url.hostname!==host||url.pathname!=='/'+dbName)
+      url.hostname!==host||url.pathname!=='/'+dbName||
+      url.username!==role)
       throw new Error(DENIED);
   }catch{
     // Credentials or attacker-controlled endpoint details are never logged.
@@ -50,5 +57,6 @@ export function parseOtpGatewayStagingPreflightInputs(
     schema:env.OTP_GATEWAY_MONITOR_SCHEMA,
     caPem:env.OTP_GATEWAY_MONITOR_CA_PEM,
     databaseName:env.OTP_GATEWAY_MONITOR_EXPECTED_DATABASE,
+    roleName:env.OTP_GATEWAY_MONITOR_EXPECTED_ROLE,
   };
 }

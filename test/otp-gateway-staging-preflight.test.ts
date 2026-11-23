@@ -7,6 +7,7 @@ const valid={
  OTP_GATEWAY_MONITOR_ENV:'staging',
  OTP_GATEWAY_MONITOR_EXPECTED_HOST:'gateway.internal',
  OTP_GATEWAY_MONITOR_EXPECTED_DATABASE:'otp',
+ OTP_GATEWAY_MONITOR_EXPECTED_ROLE:'observer',
  OTP_GATEWAY_MONITOR_DATABASE_URL:'postgresql://observer:secret@gateway.internal:5432/otp',
  OTP_GATEWAY_MONITOR_SCHEMA:'otp_gateway',
  OTP_GATEWAY_MONITOR_CA_PEM:'fake-for-argument-gate-only',
@@ -18,7 +19,8 @@ test('OTP staging preflight requires explicit staging-only read-only opt-in',()=
   {databaseUrl:valid.OTP_GATEWAY_MONITOR_DATABASE_URL,
    schema:valid.OTP_GATEWAY_MONITOR_SCHEMA,
    caPem:valid.OTP_GATEWAY_MONITOR_CA_PEM,
-   databaseName:valid.OTP_GATEWAY_MONITOR_EXPECTED_DATABASE},
+   databaseName:valid.OTP_GATEWAY_MONITOR_EXPECTED_DATABASE,
+   roleName:valid.OTP_GATEWAY_MONITOR_EXPECTED_ROLE},
  );
  for(const args of [[],['--read-only'],['--staging-read-only','extra']]){
   assert.throws(()=>parseOtpGatewayStagingPreflightInputs(args,valid),{
@@ -33,6 +35,7 @@ test('OTP staging preflight requires explicit staging-only read-only opt-in',()=
   ['OTP_GATEWAY_MONITOR_CA_PEM',''],
   ['OTP_GATEWAY_MONITOR_EXPECTED_HOST',''],
   ['OTP_GATEWAY_MONITOR_EXPECTED_DATABASE',''],
+  ['OTP_GATEWAY_MONITOR_EXPECTED_ROLE',''],
  ] as const){
   assert.throws(
    ()=>parseOtpGatewayStagingPreflightInputs(
@@ -90,6 +93,29 @@ test('OTP staging preflight rejects wrong or unsafe database names before connec
   'postgresql://observer:secret@gateway.internal:5432/',
   'postgresql://observer:secret@gateway.internal:5432/otp%2Fother',
   'postgresql://observer:secret@gateway.internal:5432/otp/other',
+ ]){
+  assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
+   ['--staging-read-only'],
+   {...valid,OTP_GATEWAY_MONITOR_DATABASE_URL:url},
+  ),{message:'otp_gateway_staging_preflight_unavailable'});
+ }
+});
+
+test('staging observer requires an independently approved login role',()=>{
+ for(const role of [
+  'postgres','pg_monitor','other_observer','observer;SET ROLE admin',
+  'UPPER','observer-other','', 'a'.repeat(64),
+ ]){
+  assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
+   ['--staging-read-only'],
+   {...valid,OTP_GATEWAY_MONITOR_EXPECTED_ROLE:role},
+  ),{message:'otp_gateway_staging_preflight_unavailable'});
+ }
+ for(const url of [
+  'postgresql://admin:secret@gateway.internal:5432/otp',
+  'postgresql://postgres:secret@gateway.internal:5432/otp',
+  'postgresql://observer%2Fadmin:secret@gateway.internal:5432/otp',
+  'postgresql://:secret@gateway.internal:5432/otp',
  ]){
   assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
    ['--staging-read-only'],

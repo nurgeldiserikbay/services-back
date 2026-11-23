@@ -88,6 +88,7 @@ export async function runOtpGatewayOperatorReportReadOnly(
   expectedSchema?:string,
   verifyServerTls=false,
   expectedDatabase?:string,
+  expectedRole?:string,
 ):Promise<OtpGatewayReservationSnapshot>{
   let client:PoolClient|undefined;
   let transactionStarted=false;
@@ -133,6 +134,21 @@ export async function runOtpGatewayOperatorReportReadOnly(
       );
       if(dbIdentity.rows.length!==1||
         dbIdentity.rows[0]?.name!==expectedDatabase)
+        throw new Error(DENIED);
+    }
+    if(expectedRole!==undefined){
+      // Validate both role identities from this actual PostgreSQL session:
+      // session_user identifies authenticated login; current_user can differ
+      // after SET ROLE. No role switching is permitted for this observer.
+      if(!/^[a-z_][a-z0-9_]{0,62}$/.test(expectedRole)||
+        expectedRole.startsWith('pg_')||expectedRole==='postgres')
+        throw new Error(DENIED);
+      const roleIdentity=await client.query<{
+        session_role:string;effective_role:string;
+      }>('SELECT session_user::text AS session_role, current_user::text AS effective_role');
+      if(roleIdentity.rows.length!==1||
+        roleIdentity.rows[0]?.session_role!==expectedRole||
+        roleIdentity.rows[0]?.effective_role!==expectedRole)
         throw new Error(DENIED);
     }
     const report=await readOtpGatewayOperatorReport(client,expectedSchema);

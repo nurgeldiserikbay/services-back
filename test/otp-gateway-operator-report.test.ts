@@ -357,3 +357,70 @@ test('staging observer accepts pinned DB identity then validates role and aggreg
  assert.match(queries[5],/WHERE status='RESERVED'/);
  assert.equal(queries[6],'ROLLBACK');
 });
+
+test('staging observer denies wrong session or effective role before ACL',async()=>{
+ for(const identity of [
+  {session_role:'admin',effective_role:'observer'},
+  {session_role:'observer',effective_role:'admin'},
+  {session_role:'postgres',effective_role:'postgres'},
+  {session_role:null,effective_role:'observer'},
+ ]){
+  const sqls:string[]=[];
+  let released=0;
+  const pool={connect:async()=>({
+   query:async(sql:string)=>{
+    sqls.push(sql);
+    if(sql.includes('pg_stat_ssl'))
+     return {rows:[{ssl:true,version:'TLSv1.3'}]};
+    if(sql.includes('current_database()'))
+     return {rows:[{name:'otp_staging'}]};
+    if(sql.includes('session_user::text'))
+     return {rows:[identity]};
+    if(sql.includes('has_column_privilege'))
+     throw new Error('role mismatch must stop before ACL');
+    return {rows:[]};
+   },
+   release:(destroy?:boolean)=>{assert.equal(destroy,true);released++;},
+  })};
+  await assert.rejects(
+   runOtpGatewayOperatorReportReadOnly(
+    pool as never,'gateway_ledger',true,'otp_staging','observer',
+   ),{message:'otp_gateway_operator_report_unavailable'},
+  );
+  assert.equal(released,1);
+  assert.ok(sqls.some(sql=>sql.includes('session_user::text')));
+  assert.ok(!sqls.some(sql=>sql.includes('has_column_privilege')));
+  assert.equal(sqls.at(-1),'ROLLBACK');
+ }
+});
+
+test('staging observer permits approved login and effective role before ACL',async()=>{
+ const sqls:string[]=[];
+ let released=0;
+ const pool={connect:async()=>({
+  query:async(sql:string)=>{
+   sqls.push(sql);
+   if(sql.includes('pg_stat_ssl'))
+    return {rows:[{ssl:true,version:'TLSv1.3'}]};
+   if(sql.includes('current_database()'))
+    return {rows:[{name:'otp_staging'}]};
+   if(sql.includes('session_user::text'))
+    return {rows:[{session_role:'observer',effective_role:'observer'}]};
+   if(sql.includes('has_column_privilege'))return {rows:[restricted]};
+   if(sql.includes("WHERE status='RESERVED'"))return {rows:[snapshot]};
+   return {rows:[]};
+  },
+  release:(destroy?:boolean)=>{assert.equal(destroy,true);released++;},
+ })};
+ const result=await runOtpGatewayOperatorReportReadOnly(
+  pool as never,'gateway_ledger',true,'otp_staging','observer',
+ );
+ assert.equal(result.total,'3');
+ assert.equal(released,1);
+ assert.match(sqls[2],/pg_stat_ssl/);
+ assert.match(sqls[3],/current_database/);
+ assert.match(sqls[4],/session_user/);
+ assert.match(sqls[5],/has_column_privilege/);
+ assert.match(sqls[6],/WHERE status='RESERVED'/);
+ assert.equal(sqls[7],'ROLLBACK');
+});
