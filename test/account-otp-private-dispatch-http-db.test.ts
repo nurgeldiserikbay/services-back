@@ -2,7 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHmac,randomBytes,randomUUID} from 'node:crypto';
 import {Client} from 'pg';
-import {NotFoundException,ServiceUnavailableException} from '@nestjs/common';
+import {Module,NotFoundException,ServiceUnavailableException} from '@nestjs/common';
+import {NestFactory} from '@nestjs/core';
 import {AccountOtpDispatchPrivateController}
  from '../src/modules/identity/account-otp-dispatch-private.controller.js';
 import {AccountOtpDispatchService}
@@ -76,6 +77,57 @@ test('private issuance requires independent rollout, trusted BFF key and exact b
   assert.equal(calls,0);
  });
 });
+test('real Nest HTTP denies default-off and unauthorized callers without dispatch',async()=>{
+ const key=sec(),env=baseEnv();
+ env.ACCOUNT_LOGIN_BFF_KEY=key;
+ await withEnv(env,async()=>{
+  let calls=0;
+  const stub={dispatch:async()=>{
+   calls++;return {challengeId:randomUUID(),expiresInSeconds:300};
+  }};
+  @Module({
+   controllers:[AccountOtpDispatchPrivateController],
+   providers:[{provide:AccountOtpDispatchService,useValue:stub}],
+  })
+  class TestPrivateDispatchModule{}
+  const app=await NestFactory.create(TestPrivateDispatchModule,{logger:false});
+  app.setGlobalPrefix('v1');
+  await app.listen(0,'127.0.0.1');
+  try{
+   const url=(await app.getUrl())+'/v1/auth/private/account/challenges';
+   const request=(access?:string,payload:unknown=body,proof='untrusted')=>
+    fetch(url,{method:'POST',redirect:'manual',headers:{
+     'Content-Type':'application/json',
+     ...(access?{'X-Services-Account-Login-Key':access}:{}),
+     'X-Services-Network-Proof':proof,
+    },body:JSON.stringify(payload)});
+   delete process.env.SERVICES_ENABLE_ACCOUNT_OTP_DISPATCH_HTTP;
+   const off=await request(key);
+   assert.equal(off.status,404);
+   process.env.SERVICES_ENABLE_ACCOUNT_OTP_DISPATCH_HTTP='enabled';
+   const untrusted=await request(sec());
+   assert.equal(untrusted.status,404);
+   const noAccess=await request();
+   assert.equal(noAccess.status,404);
+   const bad=await request(key,{...body,code:'123456'});
+   assert.equal(bad.status,503);
+   assert.equal(calls,0);
+   const accepted=await request(key);
+   assert.equal(accepted.status,201);
+   assert.match(accepted.headers.get('cache-control')??'',/no-store/);
+   const receipt=await accepted.json();
+   assert.deepEqual(Object.keys(receipt).sort(),
+    ['challenge_id','expires_in_seconds']);
+   assert.equal(receipt.expires_in_seconds,300);
+   assert.equal(calls,1);
+   const serialized=JSON.stringify(receipt);
+   assert.equal(serialized.includes(body.contact),false);
+   assert.equal(serialized.includes('untrusted'),false);
+   assert.equal(accepted.headers.get('set-cookie'),null);
+  }finally{await app.close();}
+ });
+});
+
 test('real PostgreSQL dispatch proves accepted challenge, opaque receipt and network quota',async()=>{
  const env=baseEnv(),secret=env.ACCOUNT_LOGIN_BFF_KEY;
  await withEnv(env,async()=>{
