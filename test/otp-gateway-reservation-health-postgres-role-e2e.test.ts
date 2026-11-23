@@ -100,6 +100,13 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
     assert.deepEqual(
      await readOtpGatewayOperatorReport(client as never),snapshot,
     );
+    assert.deepEqual(
+     await readOtpGatewayOperatorReport(client as never,schema),snapshot,
+    );
+    await assert.rejects(
+     readOtpGatewayOperatorReport(client as never,'wrong_gateway_ledger'),
+     {message:'otp_gateway_operator_report_unavailable'},
+    );
     await assert.rejects(
      readOtpGatewayOperatorReport(db!),
      {message:'otp_gateway_operator_report_unavailable'},
@@ -156,6 +163,12 @@ test('OTP health SELECT-only PostgreSQL role cannot mutate gateway claims',
    await assert.rejects(runOtpGatewayOperatorReportReadOnly({
     connect:async()=>pinned,
    } as never),{message:'otp_gateway_operator_report_unavailable'});
+   // A trusted schema pin must not override future-skew fail-closed checks.
+   const pinnedSchema=await db.connect();
+   await pinnedSchema.query('SET ROLE '+role);
+   await assert.rejects(runOtpGatewayOperatorReportReadOnly({
+    connect:async()=>pinnedSchema,
+   } as never,schema),{message:'otp_gateway_operator_report_unavailable'});
    // A temporary lookalike can shadow an unqualified ledger name in the
    // same session's search_path. Even with matching column grants, the
    // operator preflight must reject the temporary relation before metrics.
