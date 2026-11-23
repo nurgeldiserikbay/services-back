@@ -43,6 +43,23 @@ The command fails closed unless the exact staging flag/environment are supplied.
 
 Passing this check is **only** evidence of a single successful staging observer connection, not proof of staging account provisioning, environment identity, data residency, provider delivery, secret lifecycle, rotation, revocation or production acceptance. The literal `OTP_GATEWAY_MONITOR_ENV=staging` does not authenticate the environment: the infrastructure owner must independently verify the target endpoint, network and certificate custody. Never run on the Services/Prisma database or attach raw environment variables, URLs, credentials or certificate material to CI artifacts/tickets.
 
+### Real PostgreSQL negative-path CI evidence (not live staging)
+
+`test/otp-gateway-staging-plaintext-postgres-e2e.test.ts` connects to the disposable PostgreSQL CI database using `ssl:false`, confirms the server reports `ssl=false` via `pg_stat_ssl`, then invokes the staging TLS-enforcing observer on that real connection. It expects the sanitized denial, a rollback, forced one-shot connection disposal, and **no ACL or aggregate queries** after observing plaintext. It makes no schema or data mutations. When the CI database endpoint itself requires TLS, the plaintext-specific case is explicitly skipped rather than weakening the server configuration. The positive real TLS case against an approved staging gateway **remains unverified**; local mock-protocol TLS coverage is separate.
+
+#### Minimum operator-controlled staging acceptance record
+
+Store the following **nonsecret attestations only**, with access governed by the infrastructure owner. Never attach connection strings, CA private keys, bearer tokens, raw SSL certificates, OTP values, provider receipts or unrestricted SQL output.
+
+1. Approved staging environment ID, infrastructure owner, KZ data-residency/private-network approval reference, and verification date.
+2. Dedicated observer database role authorization reference (column-scoped `SELECT(status,claimed_at)` only), account creation/expiry and reviewer sign-off.
+3. Server identity and dedicated gateway CA custody/renewal approval references, expected DNS identity, TLS version and certificate rotation/rollback plan. Record no credentials or raw CA material.
+4. Operator-authenticated evidence that `scripts/otp-gateway-staging-preflight.ts --staging-read-only` returned the fixed pass marker for the **approved** endpoint. Do not treat the env variable label as proof of environment identity.
+5. Sanitized evidence that observer plaintext, incorrect CA, wrong hostname, overprivileged role and incorrect schema fail closed on the approved staging endpoint under authorized negative tests.
+6. Provider contract/test tenant approval, real OTP send/receipt/retry/idempotency/failure E2E evidence and business/security approver names; explicitly mark missing evidence `PENDING`.
+
+No checklist item is closed without owner-reviewed evidence, even if this repository's CI is green.
+
 ## 1. Detect and contain
 
 1. Confirm the alert belongs to the **dedicated** OTP gateway database and identify the deployment, environment, owner and timestamp without copying credentials.
