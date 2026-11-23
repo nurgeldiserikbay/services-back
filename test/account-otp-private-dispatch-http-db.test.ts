@@ -148,15 +148,25 @@ test('default disabled delivery cannot issue redeemable challenge',async()=>{
     new AccountOtpDispatchService(db as never));
    const proof=signed(randomBytes(32).toString('hex'),
     Buffer.from(env.ACCOUNT_NETWORK_ATTESTATION_KEY,'base64'));
+   const address='disabled-'+randomUUID()+'@example.test';
    await assert.rejects(
     controller.issue(env.ACCOUNT_LOGIN_BFF_KEY,proof,
-     {...body,contact:'disabled-'+randomUUID()+'@example.test'}),
+     {...body,contact:address}),
     ServiceUnavailableException);
-   const record=await client.query<{n:string}>(`
-    SELECT count(*)::text AS n FROM account_auth_challenges
-    WHERE delivery_confirmed_at IS NOT NULL AND consumed_at IS NULL
-   `);
-   assert.equal(record.rows[0]?.n,'0',
+   const contactDigest=createHmac('sha256',Buffer.from(
+    env.ACCOUNT_CONTACT_HMAC_KEY,'base64'))
+    .update('services-account-contact:v1\\0').update('EMAIL')
+    .update('\\0').update(address).digest('hex');
+   const record=await client.query<{
+    consumed_at:Date|null;delivery_confirmed_at:Date|null;
+   }>(`
+    SELECT consumed_at,delivery_confirmed_at FROM account_auth_challenges
+    WHERE contact_digest=$1
+   `,[contactDigest]);
+   assert.equal(record.rows.length,1);
+   assert.ok(record.rows[0]?.consumed_at,
+    'disabled delivery must immediately revoke its issued challenge');
+   assert.equal(record.rows[0]?.delivery_confirmed_at,null,
     'disabled provider must not leave redeemable OTP');
   }finally{
    await client.query('ROLLBACK').catch(()=>{});await client.end();
