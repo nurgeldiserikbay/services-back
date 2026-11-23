@@ -27,6 +27,10 @@ Before reading any metrics, the operator report also verifies that the unqualifi
 
 Before any count is fetched, the report checks the database's **current role privileges**. It refuses table owners or broad roles with any INSERT/UPDATE/DELETE/TRUNCATE access, as well as roles able to SELECT idempotency keys, fingerprints, receipts, or acceptance timestamps. Only `SELECT(status,claimed_at)` is permitted. The returned JSON contains only aggregate counts and the oldest claim timestamp, never row identifiers or OTP payloads; SQL errors are sanitized. This is a **defense-in-depth preflight**, not a replacement for audited grants, TLS validation, secret rotation, KZ residency controls, DDL role isolation or owner approval. Do not expose the CLI output as a public endpoint or schedule it without a reviewed operations process.
 
+### Local TLS protocol evidence (not staging approval)
+
+`test/otp-gateway-monitor-tls-handshake.test.ts` uses a disposable localhost PostgreSQL SSLRequest-speaking test peer and ephemeral OpenSSL CA/server keys inside a temporary directory. It exercises the actual `pg` TLS negotiation: trusted CA and DNS hostname complete the handshake; an unrelated CA and a hostname mismatch must not complete an authenticated handshake. The peer deliberately closes before database authentication and therefore **does not prove real PostgreSQL credentials, queries, production certificate rotation, mTLS, KZ private network boundaries, or OTP provider staging acceptance**. Keys are generated in the CI runner and never committed. Only owner-approved staging tests against the real private gateway endpoint can close those acceptance gates.
+
 ## 1. Detect and contain
 
 1. Confirm the alert belongs to the **dedicated** OTP gateway database and identify the deployment, environment, owner and timestamp without copying credentials.
