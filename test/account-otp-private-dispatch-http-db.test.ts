@@ -155,8 +155,8 @@ test('default disabled delivery cannot issue redeemable challenge',async()=>{
     ServiceUnavailableException);
    const contactDigest=createHmac('sha256',Buffer.from(
     env.ACCOUNT_CONTACT_HMAC_KEY,'base64'))
-    .update('services-account-contact:v1\\0').update('EMAIL')
-    .update('\\0').update(address).digest('hex');
+    .update('services-account-contact:v1').update(String.fromCharCode(0)).update('EMAIL')
+    .update(String.fromCharCode(0)).update(address).digest('hex');
    const record=await client.query<{
     consumed_at:Date|null;delivery_confirmed_at:Date|null;
    }>(`
