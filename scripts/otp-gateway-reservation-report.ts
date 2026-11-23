@@ -1,5 +1,5 @@
 import {Pool} from 'pg';
-import {readOtpGatewayOperatorReport} from
+import {runOtpGatewayOperatorReportReadOnly} from
  '../src/platform/ingress/otp-gateway-operator-report.reference.js';
 
 /**
@@ -23,7 +23,7 @@ async function main():Promise<void>{
     query_timeout:5_000,
   });
   try{
-    const snapshot=await readOtpGatewayOperatorReport(pool);
+    const snapshot=await runOtpGatewayOperatorReportReadOnly(pool);
     process.stdout.write(JSON.stringify(snapshot)+'\n');
   }finally{
     await pool.end();

@@ -1,4 +1,4 @@
-import type {Pool} from 'pg';
+import type {Pool,PoolClient} from 'pg';
 import {
   readOtpGatewayReservationSnapshot,
   type OtpGatewayReservationSnapshot,
@@ -53,5 +53,40 @@ export async function readOtpGatewayOperatorReport(
   }catch{
     // Never leak connection strings, database errors, role names or secrets.
     throw new Error(DENIED);
+  }
+}
+
+/**
+ * Keep role preflight and report on the SAME database connection, inside a
+ * server-enforced READ ONLY transaction. A generic Pool.query() per step can
+ * otherwise select different sessions or search_path configurations.
+ * Always release the connection and avoid leaking PostgreSQL diagnostics.
+ */
+export async function runOtpGatewayOperatorReportReadOnly(
+  pool:Pick<Pool,'connect'>,
+):Promise<OtpGatewayReservationSnapshot>{
+  let client:PoolClient|undefined;
+  let transactionStarted=false;
+  try{
+    if(!pool||typeof pool.connect!=='function')throw new Error(DENIED);
+    client=await pool.connect();
+    await client.query('BEGIN TRANSACTION READ ONLY');
+    transactionStarted=true;
+    const report=await readOtpGatewayOperatorReport(client);
+    await client.query('ROLLBACK');
+    transactionStarted=false;
+    return report;
+  }catch{
+    throw new Error(DENIED);
+  }finally{
+    if(client){
+      if(transactionStarted){
+        try{await client.query('ROLLBACK');}catch{
+          // Connection is destroyed below, not returned for reuse.
+        }
+      }
+      // Explicitly dispose the one-shot session to prevent role bleed.
+      client.release(true);
+    }
   }
 }
