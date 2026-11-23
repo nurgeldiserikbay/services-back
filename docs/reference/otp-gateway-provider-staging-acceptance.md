@@ -2,7 +2,7 @@
 
 **Status:** proposal, approval REQUIRED. No vendor has been selected, configured, contacted or activated by this document.
 
-**Scope:** dedicated OTP gateway in Kazakhstan, not public Nest API, not browser, not a production migration. See `otp-gateway-reserved-reconciliation-runbook.md` and `otp-gateway-idempotency-ledger.sql`.
+**Scope:** dedicated OTP gateway in Kazakhstan, not public Nest API, not browser, not a production migration. See `otp-gateway-reserved-reconciliation-runbook.md`, `otp-gateway-idempotency-ledger.sql`, and the separate [private-ingress deployment release gate](otp-gateway-private-ingress-release-gate.md). The ingress release gate remains **NO-GO** pending real environment evidence.
 
 ## 1. Provider evidence required before implementation
 
