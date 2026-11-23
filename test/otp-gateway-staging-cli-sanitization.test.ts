@@ -11,6 +11,7 @@ const baseEnv={
  HOME:process.env.HOME??'',
  OTP_GATEWAY_MONITOR_ENV:'staging',
  OTP_GATEWAY_MONITOR_EXPECTED_HOST:'gateway.internal',
+ OTP_GATEWAY_MONITOR_EXPECTED_DATABASE:'gateway',
  OTP_GATEWAY_MONITOR_DATABASE_URL:
   'postgresql://observer:PRIVATE_TEST_PASSWORD@gateway.internal:5432/gateway',
  OTP_GATEWAY_MONITOR_SCHEMA:'private_test_schema_identifier',
