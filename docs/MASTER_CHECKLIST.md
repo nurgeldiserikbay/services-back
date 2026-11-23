@@ -183,6 +183,10 @@
 - Second PR head `d929eb9` CI #4553 **cancelled**, not PASS. Archived test output identifies 3 failed operator-report release assertions and a process hang: escaped literal `\\n` sequences after `//` accidentally commented out `client?.release(true)`. Commit `8f56164` restores real line breaks and the actual connection destruction call. New exact-head CI must PASS before merge.
 - Final verification: [PR #428](https://github.com/nurgeldiserikbay/services-back/pull/428), exact PR head `0d73bca3fe3151ba75d0dbca43dea7dc7193f45c`, [Backend foundation CI #4561 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45110332804), squash merge `7079805903fd9b1e5f4a4be62c4699a95a4f5609`. The earlier CI failures/cancellations remain in the evidence record; the final head passes unit and PostgreSQL integration coverage. Reference-only CLI, no live provider/KZ staging/TLS credential acceptance; no top-level readiness increase.
 
+### 2026-11-23 — OTP observer ledger relation integrity (PR CI pending)
+- Branch `fix/otp-operator-ledger-relation-integrity-20261123`: reference-only operator preflight now verifies that the resolved gateway ledger is an ordinary persistent PostgreSQL table, not a temporary table or view shadowing its name through `search_path`. The ACL guard continues to deny roles with write access or direct key/provider receipt SELECT. Unit tests reject missing/invalid relation integrity and real isolated PostgreSQL E2E constructs a temporary namesake table with column-scoped observer access, confirms it shadows the name, then requires a sanitized denial.
+- Reference-only diagnostics; explicit production schema pinning, approved TLS/private KZ network, credential lifecycle, provider and staging acceptance are still open. Requires full exact PR-head CI PASS and merge before calling this regression verified. No acceptance/readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
