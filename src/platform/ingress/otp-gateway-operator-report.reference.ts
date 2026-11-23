@@ -86,6 +86,7 @@ export async function readOtpGatewayOperatorReport(
 export async function runOtpGatewayOperatorReportReadOnly(
   pool:Pick<Pool,'connect'>,
   expectedSchema?:string,
+  verifyServerTls=false,
 ):Promise<OtpGatewayReservationSnapshot>{
   let client:PoolClient|undefined;
   let transactionStarted=false;
@@ -109,6 +110,16 @@ export async function runOtpGatewayOperatorReportReadOnly(
         "SELECT set_config('search_path', format('%I, pg_temp', $1::text), true)",
         [expectedSchema],
       );
+    }
+    if(verifyServerTls){
+      // pg_stat_ssl is scoped to this exact backend PID and transaction.
+      // The client TLS settings already enforce CA and hostname checks.
+      const tls=await client.query<{ssl:boolean;version:string|null}>(`
+        SELECT ssl,version FROM pg_stat_ssl WHERE pid=pg_backend_pid()
+      `);
+      if(tls.rows.length!==1||tls.rows[0]?.ssl!==true||
+        !['TLSv1.2','TLSv1.3'].includes(tls.rows[0]?.version??''))
+        throw new Error(DENIED);
     }
     const report=await readOtpGatewayOperatorReport(client,expectedSchema);
     await client.query('ROLLBACK');
