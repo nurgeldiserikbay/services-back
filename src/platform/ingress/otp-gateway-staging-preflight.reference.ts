@@ -17,8 +17,24 @@ export function parseOtpGatewayStagingPreflightInputs(
     env.OTP_GATEWAY_MONITOR_ENV!=='staging'||
     !env.OTP_GATEWAY_MONITOR_DATABASE_URL||
     !env.OTP_GATEWAY_MONITOR_SCHEMA||
-    !env.OTP_GATEWAY_MONITOR_CA_PEM)
+    !env.OTP_GATEWAY_MONITOR_CA_PEM||
+    !env.OTP_GATEWAY_MONITOR_EXPECTED_HOST)
     throw new Error(DENIED);
+  try{
+    const host=env.OTP_GATEWAY_MONITOR_EXPECTED_HOST!;
+    // Independent operator-approved DNS identity, not a value extracted
+    // from the URL itself. Reject scheme, port, wildcard and IP literals.
+    if(host.length>253||!/^[a-z0-9-]+(?:\\.[a-z0-9-]+)+$/.test(host)||
+      host.split('.').some(label=>label.length>63||
+        label.startsWith('-')||label.endsWith('-')))
+      throw new Error(DENIED);
+    const url=new URL(env.OTP_GATEWAY_MONITOR_DATABASE_URL);
+    if(!['postgres:','postgresql:'].includes(url.protocol)||
+      url.hostname!==host)throw new Error(DENIED);
+  }catch{
+    // Credentials or attacker-controlled endpoint details are never logged.
+    throw new Error(DENIED);
+  }
   return {
     databaseUrl:env.OTP_GATEWAY_MONITOR_DATABASE_URL,
     schema:env.OTP_GATEWAY_MONITOR_SCHEMA,
