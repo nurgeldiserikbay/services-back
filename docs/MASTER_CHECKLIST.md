@@ -240,6 +240,10 @@
 - Branch `fix/otp-staging-approved-role-pin-20261123`: the manual staging observer requires `OTP_GATEWAY_MONITOR_EXPECTED_ROLE` independently approved by infrastructure ownership, rejects mismatched/superuser login names in PostgreSQL connection URLs before opening a connection, and checks both `session_user` and `current_user` on the same TLS-verified, pinned READ ONLY PostgreSQL transaction before ACL and ledger access. Failures are sanitized, rolled back and connection disposed. Regression tests cover missing/unsafe names, role-switching, wrong login and approved positive path.
 - Verified [PR #444](https://github.com/nurgeldiserikbay/services-back/pull/444), exact head `1a97a68e1eb8248aaba2bd38dfc26489c4fc41ca`, [Backend foundation CI #4702 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45136914547), squash merge `6020e29963e6b121be6010f579717c81e28379dd`. This is reference-only negative/positive unit evidence, not real dedicated KZ observer provisioning, credentials rotation or OTP staging/provider sign-off; no readiness increase.
 
+### 2026-11-23 — OTP observer real PostgreSQL role-mismatch rejection E2E (PR CI pending)
+- Branch `test/otp-role-identity-real-pg-e2e-20261123`: the disposable PostgreSQL CI suite now retrieves actual `current_database()`, `session_user`, and `current_user` from a real server, supplies a deliberately mismatched operator-approved role pin, and requires a sanitized denial after the read-only transaction begins but **before** any observer ACL or ledger query. Verifies rollback and destruction of the pinned connection. No mutations or real OTP provider credentials.
+- Full exact PR-head CI pending. Test uses the CI database without TLS (TLS covered separately), so this is only real PostgreSQL negative-path evidence, not private KZ staging sign-off or provisioning; no readiness increase.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
