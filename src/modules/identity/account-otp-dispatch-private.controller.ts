@@ -1,5 +1,5 @@
 import {
- Body,Controller,Header,Headers,HttpCode,NotFoundException,Post,
+ Body,Controller,Header,Headers,HttpCode,Inject,NotFoundException,Post,
  ServiceUnavailableException,
 } from '@nestjs/common';
 import {AccountOtpDispatchService}
@@ -15,7 +15,8 @@ const UNAVAILABLE='Account verification temporarily unavailable';
  */
 @Controller('auth/private/account')
 export class AccountOtpDispatchPrivateController{
- constructor(private readonly dispatchService:AccountOtpDispatchService){}
+ constructor(@Inject(AccountOtpDispatchService)
+  private readonly dispatchService:AccountOtpDispatchService){}
 
  @Post('challenges')
  @HttpCode(201)
