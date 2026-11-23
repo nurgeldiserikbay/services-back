@@ -26,9 +26,9 @@ export function makeOtpGatewayMonitorPoolConfig(
     // Parse the COMPLETE bounded PEM bundle, not just matching delimiters.
     // A placeholder, expired CA or trailing garbage cannot act as trust.
     if(caPem.length>131_072)throw new Error(DENIED);
-    const blocks=caPem.match(/-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----/g);
+    const blocks=caPem.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g);
     if(!blocks||blocks.length===0||blocks.length>8||
-      caPem.replace(/-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----/g,'').trim())
+      caPem.replace(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g,'').trim())
       throw new Error(DENIED);
     const now=Date.now();
     for(const block of blocks){
