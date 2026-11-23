@@ -24,6 +24,10 @@
 - **Not production-ready:** A secure same-origin browser BFF with HttpOnly credentials and CSRF controls, end-to-end client UX, abuse budgets, staging ingress and operational approval are still mandatory. This endpoint remains disabled by default, and `Authenticated request flow` top-level acceptance remains unchecked. No 21/117 count increase before independent acceptance evidence.
 - Verified [PR #449](https://github.com/nurgeldiserikbay/services-back/pull/449), exact head `c77f5f533a2b3a45b50bd02df7193f5c93edd8c7`, [Backend foundation CI #4739 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45145406505) with dependency audit and PostgreSQL test suite, squash merge `2739ab76bfb38d4501da1a57d0caae59da599aef`. This is CI integration evidence only, not BFF/browser or staging sign-off.
 
+### 2026-11-23 — registered request seller organization state lock (PR CI pending)
+- Branch `fix/registered-request-org-state-lock-20261123`: the account-owned request transaction now validates and locks the seller organization as `ACTIVE` with `SELECT ... FOR SHARE` **after** the published-offer preflight and before any request, outbox, audit or notification write. This prevents a concurrent organization-state transition from racing the request creation window: `FOR SHARE` conflicts with concurrent UPDATE on the locked organization row. Existing profile sellers already had a corresponding row-state lock.
+- A PostgreSQL-backed negative regression simulates the organization becoming ineligible after the offer preflight, requires the final active-row lock, denies with generic `unavailable_offer`, and proves no second request was created. This is implementation correctness evidence; staging, rate budgets and approved real account login remain open and no top-level acceptance count changes.
+
 ## Rules
 
 - `[x]` = verified complete: attach commit/PR **and** passing relevant CI or reproducible acceptance evidence.

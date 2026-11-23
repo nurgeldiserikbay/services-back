@@ -85,6 +85,32 @@ test('registered request transaction creates one scoped request and replays safe
    createRegisteredCustomerRequestInTransaction(db,other,input,
     'registered_create_20261123_002',pepper),
    (e:unknown)=>e instanceof RegisteredRequestRejected&&e.reason==='invalid_actor');
+  // Simulate an organization suspension after offer eligibility is read.
+  // The actual database handles customer, offer and transactional writes;
+  // the final ACTIVE organization preflight is deliberately denied.
+  const captured:string[]=[];
+  const suspendedSellerQuery={
+   query:async(sql:string,values?:unknown[])=>{
+    captured.push(sql);
+    if(/FROM organizations\s+WHERE id=\$1::uuid AND status='ACTIVE' FOR SHARE/.test(sql))
+     return {rows:[],rowCount:0};
+    return db.query(sql,values);
+   },
+  };
+  await assert.rejects(
+   createRegisteredCustomerRequestInTransaction(
+    suspendedSellerQuery as never,f.customerPerson,input,
+    'registered_create_20261123_org_denied',pepper),
+   (e:unknown)=>e instanceof RegisteredRequestRejected&&e.reason==='unavailable_offer');
+  assert.ok(captured.some(sql=>
+   /FROM organizations\s+WHERE id=\$1::uuid AND status='ACTIVE' FOR SHARE/.test(sql)),
+   'the active organization row must be explicitly locked');
+  const denied=await db.query<{n:string}>(`
+   SELECT count(*)::text AS n FROM service_requests
+   WHERE offer_id=$1::uuid
+  `,[f.offer]);
+  assert.equal(denied.rows[0]?.n,'1',
+   'ineligible seller must create no extra request');
   await db.query("UPDATE service_offers SET status='PAUSED' WHERE id=$1",[f.offer]);
   await assert.rejects(
    createRegisteredCustomerRequestInTransaction(db,f.customerPerson,input,

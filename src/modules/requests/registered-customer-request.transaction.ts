@@ -110,6 +110,18 @@ export async function createRegisteredCustomerRequestInTransaction(
    throw new RegisteredRequestRejected('unavailable_offer');
  }
 
+ // The offer row lock does not protect its independent organization state.
+ // Lock the ACTIVE seller row in this same transaction before inserting a
+ // customer request; otherwise a concurrent suspension can race creation.
+ if(seller.organization_id){
+  const activeOrganization=await client.query<{id:string}>(`
+   SELECT id::text FROM organizations
+   WHERE id=$1::uuid AND status='ACTIVE' FOR SHARE
+  `,[seller.organization_id]);
+  if(activeOrganization.rows.length!==1)
+   throw new RegisteredRequestRejected('unavailable_offer');
+ }
+
  const id=randomUUID(),eventId=randomUUID();
  await client.query(`
   INSERT INTO service_requests
