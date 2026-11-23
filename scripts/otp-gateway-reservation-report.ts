@@ -8,12 +8,14 @@ import {runOtpGatewayOperatorReportReadOnly} from
  * restricted gateway observer credential inside the approved private network.
  *
  * Example (from a controlled operator terminal):
+ * OTP_GATEWAY_MONITOR_SCHEMA=<approved-gateway-ledger-schema> \
  * OTP_GATEWAY_MONITOR_DATABASE_URL=<from-secret-manager> \
  *   node --import tsx scripts/otp-gateway-reservation-report.ts --read-only
  */
 async function main():Promise<void>{
   if(process.argv.length!==3||process.argv[2]!=='--read-only'||
-    !process.env.OTP_GATEWAY_MONITOR_DATABASE_URL)
+    !process.env.OTP_GATEWAY_MONITOR_DATABASE_URL||
+    !process.env.OTP_GATEWAY_MONITOR_SCHEMA)
     throw new Error('disabled');
   const pool=new Pool({
     connectionString:process.env.OTP_GATEWAY_MONITOR_DATABASE_URL,
@@ -23,7 +25,9 @@ async function main():Promise<void>{
     query_timeout:5_000,
   });
   try{
-    const snapshot=await runOtpGatewayOperatorReportReadOnly(pool);
+    const snapshot=await runOtpGatewayOperatorReportReadOnly(
+      pool,process.env.OTP_GATEWAY_MONITOR_SCHEMA,
+    );
     process.stdout.write(JSON.stringify(snapshot)+'\n');
   }finally{
     await pool.end();

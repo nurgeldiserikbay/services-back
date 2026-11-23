@@ -8,6 +8,7 @@ const restricted={
  identifier_allowed:false,fingerprint_allowed:false,
  reference_allowed:false,receipt_time_allowed:false,
  can_mutate:false,relation_is_persistent_table:true,
+ relation_in_expected_schema:true,
 };
 const snapshot={
  total:'3',recent:'1',middle:'1',older:'1',
@@ -86,6 +87,58 @@ test('operator report fails closed and sanitizes malformed ACL and SQL errors',a
  await assert.rejects(readOtpGatewayOperatorReport({
   query:async()=>{throw new Error('database private message');},
  } as never),{message:'otp_gateway_operator_report_unavailable'});
+});
+
+test('operator report denies a persistent namesake in the wrong schema',async()=>{
+ let calls=0;
+ await assert.rejects(readOtpGatewayOperatorReport({
+  query:async(_sql:string,params?:unknown[])=>{
+   calls++;
+   assert.deepEqual(params,['gateway_ledger']);
+   return {rows:[{...restricted,relation_in_expected_schema:false}]};
+  },
+ } as never,'gateway_ledger'),{
+  message:'otp_gateway_operator_report_unavailable',
+ });
+ assert.equal(calls,1);
+});
+
+test('operator report pins configured schema BEFORE privilege check and report',async()=>{
+ const queries:{sql:string;params?:unknown[]}[]=[];
+ let releases=0;
+ const pool={connect:async()=>({
+  query:async(sql:string,params?:unknown[])=>{
+   queries.push({sql,params});
+   if(sql.includes('has_column_privilege'))return {rows:[restricted]};
+   if(sql.includes("WHERE status='RESERVED'"))return {rows:[snapshot]};
+   return {rows:[]};
+  },
+  release:(destroy?:boolean)=>{assert.equal(destroy,true);releases++;},
+ })};
+ const result=await runOtpGatewayOperatorReportReadOnly(pool as never,'gateway_ledger');
+ assert.equal(result.total,'3');
+ assert.equal(releases,1);
+ assert.equal(queries.length,5);
+ assert.equal(queries[0].sql,'BEGIN TRANSACTION READ ONLY');
+ assert.match(queries[1].sql,/set_config\('search_path'/);
+ assert.deepEqual(queries[1].params,['gateway_ledger']);
+ assert.match(queries[2].sql,/relation_in_expected_schema/);
+ assert.deepEqual(queries[2].params,['gateway_ledger']);
+ assert.match(queries[3].sql,/WHERE status='RESERVED'/);
+ assert.equal(queries[4].sql,'ROLLBACK');
+});
+
+test('operator report refuses untrusted configured schema without connecting',async()=>{
+ let connects=0;
+ const pool={connect:async()=>{connects++;throw Error('unreachable');}};
+ for(const schema of ['pg_temp','pg_catalog','information_schema',
+  'public;DROP TABLE users','other schema','UPPER','']){
+  await assert.rejects(
+   runOtpGatewayOperatorReportReadOnly(pool as never,schema),
+   {message:'otp_gateway_operator_report_unavailable'},
+  );
+ }
+ assert.equal(connects,0);
 });
 
 test('operator report pins ACL and aggregates to one READ ONLY session',async()=>{
