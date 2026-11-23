@@ -13,7 +13,7 @@ const baseEnv={
  OTP_GATEWAY_MONITOR_EXPECTED_HOST:'gateway.internal',
  OTP_GATEWAY_MONITOR_DATABASE_URL:
   'postgresql://observer:PRIVATE_TEST_PASSWORD@gateway.internal:5432/gateway',
- OTP_GATEWAY_MONITOR_SCHEMA:'otp_gateway',
+ OTP_GATEWAY_MONITOR_SCHEMA:'private_test_schema_identifier',
  OTP_GATEWAY_MONITOR_CA_PEM:'PRIVATE_TEST_CA_PLACEHOLDER',
 };
 function probe(
@@ -32,7 +32,7 @@ function probe(
  assert.equal(result.stdout,'');
  assert.equal(result.stderr,denied);
  for(const secret of ['PRIVATE_TEST_PASSWORD','PRIVATE_TEST_CA_PLACEHOLDER',
-  'gateway.internal','otp_gateway']){
+  'gateway.internal','private_test_schema_identifier']){
   assert.ok(!result.stdout.includes(secret));
   assert.ok(!result.stderr.includes(secret));
  }
