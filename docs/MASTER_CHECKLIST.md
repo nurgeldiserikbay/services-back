@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-24 — account OTP private transport contact validation (frontend PR #201; pending CI)
+- [ ] **Scoped contact/channel consistency hardening pending CI:** [Frontend PR #201](https://github.com/nurgeldiserikbay/services-front/pull/201), candidate head `49f086fe2f43109d625054aee24bdd06d49bc8de`. The unmounted private account OTP initiation transport independently validates email or E.164-like phone format for the specified channel before calling backend, rejecting malformed/mismatched/whitespace-padded contacts. Added regressions prove zero dispatch for denied contacts and unchanged valid SMS forwarding.
+- **No production activation or top-level acceptance closure:** Real OTP delivery provider, trusted ingress, production quota and end-user authentication remain unverified. Strict accepted count remains **29/117**.
+
 ### 2026-11-24 — account OTP initiation receipt UUID validation (frontend PR #200 CI PASS, merged)
 - [x] **Scoped server-only OTP receipt hardening verified:** [Frontend PR #200](https://github.com/nurgeldiserikbay/services-front/pull/200), exact tested head `b31616bee0fded305aa0255b46cc5ad91ab462ce`, [Frontend foundation CI #2291 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45434067454), squash merged as [`70314b1`](https://github.com/nurgeldiserikbay/services-front/commit/70314b1fec6af40fe46c053c35aeb6253ca8d078). The full frontend workflow completed with success, no failing job.
 - OTP initiation validates the backend challenge receipt UUID before creating a sealed challenge cookie. Regression tests reject malformed/nil/overlong challenge IDs and incorrect TTL type. No browser issuance route, provider delivery or production feature flag was enabled.
