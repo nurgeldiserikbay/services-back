@@ -3,6 +3,8 @@ import {makeOtpGatewayMonitorPoolConfig} from
  '../src/platform/ingress/otp-gateway-monitor-tls.reference.js';
 import {runOtpGatewayOperatorReportReadOnly} from
  '../src/platform/ingress/otp-gateway-operator-report.reference.js';
+import {parseOtpGatewayStagingPreflightInputs} from
+ '../src/platform/ingress/otp-gateway-staging-preflight.reference.js';
 
 /**
  * Manual, single-shot, aggregate-only reference CLI. Do not schedule,
@@ -15,18 +17,21 @@ import {runOtpGatewayOperatorReportReadOnly} from
  *   node --import tsx scripts/otp-gateway-reservation-report.ts --read-only
  */
 async function main():Promise<void>{
-  if(process.argv.length!==3||process.argv[2]!=='--read-only'||
-    !process.env.OTP_GATEWAY_MONITOR_DATABASE_URL||
-    !process.env.OTP_GATEWAY_MONITOR_SCHEMA||
-    !process.env.OTP_GATEWAY_MONITOR_CA_PEM)
+  // Legacy aggregate reporting must not bypass the staging observer's
+  // independently approved host/port/database/role/schema identity gate.
+  // Keep the explicit legacy --read-only operator command, but require
+  // precisely the same staging environment and fail-closed preflight.
+  if(process.argv.length!==3||process.argv[2]!=='--read-only')
     throw new Error('disabled');
+  const inputs=parseOtpGatewayStagingPreflightInputs(
+    ['--staging-read-only'],process.env,
+  );
   const pool=new Pool(makeOtpGatewayMonitorPoolConfig(
-    process.env.OTP_GATEWAY_MONITOR_DATABASE_URL,
-    process.env.OTP_GATEWAY_MONITOR_CA_PEM,
+    inputs.databaseUrl,inputs.caPem,
   ));
   try{
     const snapshot=await runOtpGatewayOperatorReportReadOnly(
-      pool,process.env.OTP_GATEWAY_MONITOR_SCHEMA,
+      pool,inputs.schema,true,inputs.databaseName,inputs.roleName,
     );
     process.stdout.write(JSON.stringify(snapshot)+'\n');
   }finally{
