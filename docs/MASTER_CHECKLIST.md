@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-24 — account OTP initiation receipt UUID validation (frontend PR #200 pending CI)
+- [ ] **Scoped server-only OTP receipt hardening pending CI:** [Frontend PR #200](https://github.com/nurgeldiserikbay/services-front/pull/200), candidate head `b31616bee0fded305aa0255b46cc5ad91ab462ce`. The internal account OTP initiation coordinator now denies malformed/non-UUID backend challenge receipts before issuing the sealed challenge cookie; regression tests cover invalid, nil, overlong challenge identifiers and wrong TTL type. No route, provider or feature flag is enabled.
+- **Acceptance remains open:** independently verified provider delivery, trusted edge abuse quotas, end-user OTP login and deployed authentication journey have not been established. No top-level checkbox is closed; strict accepted count **29/117** unchanged.
+
 ### 2026-11-24 — staging release evidence fail-closed hardening (frontend PR #199 CI PASS, merged)
 - [x] **Scoped release verifier hardening verified:** [Frontend PR #199](https://github.com/nurgeldiserikbay/services-front/pull/199), exact CI-tested head `2e9febc17cbf05d9aeb1e4b29ad7cf0fa519c68a`, [Frontend foundation CI #2286 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45431135899), squash merged as [`84c8bdf`](https://github.com/nurgeldiserikbay/services-front/commit/84c8bdf0872b9b464bf7eafa4849ac1d4786c5f0). The frontend CI web job concluded success, including unit/lint/typecheck/build, backend/PostgreSQL, Chrome/PWA/Lighthouse checks.
 - Release evidence verification now rejects missing/duplicate protected heading sections and placeholder descriptions for PASS gates; regression tests cover both. The committed staging acceptance status stays **NOT VERIFIED**. The new check is scoped to mechanical document integrity and is not a substitute for independent staging, owner approval, provider delivery, security review or production verification.
