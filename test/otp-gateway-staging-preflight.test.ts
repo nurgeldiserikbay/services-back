@@ -143,3 +143,20 @@ test('staging observer schema is validated before any database connection',()=>{
   ).schema,schema);
  }
 });
+
+test('staging observer URL disallows connection option query and fragments',()=>{
+ const base=valid.OTP_GATEWAY_MONITOR_DATABASE_URL;
+ for(const suffix of [
+  '?sslmode=disable','?sslmode=require','?options=-c%20search_path%3Dpublic',
+  '?application_name=observer','?host=other.internal',
+  '#ignored','#secret', '?sslmode=disable#fragment',
+ ]){
+  assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
+   ['--staging-read-only'],
+   {...valid,OTP_GATEWAY_MONITOR_DATABASE_URL:base+suffix},
+  ),{message:'otp_gateway_staging_preflight_unavailable'},suffix);
+ }
+ assert.equal(parseOtpGatewayStagingPreflightInputs(
+  ['--staging-read-only'], valid,
+ ).databaseUrl,base);
+});
