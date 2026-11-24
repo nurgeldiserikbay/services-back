@@ -52,7 +52,7 @@ export function parseOtpGatewayStagingPreflightInputs(
     const url=new URL(env.OTP_GATEWAY_MONITOR_DATABASE_URL);
     if(!['postgres:','postgresql:'].includes(url.protocol)||
       url.hostname!==host||url.pathname!=='/'+dbName||
-      url.username!==role)
+      url.username!==role||url.search!==''||url.hash!=='')
       throw new Error(DENIED);
   }catch{
     // Credentials or attacker-controlled endpoint details are never logged.
