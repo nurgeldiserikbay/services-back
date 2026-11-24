@@ -311,6 +311,10 @@
 - Confirmed current services-front/main `afe59e9d86f7d2f8e7983cb045590fe09e144019`, [Frontend foundation CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044). `apps/web/tests/private-bff-guest-seller-full-journey.e2e.mjs` verifies guest request CREATE (201, version 1), seller ACCEPT (version 2), scoped guest OTP challenge/verification in a disposable CI-only captured-delivery backend, one-use COMPLETE (version 3), owner-scoped refreshed status and PostgreSQL outbox/notification side-effects. Denial probes cover CSRF, missing/wrong-owner cookies, wrong OTP, stale version and replay.
 - Mark only the **End-to-end request lifecycle** checklist item for this representative integrated path. This does **not** attest to external OTP delivery, all possible request-state transitions, real KZ staging, production or release acceptance. Those separate gates remain unchecked.
 
+### 2026-11-24 — admin production HTTP security headers accepted (27/117 → 28/117)
+- Verified exact current `services-admin/main` SHA `096746df55453ecfa205c53a05566b5c95946f5c`, [Admin foundation CI #45335695147 PASS](https://github.com/nurgeldiserikbay/services-admin/actions/runs/45335695147). CI runs `pnpm typecheck`, security AST lint, unit suite, production build and actual `pnpm start` HTTP smoke probes for the GET/HEAD health route and denied private admin routes; asserts no-store, noindex, nosniff, frame denial, no-referrer, CSP frame-ancestors and no privileged response disclosure. Static `tests/admin-security-config.test.mjs` also verifies global header configuration.
+- Close exactly **HTTP security headers** in Admin for the verified built-server/test scope; no claim about staging reverse proxy/CDN, full CSP threat model, authenticated admin user workflows or production security approval. Other acceptance gates stay open.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
@@ -399,7 +403,7 @@
 - [ ] DB-authoritative session grants — Prepared; verification pending
 - [ ] Moderation and authorization — Pending verification
 - [ ] Security audit trail — Pending verification
-- [ ] HTTP security headers — Prepared; verification pending
+- [x] HTTP security headers — Verified 2026-11-24 at exact services-admin/main `096746df55453ecfa205c53a05566b5c95946f5c`, [Admin foundation CI #45335695147 PASS](https://github.com/nurgeldiserikbay/services-admin/actions/runs/45335695147). Admin `.github/workflows/ci.yml` starts built production Next.js and checks actual HTTP HEAD/GET liveness responses for `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `X-Robots-Tag: noindex`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and CSP `frame-ancestors`, as well as private moderation denial/no-store/noindex under default-off and enabled-without-session variants. Unit config tests pin additional same-origin and restrictive header policies. This accepts repository/CI production-server header behavior, **not** reverse-proxy/CDN deployed header retention, a full CSP audit, real privileged admin UI acceptance or production security signoff.
 - [ ] Admin UI functional acceptance — Pending verification
 - [x] Admin PostgreSQL and E2E tests — Verified privileged moderation HTTP, live PostgreSQL scope and revocation, admin MFA sessions and authorization in backend CI #43804251293 (2026-11-16); full admin UI acceptance remains separate
 
@@ -1476,4 +1480,4 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 27 (26 previously verified, plus representative CI guest-create/seller-accept/OTP-complete end-to-end lifecycle acceptance verified 2026-11-24). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 28 (27 previously verified, plus live built-admin HTTP response security headers acceptance on 2026-11-24). This strict checkbox count is not the project's historical functional-readiness estimate.
