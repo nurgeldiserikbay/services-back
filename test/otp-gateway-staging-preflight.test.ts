@@ -176,6 +176,9 @@ test('staging observer pins independently approved PostgreSQL port before connec
   'postgresql://observer:secret@gateway.internal/otp',
   'postgresql://observer:secret@gateway.internal:5433/otp',
   'postgresql://observer:secret@gateway.internal:6543/otp',
+  'postgresql://observer:secret@gateway.internal:05432/otp',
+  'postgresql://observer:secret@gateway.internal:0005432/otp',
+  'postgresql://observer:secret@gateway.internal:5432./otp',
  ]){
   assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
    ['--staging-read-only'],
