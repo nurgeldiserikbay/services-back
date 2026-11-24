@@ -295,6 +295,10 @@
 - Branch `test/otp-role-identity-real-pg-e2e-20261123`: disposable PostgreSQL CI reads actual `current_database()`, `session_user` and `current_user`, intentionally supplies a mismatched approved role pin, and verifies sanitized denial **before** any observer ACL or ledger query, followed by rollback and forced session disposal. No mutations or OTP provider credentials.
 - Verified [PR #445](https://github.com/nurgeldiserikbay/services-back/pull/445), exact head `861c6fdac06cc4102a518c7b7865c22820c349da`, [Backend foundation CI #4709 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45138083046), squash merge `4d1092e917984b3d84df54ac74dfe278b816e631`. Test uses CI PostgreSQL without TLS (TLS covered separately); it is NOT private KZ staging sign-off, observer provisioning or real provider acceptance. No readiness increase.
 
+### 2026-11-24 — PWA manifest and offline behavior accepted (22/117 → 23/117)
+- Verified the **exact current** `services-front/main` commit `afe59e9d86f7d2f8e7983cb045590fe09e144019` against [Frontend foundation CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044). The CI explicitly passed manifest/icon and offline worker unit coverage, production server service-worker isolation, real headless Chrome offline public navigation and private API no-cache regression. The CI also passed frontend typecheck, build and security lint; unrelated admin CI remains separately governed.
+- Mark **PWA manifest and offline behavior** accepted for the tested browser/repository scope. **Not** a mobile installability, all-device accessibility, user journey, performance threshold, live KZ staging, or production deployment approval. Keep mobile UX and staging checkboxes open. No other acceptance item changed.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
@@ -396,7 +400,7 @@
 - [ ] Search/profile/request UX — Pending verification
 - [ ] Responsive mobile layout — Pending verification
 - [ ] Loading/empty/error states — Pending verification
-- [ ] PWA manifest and offline behavior — Pending verification
+- [x] PWA manifest and offline behavior — Verified 2026-11-24 on exact current services-front main `afe59e9d86f7d2f8e7983cb045590fe09e144019`: [Frontend foundation CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044). Unit tests validate scoped manifest, self-contained icon, public-only fallback cache and service-worker isolation. Live production Next.js + headless Chromium E2E actually installs/controls the worker, performs offline public navigation, verifies localized generic fallback and ensures private API requests cannot be served from cache. **Scope:** desktop/headless Chrome lab and repository-level PWA/offline behavior, not Android/iOS installability, deployed KZ staging or final mobile-device UX acceptance.
 - [ ] Accessibility and keyboard navigation — Pending verification
 - [ ] Lighthouse/Core Web Vitals — Pending verification
 
@@ -1460,4 +1464,4 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 22 (21 previously accepted, plus independently verified current-main CI across backend, frontend, admin and docs on 2026-11-23). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 23 (21 previously accepted; 1 current-main CI acceptance verified 2026-11-23; 1 browser-backed PWA manifest/offline acceptance verified 2026-11-24). This strict checkbox count is not the project's historical functional-readiness estimate.
