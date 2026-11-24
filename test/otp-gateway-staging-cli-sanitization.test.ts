@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {test} from 'node:test';
+import {parseOtpGatewayStagingPreflightInputs} from
+ '../src/platform/ingress/otp-gateway-staging-preflight.reference.js';
 
 const cli='scripts/otp-gateway-staging-preflight.ts';
 const denied='otp_gateway_staging_preflight_unavailable\n';
@@ -11,6 +13,7 @@ const baseEnv={
  HOME:process.env.HOME??'',
  OTP_GATEWAY_MONITOR_ENV:'staging',
  OTP_GATEWAY_MONITOR_EXPECTED_HOST:'gateway.internal',
+ OTP_GATEWAY_MONITOR_EXPECTED_PORT:'5432',
  OTP_GATEWAY_MONITOR_EXPECTED_DATABASE:'gateway',
  OTP_GATEWAY_MONITOR_EXPECTED_ROLE:'observer',
  OTP_GATEWAY_MONITOR_DATABASE_URL:
@@ -52,11 +55,29 @@ test('OTP staging CLI exposes only sanitized error for forbidden invocations',()
 });
 
 test('OTP staging CLI hides invalid secret/CA diagnostics on actual process exit',()=>{
+ // Prove these arguments reach certificate verification rather than
+ // being refused early for a missing separately approved port.
+ assert.equal(parseOtpGatewayStagingPreflightInputs(
+  ['--staging-read-only'],baseEnv,
+ ).databaseName,'gateway');
  probe(['--staging-read-only'],{...baseEnv});
  // URL validation rejects before Pool creation even with a valid-looking CA.
  probe(['--staging-read-only'],{
   ...baseEnv,
   OTP_GATEWAY_MONITOR_DATABASE_URL:
    'postgresql://observer:PRIVATE_TEST_PASSWORD@other.internal:5432/gateway',
+ });
+});
+
+test('OTP staging CLI rejects and redacts incorrect port settings',()=>{
+ for(const port of ['','05432','5433','65536']){
+  probe(['--staging-read-only'],{
+   ...baseEnv,OTP_GATEWAY_MONITOR_EXPECTED_PORT:port,
+  });
+ }
+ probe(['--staging-read-only'],{
+  ...baseEnv,
+  OTP_GATEWAY_MONITOR_DATABASE_URL:
+   'postgresql://observer:PRIVATE_TEST_PASSWORD@gateway.internal:05432/gateway',
  });
 });
