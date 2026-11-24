@@ -23,6 +23,7 @@ export function parseOtpGatewayStagingPreflightInputs(
     !env.OTP_GATEWAY_MONITOR_SCHEMA||
     !env.OTP_GATEWAY_MONITOR_CA_PEM||
     !env.OTP_GATEWAY_MONITOR_EXPECTED_HOST||
+    !env.OTP_GATEWAY_MONITOR_EXPECTED_PORT||
     !env.OTP_GATEWAY_MONITOR_EXPECTED_DATABASE||
     !env.OTP_GATEWAY_MONITOR_EXPECTED_ROLE)
     throw new Error(DENIED);
@@ -33,6 +34,11 @@ export function parseOtpGatewayStagingPreflightInputs(
     if(isIP(host)!==0||host.length>253||!/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(host)||
       host.split('.').some(label=>label.length>63||
         label.startsWith('-')||label.endsWith('-')))
+      throw new Error(DENIED);
+    // Port must be separately approved; no implicit 5432 or URL-controlled
+    // alternate listener is accepted by the staging-only monitor.
+    const port=env.OTP_GATEWAY_MONITOR_EXPECTED_PORT!;
+    if(!/^[1-9][0-9]{0,4}$/.test(port)||Number(port)>65535)
       throw new Error(DENIED);
     const dbName=env.OTP_GATEWAY_MONITOR_EXPECTED_DATABASE!;
     if(!/^[a-z_][a-z0-9_]{0,62}$/.test(dbName)||
@@ -51,7 +57,7 @@ export function parseOtpGatewayStagingPreflightInputs(
       throw new Error(DENIED);
     const url=new URL(env.OTP_GATEWAY_MONITOR_DATABASE_URL);
     if(!['postgres:','postgresql:'].includes(url.protocol)||
-      url.hostname!==host||url.pathname!=='/'+dbName||
+      url.hostname!==host||url.port!==port||url.pathname!=='/'+dbName||
       url.username!==role||url.search!==''||url.hash!=='')
       throw new Error(DENIED);
   }catch{

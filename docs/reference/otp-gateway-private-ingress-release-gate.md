@@ -35,6 +35,10 @@ Never expose this endpoint on the public Nest API, the browser, an ordinary admi
 
 All controls are **PENDING** until supported by actual environment-specific evidence. Localhost, disposable PostgreSQL and mocked-vendor tests are valuable regressions but cannot close any deployed-infrastructure check by themselves.
 
+## Read-only staging monitor endpoint pinning
+
+The operator-invoked staging observer preflight requires an **independently approved TCP port** in `OTP_GATEWAY_MONITOR_EXPECTED_PORT` as well as the existing expected host, database, role and schema. The PostgreSQL URL must explicitly contain the same port (decimal 1–65535, no leading zeroes or implicit default), and query/fragment overrides remain forbidden. This input gate is evaluated **before any connection**. Configure the port using approved restricted deployment settings, not by copying it from the untrusted URL. A successful local preflight still does not attest network source, KZ placement or a deployed mTLS gateway.
+
 ## Required negative-path drills
 
 Perform with sandbox credentials and dedicated test recipients only; store links to restricted redacted evidence, not secrets or recipient values.
