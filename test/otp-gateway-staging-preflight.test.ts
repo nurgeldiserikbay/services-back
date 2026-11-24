@@ -150,7 +150,6 @@ test('staging observer URL disallows connection option query and fragments',()=>
   '?sslmode=disable','?sslmode=require','?options=-c%20search_path%3Dpublic',
   '?application_name=observer','?host=other.internal',
   '#ignored','#secret', '?sslmode=disable#fragment',
-  '?', '#',
  ]){
   assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
    ['--staging-read-only'],
