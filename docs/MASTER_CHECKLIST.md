@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-24 — seller decision logout/remount isolation (CI pending)
+- [Frontend fix `93b917e`](https://github.com/nurgeldiserikbay/services-front/commit/93b917e84f6a3760105e3fea3b10561e3290e50f) and [follow-up `a1b54b2`](https://github.com/nurgeldiserikbay/services-front/commit/a1b54b236d0bfca41de9ce4c3c40d0bce94996a7) make in-flight seller decisions capture the current inbox lifecycle epoch; after logout/unmount or remount, stale success/failure cannot issue a new account inbox read or update account-local state. A mounted flag handles unmount even while the old promise is unresolved.
+- [Frontend regression `9e78305`](https://github.com/nurgeldiserikbay/services-front/commit/9e783050bbf40a1c54ee280907f17767a00220ce) checks mounted/epoch guards on response, catch and finally paths. These are source-level regression assertions, **not** a browser logout journey. CI and cross-session runtime E2E remain pending; no new top-level acceptance. **29/117** remains the verified count.
+
 ### 2026-11-24 — seller decision feedback remains visible across post-write inbox refresh (CI pending)
 - [Frontend fix `1538f45`](https://github.com/nurgeldiserikbay/services-front/commit/1538f45ff5ebfb93bba1f041db1ba61f27167127) preserves visible `conflict` and `forbidden` outcomes when the exclusive decision handler triggers its own refreshed account inbox read; before the fix `load(false,true)` immediately cleared the just-set message. Explicit user refresh still clears stale messages, while failed post-write reads replace them with the truthful load-failure message.
 - [Frontend test `b6b892c`](https://github.com/nurgeldiserikbay/services-front/commit/b6b892ca279264b68be4768067b4d575095df1cc) pins these invariants. **CI pending**, so no new checkbox or acceptance count is claimed. The strict checklist count is **29/117**, including the independently verified public responsive-layout acceptance.
