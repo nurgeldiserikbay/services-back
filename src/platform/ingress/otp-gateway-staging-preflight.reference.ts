@@ -55,6 +55,14 @@ export function parseOtpGatewayStagingPreflightInputs(
     if(!/^[a-z_][a-z0-9_]{0,62}$/.test(schema)||
       schema.startsWith('pg_')||schema==='information_schema')
       throw new Error(DENIED);
+    // WHATWG URL normalizes ports such as :05432 to :5432. Check the
+    // literal authority first so the operator-approved endpoint remains
+    // canonical, and an implicit or noncanonical port cannot be hidden.
+    const rawAuthority=env.OTP_GATEWAY_MONITOR_DATABASE_URL!.match(
+      /^postgres(?:ql)?:\/\/([^/?#]+)\//,
+    )?.[1];
+    const rawEndpoint=rawAuthority?.slice(rawAuthority.lastIndexOf('@')+1);
+    if(rawEndpoint!==host+':'+port)throw new Error(DENIED);
     const url=new URL(env.OTP_GATEWAY_MONITOR_DATABASE_URL);
     if(!['postgres:','postgresql:'].includes(url.protocol)||
       url.hostname!==host||url.port!==port||url.pathname!=='/'+dbName||
