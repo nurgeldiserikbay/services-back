@@ -299,6 +299,10 @@
 - Verified the **exact current** `services-front/main` commit `afe59e9d86f7d2f8e7983cb045590fe09e144019` against [Frontend foundation CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044). The CI explicitly passed manifest/icon and offline worker unit coverage, production server service-worker isolation, real headless Chrome offline public navigation and private API no-cache regression. The CI also passed frontend typecheck, build and security lint; unrelated admin CI remains separately governed.
 - Mark **PWA manifest and offline behavior** accepted for the tested browser/repository scope. **Not** a mobile installability, all-device accessibility, user journey, performance threshold, live KZ staging, or production deployment approval. Keep mobile UX and staging checkboxes open. No other acceptance item changed.
 
+### 2026-11-24 — real HTTP guest BFF and HttpOnly proof acceptance (23/117 → 25/117)
+- Current services-front/main `afe59e9d86f7d2f8e7983cb045590fe09e144019`, [services-front exact-main CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044), exercises `apps/web/tests/private-bff-guest-create-journey.e2e.mjs` against built Next.js, backend bridge and migrated PostgreSQL with disposable preverified proof, plus `apps/web/tests/guest-create-private-route.test.mjs` and `apps/web/tests/guest-session-security.test.mjs`. Verified one committed guest request/outbox event, cookie scoping, CSRF, origin and idempotent replay/denial.
+- Accept exactly **Protected guest create BFF** and **HttpOnly sealed guest capability** for the covered private HTTP/CI contracts. No production flag activation; real OTP provider verification, KZ staging, device-level security audit and final UX acceptance remain OPEN. No other checkbox changed.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
@@ -393,9 +397,9 @@
 
 ### Frontend & PWA
 
-- [ ] Protected guest create BFF — Prepared; verification pending
+- [x] Protected guest create BFF — Verified 2026-11-24 on current services-front/main `afe59e9d86f7d2f8e7983cb045590fe09e144019`: [services-front exact-main CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044). Real production Next.js BFF → pinned backend HTTPS bridge → disposable PostgreSQL test creates precisely one guest request from a preverified CI-only CREATE_REQUEST capability, requires origin/CSRF/idempotency, rejects missing/forged/mismatched/cross-site proofs and changed-body replays, and verifies single outbox event. Request/response are private, no-store; feature remains default-off outside explicitly enabled CI harness. Not live provider OTP or staging approval.
 - [x] HTTP payload/response limits — Verified: [Frontend CI #43724021062](https://github.com/nurgeldiserikbay/services-front/actions/runs/43724021062) passed unit/boundary tests, including 8 KiB streamed response limit and strict media-type checks
-- [ ] HttpOnly sealed guest capability — Prepared; verification pending
+- [x] HttpOnly sealed guest capability — Verified 2026-11-24 in [services-front exact-main CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044) at exact frontend main SHA `afe59e9d86f7d2f8e7983cb045590fe09e144019`: AES-authenticated guest create session is server-only and not plaintext; live BFF guest-create returns request-specific `__Host-services_guest_request` cookie with HttpOnly, Secure and SameSite=Strict, clears CREATE_REQUEST cookie, permits own scoped status but denies forged/missing/expired/swapped-scope cookies, wrong request ID and cross-site reads. Scope limited to disposable CI HTTP E2E, not production device/client or live OTP provider acceptance.
 - [ ] Navigation and core pages — Pending verification
 - [ ] Search/profile/request UX — Pending verification
 - [ ] Responsive mobile layout — Pending verification
@@ -1464,4 +1468,4 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 23 (21 previously accepted; 1 current-main CI acceptance verified 2026-11-23; 1 browser-backed PWA manifest/offline acceptance verified 2026-11-24). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 25 (23 previously verified, plus independently evidenced guest create BFF and HttpOnly scoped guest-capability acceptances on 2026-11-24). This strict checkbox count is not the project's historical functional-readiness estimate.
