@@ -6,6 +6,7 @@ import {parseOtpGatewayStagingPreflightInputs} from
 const valid={
  OTP_GATEWAY_MONITOR_ENV:'staging',
  OTP_GATEWAY_MONITOR_EXPECTED_HOST:'gateway.internal',
+ OTP_GATEWAY_MONITOR_EXPECTED_PORT:'5432',
  OTP_GATEWAY_MONITOR_EXPECTED_DATABASE:'otp',
  OTP_GATEWAY_MONITOR_EXPECTED_ROLE:'observer',
  OTP_GATEWAY_MONITOR_DATABASE_URL:'postgresql://observer:secret@gateway.internal:5432/otp',
@@ -34,6 +35,7 @@ test('OTP staging preflight requires explicit staging-only read-only opt-in',()=
   ['OTP_GATEWAY_MONITOR_SCHEMA',''],
   ['OTP_GATEWAY_MONITOR_CA_PEM',''],
   ['OTP_GATEWAY_MONITOR_EXPECTED_HOST',''],
+  ['OTP_GATEWAY_MONITOR_EXPECTED_PORT',''],
   ['OTP_GATEWAY_MONITOR_EXPECTED_DATABASE',''],
   ['OTP_GATEWAY_MONITOR_EXPECTED_ROLE',''],
  ] as const){
@@ -159,4 +161,33 @@ test('staging observer URL disallows connection option query and fragments',()=>
  assert.equal(parseOtpGatewayStagingPreflightInputs(
   ['--staging-read-only'], valid,
  ).databaseUrl,base);
+});
+
+
+test('staging observer pins independently approved PostgreSQL port before connect',()=>{
+ for(const approvedPort of ['0','0001','05432','65536','99999','-1',
+  '+5432','5432 ',' 5432','5432/','5432;','abc','']){
+  assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
+   ['--staging-read-only'],
+   {...valid,OTP_GATEWAY_MONITOR_EXPECTED_PORT:approvedPort},
+  ),{message:'otp_gateway_staging_preflight_unavailable'},approvedPort);
+ }
+ for(const url of [
+  'postgresql://observer:secret@gateway.internal/otp',
+  'postgresql://observer:secret@gateway.internal:5433/otp',
+  'postgresql://observer:secret@gateway.internal:6543/otp',
+ ]){
+  assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
+   ['--staging-read-only'],
+   {...valid,OTP_GATEWAY_MONITOR_DATABASE_URL:url},
+  ),{message:'otp_gateway_staging_preflight_unavailable'});
+ }
+ assert.equal(parseOtpGatewayStagingPreflightInputs(
+  ['--staging-read-only'],{
+   ...valid,
+   OTP_GATEWAY_MONITOR_EXPECTED_PORT:'6543',
+   OTP_GATEWAY_MONITOR_DATABASE_URL:
+    'postgresql://observer:secret@gateway.internal:6543/otp',
+  },
+ ).databaseName,'otp');
 });
