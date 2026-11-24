@@ -307,6 +307,10 @@
 - Verified exact current `services-front/main` SHA `afe59e9d86f7d2f8e7983cb045590fe09e144019`, [services-front CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044). The CI runs `apps/web/tests/private-bff-registered-create-journey.e2e.mjs` against the built Next.js frontend, HTTPS backend bridge and disposable PostgreSQL, including headless Chrome retry form flow, first-create, committed request/outbox/notification, idempotent replay, changed-payload conflict, foreign-account inventory privacy, database-enforced per-account rate budget and bearer revocation.
 - Close only **Authenticated request flow** for its tested transport/transaction/authorization scope. CI uses isolated synthetic verified sessions; live user OTP provider, KZ deployment and operational acceptance remain open. No other checkbox changed.
 
+### 2026-11-24 — representative guest request lifecycle E2E accepted (26/117 → 27/117)
+- Confirmed current services-front/main `afe59e9d86f7d2f8e7983cb045590fe09e144019`, [Frontend foundation CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044). `apps/web/tests/private-bff-guest-seller-full-journey.e2e.mjs` verifies guest request CREATE (201, version 1), seller ACCEPT (version 2), scoped guest OTP challenge/verification in a disposable CI-only captured-delivery backend, one-use COMPLETE (version 3), owner-scoped refreshed status and PostgreSQL outbox/notification side-effects. Denial probes cover CSRF, missing/wrong-owner cookies, wrong OTP, stale version and replay.
+- Mark only the **End-to-end request lifecycle** checklist item for this representative integrated path. This does **not** attest to external OTP delivery, all possible request-state transitions, real KZ staging, production or release acceptance. Those separate gates remain unchecked.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
@@ -365,7 +369,7 @@
 - [ ] IANA timezone support — Prepared; verification pending
 - [ ] DST-safe cancellation snapshot — Prepared; verification pending
 - [ ] Availability and collision handling — Pending verification
-- [ ] End-to-end request lifecycle — Pending verification
+- [x] End-to-end request lifecycle — Verified 2026-11-24 for the **guest create → seller accept → guest OTP-confirmed completion → refreshed guest status** representative path only, on exact current services-front/main `afe59e9d86f7d2f8e7983cb045590fe09e144019`, [Frontend foundation CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044). `private-bff-guest-seller-full-journey.e2e.mjs` exercises built Next.js BFF, backend HTTPS bridge and migrated disposable PostgreSQL: scoped guest/seller sessions, rejection of forged CSRF, idempotent seller acceptance, private guest status, CI-captured completion OTP, one-use completion proof, monotonic version 1→2→3, safe outbox and deduplicated notification intents. The OTP delivery is **CI-only captured test-provider output**, not live SMS/email; alternate decline/cancellation paths, provider readiness, staging and production full-life-cycle acceptance remain separately open.
 
 ### Reviews & ratings
 
@@ -1472,4 +1476,4 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 26 (25 previously verified, plus current-main live HTTP/PostgreSQL registered account request-flow acceptance on 2026-11-24). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 27 (26 previously verified, plus representative CI guest-create/seller-accept/OTP-complete end-to-end lifecycle acceptance verified 2026-11-24). This strict checkbox count is not the project's historical functional-readiness estimate.
