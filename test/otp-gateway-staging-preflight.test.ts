@@ -123,3 +123,23 @@ test('staging observer requires an independently approved login role',()=>{
   ),{message:'otp_gateway_staging_preflight_unavailable'});
  }
 });
+
+test('staging observer schema is validated before any database connection',()=>{
+ for(const schema of [
+  'information_schema','pg_catalog','pg_temp_1','pg_toast',
+  'public;DROP TABLE otp_gateway_delivery_claims',
+  'other.schema','otp-gateway','OTP_GATEWAY','a'.repeat(64),
+  ' otp_gateway','otp_gateway ','', 'otp_gateway\\u0000',
+ ]){
+  assert.throws(()=>parseOtpGatewayStagingPreflightInputs(
+   ['--staging-read-only'],
+   {...valid,OTP_GATEWAY_MONITOR_SCHEMA:schema},
+  ),{message:'otp_gateway_staging_preflight_unavailable'});
+ }
+ for(const schema of ['otp_gateway','gateway_2','_gateway']){
+  assert.equal(parseOtpGatewayStagingPreflightInputs(
+   ['--staging-read-only'],
+   {...valid,OTP_GATEWAY_MONITOR_SCHEMA:schema},
+  ).schema,schema);
+ }
+});

@@ -43,6 +43,12 @@ export function parseOtpGatewayStagingPreflightInputs(
     if(!/^[a-z_][a-z0-9_]{0,62}$/.test(role)||
       role.startsWith('pg_')||role==='postgres')
       throw new Error(DENIED);
+    // Fail before opening a network connection. Previously an invalid schema
+    // reached Pool.connect() and was rejected only inside the report runner.
+    const schema=env.OTP_GATEWAY_MONITOR_SCHEMA!;
+    if(!/^[a-z_][a-z0-9_]{0,62}$/.test(schema)||
+      schema.startsWith('pg_')||schema==='information_schema')
+      throw new Error(DENIED);
     const url=new URL(env.OTP_GATEWAY_MONITOR_DATABASE_URL);
     if(!['postgres:','postgresql:'].includes(url.protocol)||
       url.hostname!==host||url.pathname!=='/'+dbName||
