@@ -303,6 +303,10 @@
 - Current services-front/main `afe59e9d86f7d2f8e7983cb045590fe09e144019`, [services-front exact-main CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044), exercises `apps/web/tests/private-bff-guest-create-journey.e2e.mjs` against built Next.js, backend bridge and migrated PostgreSQL with disposable preverified proof, plus `apps/web/tests/guest-create-private-route.test.mjs` and `apps/web/tests/guest-session-security.test.mjs`. Verified one committed guest request/outbox event, cookie scoping, CSRF, origin and idempotent replay/denial.
 - Accept exactly **Protected guest create BFF** and **HttpOnly sealed guest capability** for the covered private HTTP/CI contracts. No production flag activation; real OTP provider verification, KZ staging, device-level security audit and final UX acceptance remain OPEN. No other checkbox changed.
 
+### 2026-11-24 — authenticated customer request path accepted (25/117 → 26/117)
+- Verified exact current `services-front/main` SHA `afe59e9d86f7d2f8e7983cb045590fe09e144019`, [services-front CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044). The CI runs `apps/web/tests/private-bff-registered-create-journey.e2e.mjs` against the built Next.js frontend, HTTPS backend bridge and disposable PostgreSQL, including headless Chrome retry form flow, first-create, committed request/outbox/notification, idempotent replay, changed-payload conflict, foreign-account inventory privacy, database-enforced per-account rate budget and bearer revocation.
+- Close only **Authenticated request flow** for its tested transport/transaction/authorization scope. CI uses isolated synthetic verified sessions; live user OTP provider, KZ deployment and operational acceptance remain open. No other checkbox changed.
+
 ## Acceptance items
 
 ### Architecture & infrastructure
@@ -354,7 +358,7 @@
 
 - [x] Guest request creation — Verified 2026-11-20: real Next.js → backend → PostgreSQL CREATE_REQUEST guest proof created a single request, returned a scoped HttpOnly READ_CANCEL cookie and pending status. Verified replay/CSRF/ownership in frontend CI #44680281343 and full cross-role guest-create → seller-accept → guest-status E2E in frontend CI #44681899362 (services-front PR #148, merge 72f24ef). Real OTP provider and production deployment remain separate.
 - [x] Guest capability token security — Verified guest status ownership, expired/consumed/mismatched capability rejection and private-field allowlist in backend CI #43726538338 (2026-11-15)
-- [ ] Authenticated request flow — Pending verification
+- [x] Authenticated request flow — Verified 2026-11-24 using the exact services-front/main SHA `afe59e9d86f7d2f8e7983cb045590fe09e144019` and [services-front CI #45220839044 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45220839044). Real production-built Next.js / account BFF → HTTPS backend bridge → migrated disposable PostgreSQL CI proves SSR authenticated create form, signed HttpOnly account session, same-origin/CSRF and server-authoritative customer identity; commits scoped request, event, outbox and seller notification; supports idempotent same-key replay, conflicting-body 409, owner-only inventory, rate-limited 429 and revoked-session denial. The E2E uses CI-only seeded sessions, not a real external OTP provider, real user registration, deployed KZ staging or full production device acceptance.
 - [x] Seller accept/reject actions — Verified transactional accept/decline, scoped seller authorization, idempotent replay and notification integration in backend CI #43737972089 (2026-11-15)
 - [ ] Request state transitions — Pending verification
 - [ ] Idempotency and retries — Pending verification
@@ -1468,4 +1472,4 @@ No new acceptance checkbox is closed by this evidence-only review; existing top-
 2. Verify frontend and admin build/typecheck and core E2E journeys against backend.
 3. Complete security/dependency audit, backup/restore drill, staging deployment and operational runbooks.
 
-**Total acceptance items:** 117. **Verified complete:** 25 (23 previously verified, plus independently evidenced guest create BFF and HttpOnly scoped guest-capability acceptances on 2026-11-24). This strict checkbox count is not the project's historical functional-readiness estimate.
+**Total acceptance items:** 117. **Verified complete:** 26 (25 previously verified, plus current-main live HTTP/PostgreSQL registered account request-flow acceptance on 2026-11-24). This strict checkbox count is not the project's historical functional-readiness estimate.
