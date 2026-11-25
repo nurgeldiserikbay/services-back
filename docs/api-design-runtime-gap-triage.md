@@ -142,3 +142,26 @@ is **not** evidence that the endpoint is enabled.
 
 CI success here proves only that the recorded set differences have not changed,
 not that missing functionality has been delivered or exposed.
+
+## Release decision queue — evidence versus unresolved approval (2026-11-25)
+
+This queue makes the **next review actions** explicit without assigning unapproved
+mandatory/deferred/internal classifications. Passing a regression test is not
+equivalent to product approval, production exposure or an accepted OpenAPI contract.
+
+| Priority | Design/runtime boundary | Existing evidence | Required next decision / gate | Status |
+| --- | --- | --- | --- | --- |
+| P0 | Design `POST /auth/challenges`, `POST /auth/challenges/{id}/verify` vs runtime private account login/dispatch | Private routes independently default-off; invalid BFF key denied before downstream calls (`test/private-account-runtime-only-route-boundary.test.ts`) | Product decides public OTP contract; security approves OTP provider, rate limiting, private ingress, independent feature switches and browser BFF contract | OPEN |
+| P0 | Design `POST /requests`, `GET /me/requests`, `POST /requests/{id}/complete` vs runtime `/account/requests*` | Frontend cross-role registered request lifecycle E2E exists (services-front PR #209); backend runtime shapes tracked here | Approve explicit customer contract mapping and DTO/status/auth parity; exercise same versioned contract against migrated PostgreSQL through browser BFF | OPEN |
+| P0 | Runtime `GET /admin/moderation/cases` and `POST /admin/moderation/cases/{id}/decision` | Real HTTP read auth regression; live HTTP/PostgreSQL revoked-grant mutation regression (`test/admin-moderation-read-network-http.test.ts`, `test/admin-decision-network-http-grant-revocation.test.ts`) | Decide whether both remain private/internal; verify privileged BFF, network ingress, MFA session issuer, CSRF/origin boundary and production operator grant lifecycle | OPEN |
+| P1 | Runtime `DELETE /auth/sessions/{id}` vs design account session operations | Real HTTP/PostgreSQL account isolation and immediate session revocation (`test/account-session-network-http-e2e.test.ts`) | Product approves contract/exposure, client request and response DTO/status parity; security signs off browser session handling and CSRF boundary | OPEN |
+| P1 | Runtime `POST /me/professional-profiles/{id}/publish` and profile moderation/search | Frontend publication-to-search E2E exists (services-front PR #208) | Approve design operation, account permissions and moderation state/status/DTO; verify actual consumer contract version and deployed private/public exposure | OPEN |
+| P1 | Runtime guest completion challenge/confirm routes | Route inventory established, not an independently accepted public API contract | Review guest capability proofs, replay/idempotency, OTP abuse limits, response redaction and browser BFF wiring before exposure decision | OPEN |
+
+**Review completion rule:** each row is closed only after (1) a named product
+decision on design ownership, (2) a named security decision on exposure and trust
+boundary, (3) consumer-facing DTO/status/error/auth parity evidence with a linked
+passing test/run, and (4) the approved change reflected in the docs OpenAPI and
+versioned contract fixtures. Keep unresolved rows OPEN even when CI is green.
+The static baseline remains **65 design / 46 runtime / 29 shape matches** and
+the strict top-level acceptance count remains **29/117** until independently approved.
