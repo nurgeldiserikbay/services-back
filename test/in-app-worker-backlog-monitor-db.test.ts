@@ -19,7 +19,7 @@ test('IN_APP queue monitor measures immutable outbox age and ignores EMAIL',asyn
   await db.query('INSERT INTO persons(id,user_id) VALUES($1,$2)',[person,user]);
   await db.query("INSERT INTO guest_contacts(id,channel,encrypted_value,digest,expires_at) VALUES($1,'email','ci-opaque',$2,now()+interval '1 day')",
    [contact,'inapp-health:'+randomUUID()]);
-  await db.query("INSERT INTO domain_outbox_events(id,topic,subject_kind,subject_id,created_at,safe_payload) VALUES($1,'test.queue.health','ServiceRequest',$2,now()-interval '31 minutes','{}'::jsonb)",
+  await db.query("INSERT INTO domain_outbox_events(id,topic,subject_kind,subject_id,created_at,safe_payload) VALUES($1,'test.queue.health','ServiceRequest',$2,now()-interval '32 minutes','{}'::jsonb)",
    [event,randomUUID()]);
   await db.query("INSERT INTO notification_intents(id,domain_event_id,recipient_person_id,audience,channel,dedupe_key,state) VALUES($1,$2,$3,'CLIENT','IN_APP',$4,'PENDING'),($5,$2,$3,'CLIENT','IN_APP',$6,'DELIVERED')",
    [pending,event,person,'health-pending:'+randomUUID(),delivered,'health-delivered:'+randomUUID()]);
@@ -38,6 +38,7 @@ test('IN_APP queue monitor measures immutable outbox age and ignores EMAIL',asyn
    {channel:'IN_APP',state:'DELIVERED'},
    {channel:'IN_APP',state:'PENDING'},
   ]);
+  // Keep a one-minute cushion around timestamp precision and test scheduling.
   assert.ok(after.oldestPendingSeconds>=1860);
   const alert=assessInAppQueueHealth(after,after.pending,900);
   assert.equal(alert.ageOverLimit,true);
