@@ -78,3 +78,34 @@ test('pinned AppModule runtime route inventory matches controller declarations',
  assert.deepEqual({missing,stale},{missing:[],stale:[]},
   'Backend controller declarations drifted from pinned inventory; review API exposure and update snapshot only after inspection');
 });
+
+test('known API design/runtime gaps are explicit and do not silently drift',()=>{
+ const pinned=JSON.parse(readFileSync(resolve(process.cwd(),
+  'contracts/api-design-gap-baseline.json'),'utf8')) as {
+  schemaVersion:number;source:string;scope:string;
+  designRoutes:string[];knownDesignOnly:string[];knownRuntimeOnly:string[];
+ };
+ const runtime=JSON.parse(readFileSync(resolve(process.cwd(),
+  'contracts/runtime-route-inventory.json'),'utf8')) as {routes:string[]};
+ assert.equal(pinned.schemaVersion,1);
+ assert.match(pinned.source,/2026-11-23 source-inspection snapshot/);
+ assert.match(pinned.scope,/not HTTP availability/);
+ const uniqueSorted=(rows:string[])=>[...new Set(rows)].sort();
+ for(const rows of [pinned.designRoutes,pinned.knownDesignOnly,pinned.knownRuntimeOnly]){
+  assert.deepEqual(rows,uniqueSorted(rows),
+   'API design baseline routes must be sorted and unique');
+ }
+ // Snapshot remains deliberately unresolved; passing does not mean API parity.
+ assert.equal(pinned.designRoutes.length,65);
+ assert.equal(runtime.routes.length,46);
+ const design=new Set(pinned.designRoutes),implemented=new Set(runtime.routes);
+ const missingImplementation=pinned.designRoutes.filter(x=>!implemented.has(x));
+ const runtimeNotInDesign=runtime.routes.filter(x=>!design.has(x));
+ assert.deepEqual(missingImplementation,pinned.knownDesignOnly,
+  'Design-only operations changed: review implementation and product approval before changing the baseline');
+ assert.deepEqual(runtimeNotInDesign,pinned.knownRuntimeOnly,
+  'Runtime-only operations changed: review exposure, feature flags and authorization before changing the baseline');
+ assert.equal(missingImplementation.length,36);
+ assert.equal(runtimeNotInDesign.length,17);
+ assert.equal(pinned.designRoutes.length-missingImplementation.length,29);
+});
