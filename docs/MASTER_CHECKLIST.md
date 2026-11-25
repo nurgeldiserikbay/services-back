@@ -4,8 +4,8 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
-### 2026-11-25 — delivered IN_APP isolation for foreign and expired sessions (CI pending)
-- [ ] **Scoped PostgreSQL regression awaiting exact-head PR CI:** extend the real one-shot worker-to-recipient-inbox flow with a second independently authenticated customer account. Verify that the foreign account cannot read the delivered intent, and that the rightful owner's expired and subsequently revoked session cannot read it despite durable delivery. No manual `DELIVERED` fixture transition or provider-backed OTP is used.
+### 2026-11-25 — delivered IN_APP isolation for foreign and expired sessions (backend PR #476 CI PASS, merged)
+- [x] **Scoped PostgreSQL regression verified by exact-head full backend CI and merged:** extend the real one-shot worker-to-recipient-inbox flow with a second independently authenticated customer account. Verify that the foreign account cannot read the delivered intent, and that the rightful owner's expired and subsequently revoked session cannot read it despite durable delivery. No manual `DELIVERED` fixture transition or provider-backed OTP is used. [Backend PR #476](https://github.com/nurgeldiserikbay/services-back/pull/476) exact-head [CI #45567586084 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45567586084) completed `build-and-test` and `dependency-audit` successfully, and was squash merged as [`dac2ea4`](https://github.com/nurgeldiserikbay/services-back/commit/dac2ea47cd9c59a100e6e3aceedaf8fca97c7bd6).
 - **Release boundary:** production authentication/provider and KZ staging acceptance remain unverified. Strict top-level acceptance remains **29/117**.
 
 ### 2026-11-25 — real worker delivery to authenticated customer IN_APP inbox (backend PR #475 CI PASS, merged)
