@@ -37,7 +37,10 @@ test('IN_APP queue monitor measures immutable outbox age and ignores EMAIL',asyn
    .sort((a,b)=>a<b?-1:a>b?1:0),[
    'EMAIL:PENDING','IN_APP:DELIVERED','IN_APP:PENDING',
   ]);
-  assert.ok(after.oldestPendingSeconds>=1860);
+  // PostgreSQL timestamptz(3) rounds submillisecond timestamps, while
+  // FLOOR() intentionally truncates monitor ages to whole seconds.
+  assert.ok(after.oldestPendingSeconds>=1800,
+   '31-minute test fixture should be recognized as an aged backlog');
   const alert=assessInAppQueueHealth(after,after.pending,900);
   assert.equal(alert.ageOverLimit,true);
   assert.equal(alert.pendingOverLimit,false);
