@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import {Module} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
+import {DatabasePool} from '../src/platform/database/database.pool.js';
 import {ScheduleProposalHttpController} from '../src/modules/requests/schedule-proposal-http.controller.js';
 import {ScheduleProposalHttpService} from '../src/modules/requests/schedule-proposal-http.service.js';
 import {test} from 'node:test';
@@ -68,13 +69,12 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
       timezone:'Asia/Qyzylorda',localStartAt,
       utcOffsetSeconds:18000};
     // Real Nest HTTP controller and service using the isolated PG fixture.
-    const service=new ScheduleProposalHttpService({
-      transaction:async<T>(work:(client:Client)=>Promise<T>):Promise<T>=>work(db),
-    } as never);
     @Module({controllers:[ScheduleProposalHttpController],
-      providers:[{provide:ScheduleProposalHttpService,useValue:service}]})
+      providers:[ScheduleProposalHttpService,{provide:DatabasePool,useValue:{
+        transaction:async<T>(work:(client:Client)=>Promise<T>):Promise<T>=>work(db),
+      }}]})
     class ScheduleHttpTestModule{}
-    app=await NestFactory.create(ScheduleHttpTestModule,{logger:false});
+    app=await NestFactory.create(ScheduleHttpTestModule,{logger:['error']});
     app.setGlobalPrefix('v1');
     await app.listen(0,'127.0.0.1');
     const url=(await app.getUrl())+'/v1/requests/'+request+'/schedule-proposals';
