@@ -20,7 +20,8 @@
     "monitor:receiver:preview": "tsx scripts/preview-receiver-monitor.ts",
     "monitor:receiver:send:staging": "tsx scripts/send-receiver-monitor-staging.ts",
     "db:prune:guest-network": "tsx scripts/prune-guest-otp-network.ts",
-    "worker:in-app:once": "tsx scripts/process-in-app-notifications.ts"
+    "worker:in-app:once": "tsx scripts/process-in-app-notifications.ts",
+    "monitor:in-app:once": "tsx scripts/check-in-app-worker-health.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.2.0",
