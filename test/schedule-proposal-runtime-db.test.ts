@@ -84,6 +84,28 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
     assert.equal(noPenalty.rows[0].count,'0');
     await db.query('ROLLBACK TO SAVEPOINT schedule_cancel_probe');
 
+    // The initiator cannot resolve their own proposal, even with a valid
+    // session and current request version. Denial must leave no durable effects.
+    for(const action of ['confirm','decline'] as const){
+      await assert.rejects(mutateScheduleProposal(db,{token:sellerAuth.token,requestId:request,
+        action,proposalId:proposed.id,expectedVersion:2,key:'self_resolution_'+action,pepper}),
+        (error:unknown)=>error instanceof ScheduleProposalRejected&&error.reason==='conflict');
+    }
+    const deniedState=await db.query(`
+      SELECT r.version,r.customer_penalty_suspended,p.status::text AS proposal_status
+      FROM service_requests r JOIN schedule_proposals p ON p.request_id=r.id
+      WHERE r.id=$1::uuid AND p.id=$2::uuid`,[request,proposed.id]);
+    assert.deepEqual(deniedState.rows,[{version:2,customer_penalty_suspended:true,proposal_status:'PROPOSED'}]);
+    const deniedEffects=await db.query(`
+      SELECT
+        (SELECT count(*)::int FROM cancellation_snapshot_revisions WHERE request_id=$1::uuid) AS revisions,
+        (SELECT count(*)::int FROM domain_outbox_events WHERE subject_id=$1::uuid
+          AND topic IN ('service_request.schedule_confirmed','service_request.schedule_declined')) AS outbox,
+        (SELECT count(*)::int FROM idempotency_records WHERE actor_scope=$2
+          AND key IN ('self_resolution_confirm','self_resolution_decline')) AS ledger
+    `,[request,'user:'+sellerUser]);
+    assert.deepEqual(deniedEffects.rows,[{revisions:0,outbox:0,ledger:0}]);
+
     const confirmKey='schedule_confirm_key_12345';
     const confirmed=await mutateScheduleProposal(db,{token:customerAuth.token,requestId:request,
       action:'confirm',proposalId:proposed.id,expectedVersion:2,key:confirmKey,pepper});
