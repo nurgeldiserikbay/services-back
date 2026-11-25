@@ -63,6 +63,15 @@ test('monitor does not query or expose secrets on database failures',async()=>{
  }
 });
 
+test('monitor rejects malformed aggregate result shapes',async()=>{
+ const ok={pending:'1',delivered:'2',oldest_pending_seconds:'90'};
+ const cases=[[],[ok,ok],[{...ok,pending:null}],[{...ok,delivered:'01'}],
+  [{...ok,oldest_pending_seconds:null}],[{...ok,pending:1}]];
+ for(const rows of cases){
+  await assert.rejects(readInAppQueueHealth({query:async()=>({rows})} as never),
+   /IN_APP queue observation unavailable/);
+ }
+});
 test('queue alert thresholds have a deterministic healthy boundary',()=>{
  assert.deepEqual(assessInAppQueueHealth({
   pending:500,delivered:3,oldestPendingSeconds:900,
