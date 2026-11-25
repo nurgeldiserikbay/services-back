@@ -85,6 +85,12 @@ is **not** evidence that the endpoint is enabled.
 | `POST /me/professional-profiles/{id}/appeals` | Account/self-service | Review needed |
 | `POST /me/professional-profiles/{id}/publish` | Account/self-service | Review needed |
 
+## Runtime-only private account routes — executable deny-by-default regression
+
+- `POST /auth/private/account/verify`: `AccountLoginPrivateController.verify` calls `requirePrivateAccountLoginAccess` before body validation and `signIn`. It remains disabled unless `SERVICES_ENABLE_ACCOUNT_LOGIN_HTTP=enabled`; an invalid or absent `x-services-account-login-key` returns a sanitized 404 before service invocation.
+- `POST /auth/private/account/challenges`: `AccountOtpDispatchPrivateController.issue` independently requires `SERVICES_ENABLE_ACCOUNT_OTP_DISPATCH_HTTP=enabled` and the same separate private BFF key check before dispatch; invalid or absent key returns a sanitized 404. Provider wiring and an operator-controlled trusted network boundary still need independent review.
+- `test/private-account-runtime-only-route-boundary.test.ts` verifies both release switches deny by default, remain independent, and reject untrusted keys without calling downstream sign-in/dispatch services. This is a controller-level regression, **not** proof that the deployed ingress is private, the OTP provider is approved or the full API contract matches OpenAPI. These routes are **still awaiting security acceptance**.
+
 ## Mismatched semantics requiring particular care
 
 - `GET /requests/{id}` is declared by the guest capability status controller.
