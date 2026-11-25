@@ -1,6 +1,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import {randomBytes,randomUUID} from 'node:crypto';
+import {UnauthorizedException} from '@nestjs/common';
+import {issueSessionToken} from '../src/modules/identity/session-proof.js';
+import {PersonInboxController} from '../src/modules/notifications/person-inbox.controller.js';
+import {PersonInboxService} from '../src/modules/notifications/person-inbox.service.js';
 import {Client} from 'pg';
 import {runOneInAppNotificationBatch} from '../src/modules/notifications/in-app-worker.js';
 
@@ -8,11 +12,17 @@ test('one-shot scheduled worker commits exactly one durable IN_APP delivery and 
  const db=new Client({connectionString:process.env.DATABASE_URL});
  await db.connect();
  const person=randomUUID(),user=randomUUID(),event=randomUUID();
+ const pepper=randomBytes(32),session=issueSessionToken(pepper);
+ const sessionId=randomUUID(),sessionFamily=randomUUID();
+ const previousPepper=process.env.ACCOUNT_SESSION_HMAC_KEY;
  const inApp=randomUUID(),email=randomUUID(),contact=randomUUID();
  try{
   await db.query('BEGIN');
   await db.query('INSERT INTO users(id) VALUES($1)',[user]);
   await db.query('INSERT INTO persons(id,user_id) VALUES($1,$2)',[person,user]);
+  await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
+   VALUES($1,$2,$3,$4,now()+interval '1 day')`,
+   [sessionId,user,session.hash,sessionFamily]);
   await db.query("INSERT INTO guest_contacts(id,channel,encrypted_value,digest,expires_at) VALUES($1,'email','encrypted-ci',$2,now()+interval '1 day')",
    [contact,'in-app-worker:'+randomUUID()]);
   await db.query("INSERT INTO domain_outbox_events(id,topic,subject_kind,subject_id,safe_payload) VALUES($1,'test.inapp.worker','ServiceRequest',$2,'{}'::jsonb)",
@@ -35,6 +45,17 @@ test('one-shot scheduled worker commits exactly one durable IN_APP delivery and 
   const repeated=await runOneInAppNotificationBatch(db,25);
   assert.equal(repeated.deliveryRowsStaged,0);
   assert.equal(repeated.inAppDeliveriesMaterialized,0);
+  // Test the actual committed worker delivery against authenticated inbox reads;
+  // do not fake a DELIVERED transition in the fixture.
+  process.env.ACCOUNT_SESSION_HMAC_KEY=pepper.toString('base64');
+  const pool={transaction:async<T>(work:(client:Client)=>Promise<T>)=>work(db)};
+  const inbox=new PersonInboxController(new PersonInboxService(pool as never));
+  const current=await inbox.list('Bearer '+session.token,'20');
+  assert.equal(current.items.some(item=>item.id===inApp),true);
+  assert.equal(current.items.some(item=>item.id===email),false);
+  assert.equal(JSON.stringify(current).includes(session.token),false);
+  await db.query('UPDATE sessions SET revoked_at=now() WHERE id=$1',[sessionId]);
+  await assert.rejects(inbox.list('Bearer '+session.token,'20'),UnauthorizedException);
   const delivered=await db.query<{state:string;attempts:number}>(`
    SELECT state,attempts FROM notification_intents WHERE id=$1`,[inApp]);
   assert.deepEqual(delivered.rows[0],{state:'DELIVERED',attempts:1});
@@ -43,11 +64,14 @@ test('one-shot scheduled worker commits exactly one durable IN_APP delivery and 
   assert.equal(outbox.rows[0].processed_at,null,
    'IN_APP worker must not acknowledge global domain outbox');
  }finally{
+  if(previousPepper===undefined)delete process.env.ACCOUNT_SESSION_HMAC_KEY;
+  else process.env.ACCOUNT_SESSION_HMAC_KEY=previousPepper;
   await db.query('BEGIN').catch(()=>{});
   await db.query('DELETE FROM notification_deliveries WHERE intent_id=ANY($1::uuid[])',[[inApp,email]]).catch(()=>{});
   await db.query('DELETE FROM notification_intents WHERE id=ANY($1::uuid[])',[[inApp,email]]).catch(()=>{});
   await db.query('DELETE FROM domain_outbox_events WHERE id=$1',[event]).catch(()=>{});
   await db.query('DELETE FROM guest_contacts WHERE id=$1',[contact]).catch(()=>{});
+  await db.query('DELETE FROM sessions WHERE id=$1',[sessionId]).catch(()=>{});
   await db.query('DELETE FROM persons WHERE id=$1',[person]).catch(()=>{});
   await db.query('DELETE FROM users WHERE id=$1',[user]).catch(()=>{});
   await db.query('COMMIT').catch(()=>{});
