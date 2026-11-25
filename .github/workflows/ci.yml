@@ -157,6 +157,7 @@ jobs:
       - name: Backend API contract regressions (fail fast)
         run: |
           node --import tsx --test \
+            test/runtime-route-inventory-regression.test.ts \
             test/search-contract-regression.test.ts \
             test/public-profile-contract.test.ts \
             test/seller-http-contract-regression.test.ts \
