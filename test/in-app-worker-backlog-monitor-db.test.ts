@@ -79,7 +79,10 @@ test('monitor rejects malformed aggregate result shapes',async()=>{
 
 test('monitor rejects effective write privileges and malformed role preflight',async()=>{
  const allowed={
-  intents_select:true,events_select:true,intents_write:false,
+  intents_select:false,events_select:false,intents_write:false,
+  intents_channel:true,intents_state:true,intents_event_id:true,
+  events_id:true,events_created_at:true,
+  intents_extra_read:false,events_extra_read:false,
   events_write:false,schema_create:false,database_create:false,
   users_read:false,sessions_read:false,contacts_read:false,mfa_factors_read:false,
  };
@@ -93,13 +96,17 @@ test('monitor rejects effective write privileges and malformed role preflight',a
  await checked(allowed);
  assert.equal(observed.length,1);
  assert.match(observed[0],/has_table_privilege/);
+ assert.match(observed[0],/has_column_privilege/);
+ assert.match(observed[0],/pg_attribute/);
  assert.match(observed[0],/has_schema_privilege/);
  assert.match(observed[0],/has_database_privilege/);
- for(const flag of ['intents_select','events_select']){
+ for(const flag of ['intents_channel','intents_state','intents_event_id',
+  'events_id','events_created_at']){
   await assert.rejects(checked({...allowed,[flag]:false}),
    /IN_APP monitor database role verification unavailable/);
  }
- for(const flag of ['intents_write','events_write','schema_create','database_create',
+ for(const flag of ['intents_select','events_select','intents_extra_read','events_extra_read',
+  'intents_write','events_write','schema_create','database_create',
   'users_read','sessions_read','contacts_read','mfa_factors_read']){
   await assert.rejects(checked({...allowed,[flag]:true}),
    /IN_APP monitor database role verification unavailable/);
@@ -120,7 +127,8 @@ test('PostgreSQL restricted monitor role can SELECT but cannot UPDATE',async()=>
  try{
   await db.query('CREATE ROLE '+role+' NOLOGIN');
   await db.query('GRANT USAGE ON SCHEMA public TO '+role);
-  await db.query('GRANT SELECT ON notification_intents,domain_outbox_events TO '+role);
+  await db.query('GRANT SELECT (channel,state,domain_event_id) ON notification_intents TO '+role);
+  await db.query('GRANT SELECT (id,created_at) ON domain_outbox_events TO '+role);
   await db.query('SET LOCAL ROLE '+role);
   await assertInAppMonitorReadOnlyRole(db);
   const metrics=await readInAppQueueHealth(db);
@@ -132,6 +140,12 @@ test('PostgreSQL restricted monitor role can SELECT but cannot UPDATE',async()=>
    /IN_APP monitor database role verification unavailable/);
   await db.query('RESET ROLE');
   await db.query('REVOKE UPDATE ON notification_intents FROM '+role);
+  await db.query('GRANT SELECT (recipient_person_id) ON notification_intents TO '+role);
+  await db.query('SET LOCAL ROLE '+role);
+  await assert.rejects(assertInAppMonitorReadOnlyRole(db),
+   /IN_APP monitor database role verification unavailable/);
+  await db.query('RESET ROLE');
+  await db.query('REVOKE SELECT (recipient_person_id) ON notification_intents FROM '+role);
   await db.query('GRANT SELECT ON sessions TO '+role);
   await db.query('SET LOCAL ROLE '+role);
   await assert.rejects(assertInAppMonitorReadOnlyRole(db),
