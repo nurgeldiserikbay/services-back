@@ -60,6 +60,24 @@ Thresholds are initial **staging defaults pending operator approval**: pending c
 
 The monitor command is **not automatically scheduled** by the worker timer. Any separate monitor schedule or alert receiver needs explicit on-host operator approval. A growing queue, no successful worker invocations, or a monitor failure is grounds to keep staging acceptance open and investigate before production rollout.
 
+## Staging acceptance evidence record (operator-owned, sanitized)
+
+Use one record per deployment candidate in the approved KZ-hosted change-management system. **Do not commit completed records** or attach environment files, complete journal output, SQL row data, recipient/request identifiers, credentials or tokens.
+
+| Evidence field | Required observation (no sensitive values) |
+| --- | --- |
+| Backend revision and CI | Reviewed commit SHA and successful workflow URL for the exact revision |
+| Regional approval | KZ host, PostgreSQL, backups, transit and DNS residency attestations with approver/date |
+| Deployment identity | Environment name, migration revision, date/time (IANA timezone), reviewer |
+| Isolation and credentials | Confirmation of dedicated service account and least-privilege worker/monitor roles; no credential values |
+| Worker manual run | One-shot exit status, aggregate processed/delivered counts, and no non-IN_APP delivery |
+| Read-only monitor | Exit code, pending count, delivered count, oldest pending seconds; monitor account has SELECT only |
+| Scheduler/alerting | Timer state, most recent invocation, next scheduled invocation, configured alert receiver and acknowledged test alert |
+| Application authorization | Signed-in recipient sees own delivered IN_APP entry; revoked/foreign account cannot |
+| Rollback readiness | Timer disable/stop verified and owner/on-call identified |
+
+**Decision rule:** retain staging acceptance as OPEN until every required observation is recorded and independently approved. Threshold-compliant aggregates alone do not verify scheduled worker delivery, account authorization, OTP provider login, external channels, or residency. If the monitor exits `1` or `2`, the worker fails repeatedly, alerts are not received, or residency cannot be attested, disable the timer and record the incident before reconsidering activation.
+
 ## Disable / incident response
 
 ```sh
