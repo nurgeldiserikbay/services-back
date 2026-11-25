@@ -1,0 +1,13 @@
+# KZ STAGING TEMPLATE ONLY; disabled until operator approval.
+[Unit]
+Description=Schedule Services IN_APP aggregate health checks
+
+[Timer]
+Unit=services-in-app-monitor.service
+OnCalendar=*-*-* *:00/5:00
+AccuracySec=1min
+RandomizedDelaySec=15s
+Persistent=false
+
+[Install]
+WantedBy=timers.target
