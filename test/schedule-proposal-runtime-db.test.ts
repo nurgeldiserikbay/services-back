@@ -1,3 +1,8 @@
+import 'reflect-metadata';
+import {Module} from '@nestjs/common';
+import {NestFactory} from '@nestjs/core';
+import {ScheduleProposalHttpController} from '../src/modules/requests/schedule-proposal-http.controller.js';
+import {ScheduleProposalHttpService} from '../src/modules/requests/schedule-proposal-http.service.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
@@ -9,8 +14,11 @@ import {mutateScheduleProposal,ScheduleProposalRejected} from '../src/modules/re
 test('schedule proposal, seller penalty suspension and recipient confirmation are atomic and replayable',async()=>{
   const db=new Client({connectionString:process.env.DATABASE_URL});
   await db.connect();await db.query('BEGIN');
+  const prior=process.env.ACCOUNT_SESSION_HMAC_KEY;
+  let app:Awaited<ReturnType<typeof NestFactory.create>>|undefined;
   try{
     const pepper=randomBytes(32);
+    process.env.ACCOUNT_SESSION_HMAC_KEY=pepper.toString('base64');
     const sellerUser=randomUUID(),sellerPerson=randomUUID(),customerUser=randomUUID(),customerPerson=randomUUID();
     const org=randomUUID(),membership=randomUUID(),definition=randomUUID(),offer=randomUUID();
     const request=randomUUID(),sellerSession=randomUUID(),customerSession=randomUUID();
@@ -59,9 +67,43 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
     const input={startAt:nextStart,endAt:new Date(nextStart.getTime()+60*60_000),
       timezone:'Asia/Qyzylorda',localStartAt,
       utcOffsetSeconds:18000};
+    // Real Nest HTTP controller and service using the isolated PG fixture.
+    const service=new ScheduleProposalHttpService({
+      transaction:async<T>(work:(client:Client)=>Promise<T>):Promise<T>=>work(db),
+    } as never);
+    @Module({controllers:[ScheduleProposalHttpController],
+      providers:[{provide:ScheduleProposalHttpService,useValue:service}]})
+    class ScheduleHttpTestModule{}
+    app=await NestFactory.create(ScheduleHttpTestModule,{logger:false});
+    app.setGlobalPrefix('v1');
+    await app.listen(0,'127.0.0.1');
+    const url=(await app.getUrl())+'/v1/requests/'+request+'/schedule-proposals';
+    const wire={start_at:input.startAt.toISOString(),end_at:input.endAt.toISOString(),
+      timezone:input.timezone,local_start_at:input.localStartAt,utc_offset_seconds:input.utcOffsetSeconds};
+    const send=(suffix:string,token:string|undefined,version:string,key:string,body?:unknown,
+      extra:Record<string,string>={})=>fetch(url+suffix,{
+      method:'POST',redirect:'manual',signal:AbortSignal.timeout(8000),
+      headers:{'If-Match':version,'Idempotency-Key':key,
+        ...(token?{Authorization:'Bearer '+token}:{}),
+        ...(body===undefined?{}:{'Content-Type':'application/json'}),...extra},
+      ...(body===undefined?{}:{body:JSON.stringify(body)}),
+    });
+    assert.equal((await send('',undefined,'"1"','http_anonymous_proposal',wire)).status,401);
+    assert.equal((await send('',sellerAuth.token,'W/"1"','http_weak_version',wire)).status,400);
+    assert.equal((await send('',sellerAuth.token,'"1"','http_mixed_credentials',wire,
+      {'Guest-Capability':randomBytes(32).toString('base64url')})).status,401);
+    assert.equal((await send('',sellerAuth.token,'"1"','http_bad_offset',
+      {...wire,utc_offset_seconds:21600})).status,400);
+    assert.equal((await db.query<{count:string}>(
+      'SELECT count(*)::text AS count FROM schedule_proposals WHERE request_id=$1',[request]
+    )).rows[0].count,'0');
+
     const proposalKey='schedule_proposal_key_12345';
-    const proposed=await mutateScheduleProposal(db,{token:sellerAuth.token,requestId:request,
-      action:'propose',expectedVersion:1,key:proposalKey,pepper,input});
+    const proposedHttp=await send('',sellerAuth.token,'"1"',proposalKey,wire);
+    assert.equal(proposedHttp.status,201);
+    assert.match(proposedHttp.headers.get('cache-control')??'',/no-store/);
+    const proposed=await proposedHttp.json() as Awaited<ReturnType<typeof mutateScheduleProposal>>;
+    assert.equal(proposed.replayed,false);
     assert.equal(proposed.status,'proposed');
     assert.equal(proposed.request_version,2);
     const replay=await mutateScheduleProposal(db,{token:sellerAuth.token,requestId:request,
@@ -124,8 +166,16 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
     assert.equal(staleLedger.rows[0].count,'0');
 
     const confirmKey='schedule_confirm_key_12345';
-    const confirmed=await mutateScheduleProposal(db,{token:customerAuth.token,requestId:request,
-      action:'confirm',proposalId:proposed.id,expectedVersion:2,key:confirmKey,pepper});
+    const confirmPath='/'+proposed.id+'/confirm';
+    assert.equal((await send(confirmPath,sellerAuth.token,'"2"','http_self_confirm')).status,409);
+    assert.equal((await send(confirmPath,customerAuth.token,'"1"','http_stale_confirm')).status,409);
+    const confirmedHttp=await send(confirmPath,customerAuth.token,'"2"',confirmKey);
+    assert.equal(confirmedHttp.status,200);
+    assert.match(confirmedHttp.headers.get('cache-control')??'',/no-store/);
+    const confirmed=await confirmedHttp.json() as Awaited<ReturnType<typeof mutateScheduleProposal>>;
+    const httpReplay=await send(confirmPath,customerAuth.token,'"2"',confirmKey);
+    assert.equal(httpReplay.status,200);
+    assert.deepEqual(await httpReplay.json(),{...confirmed,replayed:true});
     assert.equal(confirmed.status,'confirmed');
     assert.equal(confirmed.request_version,3);
     const confirmedReplay=await mutateScheduleProposal(db,{token:customerAuth.token,requestId:request,
@@ -166,6 +216,9 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
       WHERE domain_event_id IN (SELECT id FROM domain_outbox_events WHERE subject_id=$1::uuid)`,[request]);
     assert.equal(notices.rows[0].count,'3');
   }finally{
+    if(app)await app.close();
+    if(prior===undefined)delete process.env.ACCOUNT_SESSION_HMAC_KEY;
+    else process.env.ACCOUNT_SESSION_HMAC_KEY=prior;
     await db.query('ROLLBACK').catch(()=>{});await db.end();
   }
 });
