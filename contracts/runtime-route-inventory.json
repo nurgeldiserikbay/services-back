@@ -20,6 +20,7 @@
     "GET /professionals/{slug}",
     "GET /professions",
     "GET /requests/{id}",
+    "GET /requests/{id}/schedule-proposals/active",
     "GET /search",
     "GET /service-definitions",
     "GET /service-offers/{id}",

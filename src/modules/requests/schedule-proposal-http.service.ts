@@ -1,13 +1,18 @@
 import {Inject,Injectable} from '@nestjs/common';
 import {DatabasePool} from '../../platform/database/database.pool.js';
 import {requireSecret} from '../guest-requests/guest-request.security.js';
-import {mutateScheduleProposal,type ScheduleProposalAction,type ScheduleProposalCommandResult}
+import {mutateScheduleProposal,readActiveAccountSchedule,type ActiveScheduleView,type ScheduleProposalAction,type ScheduleProposalCommandResult}
   from './schedule-proposal.transaction.js';
 import type {ScheduleProposalInput} from './schedule-proposal.contract.js';
 
 @Injectable()
 export class ScheduleProposalHttpService{
   constructor(@Inject(DatabasePool) private readonly db:DatabasePool){}
+
+  readActive(token:string,requestId:string):Promise<ActiveScheduleView>{
+    const pepper=requireSecret(process.env.ACCOUNT_SESSION_HMAC_KEY);
+    return this.db.transaction(client=>readActiveAccountSchedule(client,{token,requestId,pepper}));
+  }
 
   mutate(args:{token?:string;requestId:string;action:ScheduleProposalAction;expectedVersion:number;
     guestCapability?:string;key:string;input?:ScheduleProposalInput;proposalId?:string}):Promise<ScheduleProposalCommandResult>{

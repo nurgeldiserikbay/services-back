@@ -462,3 +462,47 @@ function readStoredResult(value:unknown,requestId:string,action:ScheduleProposal
   }
   return {...result,replayed:true} as ScheduleProposalCommandResult;
 }
+
+export type ActiveScheduleView={
+  request_id:string;request_version:number;actor:'customer'|'seller';can_propose:boolean;
+  proposal:null|{id:string;revision:number;initiator:'customer'|'seller';start_at:string;end_at:string;timezone:string;can_resolve:boolean};
+};
+
+/** Account-only read. Lock the request before authorization and proposal lookup
+ * so the returned version and active proposal correspond to one state. */
+export async function readActiveAccountSchedule(
+  client:Pick<PoolClient,'query'>,args:{token:string;requestId:string;pepper:Buffer},
+):Promise<ActiveScheduleView>{
+  const session=await resolveActiveUserSession(client,args.token,args.pepper);
+  if(!session)throw new UnauthorizedException('Authentication required');
+  const selected=await client.query<RequestRow>(`
+    SELECT id::text,offer_id::text,status::text,version,schedule_reconciliation_required,
+      customer_person_id::text,guest_contact_id::text,seller_professional_id::text,
+      seller_organization_id::text,performer_professional_id::text
+    FROM service_requests WHERE id=$1::uuid FOR SHARE
+  `,[args.requestId]);
+  const request=selected.rows[0];
+  if(!request)throw new ScheduleProposalRejected('not_found');
+  const actor=await resolveActor(client,session.userId,args.requestId,request);
+  if(!actor||(actor==='CUSTOMER'&&request.guest_contact_id))
+    throw new ScheduleProposalRejected('not_found');
+  const canPropose=request.status==='ACCEPTED'&&!request.schedule_reconciliation_required;
+  const result:ActiveScheduleView={request_id:request.id,request_version:request.version,
+    actor:actor==='CUSTOMER'?'customer':'seller',can_propose:canPropose,proposal:null};
+  if(request.status!=='ACCEPTED')return result;
+  const active=await client.query<ProposalRow>(`
+    SELECT id::text,revision,status::text,initiator::text,proposed_start_at,proposed_end_at,timezone
+    FROM schedule_proposals WHERE request_id=$1::uuid AND status='PROPOSED' LIMIT 2
+  `,[request.id]);
+  if(active.rows.length>1)throw new ScheduleProposalRejected('conflict');
+  const p=active.rows[0];
+  if(!p)return result;
+  if(!['CUSTOMER','SELLER'].includes(p.initiator)||!Number.isSafeInteger(p.revision)||p.revision<1||
+     !(p.proposed_start_at instanceof Date)||!(p.proposed_end_at instanceof Date)||
+     !Number.isFinite(p.proposed_start_at.getTime())||!Number.isFinite(p.proposed_end_at.getTime())||
+     p.proposed_end_at<=p.proposed_start_at)throw new ScheduleProposalRejected('conflict');
+  result.proposal={id:p.id,revision:p.revision,initiator:p.initiator==='CUSTOMER'?'customer':'seller',
+    start_at:p.proposed_start_at.toISOString(),end_at:p.proposed_end_at.toISOString(),timezone:p.timezone,
+    can_resolve:canPropose&&p.initiator!==actor};
+  return result;
+}

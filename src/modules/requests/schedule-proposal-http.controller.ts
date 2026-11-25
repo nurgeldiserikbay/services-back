@@ -1,11 +1,11 @@
 import {
-  Controller,Post,Param,Headers,Body,HttpCode,Header,Inject,
+  Controller,Get,Post,Param,Headers,Body,HttpCode,Header,Inject,
   BadRequestException,ConflictException,ForbiddenException,NotFoundException,
 } from '@nestjs/common';
 import {validateSellerDecisionHttp} from './seller-decision-http.contract.js';
 import {validateScheduleProposalBody,type ScheduleProposalInput} from './schedule-proposal.contract.js';
 import {ScheduleProposalHttpService} from './schedule-proposal-http.service.js';
-import {ScheduleProposalRejected,type ScheduleProposalAction,type ScheduleProposalCommandResult}
+import {ScheduleProposalRejected,type ScheduleProposalAction,type ScheduleProposalCommandResult,type ActiveScheduleView}
   from './schedule-proposal.transaction.js';
 import {validateIdempotencyKey} from '../guest-requests/guest-request.validation.js';
 import {UnauthorizedException} from '@nestjs/common';
@@ -18,6 +18,26 @@ type ParsedMutation={token?:string;guestCapability?:string;requestId:string;expe
 @Controller('requests')
 export class ScheduleProposalHttpController{
   constructor(@Inject(ScheduleProposalHttpService) private readonly service:ScheduleProposalHttpService){}
+
+  @Get(':id/schedule-proposals/active')
+  @Header('Cache-Control','private, no-store')
+  @Header('Pragma','no-cache')
+  async active(@Param('id') id:unknown,@Headers('authorization') authorization:unknown,
+    @Headers('guest-capability') guestCapability:unknown):Promise<ActiveScheduleView>{
+    if(typeof authorization!=='string'||guestCapability!==undefined)
+      throw new UnauthorizedException('Authentication required');
+    const match=/^Bearer ([A-Za-z0-9_-]{43})$/.exec(authorization);
+    if(!match)throw new UnauthorizedException('Authentication required');
+    if(typeof id!=='string'||!UUID.test(id))throw new BadRequestException('Invalid request ID');
+    try{return await this.service.readActive(match[1],id.toLowerCase());}
+    catch(error){
+      if(error instanceof ScheduleProposalRejected){
+        if(error.reason==='conflict')throw new ConflictException();
+        throw new NotFoundException();
+      }
+      throw error;
+    }
+  }
 
   @Post(':id/schedule-proposals')
   @HttpCode(201)

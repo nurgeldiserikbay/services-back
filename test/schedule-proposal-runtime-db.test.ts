@@ -98,6 +98,23 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
       'SELECT count(*)::text AS count FROM schedule_proposals WHERE request_id=$1',[request]
     )).rows[0].count,'0');
 
+    const readActive=(token?:string,target=request)=>fetch(
+      (url.replace(request+'/schedule-proposals',target+'/schedule-proposals'))+'/active',{
+      redirect:'manual',signal:AbortSignal.timeout(8000),
+      headers:token?{Authorization:'Bearer '+token}:{},
+    });
+    const outsider=randomUUID(),outsiderAuth=issueSessionToken(pepper);
+    await db.query('INSERT INTO users(id) VALUES($1)',[outsider]);
+    await db.query(`INSERT INTO sessions(id,user_id,token_hash,family_id,expires_at)
+      VALUES($1,$2,$3,$4,now()+interval '1 day')`,[randomUUID(),outsider,outsiderAuth.hash,randomUUID()]);
+    assert.equal((await readActive()).status,401);
+    assert.equal((await readActive(outsiderAuth.token)).status,404);
+    assert.equal((await readActive(customerAuth.token,randomUUID())).status,404);
+    const empty=await readActive(customerAuth.token);
+    assert.equal(empty.status,200);
+    assert.match(empty.headers.get('cache-control')??'',/no-store/);
+    assert.deepEqual(await empty.json(),{request_id:request,request_version:1,actor:'customer',can_propose:true,proposal:null});
+
     const proposalKey='schedule_proposal_key_12345';
     const proposedHttp=await send('',sellerAuth.token,'"1"',proposalKey,wire);
     assert.equal(proposedHttp.status,201);
@@ -106,6 +123,16 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
     assert.equal(proposed.replayed,false);
     assert.equal(proposed.status,'proposed');
     assert.equal(proposed.request_version,2);
+    for(const [token,actor,canResolve] of [
+      [customerAuth.token,'customer',true],[sellerAuth.token,'seller',false],
+    ] as const){
+      const view=await readActive(token);
+      assert.equal(view.status,200);
+      assert.deepEqual(await view.json(),{request_id:request,request_version:2,actor,can_propose:true,
+        proposal:{id:proposed.id,revision:1,initiator:'seller',start_at:wire.start_at,end_at:wire.end_at,
+          timezone:wire.timezone,can_resolve:canResolve}});
+    }
+    assert.equal((await readActive(outsiderAuth.token)).status,404);
     const replay=await mutateScheduleProposal(db,{token:sellerAuth.token,requestId:request,
       action:'propose',expectedVersion:1,key:proposalKey,pepper,input});
     assert.equal(replay.replayed,true);
@@ -178,6 +205,9 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
     assert.deepEqual(await httpReplay.json(),{...confirmed,replayed:true});
     assert.equal(confirmed.status,'confirmed');
     assert.equal(confirmed.request_version,3);
+    const resolved=await readActive(customerAuth.token);
+    assert.equal(resolved.status,200);
+    assert.deepEqual(await resolved.json(),{request_id:request,request_version:3,actor:'customer',can_propose:true,proposal:null});
     const confirmedReplay=await mutateScheduleProposal(db,{token:customerAuth.token,requestId:request,
       action:'confirm',proposalId:proposed.id,expectedVersion:2,key:confirmKey,pepper});
     assert.equal(confirmedReplay.replayed,true);
