@@ -4,8 +4,8 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
-### 2026-11-25 — admin moderation list real HTTP authorization boundary (CI pending)
-- [ ] **Scoped privileged list HTTP security regression pending exact-head CI:** register actual `AppModule` in loopback Nest HTTP and prove `GET /admin/moderation/cases` is disabled by default, denies missing/malformed admin bearer before any DB access, and returns scoped/redacted uncached case metadata from a stubbed authorization/transaction fixture when approved feature flag and MFA grant are modeled. This is not a live PostgreSQL grant lifecycle or actual admin BFF acceptance.
+### 2026-11-25 — admin moderation list real HTTP authorization boundary (backend PR #484 CI PASS, merged)
+- [x] **Scoped privileged list HTTP security regression verified in exact-head full backend CI and merged:** register actual `AppModule` in loopback Nest HTTP and prove `GET /admin/moderation/cases` is disabled by default, denies missing/malformed admin bearer before any DB access, and returns scoped/redacted uncached case metadata from a stubbed authorization/transaction fixture when approved feature flag and MFA grant are modeled. This is not a live PostgreSQL grant lifecycle or actual admin BFF acceptance. [Backend PR #484](https://github.com/nurgeldiserikbay/services-back/pull/484) exact-head [CI #45595861868 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45595861868) completed `build-and-test` and `dependency-audit`, and was squash merged as [`81d79e6`](https://github.com/nurgeldiserikbay/services-back/commit/81d79e68eb3d6bb9a8a4c9c934c762bb4827db50).
 - **Top-level API parity and operational acceptance remain OPEN:** strict accepted **29/117** unchanged.
 
 ### 2026-11-25 — account session real Nest HTTP/PostgreSQL isolation (backend PR #483 CI PASS, merged)
