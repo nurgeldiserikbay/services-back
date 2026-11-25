@@ -33,10 +33,9 @@ test('IN_APP queue monitor measures immutable outbox age and ignores EMAIL',asyn
   const own=await db.query<{channel:string;state:string}>(`
    SELECT channel,state FROM notification_intents
    WHERE domain_event_id=$1 ORDER BY channel,state`,[event]);
-  assert.deepEqual(own.rows,[
-   {channel:'EMAIL',state:'PENDING'},
-   {channel:'IN_APP',state:'DELIVERED'},
-   {channel:'IN_APP',state:'PENDING'},
+  assert.deepEqual(own.rows.map(row=>row.channel+':'+row.state)
+   .sort((a,b)=>a<b?-1:a>b?1:0),[
+   'EMAIL:PENDING','IN_APP:DELIVERED','IN_APP:PENDING',
   ]);
   assert.ok(after.oldestPendingSeconds>=1860);
   const alert=assessInAppQueueHealth(after,after.pending,900);
