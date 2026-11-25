@@ -1,0 +1,29 @@
+# KZ STAGING TEMPLATE ONLY; operator review and installation required.
+[Unit]
+Description=Services read-only IN_APP queue monitor (staging only)
+Documentation=https://github.com/nurgeldiserikbay/services-back/blob/main/docs/in-app-worker-staging-runbook.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=services-monitor
+Group=services-monitor
+WorkingDirectory=/srv/services-back
+EnvironmentFile=/etc/services/in-app-monitor.env
+ExecStart=/usr/bin/npm run monitor:in-app:once
+TimeoutStartSec=30
+Restart=no
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Nonzero status 1 (unavailable) or 2 (threshold exceeded) must alert an operator.
+# systemd treats both as failure; do not mark 2 as SuccessExitStatus.
