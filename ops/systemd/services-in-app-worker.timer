@@ -1,0 +1,13 @@
+# STAGING TEMPLATE ONLY — enable only after human approval and region verification.
+[Unit]
+Description=Schedule Services IN_APP notification batches (disabled by default)
+
+[Timer]
+Unit=services-in-app-worker.service
+OnCalendar=*-*-* *:00/5:00
+AccuracySec=1min
+RandomizedDelaySec=15s
+Persistent=false
+
+[Install]
+WantedBy=timers.target
