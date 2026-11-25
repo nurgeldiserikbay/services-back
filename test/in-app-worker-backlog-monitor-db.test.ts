@@ -6,6 +6,8 @@ import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {readInAppQueueHealth,assessInAppQueueHealth}
  from '../src/modules/notifications/in-app-queue-health.js';
+import {assertInAppMonitorReadOnlyRole}
+ from '../src/modules/notifications/in-app-monitor-permissions.js';
 
 test('IN_APP queue monitor measures immutable outbox age and ignores EMAIL',async()=>{
  const db=new Client({connectionString:process.env.DATABASE_URL});
@@ -74,6 +76,64 @@ test('monitor rejects malformed aggregate result shapes',async()=>{
    /IN_APP queue observation unavailable/);
  }
 });
+
+test('monitor rejects effective write privileges and malformed role preflight',async()=>{
+ const allowed={
+  intents_select:true,events_select:true,intents_write:false,
+  events_write:false,schema_create:false,database_create:false,
+ };
+ const observed:string[]=[];
+ const checked=async(row:Record<string,unknown>)=>
+  assertInAppMonitorReadOnlyRole({query:async(sql:string,params:unknown)=>{
+   observed.push(sql);
+   assert.deepEqual(params,[]);
+   return {rows:[row]};
+  }} as never);
+ await checked(allowed);
+ assert.equal(observed.length,1);
+ assert.match(observed[0],/has_table_privilege/);
+ assert.match(observed[0],/has_schema_privilege/);
+ assert.match(observed[0],/has_database_privilege/);
+ for(const flag of ['intents_select','events_select']){
+  await assert.rejects(checked({...allowed,[flag]:false}),
+   /IN_APP monitor database role verification unavailable/);
+ }
+ for(const flag of ['intents_write','events_write','schema_create','database_create']){
+  await assert.rejects(checked({...allowed,[flag]:true}),
+   /IN_APP monitor database role verification unavailable/);
+ }
+ await assert.rejects(checked({...allowed,intents_write:null}),
+  /IN_APP monitor database role verification unavailable/);
+ await assert.rejects(assertInAppMonitorReadOnlyRole({
+  query:async()=>{throw Error('password=sensitive');},
+ } as never),error=>error instanceof Error&&
+  error.message==='IN_APP monitor database role verification unavailable');
+});
+
+test('PostgreSQL restricted monitor role can SELECT but cannot UPDATE',async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});
+ await db.connect();
+ const role='inapp_monitor_'+randomUUID().replace(/-/g,'');
+ await db.query('BEGIN');
+ try{
+  await db.query('CREATE ROLE '+role+' NOLOGIN');
+  await db.query('GRANT USAGE ON SCHEMA public TO '+role);
+  await db.query('GRANT SELECT ON notification_intents,domain_outbox_events TO '+role);
+  await db.query('SET LOCAL ROLE '+role);
+  await assertInAppMonitorReadOnlyRole(db);
+  const metrics=await readInAppQueueHealth(db);
+  assert.ok(metrics.pending>=0);
+  await db.query('RESET ROLE');
+  await db.query('GRANT UPDATE ON notification_intents TO '+role);
+  await db.query('SET LOCAL ROLE '+role);
+  await assert.rejects(assertInAppMonitorReadOnlyRole(db),
+   /IN_APP monitor database role verification unavailable/);
+ }finally{
+  await db.query('ROLLBACK').catch(()=>{});
+  await db.end();
+ }
+});
+
 test('queue alert thresholds have a deterministic healthy boundary',()=>{
  assert.deepEqual(assessInAppQueueHealth({
   pending:500,delivered:3,oldestPendingSeconds:900,
@@ -100,6 +160,7 @@ test('monitor CLI is default-off and uses read-only transaction with safe loggin
  const script=readFileSync(resolve(process.cwd(),'scripts/check-in-app-worker-health.ts'),'utf8');
  assert.match(script,/SERVICES_ENABLE_IN_APP_MONITOR!=='enabled'/);
  assert.match(script,/BEGIN READ ONLY/);
+ assert.match(script,/assertInAppMonitorReadOnlyRole\(client\)/);
  assert.match(script,/process\.exitCode=2/);
  assert.doesNotMatch(script,/console\.(?:log|error)\(.*(?:uri|DATABASE_URL|token|person|secret)/i);
  assert.match(script,/console\.error\('IN_APP monitor failed or is disabled'\)/);

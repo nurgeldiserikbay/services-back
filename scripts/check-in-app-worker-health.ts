@@ -1,4 +1,6 @@
 import {Client} from 'pg';
+import {assertInAppMonitorReadOnlyRole}
+ from '../src/modules/notifications/in-app-monitor-permissions.js';
 import {readInAppQueueHealth,assessInAppQueueHealth}
  from '../src/modules/notifications/in-app-queue-health.js';
 
@@ -20,6 +22,7 @@ async function main():Promise<void>{
   let metrics;
   try{
    await client.query("SET LOCAL statement_timeout = '5s'");
+   await assertInAppMonitorReadOnlyRole(client);
    metrics=await readInAppQueueHealth(client);
    await client.query('COMMIT');
   }catch{
