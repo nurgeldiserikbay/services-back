@@ -4,8 +4,8 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
-### 2026-11-25 — IN_APP monitor denies sensitive identity-table reads (CI pending)
-- [ ] **Scoped privacy guard awaiting exact-head backend CI:** monitor's effective PostgreSQL role must lack SELECT on `users`, `sessions`, `guest_contacts` and `platform_admin_totp_factors`, in addition to the existing read-only checks for its two aggregate tables. Fail-closed unit and real PostgreSQL regressions cover accidental session-table grants. No identity/contact data is accessed by the monitor application; only privilege metadata is queried.
+### 2026-11-25 — IN_APP monitor denies sensitive identity-table reads (backend PR #478 CI PASS, merged)
+- [x] **Scoped privacy guard verified by exact-head backend CI and merged:** monitor's effective PostgreSQL role must lack SELECT on `users`, `sessions`, `guest_contacts` and `platform_admin_totp_factors`, in addition to the existing read-only checks for its two aggregate tables. Fail-closed unit and real PostgreSQL regressions cover accidental session-table grants. No identity/contact data is accessed by the monitor application; only privilege metadata is queried. [Backend PR #478](https://github.com/nurgeldiserikbay/services-back/pull/478) exact-head [CI #45570177222 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45570177222) completed both `build-and-test` and `dependency-audit`; squash merged as [`11673cb`](https://github.com/nurgeldiserikbay/services-back/commit/11673cbefccf76b298ca3119990b48b284a20121).
 - **Operational KZ staging acceptance remains OPEN:** host, database, backups, network routing, operator grants and alert receiver have not been independently attested. Strict top-level accepted **29/117** unchanged.
 
 ### 2026-11-25 — IN_APP monitor PostgreSQL least-privilege preflight (backend PR #477 CI PASS, merged)
