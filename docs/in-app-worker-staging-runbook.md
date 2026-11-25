@@ -78,6 +78,52 @@ Use one record per deployment candidate in the approved KZ-hosted change-managem
 
 **Decision rule:** retain staging acceptance as OPEN until every required observation is recorded and independently approved. Threshold-compliant aggregates alone do not verify scheduled worker delivery, account authorization, OTP provider login, external channels, or residency. If the monitor exits `1` or `2`, the worker fails repeatedly, alerts are not received, or residency cannot be attested, disable the timer and record the incident before reconsidering activation.
 
+## Separate read-only monitor scheduler (operator-only template)
+
+The templates `ops/systemd/services-in-app-monitor.service` and
+`ops/systemd/services-in-app-monitor.timer` are **not installed or enabled**.
+They must be reviewed and installed exclusively on an independently approved
+Kazakhstan-resident staging host. They do not enable the notification worker.
+
+Provision a dedicated `services-monitor` account and private root-owned
+`/etc/services/in-app-monitor.env` with mode `0600`. Supply only
+`SERVICES_ENABLE_IN_APP_MONITOR=enabled` and a private KZ PostgreSQL
+connection from the approved secret mechanism. The monitor database role must
+have SELECT only on `notification_intents` and `domain_outbox_events`;
+never reuse the delivery worker's write-capable role. Do not commit credentials.
+
+After reviewing paths, Node installation, regions, network routes, alerting
+and access policies, an operator may install the two monitor units on-host and
+perform the manual service check before enabling the timer:
+
+```sh
+sudo systemctl daemon-reload
+sudo systemctl start services-in-app-monitor.service
+sudo systemctl show services-in-app-monitor.service -p Result -p ExecMainStatus
+# Only after the monitor alert receiver has been independently configured,
+# tested for exit status 1 AND 2, and approved by the on-call reviewer:
+sudo systemctl enable --now services-in-app-monitor.timer
+sudo systemctl list-timers services-in-app-monitor.timer --all
+```
+
+The monitor alert receiver must notify the designated operator on exit code
+`1` (unavailable) or `2` (threshold exceeded). Do **not** use systemd
+`SuccessExitStatus=2`, since it would hide the threshold breach as success.
+A timer alone does not configure alert delivery. Explicitly test and record
+the recipient's alert acknowledgement before acceptance.
+
+To disable monitoring without touching the worker timer:
+
+```sh
+sudo systemctl disable --now services-in-app-monitor.timer
+sudo systemctl stop services-in-app-monitor.service
+sudo systemctl show services-in-app-monitor.timer -p ActiveState -p UnitFileState
+```
+
+Record only aggregate metrics, exit statuses, and sanitized deployment evidence.
+Any unsatisfied region, permission, alerting, or login evidence keeps staging
+acceptance **OPEN**; no automatic deployment is performed by this change.
+
 ## Disable / incident response
 
 ```sh
