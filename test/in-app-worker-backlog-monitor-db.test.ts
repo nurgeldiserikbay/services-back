@@ -32,7 +32,7 @@ test('IN_APP queue monitor measures immutable outbox age and ignores EMAIL',asyn
   assert.ok(after.delivered>=baseline.delivered+1);
   const own=await db.query<{channel:string;state:string}>(`
    SELECT channel,state FROM notification_intents
-   WHERE domain_event_id=$1 ORDER BY channel,state`,[event]);
+   WHERE domain_event_id=$1 ORDER BY channel, CASE WHEN state='DELIVERED' THEN 0 ELSE 1 END`,[event]);
   assert.deepEqual(own.rows,[
    {channel:'EMAIL',state:'PENDING'},
    {channel:'IN_APP',state:'DELIVERED'},
