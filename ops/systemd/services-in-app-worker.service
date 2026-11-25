@@ -2,7 +2,7 @@
 # Deploy exclusively on an operator-approved Kazakhstan-resident host.
 [Unit]
 Description=Services IN_APP notification batch (one invocation, no external messages)
-Documentation=../docs/in-app-worker-staging-runbook.md
+Documentation=https://github.com/nurgeldiserikbay/services-back/blob/main/docs/in-app-worker-staging-runbook.md
 Wants=network-online.target
 After=network-online.target
 
