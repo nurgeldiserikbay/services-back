@@ -46,6 +46,20 @@ GROUP BY state ORDER BY state;
 
 A successful batch must not mark `EMAIL`, `SMS` or `PUSH` as delivered. Confirm a recipient-specific IN_APP entry is visible only with a valid, unrevoked account session. CI tests do not substitute for this staging verification. Staging acceptance is **NOT VERIFIED** until the operator records evidence.
 
+## Read-only staging queue health check (operator only)
+
+On the approved KZ-resident staging host, run a **separate** read-only command with a restricted database user after installing the reviewed backend revision. The monitor is disabled by default and never runs in GitHub Actions or at API startup:
+
+```sh
+SERVICES_ENABLE_IN_APP_MONITOR=enabled npm run monitor:in-app:once
+```
+
+The operator supplies `DATABASE_URL` through the private host secret mechanism; do not print or paste it in a command or CI environment. For this monitor, PostgreSQL credentials should have **SELECT only** on `notification_intents` and `domain_outbox_events`, no write privileges. This command starts `BEGIN READ ONLY` and returns aggregate pending/delivered counts and the oldest pending age, calculated from the immutable domain outbox event creation timestamp (notification intents do not have a creation timestamp).
+
+Thresholds are initial **staging defaults pending operator approval**: pending count above 500, or oldest pending item above 900 seconds (15 minutes). Exit status `0` means the counts are inside those thresholds; `2` means at least one threshold was breached; `1` means a query, database or permission failure. The host scheduler/monitoring platform must alert operators on either `1` or `2`; do not mistake `0` for a production rollout or external provider delivery proof. Record the observed aggregates, command exit status, region/host approval, and alert acknowledgement without row IDs. Do not attach the database URI or full journals to a ticket.
+
+The monitor command is **not automatically scheduled** by the worker timer. Any separate monitor schedule or alert receiver needs explicit on-host operator approval. A growing queue, no successful worker invocations, or a monitor failure is grounds to keep staging acceptance open and investigate before production rollout.
+
 ## Disable / incident response
 
 ```sh
