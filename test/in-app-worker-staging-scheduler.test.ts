@@ -1,10 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {fileURLToPath} from 'node:url';
-import {dirname,resolve} from 'node:path';
+import {resolve} from 'node:path';
 
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const root=process.cwd();
 const text=(path:string)=>readFileSync(resolve(root,path),'utf8');
 
 test('KZ staging worker timer is not an automatic GitHub-hosted database cron',()=>{
