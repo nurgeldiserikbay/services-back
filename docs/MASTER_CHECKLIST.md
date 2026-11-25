@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-25 — registered customer completion denial durable-effects E2E (frontend PR #211 CI PASS, merged)
+- [x] **Scoped cross-repository security regression verified:** real Next.js BFF, backend and PostgreSQL registered request lifecycle now asserts forged CSRF and foreign-owner completion denials leave the request ACCEPTED at version 2, with no experience, completion outbox event or notification intent. [Frontend PR #211](https://github.com/nurgeldiserikbay/services-front/pull/211), exact-head [CI #45603955868 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45603955868), squash merged as [`38db4be`](https://github.com/nurgeldiserikbay/services-front/commit/38db4bec49e048b090d4051bdb5d92c557535858).
+- **Acceptance boundary:** test-only change; no new production route, provider or KZ deployment acceptance. Strict top-level acceptance remains **29/117**.
+
 ### 2026-11-25 — cross-repository API release-decision queue (documentation only)
 - [x] **Reviewed and prioritized unresolved API contract decisions:** added a P0/P1 release decision queue to [API design/runtime gap triage](../docs/api-design-runtime-gap-triage.md), distinguishing backend HTTP/PostgreSQL evidence and frontend E2E coverage from product/security signoff. Each row requires an explicit product decision, security exposure decision, client DTO/status/auth parity evidence and approved OpenAPI updates before closure. [Commit `4137568`](https://github.com/nurgeldiserikbay/services-back/commit/41375680e6b2b182d3508ca0d442ad05ae597f8f).
 - **Not accepted as contract parity:** all six decision rows stay OPEN; no production route enablement, CI run, new test coverage or deployment attestation is claimed. The static inventory remains 65 design / 46 runtime / 29 matches, and strict top-level acceptance remains **29/117**.
