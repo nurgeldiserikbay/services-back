@@ -106,6 +106,23 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
     `,[request,'user:'+sellerUser]);
     assert.deepEqual(deniedEffects.rows,[{revisions:0,outbox:0,ledger:0}]);
 
+    // The legitimate recipient still needs the current request version.
+    for(const action of ['confirm','decline'] as const){
+      await assert.rejects(mutateScheduleProposal(db,{token:customerAuth.token,requestId:request,
+        action,proposalId:proposed.id,expectedVersion:1,key:'stale_resolution_'+action,pepper}),
+        (error:unknown)=>error instanceof ScheduleProposalRejected&&error.reason==='conflict');
+    }
+    assert.deepEqual((await db.query(`
+      SELECT r.version,r.customer_penalty_suspended,p.status::text AS proposal_status
+      FROM service_requests r JOIN schedule_proposals p ON p.request_id=r.id
+      WHERE r.id=$1::uuid AND p.id=$2::uuid`,[request,proposed.id])).rows,
+      deniedState.rows);
+    const staleLedger=await db.query<{count:string}>(`
+      SELECT count(*)::text AS count FROM idempotency_records WHERE actor_scope=$1
+      AND key IN ('stale_resolution_confirm','stale_resolution_decline')
+    `,['user:'+customerUser]);
+    assert.equal(staleLedger.rows[0].count,'0');
+
     const confirmKey='schedule_confirm_key_12345';
     const confirmed=await mutateScheduleProposal(db,{token:customerAuth.token,requestId:request,
       action:'confirm',proposalId:proposed.id,expectedVersion:2,key:confirmKey,pepper});
@@ -114,6 +131,20 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
     const confirmedReplay=await mutateScheduleProposal(db,{token:customerAuth.token,requestId:request,
       action:'confirm',proposalId:proposed.id,expectedVersion:2,key:confirmKey,pepper});
     assert.equal(confirmedReplay.replayed,true);
+
+    // A new key cannot turn a completed proposal into a second confirmation.
+    for(const expectedVersion of [2,3]){
+      await assert.rejects(mutateScheduleProposal(db,{token:customerAuth.token,requestId:request,
+        action:'confirm',proposalId:proposed.id,expectedVersion,
+        key:'duplicate_confirmation_'+expectedVersion,pepper}),
+        (error:unknown)=>error instanceof ScheduleProposalRejected&&error.reason==='conflict');
+    }
+    const duplicateLedger=await db.query<{count:string}>(`
+      SELECT count(*)::text AS count FROM idempotency_records WHERE actor_scope=$1
+      AND key IN ('duplicate_confirmation_2','duplicate_confirmation_3')
+    `,['user:'+customerUser]);
+    assert.equal(duplicateLedger.rows[0].count,'0');
+
 
     const state=await db.query<{version:number;customer_penalty_suspended:boolean;
       accepted_at:Date;scheduled_start_at:Date}>(`
