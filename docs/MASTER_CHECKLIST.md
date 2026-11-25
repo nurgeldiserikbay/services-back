@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-25 — customer schedule proposal UI (frontend PR #214 CI PASS, merged)
+- [x] **Scoped customer schedule proposal form verified in frontend CI:** feature-gated KK/RU form on accepted requests, explicit local time and UTC offset, scoped private receipt verification, single-flight submit and refresh after uncertain outcome. [Frontend PR #214](https://github.com/nurgeldiserikbay/services-front/pull/214), exact-head [CI #45622101252 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45622101252), squash merged as [`07a14b9`](https://github.com/nurgeldiserikbay/services-front/commit/07a14b93a0e735eed3b1398fa3d3c9b3d0b53e01).
+- **Acceptance boundary:** proposal UI only; current inventory does not expose active schedule proposals. Authorized read model, recipient resolution UI, seller UI, live browser scheduling E2E and production enablement remain open. Form rejects intervals crossing offset transitions instead of guessing. Strict top-level acceptance remains **29/117**.
+
 ### 2026-11-25 — default-off account schedule BFF routes (frontend PR #213 CI PASS, merged)
 - [x] **Scoped account schedule BFF implementation verified in frontend CI:** propose, confirm and decline routes use sealed session cookies, origin/CSRF checks, strict version and idempotency headers, bounded JSON and sanitized no-store replies. [Frontend PR #213](https://github.com/nurgeldiserikbay/services-front/pull/213), exact-head [CI #45618838877 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45618838877), squash merged as [`739811e`](https://github.com/nurgeldiserikbay/services-front/commit/739811e885eee3a485ba51913d5df9789bf74e9b).
 - **Acceptance boundary:** default-off routes and source contract regressions; live scheduling BFF/backend E2E, customer/seller UI and production enablement remain open. Strict top-level acceptance remains **29/117**.
