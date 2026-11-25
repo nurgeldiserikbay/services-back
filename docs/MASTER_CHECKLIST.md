@@ -530,7 +530,7 @@
 - [ ] PWA and mobile architecture — Prepared; verification pending
 - [ ] Redis and background processing — Pending verification
 - [ ] Dev/staging/prod configuration — Pending verification
-- [ ] API contract parity — Prepared: pinned route inventory in [services docs](https://github.com/nurgeldiserikbay/services/blob/ca20220444e8aa101fb9d7b251204f2d09f90499/docs/api-runtime-route-inventory-2026-11-18.md); 65 design operations, 28 controller declarations, 23 method/path matches, 42 unmatched design operations and 5 runtime-only declarations; DTO/auth/client/live HTTP verification pending
+- [ ] API contract parity — Prepared: [2026-11-23 cross-repo static snapshot](https://github.com/nurgeldiserikbay/services/blob/main/docs/api-runtime-route-inventory-2026-11-18.md) lists 65 design operations, 46 backend declarations, 29 method/path shape matches, 36 design-only and 17 runtime-only routes; exact current AppModule declaration drift now covered by [backend PR #480 CI PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45574870358). Cross-repo snapshot remains historical, and design/DTO/auth/client/live HTTP parity is NOT verified; keep acceptance open.
 - [ ] Structured error handling and sanitized logs — Pending verification
 - [ ] Production infrastructure review — Pending verification
 
