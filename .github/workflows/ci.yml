@@ -158,6 +158,7 @@ jobs:
         run: |
           node --import tsx --test \
             test/runtime-route-inventory-regression.test.ts \
+            test/private-account-runtime-only-route-boundary.test.ts \
             test/search-contract-regression.test.ts \
             test/public-profile-contract.test.ts \
             test/seller-http-contract-regression.test.ts \
