@@ -26,8 +26,18 @@ test('IN_APP queue monitor measures immutable outbox age and ignores EMAIL',asyn
   await db.query("INSERT INTO notification_intents(id,domain_event_id,guest_contact_id,audience,channel,dedupe_key,state) VALUES($1,$2,$3,'CLIENT','EMAIL',$4,'PENDING')",
    [external,event,contact,'health-email:'+randomUUID()]);
   const after=await readInAppQueueHealth(db);
-  assert.equal(after.pending,baseline.pending+1);
-  assert.equal(after.delivered,baseline.delivered+1);
+  // Other test processes can commit into the same disposable CI DB between
+  // aggregate snapshots. Verify own fixture exactly; totals are lower bounds.
+  assert.ok(after.pending>=baseline.pending+1);
+  assert.ok(after.delivered>=baseline.delivered+1);
+  const own=await db.query<{channel:string;state:string}>(`
+   SELECT channel,state FROM notification_intents
+   WHERE domain_event_id=$1 ORDER BY channel,state`,[event]);
+  assert.deepEqual(own.rows,[
+   {channel:'EMAIL',state:'PENDING'},
+   {channel:'IN_APP',state:'DELIVERED'},
+   {channel:'IN_APP',state:'PENDING'},
+  ]);
   assert.ok(after.oldestPendingSeconds>=1860);
   const alert=assessInAppQueueHealth(after,after.pending,900);
   assert.equal(alert.ageOverLimit,true);
