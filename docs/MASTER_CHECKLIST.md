@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-25 — default-off account schedule BFF routes (frontend PR #213 CI PASS, merged)
+- [x] **Scoped account schedule BFF implementation verified in frontend CI:** propose, confirm and decline routes use sealed session cookies, origin/CSRF checks, strict version and idempotency headers, bounded JSON and sanitized no-store replies. [Frontend PR #213](https://github.com/nurgeldiserikbay/services-front/pull/213), exact-head [CI #45618838877 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45618838877), squash merged as [`739811e`](https://github.com/nurgeldiserikbay/services-front/commit/739811e885eee3a485ba51913d5df9789bf74e9b).
+- **Acceptance boundary:** default-off routes and source contract regressions; live scheduling BFF/backend E2E, customer/seller UI and production enablement remain open. Strict top-level acceptance remains **29/117**.
+
 ### 2026-11-25 — frontend account schedule server transport (frontend PR #212 CI PASS, merged)
 - [x] **Scoped server-side schedule transport verified:** propose, confirm and decline use authenticated backend bearer, version and idempotency headers, bounded private receipts, scoped IDs and sanitized conflict responses. [Frontend PR #212](https://github.com/nurgeldiserikbay/services-front/pull/212), exact-head [CI #45616921641 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45616921641), squash merged as [`6e80f16`](https://github.com/nurgeldiserikbay/services-front/commit/6e80f161c3a9864f0cfbbdac7954a4ccb63cb567).
 - **Acceptance boundary:** server transport and unit regressions only; browser BFF, CSRF, user interface and live cross-repository scheduling E2E remain open. Strict top-level acceptance remains **29/117**.
