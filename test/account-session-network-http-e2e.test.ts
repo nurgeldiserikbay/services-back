@@ -71,7 +71,7 @@ test('account session HTTP cannot revoke foreign sessions and logout invalidates
   assert.equal(list.items.some(x=>x.id===foreignSession),false);
   const listText=JSON.stringify(list);
   for(const secret of [ownerToken.token,siblingToken.token,foreignToken.token,
-   ownerToken.hash.toString('hex')])assert.equal(listText.includes(secret),false);
+   ownerToken.hash])assert.equal(listText.includes(secret),false);
 
   // Target UUID existence is never disclosed: both unknown and foreign return 204.
   const foreign=await request('/sessions/'+foreignSession,'DELETE',ownerToken.token);
