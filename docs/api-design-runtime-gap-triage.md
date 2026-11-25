@@ -85,6 +85,13 @@ is **not** evidence that the endpoint is enabled.
 | `POST /me/professional-profiles/{id}/appeals` | Account/self-service | Review needed |
 | `POST /me/professional-profiles/{id}/publish` | Account/self-service | Review needed |
 
+## Runtime-only session management — real HTTP and PostgreSQL authorization
+
+- `DELETE /auth/sessions/{id}` is an authenticated bearer-only remote revocation route; the server derives the account from a live session, validates the target UUID and constrains the SQL mutation to the caller's own account. Unknown and foreign UUID targets must return indistinguishable `204` responses, without revoking the foreign session.
+- `POST /auth/logout` is a design-matched route but shares the bearer lifecycle; a successful `204` invalidates the caller's session immediately, and replay must return `401` without affecting unrelated accounts.
+- `GET /auth/sessions` is a design-matched companion route. A valid caller sees only own session summaries, never bearer tokens, session HMACs or foreign IDs; anonymous and revoked callers get `401`.
+- `test/account-session-network-http-e2e.test.ts` exercises all three with real loopback Nest HTTP requests and a migrated transactional PostgreSQL fixture. It does not establish browser BFF/CSRF acceptance or the entire OpenAPI DTO contract. Remote session revocation remains a runtime-only API discrepancy awaiting product/security approval.
+
 ## Runtime-only private account routes — executable deny-by-default regression
 
 - `POST /auth/private/account/verify`: `AccountLoginPrivateController.verify` calls `requirePrivateAccountLoginAccess` before body validation and `signIn`. It remains disabled unless `SERVICES_ENABLE_ACCOUNT_LOGIN_HTTP=enabled`; an invalid or absent `x-services-account-login-key` returns a sanitized 404 before service invocation.
