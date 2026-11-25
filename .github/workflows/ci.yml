@@ -328,6 +328,7 @@ jobs:
           node --import tsx --test \
             test/outbox-staging-db.test.ts \
             test/in-app-notification-pipeline-db.test.ts \
+            test/in-app-notification-one-shot-worker-db.test.ts \
             test/person-notification-inbox-http-db.test.ts
       - name: Schedule proposal transaction and notification PostgreSQL (fail fast)
         run: |
