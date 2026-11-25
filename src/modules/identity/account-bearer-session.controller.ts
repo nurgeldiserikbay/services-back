@@ -1,4 +1,4 @@
-import {BadRequestException,Controller,Delete,Get,Header,Headers,HttpCode,Param,Post} from '@nestjs/common';
+import {BadRequestException,Controller,Delete,Get,Header,Headers,HttpCode,Inject,Param,Post} from '@nestjs/common';
 import {requireBearerSession} from '../requests/seller-inbox.contract.js';
 import {AccountBearerSessionService} from './account-bearer-session.service.js';
 
@@ -11,7 +11,8 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 
 @Controller('auth')
 export class AccountBearerSessionController{
-  constructor(private readonly sessions:AccountBearerSessionService){}
+  constructor(@Inject(AccountBearerSessionService)
+   private readonly sessions:AccountBearerSessionService){}
 
   @Get('sessions')
   @Header('Cache-Control','private, no-store')
