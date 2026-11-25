@@ -85,6 +85,11 @@ is **not** evidence that the endpoint is enabled.
 | `POST /me/professional-profiles/{id}/appeals` | Account/self-service | Review needed |
 | `POST /me/professional-profiles/{id}/publish` | Account/self-service | Review needed |
 
+## Runtime-only moderation list — HTTP boundary smoke
+
+- `GET /admin/moderation/cases`: `PlatformModerationReadController` is registered in `AppModule`; its service requires the exact `SERVICES_ENABLE_PLATFORM_MODERATION_HTTP=enabled` switch, a valid private admin bearer, a currently authorized moderation scope and fresh MFA evidence before querying cases. The query rechecks session/grants and only returns redacted case metadata.
+- `test/admin-moderation-read-network-http.test.ts` checks default-off, malformed bearer denial without DB access and an authorized, scoped, uncached response via a **real loopback Nest HTTP server with a stubbed transaction boundary**. It does **not** validate a real PostgreSQL grant lifecycle or the external privileged BFF/ingress and needs independent operator/security review.
+
 ## Runtime-only session management — real HTTP and PostgreSQL authorization
 
 - `DELETE /auth/sessions/{id}` is an authenticated bearer-only remote revocation route; the server derives the account from a live session, validates the target UUID and constrains the SQL mutation to the caller's own account. Unknown and foreign UUID targets must return indistinguishable `204` responses, without revoking the foreign session.

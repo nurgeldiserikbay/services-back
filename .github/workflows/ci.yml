@@ -230,6 +230,7 @@ jobs:
         run: |
           node --import tsx --test \
             test/admin-moderation-read-service.test.ts \
+            test/admin-moderation-read-network-http.test.ts \
             test/admin-moderation-read-db.test.ts
       - name: Privileged moderation live HTTP and PostgreSQL authorization E2E (fail fast)
         run: |
