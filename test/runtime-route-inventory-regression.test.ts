@@ -97,7 +97,7 @@ test('known API design/runtime gaps are explicit and do not silently drift',()=>
  }
  // Snapshot remains deliberately unresolved; passing does not mean API parity.
  assert.equal(pinned.designRoutes.length,65);
- assert.equal(runtime.routes.length,46);
+ assert.equal(runtime.routes.length,47);
  const design=new Set(pinned.designRoutes),implemented=new Set(runtime.routes);
  const missingImplementation=pinned.designRoutes.filter(x=>!implemented.has(x));
  const runtimeNotInDesign=runtime.routes.filter(x=>!design.has(x));
@@ -106,6 +106,6 @@ test('known API design/runtime gaps are explicit and do not silently drift',()=>
  assert.deepEqual(runtimeNotInDesign,pinned.knownRuntimeOnly,
   'Runtime-only operations changed: review exposure, feature flags and authorization before changing the baseline');
  assert.equal(missingImplementation.length,36);
- assert.equal(runtimeNotInDesign.length,17);
+ assert.equal(runtimeNotInDesign.length,18);
  assert.equal(pinned.designRoutes.length-missingImplementation.length,29);
 });
