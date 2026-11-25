@@ -81,6 +81,7 @@ test('monitor rejects effective write privileges and malformed role preflight',a
  const allowed={
   intents_select:true,events_select:true,intents_write:false,
   events_write:false,schema_create:false,database_create:false,
+  users_read:false,sessions_read:false,contacts_read:false,mfa_factors_read:false,
  };
  const observed:string[]=[];
  const checked=async(row:Record<string,unknown>)=>
@@ -98,7 +99,8 @@ test('monitor rejects effective write privileges and malformed role preflight',a
   await assert.rejects(checked({...allowed,[flag]:false}),
    /IN_APP monitor database role verification unavailable/);
  }
- for(const flag of ['intents_write','events_write','schema_create','database_create']){
+ for(const flag of ['intents_write','events_write','schema_create','database_create',
+  'users_read','sessions_read','contacts_read','mfa_factors_read']){
   await assert.rejects(checked({...allowed,[flag]:true}),
    /IN_APP monitor database role verification unavailable/);
  }
@@ -125,6 +127,12 @@ test('PostgreSQL restricted monitor role can SELECT but cannot UPDATE',async()=>
   assert.ok(metrics.pending>=0);
   await db.query('RESET ROLE');
   await db.query('GRANT UPDATE ON notification_intents TO '+role);
+  await db.query('SET LOCAL ROLE '+role);
+  await assert.rejects(assertInAppMonitorReadOnlyRole(db),
+   /IN_APP monitor database role verification unavailable/);
+  await db.query('RESET ROLE');
+  await db.query('REVOKE UPDATE ON notification_intents FROM '+role);
+  await db.query('GRANT SELECT ON sessions TO '+role);
   await db.query('SET LOCAL ROLE '+role);
   await assert.rejects(assertInAppMonitorReadOnlyRole(db),
    /IN_APP monitor database role verification unavailable/);
