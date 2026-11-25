@@ -1,5 +1,5 @@
 import {
-  Controller,Post,Param,Headers,Body,HttpCode,Header,
+  Controller,Post,Param,Headers,Body,HttpCode,Header,Inject,
   BadRequestException,ConflictException,ForbiddenException,NotFoundException,
 } from '@nestjs/common';
 import {validateSellerDecisionHttp} from './seller-decision-http.contract.js';
@@ -17,7 +17,7 @@ type ParsedMutation={token?:string;guestCapability?:string;requestId:string;expe
 /** Schedule proposals accept account bearer sessions or request-scoped guest proofs. */
 @Controller('requests')
 export class ScheduleProposalHttpController{
-  constructor(private readonly service:ScheduleProposalHttpService){}
+  constructor(@Inject(ScheduleProposalHttpService) private readonly service:ScheduleProposalHttpService){}
 
   @Post(':id/schedule-proposals')
   @HttpCode(201)
