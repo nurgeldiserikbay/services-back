@@ -85,6 +85,12 @@ is **not** evidence that the endpoint is enabled.
 | `POST /me/professional-profiles/{id}/appeals` | Account/self-service | Review needed |
 | `POST /me/professional-profiles/{id}/publish` | Account/self-service | Review needed |
 
+## Runtime-only professional moderation decision — live grant-revocation HTTP proof
+
+- `POST /admin/moderation/cases/{id}/decision` is a private administrative mutation requiring a current scoped operator/admin grant, active TOTP-backed MFA session, JSON-only server-to-server request and no browser Origin. It is not automatically exposed to browsers.
+- `test/admin-decision-network-http-grant-revocation.test.ts` executes the real controller and decision service over loopback HTTP using a migrated transactional PostgreSQL fixture. It verifies an authorized decision persists, then removes the operator grant and proves a second undecided case cannot transition or acquire approval evidence; even replay of the previously accepted decision receives 401 after revocation. A cross-origin request is denied before mutation.
+- This is CI-only PostgreSQL authorization evidence, not approval of a real privileged BFF, network ingress, session issuing/OTP provider or Kazakhstan staging. The route remains runtime-only relative to the design OpenAPI pending explicit product/security review.
+
 ## Runtime-only moderation list — HTTP boundary smoke
 
 - `GET /admin/moderation/cases`: `PlatformModerationReadController` is registered in `AppModule`; its service requires the exact `SERVICES_ENABLE_PLATFORM_MODERATION_HTTP=enabled` switch, a valid private admin bearer, a currently authorized moderation scope and fresh MFA evidence before querying cases. The query rechecks session/grants and only returns redacted case metadata.
