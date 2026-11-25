@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-25 — KZ staging read-only IN_APP monitor scheduler templates (backend PR #474; CI pending)
+- [ ] **Scoped monitor unit templates pending full backend CI:** [Backend PR #474](https://github.com/nurgeldiserikbay/services-back/pull/474) adds uninstalled default-off `services-in-app-monitor.service` and `.timer`, a dedicated read-only database identity, 30-second timeout, no retries and fail-status alerting on both `1` and `2`. Existing staging scheduler CI guardrails cover isolation, no automatic deployment, and operator-only runbook activation. No regional host, DB/backup approval, installed scheduler, alert receiver acknowledgement or real staging operations have been verified.
+- **Release acceptance stays OPEN:** strict accepted count **29/117** unchanged pending external evidence and full PR checks.
+
 ### 2026-11-25 — IN_APP monitor malformed-response regression (CI pending)
 - [ ] **Scoped regression added, not yet accepted:** [Backend commit `8c09878`](https://github.com/nurgeldiserikbay/services-back/commit/8c0987865504b38b3b5ec7012a0b4adfb1b8215f) adds fail-closed tests for empty/multiple aggregate result rows, null fields, noncanonical numeric strings and wrong numeric types. Full CI outcome for this revision remains unverified; do not promote this row to `[x]` until checks pass.
 - **Operational staging acceptance remains OPEN:** no new host, residency, scheduler or alert-receiver evidence. Strict top-level accepted count stays **29/117**.
