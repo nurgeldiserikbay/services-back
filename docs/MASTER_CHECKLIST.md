@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-26 — localized guest schedule OTP receipt UI (frontend PR #235 CI PASS, merged)
+- [x] Independent default-off schedule OTP UI (kk/ru), scoped same-origin CSRF bootstrap, accepted verified receipt gating, separate feature flag, ephemeral OTP state. Corrected receipt source-contract and React render harness failures; unverified receipt must not render either OTP child. [PR #235](https://github.com/nurgeldiserikbay/services-front/pull/235), head `449be2ac56d35ee41529d6e5bb2d73af854add59`, [CI #45816357878 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45816357878), merge `258c9bb3dabf533201d0878aec88854a6dfae08b`.
+- Proposal display/mutations, live guest OTP browser/backend integration, backend pin, API approval and staging remain OPEN. Strict acceptance 29/117; default-off.
+
 ### 2026-11-26 — guest schedule frontend transport and BFF routes (PRs #232–234)
 - [x] Guest schedule OTP transport, separate sealed challenge/proof cookies, exclusive guest credentials, default-off BFF composition and six HTTP routes implemented. PRs #232 and #233 were merged with failed typechecks; [PR #234](https://github.com/nurgeldiserikbay/services-front/pull/234) fixes all five TS2345 configuration errors by requiring backend URL before dispatch. Exact head `68d2005d6c3271dd62f9d395e13cc110dd7820a8`, [CI #45811057551 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45811057551), merge `8cc639c6016c0e07455e625b17fc40e7f15f7d4c`.
 - Guest live OTP/BFF PostgreSQL integration, browser UI, backend pin update, API approval and staging remain OPEN. Strict acceptance 29/117; default-off.
