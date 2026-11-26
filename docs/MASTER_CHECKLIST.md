@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-26 — guest schedule frontend transport and BFF routes (PRs #232–234)
+- [x] Guest schedule OTP transport, separate sealed challenge/proof cookies, exclusive guest credentials, default-off BFF composition and six HTTP routes implemented. PRs #232 and #233 were merged with failed typechecks; [PR #234](https://github.com/nurgeldiserikbay/services-front/pull/234) fixes all five TS2345 configuration errors by requiring backend URL before dispatch. Exact head `68d2005d6c3271dd62f9d395e13cc110dd7820a8`, [CI #45811057551 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45811057551), merge `8cc639c6016c0e07455e625b17fc40e7f15f7d4c`.
+- Guest live OTP/BFF PostgreSQL integration, browser UI, backend pin update, API approval and staging remain OPEN. Strict acceptance 29/117; default-off.
+
 ### 2026-11-26 — scoped guest active schedule read (backend PR #491 CI PASS, merged)
 - [x] Existing active proposal GET now accepts exclusive MANAGE_SCHEDULE guest proof bound to request/contact with live expiry and consumption checks under transaction lock, no-store; real Nest HTTP/PostgreSQL tests cover empty and active view, wrong token/target, mixed credentials, foreign account, consumed and expired proof, unchanged version. Expired test fixture corrected to preserve guest_capability_expiry constraint. [PR #491](https://github.com/nurgeldiserikbay/services-back/pull/491), head `3b4a21313cfccb3018e7e11eb8e31a27eb3992e2`, [CI #45807592179 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45807592179), merge `b42f957444784743f4db9d57f1e2f4308fa19fa9`.
 - Guest BFF proof issuance/transport and UI, full browser integration, API design/exposure approval and staging remain OPEN. Strict top-level acceptance 29/117; frontend default-off.
