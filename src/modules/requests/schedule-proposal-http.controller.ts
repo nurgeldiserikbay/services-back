@@ -63,7 +63,7 @@ export class ScheduleProposalHttpController{
     @Headers('idempotency-key') key:unknown,
   ):Promise<ScheduleProposalCommandResult>{
     const parsed=validateMutation({authorization,guestCapability,requestId:id,version,idempotencyKey:key});
-    if(typeof proposalId!=='string'||!/^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(proposalId)){
+    if(typeof proposalId!=='string'||!UUID.test(proposalId)){
       throw new BadRequestException('Invalid schedule proposal ID');
     }
     return this.execute('decline',parsed,undefined,proposalId.toLowerCase());
@@ -79,7 +79,7 @@ export class ScheduleProposalHttpController{
     @Headers('idempotency-key') key:unknown,
   ):Promise<ScheduleProposalCommandResult>{
     const parsed=validateMutation({authorization,guestCapability,requestId:id,version,idempotencyKey:key});
-    if(typeof proposalId!=='string'||!/^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(proposalId)){
+    if(typeof proposalId!=='string'||!UUID.test(proposalId)){
       throw new BadRequestException('Invalid schedule proposal ID');
     }
     return this.execute('confirm',parsed,undefined,proposalId.toLowerCase());
