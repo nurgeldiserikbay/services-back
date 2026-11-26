@@ -7,6 +7,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {Client} from 'pg';
+import {hashGuestCapability} from '../src/modules/guest-requests/guest-request.security.js';
 import {issueSessionToken} from '../src/modules/identity/session-proof.js';
 import {cancelAcceptedEarlyByCustomer} from '../src/modules/requests/accepted-early-cancellation.transaction.js';
 import {mutateScheduleProposal,ScheduleProposalRejected} from '../src/modules/requests/schedule-proposal.transaction.js';
@@ -15,9 +16,12 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
   const db=new Client({connectionString:process.env.DATABASE_URL});
   await db.connect();await db.query('BEGIN');
   const prior=process.env.ACCOUNT_SESSION_HMAC_KEY;
+  const priorGuest=process.env.GUEST_REQUEST_HMAC_KEY;
   let app:Awaited<ReturnType<typeof NestFactory.create>>|undefined;
   try{
     const pepper=randomBytes(32);
+    const guestPepper=randomBytes(32);
+    process.env.GUEST_REQUEST_HMAC_KEY=guestPepper.toString('base64');
     process.env.ACCOUNT_SESSION_HMAC_KEY=pepper.toString('base64');
     const sellerUser=randomUUID(),sellerPerson=randomUUID(),customerUser=randomUUID(),customerPerson=randomUUID();
     const org=randomUUID(),membership=randomUUID(),definition=randomUUID(),offer=randomUUID();
@@ -114,6 +118,34 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
     assert.equal(empty.status,200);
     assert.match(empty.headers.get('cache-control')??'',/no-store/);
     assert.deepEqual(await empty.json(),{request_id:request,request_version:1,actor:'customer',can_propose:true,proposal:null});
+
+    // Independent guest request, scoped proof and deny-by-default read matrix.
+    const guestId=randomUUID(),guestRequest=randomUUID();
+    await db.query("INSERT INTO guest_contacts(id,channel,encrypted_value,digest,verified_at,expires_at) VALUES($1,'email','test-encrypted',$2,now(),now()+interval '1 day')",[guestId,'schedule-guest-'+randomUUID()]);
+    await db.query("INSERT INTO service_requests(id,offer_id,guest_contact_id,source_context,seller_organization_id,status,accepted_at) VALUES($1,$2,$3,'ORGANIZATION',$4,'ACCEPTED',now())",[guestRequest,offer,guestId,org]);
+    const guestToken=randomBytes(32).toString('base64url'),capId=randomUUID();
+    await db.query("INSERT INTO guest_capabilities(id,guest_contact_id,request_id,scope,token_hash,expires_at) VALUES($1,$2,$3,'MANAGE_SCHEDULE',$4,now()+interval '1 hour')",[capId,guestId,guestRequest,hashGuestCapability('MANAGE_SCHEDULE',guestToken,guestPepper)]);
+    const guestRead=(token:string,target=guestRequest,extra:Record<string,string>={})=>fetch(
+      url.replace(request+'/schedule-proposals',target+'/schedule-proposals')+'/active',{
+        redirect:'manual',signal:AbortSignal.timeout(8000),headers:{'Guest-Capability':token,...extra},
+      });
+    const guestView=await guestRead(guestToken);
+    assert.equal(guestView.status,200);
+    assert.match(guestView.headers.get('cache-control')??'',/no-store/);
+    assert.deepEqual(await guestView.json(),{request_id:guestRequest,request_version:1,actor:'customer',can_propose:true,proposal:null});
+    assert.equal((await guestRead(randomBytes(32).toString('base64url'))).status,404);
+    assert.equal((await guestRead(guestToken,request)).status,404);
+    assert.equal((await guestRead(guestToken,guestRequest,{Authorization:'Bearer '+sellerAuth.token})).status,401);
+    assert.equal((await readActive(customerAuth.token,guestRequest)).status,404);
+    const guestProposed=await mutateScheduleProposal(db,{token:sellerAuth.token,requestId:guestRequest,action:'propose',expectedVersion:1,key:'guest_read_proposal_key',pepper,input});
+    const activeGuest=await guestRead(guestToken);
+    assert.equal(activeGuest.status,200);
+    assert.deepEqual(await activeGuest.json(),{request_id:guestRequest,request_version:2,actor:'customer',can_propose:true,proposal:{id:guestProposed.id,revision:1,initiator:'seller',start_at:wire.start_at,end_at:wire.end_at,timezone:wire.timezone,can_resolve:true}});
+    await db.query("UPDATE guest_capabilities SET consumed_at=now() WHERE id=$1",[capId]);
+    assert.equal((await guestRead(guestToken)).status,404);
+    await db.query("UPDATE guest_capabilities SET consumed_at=NULL,expires_at=now()-interval '1 second' WHERE id=$1",[capId]);
+    assert.equal((await guestRead(guestToken)).status,404);
+    assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[guestRequest])).rows[0].version,2);
 
     const proposalKey='schedule_proposal_key_12345';
     const proposedHttp=await send('',sellerAuth.token,'"1"',proposalKey,wire);
@@ -247,6 +279,8 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
     assert.equal(notices.rows[0].count,'3');
   }finally{
     if(app)await app.close();
+    if(priorGuest===undefined)delete process.env.GUEST_REQUEST_HMAC_KEY;
+    else process.env.GUEST_REQUEST_HMAC_KEY=priorGuest;
     if(prior===undefined)delete process.env.ACCOUNT_SESSION_HMAC_KEY;
     else process.env.ACCOUNT_SESSION_HMAC_KEY=prior;
     await db.query('ROLLBACK').catch(()=>{});await db.end();
