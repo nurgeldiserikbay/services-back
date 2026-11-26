@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-26 — real guest schedule OTP and active read integration (frontend PRs #237–238)
+- [x] Pinned backend `b42f957444784743f4db9d57f1e2f4308fa19fa9` and extended isolated CI guest lifecycle with real MANAGE_SCHEDULE OTP, scoped HttpOnly cookie, denied READ_CANCEL-only read, active view and unchanged PostgreSQL request version. PR #237 initially failed subsequent completion OTP at shared contact quota; corrective [PR #238](https://github.com/nurgeldiserikbay/services-front/pull/238) ages only the disposable verified schedule challenge, preserving production limits. Exact head `90ee60ddda9aaba1ad43d3522092427a93b1f194`, [CI #45822763859 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45822763859), merge `f06103e03ff89d701693648fd73aacf043b9e882`.
+- Real guest schedule mutation HTTP and Chrome journey, API approval and staging remain OPEN. Strict acceptance 29/117; default-off.
+
 ### 2026-11-26 — guest schedule proposal controls (frontend PR #236 CI PASS, merged)
 - [x] Verified guest OTP enables explicit active proposal read, bounded customer-only response validation, shared proposal/resolution components, version-scoped mutation gate and explicit authoritative reload after unknown outcome. [PR #236](https://github.com/nurgeldiserikbay/services-front/pull/236), head `fff96c51738a5d42c4bd3577aab3b62ce10a48aa`, [CI #45818763043 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45818763043), merge `338a083ea6d2c0ac07dfaf6936e7bc8cabe5b6dc`.
 - Guest live OTP/BFF/backend/PostgreSQL browser journey, backend pin update, API design/exposure approval and staging remain OPEN. CI success is not guest live-flow acceptance. Strict top-level acceptance 29/117; default-off.
