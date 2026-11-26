@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-26 — guest schedule proposal controls (frontend PR #236 CI PASS, merged)
+- [x] Verified guest OTP enables explicit active proposal read, bounded customer-only response validation, shared proposal/resolution components, version-scoped mutation gate and explicit authoritative reload after unknown outcome. [PR #236](https://github.com/nurgeldiserikbay/services-front/pull/236), head `fff96c51738a5d42c4bd3577aab3b62ce10a48aa`, [CI #45818763043 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45818763043), merge `338a083ea6d2c0ac07dfaf6936e7bc8cabe5b6dc`.
+- Guest live OTP/BFF/backend/PostgreSQL browser journey, backend pin update, API design/exposure approval and staging remain OPEN. CI success is not guest live-flow acceptance. Strict top-level acceptance 29/117; default-off.
+
 ### 2026-11-26 — localized guest schedule OTP receipt UI (frontend PR #235 CI PASS, merged)
 - [x] Independent default-off schedule OTP UI (kk/ru), scoped same-origin CSRF bootstrap, accepted verified receipt gating, separate feature flag, ephemeral OTP state. Corrected receipt source-contract and React render harness failures; unverified receipt must not render either OTP child. [PR #235](https://github.com/nurgeldiserikbay/services-front/pull/235), head `449be2ac56d35ee41529d6e5bb2d73af854add59`, [CI #45816357878 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45816357878), merge `258c9bb3dabf533201d0878aec88854a6dfae08b`.
 - Proposal display/mutations, live guest OTP browser/backend integration, backend pin, API approval and staging remain OPEN. Strict acceptance 29/117; default-off.
