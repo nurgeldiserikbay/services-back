@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-26 — customer Chrome confirmation and resolution single-flight (frontend PR #222)
+- [x] Real customer browser confirms seller proposal; rapid confirm/confirm/decline clicks assert one confirm POST and zero decline POSTs, version 4 persisted, exact browser idempotency key replayed via independent HTTP client. Real responses forwarded with delayed delivery. [PR #222](https://github.com/nurgeldiserikbay/services-front/pull/222), head `f98e09e505b691fecc81e245b8ffbd8ff2a75772`, [CI #45761195700 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45761195700), merge `1ac2b9a6ab491492123382301f21effae04fde19`.
+- Cross-component concurrency, uncertain recovery, guest read, API design/exposure approval and staging remain OPEN. Strict acceptance 29/117, default-off.
+
 ### 2026-11-26 — live Chrome customer schedule proposal (frontend PR #221 CI PASS, merged)
 - [x] Real signed-session customer Chrome opens own accepted request, fills native local datetime fields and submits proposal through hydrated React UI, actual BFF/backend and PostgreSQL; seller browser declines the resulting proposal. The form now reads uncontrolled datetime inputs through FormData at submission, preserving strict timezone/offset validation, CSRF and idempotency boundaries. CI-only loopback ingress expanded for exact scheduling mutation paths. [PR #221](https://github.com/nurgeldiserikbay/services-front/pull/221), exact head `4e462a35f442b3e784962b8daad1aaf3fc6b54ba`, [CI #45759211699 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45759211699) including unit tests and registered real HTTP/browser/PostgreSQL step #37, squash merge `7e7075f030131ecee9b2936975881d50835f06d8`.
 - Customer confirm browser interaction, cross-action concurrency, uncertain-outcome recovery, guest read, API design/exposure approval and staging remain OPEN. Default-off; strict top-level acceptance **29/117**.
