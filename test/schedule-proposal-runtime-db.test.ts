@@ -143,7 +143,7 @@ test('schedule proposal, seller penalty suspension and recipient confirmation ar
     assert.deepEqual(await activeGuest.json(),{request_id:guestRequest,request_version:2,actor:'customer',can_propose:true,proposal:{id:guestProposed.id,revision:1,initiator:'seller',start_at:wire.start_at,end_at:wire.end_at,timezone:wire.timezone,can_resolve:true}});
     await db.query("UPDATE guest_capabilities SET consumed_at=now() WHERE id=$1",[capId]);
     assert.equal((await guestRead(guestToken)).status,404);
-    await db.query("UPDATE guest_capabilities SET consumed_at=NULL,expires_at=now()-interval '1 second' WHERE id=$1",[capId]);
+    await db.query("UPDATE guest_capabilities SET consumed_at=NULL,created_at=now()-interval '2 minutes',expires_at=now()-interval '1 second' WHERE id=$1",[capId]);
     assert.equal((await guestRead(guestToken)).status,404);
     assert.equal((await db.query('SELECT version FROM service_requests WHERE id=$1',[guestRequest])).rows[0].version,2);
 
