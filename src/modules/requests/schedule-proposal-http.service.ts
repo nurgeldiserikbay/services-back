@@ -14,6 +14,12 @@ export class ScheduleProposalHttpService{
     return this.db.transaction(client=>readActiveAccountSchedule(client,{token,requestId,pepper}));
   }
 
+  readActiveGuest(guestCapability:string,requestId:string):Promise<ActiveScheduleView>{
+    const pepper=requireSecret(process.env.ACCOUNT_SESSION_HMAC_KEY);
+    const guestPepper=requireSecret(process.env.GUEST_REQUEST_HMAC_KEY);
+    return this.db.transaction(client=>readActiveAccountSchedule(client,{guestCapability,requestId,pepper,guestPepper}));
+  }
+
   mutate(args:{token?:string;requestId:string;action:ScheduleProposalAction;expectedVersion:number;
     guestCapability?:string;key:string;input?:ScheduleProposalInput;proposalId?:string}):Promise<ScheduleProposalCommandResult>{
     const pepper=requireSecret(process.env.ACCOUNT_SESSION_HMAC_KEY);

@@ -24,12 +24,14 @@ export class ScheduleProposalHttpController{
   @Header('Pragma','no-cache')
   async active(@Param('id') id:unknown,@Headers('authorization') authorization:unknown,
     @Headers('guest-capability') guestCapability:unknown):Promise<ActiveScheduleView>{
-    if(typeof authorization!=='string'||guestCapability!==undefined)
-      throw new UnauthorizedException('Authentication required');
-    const match=/^Bearer ([A-Za-z0-9_-]{43})$/.exec(authorization);
-    if(!match)throw new UnauthorizedException('Authentication required');
+    const account=typeof authorization==='string'?/^Bearer ([A-Za-z0-9_-]{43})$/.exec(authorization):null;
+    const guest=typeof guestCapability==='string'&&CAPABILITY.test(guestCapability);
+    if((authorization!==undefined&&guestCapability!==undefined)||
+      (!account&&!guest))throw new UnauthorizedException('Authentication required');
     if(typeof id!=='string'||!UUID.test(id))throw new BadRequestException('Invalid request ID');
-    try{return await this.service.readActive(match[1],id.toLowerCase());}
+    try{return account
+      ?await this.service.readActive(account[1],id.toLowerCase())
+      :await this.service.readActiveGuest(guestCapability as string,id.toLowerCase());}
     catch(error){
       if(error instanceof ScheduleProposalRejected){
         if(error.reason==='conflict')throw new ConflictException();

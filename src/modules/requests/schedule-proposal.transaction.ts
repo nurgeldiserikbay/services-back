@@ -471,10 +471,11 @@ export type ActiveScheduleView={
 /** Account-only read. Lock the request before authorization and proposal lookup
  * so the returned version and active proposal correspond to one state. */
 export async function readActiveAccountSchedule(
-  client:Pick<PoolClient,'query'>,args:{token:string;requestId:string;pepper:Buffer},
+  client:Pick<PoolClient,'query'>,args:{token?:string;guestCapability?:string;requestId:string;pepper:Buffer;guestPepper?:Buffer},
 ):Promise<ActiveScheduleView>{
-  const session=await resolveActiveUserSession(client,args.token,args.pepper);
-  if(!session)throw new UnauthorizedException('Authentication required');
+  if(Boolean(args.token)===Boolean(args.guestCapability))throw new UnauthorizedException('Authentication required');
+  const session=args.token?await resolveActiveUserSession(client,args.token,args.pepper):null;
+  if(args.token&&!session)throw new UnauthorizedException('Authentication required');
   const selected=await client.query<RequestRow>(`
     SELECT id::text,offer_id::text,status::text,version,schedule_reconciliation_required,
       customer_person_id::text,guest_contact_id::text,seller_professional_id::text,
@@ -483,9 +484,26 @@ export async function readActiveAccountSchedule(
   `,[args.requestId]);
   const request=selected.rows[0];
   if(!request)throw new ScheduleProposalRejected('not_found');
-  const actor=await resolveActor(client,session.userId,args.requestId,request);
-  if(!actor||(actor==='CUSTOMER'&&request.guest_contact_id))
-    throw new ScheduleProposalRejected('not_found');
+  let actor:Actor|null=null;
+  if(session){
+    actor=await resolveActor(client,session.userId,args.requestId,request);
+    if(actor==='CUSTOMER'&&request.guest_contact_id)actor=null;
+  }else{
+    let hash:string;
+    try{
+      if(!args.guestPepper||!args.guestCapability)throw new Error('guest_key_unavailable');
+      hash=hashGuestCapability('MANAGE_SCHEDULE',args.guestCapability,args.guestPepper);
+    }catch{throw new ScheduleProposalRejected('not_found');}
+    const proof=await client.query<{guest_contact_id:string}>(`
+      SELECT cap.guest_contact_id::text FROM guest_capabilities cap
+      JOIN service_requests r ON r.id=cap.request_id AND r.guest_contact_id=cap.guest_contact_id
+      WHERE cap.request_id=$1::uuid AND cap.token_hash=$2 AND cap.scope='MANAGE_SCHEDULE'
+        AND cap.consumed_at IS NULL AND cap.expires_at>now()
+      FOR SHARE OF cap,r
+    `,[args.requestId,hash]);
+    if(request.guest_contact_id&&proof.rows[0]?.guest_contact_id===request.guest_contact_id)actor='CUSTOMER';
+  }
+  if(!actor)throw new ScheduleProposalRejected('not_found');
   const canPropose=request.status==='ACCEPTED'&&!request.schedule_reconciliation_required;
   const result:ActiveScheduleView={request_id:request.id,request_version:request.version,
     actor:actor==='CUSTOMER'?'customer':'seller',can_propose:canPropose,proposal:null};
