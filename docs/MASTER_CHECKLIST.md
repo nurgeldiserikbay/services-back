@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-26 — scoped guest active schedule read (backend PR #491 CI PASS, merged)
+- [x] Existing active proposal GET now accepts exclusive MANAGE_SCHEDULE guest proof bound to request/contact with live expiry and consumption checks under transaction lock, no-store; real Nest HTTP/PostgreSQL tests cover empty and active view, wrong token/target, mixed credentials, foreign account, consumed and expired proof, unchanged version. Expired test fixture corrected to preserve guest_capability_expiry constraint. [PR #491](https://github.com/nurgeldiserikbay/services-back/pull/491), head `3b4a21313cfccb3018e7e11eb8e31a27eb3992e2`, [CI #45807592179 PASS](https://github.com/nurgeldiserikbay/services-back/actions/runs/45807592179), merge `b42f957444784743f4db9d57f1e2f4308fa19fa9`.
+- Guest BFF proof issuance/transport and UI, full browser integration, API design/exposure approval and staging remain OPEN. Strict top-level acceptance 29/117; frontend default-off.
+
 ### 2026-11-26 — independent Chrome stale schedule resolution (frontend PR #231 CI PASS, merged)
 - [x] Second real Chrome context loads version 3 before first browser confirms; after first commits and reloads, second sends one stale decline with If-Match version 3, receives HTTP 409, and PostgreSQL remains version 4. Existing outbox assertions retained. [PR #231](https://github.com/nurgeldiserikbay/services-front/pull/231), head `1982f75dda0f1efabdbc91c6af6d36d3763e6598`, [CI #45800748776 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45800748776), integration step #37 PASS, merge `7befa94bab29ab4567f63182c1da54df5ec3599c`.
 - Server-side stale-version protection proven across independent browser contexts, not proactive cross-tab UI synchronization or simultaneous network dispatch. Guest read, seller non-schedule actions, API approval and staging remain OPEN. Strict acceptance 29/117; default-off.
