@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — guest schedule OTP actual Chrome UI
+- [x] Actual accepted receipt UI requests delivered MANAGE_SCHEDULE OTP via scoped CI ingress, verifies code and secure HttpOnly schedule cookie, and exercises active schedule load. [Frontend PR #257](https://github.com/nurgeldiserikbay/services-front/pull/257), [CI #45992585837 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45992585837), merge `a4145ce825e5d075f76b71ca0647c4163b0e965b`.
+- Actual schedule proposal and resolution interactions, seller UI, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
+
 ### 2026-11-27 — guest receipt acceptance and schedule UI transition
 - [x] Seller HTTP accepts the real wizard-created request; actual Chrome receipt refresh renders accepted status and schedule panel, with PostgreSQL ACCEPTED/version 2 verified. [Frontend PR #256](https://github.com/nurgeldiserikbay/services-front/pull/256), [CI #45991788955 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45991788955), merge `d74802c38291b55aae59bbd53030b52e5cf1c0de`.
 - Seller UI clicks, schedule OTP and mutation UI interactions, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
