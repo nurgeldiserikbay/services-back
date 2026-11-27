@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — seller accepts guest request through actual Chrome inbox
+- [x] Real wizard-created guest request is accepted via authenticated seller workspace in separate Chrome tab, selecting the exact request, with PostgreSQL ACCEPTED/version 2 and subsequent actual guest receipt refresh verified. [Frontend PR #261](https://github.com/nurgeldiserikbay/services-front/pull/261), [CI #46039192463 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/46039192463), merge `699aa4d148cdb7a983174f6e8a16479153754df2`.
+- Seller counterproposal actual UI and real login issuance remain OPEN, as do production ingress/provider approval, API approval and staging. Strict acceptance 29/117.
+
 ### 2026-11-27 — guest completion actual Chrome UI
 - [x] Actual Chrome receipt completes the wizard-created and schedule-confirmed request using a newly issued completion OTP, explicit confirmation, refreshed completed status, PostgreSQL COMPLETED/version 6 and exactly one completed outbox event. Distinct React remount keys for schedule/completion, scoped UI selectors and hydration-safe contact selection; consumed fixture challenges aged beyond hourly quota while production limits unchanged. [Frontend PR #260](https://github.com/nurgeldiserikbay/services-front/pull/260), [CI #46030921937 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/46030921937), merge `a81045401007683344acba421033f60955e36cfa`.
 - Seller actual UI, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
