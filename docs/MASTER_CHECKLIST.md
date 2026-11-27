@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — isolated guest UI fixture configuration
+- [x] Guest wizard, status and schedule UI flags enabled only on the isolated loopback CI instance (frontend PR #247); corrected the workflow regression guard to preserve public and disabled-provider restrictions in [PR #248](https://github.com/nurgeldiserikbay/services-front/pull/248). [CI #45953912023 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45953912023), head `48f44901685a898e32f162211642ded59a8b48c3`, merge `dea850cb73d14c4d4b465c1f85402d991bfa589e`.
+- CREATE_REQUEST OTP fixture, trusted test ingress, actual browser UI interactions, API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
+
 ### 2026-11-27 — guest Chrome bilateral schedule mutations
 - [x] Native Chrome fetch executes guest proposal, replay, own-confirm rejection, seller counterproposal read, stale-version rejection and guest confirmation within the real PostgreSQL lifecycle, retaining exact outbox assertions. [Frontend CI #45949377022 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45949377022), [PR #246](https://github.com/nurgeldiserikbay/services-front/pull/246), head `f563d13b3afc3a965d812526859fbe6676c84109`, merge `b55317fbc72c4031a5744bc2c0ff4d4e7f6d2633`.
 - Seller actor still uses HTTP; actual browser UI interactions, API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
