@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — guest schedule proposal actual Chrome UI
+- [x] Actual receipt UI loads empty schedule, opens proposal form, sets native datetime-local values, submits, renders customer proposal and own-confirm restriction; verifies PostgreSQL ACCEPTED/version 3 and exactly one schedule proposed outbox event. [Frontend PR #258](https://github.com/nurgeldiserikbay/services-front/pull/258), [CI #45995166232 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45995166232), merge `028f2a4cd99bca3684f6dec85f073e7ac5655aeb`.
+- Counterproposal confirmation through actual UI, seller UI, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
+
 ### 2026-11-27 — guest schedule OTP actual Chrome UI
 - [x] Actual accepted receipt UI requests delivered MANAGE_SCHEDULE OTP via scoped CI ingress, verifies code and secure HttpOnly schedule cookie, and exercises active schedule load. [Frontend PR #257](https://github.com/nurgeldiserikbay/services-front/pull/257), [CI #45992585837 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45992585837), merge `a4145ce825e5d075f76b71ca0647c4163b0e965b`.
 - Actual schedule proposal and resolution interactions, seller UI, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
