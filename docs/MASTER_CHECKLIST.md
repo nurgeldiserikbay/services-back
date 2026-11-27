@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — isolated initial guest OTP trusted ingress preparation
+- [x] CI-only loopback HTTPS backend bridge signs initial OTP issuance with ephemeral network attestation key and browser ingress translates scoped same-origin initial OTP and create routes. Existing regression CI passed. [Frontend PR #251](https://github.com/nurgeldiserikbay/services-front/pull/251), [CI #45962797198 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45962797198), head `944d103bdc9affd4f9782c2ef97eae360e9d05e9`, merge `ebaa6c721bff36cf3e8f3542595c2032ae36f1a6`.
+- Initial OTP delivery and real browser UI interactions remain OPEN; production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
+
 ### 2026-11-27 — isolated initial guest OTP HTTP configuration
 - [x] Initial guest OTP, create and status HTTP flags enabled exclusively in disposable backend fixture; workflow regression guard confines OTP enablement to that fixture. [Frontend PR #250](https://github.com/nurgeldiserikbay/services-front/pull/250), [CI #45960368169 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45960368169), head `de777b0b45c984ad27f56086fe76412c759caafe`, merge `223a7d1f4559fd8755a2ab5915b40e7479d8b9e8`.
 - Initial OTP delivery through trusted browser ingress and actual UI interactions remain OPEN; API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
