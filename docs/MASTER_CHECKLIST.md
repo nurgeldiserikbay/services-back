@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — Chrome initial guest OTP transport
+- [x] Real Chrome fetch exercises initial OTP CSRF bootstrap, delivered CREATE_REQUEST OTP for independent disposable contact, verification, secure HttpOnly create capability cookie and JavaScript nonvisibility without seeding this proof. Existing lifecycle regression passes. [Frontend PR #252](https://github.com/nurgeldiserikbay/services-front/pull/252), [CI #45969024427 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45969024427), head `4f2728bc23fc2b7e680628d79af6b1efea1cd324`, merge `7efb2ec3f90d0e02d55dd0736938a42a74ad3c6e`.
+- Actual UI interactions and request creation with the browser-issued proof remain OPEN; production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
+
 ### 2026-11-27 — isolated initial guest OTP trusted ingress preparation
 - [x] CI-only loopback HTTPS backend bridge signs initial OTP issuance with ephemeral network attestation key and browser ingress translates scoped same-origin initial OTP and create routes. Existing regression CI passed. [Frontend PR #251](https://github.com/nurgeldiserikbay/services-front/pull/251), [CI #45962797198 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45962797198), head `944d103bdc9affd4f9782c2ef97eae360e9d05e9`, merge `ebaa6c721bff36cf3e8f3542595c2032ae36f1a6`.
 - Initial OTP delivery and real browser UI interactions remain OPEN; production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
