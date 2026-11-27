@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — guest receipt acceptance and schedule UI transition
+- [x] Seller HTTP accepts the real wizard-created request; actual Chrome receipt refresh renders accepted status and schedule panel, with PostgreSQL ACCEPTED/version 2 verified. [Frontend PR #256](https://github.com/nurgeldiserikbay/services-front/pull/256), [CI #45991788955 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45991788955), merge `d74802c38291b55aae59bbd53030b52e5cf1c0de`.
+- Seller UI clicks, schedule OTP and mutation UI interactions, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
+
 ### 2026-11-27 — initial guest wizard actual Chrome UI
 - [x] Actual published offer React wizard exercises email selection, contact/note entry, consent, continuation, delivered OTP input, explicit submit and committed receipt rendering. Asserts no premature receipt, secure HttpOnly cookie, PostgreSQL PENDING/version 1, safe outbox event and scoped status. [Frontend PR #255](https://github.com/nurgeldiserikbay/services-front/pull/255), [CI #45980660972 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45980660972), merge `c9cf9904c6dc848462c62796ce2a9e4c8a7ab064`.
 - Seller and schedule actual UI interactions, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
