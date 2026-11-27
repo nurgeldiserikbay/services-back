@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — guest Chrome ingress preparation
+- [x] Isolated loopback-only guest schedule browser ingress starts successfully and existing HTTP lifecycle regression passes in [frontend CI #45943896550](https://github.com/nurgeldiserikbay/services-front/actions/runs/45943896550), [PR #242](https://github.com/nurgeldiserikbay/services-front/pull/242), head `46312d63aaec014719f0f52e43288be1d1accf16`, merge `0a5fccffaac05ef22796aac91a1bbe85221a5a83`.
+- Browser UI journey itself remains OPEN; ingress startup is not browser acceptance. API approval and staging remain OPEN. Strict acceptance 29/117; production flags remain default-off.
+
 ### 2026-11-27 — real guest bilateral schedule HTTP integration (frontend PRs #239–240)
 - [x] Real guest proposal, seller decline, seller proposal, guest confirmation, own-proposal and stale-version HTTP 409, exact idempotency replay, PostgreSQL version 6, exact schedule outbox metadata/counts and final completion at version 7. Backend [PR #492](https://github.com/nurgeldiserikbay/services-back/pull/492) canonical UUID validation, CI #45826092472 PASS, merge `2e5b9020f50ec1e3f67185c1b75ba83f5fda6095`. Frontend [PR #240](https://github.com/nurgeldiserikbay/services-front/pull/240) runs compiled Nest fixture with production Node loader, restoring domain exception identity; exact head `dff7fcd03e1584ab3c6dda33d5c67b6d620e2fbd`, [CI #45878836291 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45878836291), merge `af99e2076a4f2d15fea7c8124b2b11eacd08b5b8`.
 - Guest Chrome journey, API approval and staging remain OPEN. Strict acceptance 29/117; default-off.
