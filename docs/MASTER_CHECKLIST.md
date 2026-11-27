@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — real guest bilateral schedule HTTP integration (frontend PRs #239–240)
+- [x] Real guest proposal, seller decline, seller proposal, guest confirmation, own-proposal and stale-version HTTP 409, exact idempotency replay, PostgreSQL version 6, exact schedule outbox metadata/counts and final completion at version 7. Backend [PR #492](https://github.com/nurgeldiserikbay/services-back/pull/492) canonical UUID validation, CI #45826092472 PASS, merge `2e5b9020f50ec1e3f67185c1b75ba83f5fda6095`. Frontend [PR #240](https://github.com/nurgeldiserikbay/services-front/pull/240) runs compiled Nest fixture with production Node loader, restoring domain exception identity; exact head `dff7fcd03e1584ab3c6dda33d5c67b6d620e2fbd`, [CI #45878836291 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45878836291), merge `af99e2076a4f2d15fea7c8124b2b11eacd08b5b8`.
+- Guest Chrome journey, API approval and staging remain OPEN. Strict acceptance 29/117; default-off.
+
 ### 2026-11-26 — real guest schedule OTP and active read integration (frontend PRs #237–238)
 - [x] Pinned backend `b42f957444784743f4db9d57f1e2f4308fa19fa9` and extended isolated CI guest lifecycle with real MANAGE_SCHEDULE OTP, scoped HttpOnly cookie, denied READ_CANCEL-only read, active view and unchanged PostgreSQL request version. PR #237 initially failed subsequent completion OTP at shared contact quota; corrective [PR #238](https://github.com/nurgeldiserikbay/services-front/pull/238) ages only the disposable verified schedule challenge, preserving production limits. Exact head `90ee60ddda9aaba1ad43d3522092427a93b1f194`, [CI #45822763859 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45822763859), merge `f06103e03ff89d701693648fd73aacf043b9e882`.
 - Real guest schedule mutation HTTP and Chrome journey, API approval and staging remain OPEN. Strict acceptance 29/117; default-off.
