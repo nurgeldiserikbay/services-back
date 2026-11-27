@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — guest Chrome bilateral schedule mutations
+- [x] Native Chrome fetch executes guest proposal, replay, own-confirm rejection, seller counterproposal read, stale-version rejection and guest confirmation within the real PostgreSQL lifecycle, retaining exact outbox assertions. [Frontend CI #45949377022 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45949377022), [PR #246](https://github.com/nurgeldiserikbay/services-front/pull/246), head `f563d13b3afc3a965d812526859fbe6676c84109`, merge `b55317fbc72c4031a5744bc2c0ff4d4e7f6d2633`.
+- Seller actor still uses HTTP; actual browser UI interactions, API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
+
 ### 2026-11-27 — guest Chrome schedule OTP issuance and verification
 - [x] Native Chrome fetch initiates MANAGE_SCHEDULE OTP, verifies the captured disposable delivery code, and stores the server-issued Secure HttpOnly schedule cookie. Existing PostgreSQL lifecycle and scope separation pass. [Frontend CI #45948617953 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45948617953), [PR #245](https://github.com/nurgeldiserikbay/services-front/pull/245), head `ac2ae881a1bd2484960b4e5bf454fd5817c0ce4b`, merge `6bc054741abdbaf54e4e6b0a5aad5e9746111074`.
 - Initial request cookie and OTP delivery are still CI fixtures. Actual browser UI interactions, API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
