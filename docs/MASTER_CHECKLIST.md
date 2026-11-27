@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — guest counterproposal confirmation actual Chrome UI
+- [x] Seller HTTP submits counterproposal for real wizard-created request; actual Chrome receipt refresh, scoped OTP re-verification, seller proposal rendering and confirmation button verified. PostgreSQL ACCEPTED/version 5 and exactly one schedule confirmed outbox event verified. [Frontend PR #259](https://github.com/nurgeldiserikbay/services-front/pull/259), [CI #45996748445 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45996748445), merge `a2bac8329368b22c43e0afbb454b0fb835dfa363`.
+- Seller UI, guest completion UI, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
+
 ### 2026-11-27 — guest schedule proposal actual Chrome UI
 - [x] Actual receipt UI loads empty schedule, opens proposal form, sets native datetime-local values, submits, renders customer proposal and own-confirm restriction; verifies PostgreSQL ACCEPTED/version 3 and exactly one schedule proposed outbox event. [Frontend PR #258](https://github.com/nurgeldiserikbay/services-front/pull/258), [CI #45995166232 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45995166232), merge `028f2a4cd99bca3684f6dec85f073e7ac5655aeb`.
 - Counterproposal confirmation through actual UI, seller UI, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
