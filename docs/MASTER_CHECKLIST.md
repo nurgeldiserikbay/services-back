@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — published guest wizard Chrome render
+- [x] Real Chrome navigates to a PostgreSQL-backed published offer with canonical `contacts.methods` including `guest_request` and verifies the actual guest form and continuation control render. [Frontend PR #254](https://github.com/nurgeldiserikbay/services-front/pull/254), [CI #45979213024 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45979213024), merge `8395f8e57b2d754006af9d6256c369e498a2497c`.
+- Actual UI form submission, OTP entry, receipt and schedule interactions remain OPEN; production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
+
 ### 2026-11-27 — Chrome OTP-authorized guest creation
 - [x] Real Chrome creates a committed guest request using the browser-issued OTP capability, verifies PostgreSQL PENDING/version 1, safe outbox event, scoped HttpOnly receipt cookie and private status read. [Frontend PR #253](https://github.com/nurgeldiserikbay/services-front/pull/253), [CI #45970303234 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45970303234), merge `fef37d98eca746c789ed3f6bdc9988f82cd29aff`.
 - Actual UI click acceptance, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
