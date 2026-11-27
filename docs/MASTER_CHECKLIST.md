@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — guest Chrome schedule scope separation and CSRF bootstrap
+- [x] Chrome denies active schedule reads after removal of the schedule cookie while the original request-scoped cookie still bootstraps CSRF with a no-store response. [Frontend CI #45946943050 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45946943050), [PR #244](https://github.com/nurgeldiserikbay/services-front/pull/244), head `23900b234f725054beb753f33a40641aa6295639`, merge `22e4779abb41dc587f4ddee54fc223b9c0a5b9f6`.
+- Actual browser OTP issuance/verification and UI interactions remain OPEN; API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
+
 ### 2026-11-27 — guest Chrome scoped schedule transport
 - [x] Real headless Chrome active schedule read using disposable CDP-seeded HttpOnly scoped cookies, including JavaScript cookie non-visibility, passed within the existing PostgreSQL lifecycle in [frontend CI #45944889362](https://github.com/nurgeldiserikbay/services-front/actions/runs/45944889362), [PR #243](https://github.com/nurgeldiserikbay/services-front/pull/243), head `6abcf957ace2adafca12bb36d4f131c7f97bd95a`, merge `4a1d26a966634c2a57846cc271e9635a77c26d0f`.
 - Full browser UI interaction and browser OTP issuance/verification remain OPEN, as do API approval and staging. Strict acceptance 29/117; production flags default-off.
