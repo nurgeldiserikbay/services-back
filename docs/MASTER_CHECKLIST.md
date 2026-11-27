@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — guest completion actual Chrome UI
+- [x] Actual Chrome receipt completes the wizard-created and schedule-confirmed request using a newly issued completion OTP, explicit confirmation, refreshed completed status, PostgreSQL COMPLETED/version 6 and exactly one completed outbox event. Distinct React remount keys for schedule/completion, scoped UI selectors and hydration-safe contact selection; consumed fixture challenges aged beyond hourly quota while production limits unchanged. [Frontend PR #260](https://github.com/nurgeldiserikbay/services-front/pull/260), [CI #46030921937 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/46030921937), merge `a81045401007683344acba421033f60955e36cfa`.
+- Seller actual UI, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
+
 ### 2026-11-27 — guest counterproposal confirmation actual Chrome UI
 - [x] Seller HTTP submits counterproposal for real wizard-created request; actual Chrome receipt refresh, scoped OTP re-verification, seller proposal rendering and confirmation button verified. PostgreSQL ACCEPTED/version 5 and exactly one schedule confirmed outbox event verified. [Frontend PR #259](https://github.com/nurgeldiserikbay/services-front/pull/259), [CI #45996748445 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45996748445), merge `a2bac8329368b22c43e0afbb454b0fb835dfa363`.
 - Seller UI, guest completion UI, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
