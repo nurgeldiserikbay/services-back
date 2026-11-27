@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — guest Chrome schedule OTP issuance and verification
+- [x] Native Chrome fetch initiates MANAGE_SCHEDULE OTP, verifies the captured disposable delivery code, and stores the server-issued Secure HttpOnly schedule cookie. Existing PostgreSQL lifecycle and scope separation pass. [Frontend CI #45948617953 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45948617953), [PR #245](https://github.com/nurgeldiserikbay/services-front/pull/245), head `ac2ae881a1bd2484960b4e5bf454fd5817c0ce4b`, merge `6bc054741abdbaf54e4e6b0a5aad5e9746111074`.
+- Initial request cookie and OTP delivery are still CI fixtures. Actual browser UI interactions, API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
+
 ### 2026-11-27 — guest Chrome schedule scope separation and CSRF bootstrap
 - [x] Chrome denies active schedule reads after removal of the schedule cookie while the original request-scoped cookie still bootstraps CSRF with a no-store response. [Frontend CI #45946943050 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/45946943050), [PR #244](https://github.com/nurgeldiserikbay/services-front/pull/244), head `23900b234f725054beb753f33a40641aa6295639`, merge `22e4779abb41dc587f4ddee54fc223b9c0a5b9f6`.
 - Actual browser OTP issuance/verification and UI interactions remain OPEN; API approval and staging remain OPEN. Strict acceptance 29/117; production flags default-off.
