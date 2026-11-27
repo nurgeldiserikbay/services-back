@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-27 — guest Chrome scoped schedule transport
+- [x] Real headless Chrome active schedule read using disposable CDP-seeded HttpOnly scoped cookies, including JavaScript cookie non-visibility, passed within the existing PostgreSQL lifecycle in [frontend CI #45944889362](https://github.com/nurgeldiserikbay/services-front/actions/runs/45944889362), [PR #243](https://github.com/nurgeldiserikbay/services-front/pull/243), head `6abcf957ace2adafca12bb36d4f131c7f97bd95a`, merge `4a1d26a966634c2a57846cc271e9635a77c26d0f`.
+- Full browser UI interaction and browser OTP issuance/verification remain OPEN, as do API approval and staging. Strict acceptance 29/117; production flags default-off.
+
 ### 2026-11-27 — guest Chrome ingress preparation
 - [x] Isolated loopback-only guest schedule browser ingress starts successfully and existing HTTP lifecycle regression passes in [frontend CI #45943896550](https://github.com/nurgeldiserikbay/services-front/actions/runs/45943896550), [PR #242](https://github.com/nurgeldiserikbay/services-front/pull/242), head `46312d63aaec014719f0f52e43288be1d1accf16`, merge `0a5fccffaac05ef22796aac91a1bbe85221a5a83`.
 - Browser UI journey itself remains OPEN; ingress startup is not browser acceptance. API approval and staging remain OPEN. Strict acceptance 29/117; production flags remain default-off.
