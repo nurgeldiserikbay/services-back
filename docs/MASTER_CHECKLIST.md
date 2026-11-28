@@ -4,6 +4,10 @@
 **Status:** living acceptance register; statuses are evidence-based, not a claim that CI is green.
 **Baseline:** 2026-11-15. Previous 85% estimate is historical and **not verified**; do not treat it as a calculated completion percentage.
 
+### 2026-11-28 — bilateral guest/seller positive lifecycle actual Chrome UI
+- [x] Seller counterproposal now submitted via real authenticated seller workspace, with exact guest request correlation, PostgreSQL version 4 and active proposal verified; guest then confirms and completes using actual receipt UI. [Frontend PR #262](https://github.com/nurgeldiserikbay/services-front/pull/262), [CI #46065397405 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/46065397405), merge `26df2cd84936fe2cdea3653d3d8b2391d80c6f93`.
+- Positive bilateral browser journey proven with seeded seller session and isolated OTP delivery. Seller request decline UI, real login issuance, production ingress/provider approval, API approval and staging remain OPEN. Strict acceptance 29/117.
+
 ### 2026-11-27 — seller accepts guest request through actual Chrome inbox
 - [x] Real wizard-created guest request is accepted via authenticated seller workspace in separate Chrome tab, selecting the exact request, with PostgreSQL ACCEPTED/version 2 and subsequent actual guest receipt refresh verified. [Frontend PR #261](https://github.com/nurgeldiserikbay/services-front/pull/261), [CI #46039192463 PASS](https://github.com/nurgeldiserikbay/services-front/actions/runs/46039192463), merge `699aa4d148cdb7a983174f6e8a16479153754df2`.
 - Seller counterproposal actual UI and real login issuance remain OPEN, as do production ingress/provider approval, API approval and staging. Strict acceptance 29/117.
